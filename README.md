@@ -5,3 +5,13 @@ Small wrapper library over paramiko that allows for parallel execution of SSH co
 
 .. image:: https://api.travis-ci.org/pkittenis/parallel-ssh.png?branch=master
         :target: https://travis-ci.org/pkittenis/parallel-ssh
+
+###
+Example
+###
+
+from pssh import ParallelSSHClient
+hosts = ['myhost1', 'myhost2']
+client = ParallelSSHClient(hosts)
+cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
+print [client.get_stdout(cmd) for cmd in cmds]

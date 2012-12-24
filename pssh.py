@@ -5,7 +5,6 @@ See SSHClient and ParallelSSHClient"""
 
 import paramiko
 import os
-import gevent
 import gevent.pool
 from gevent import monkey
 monkey.patch_all()
@@ -23,9 +22,9 @@ logger = logging.getLogger(__name__)
 
 def _setup_logger(_logger):
     """Setup default logger"""
-    handler = logging.StreamHandler()
+    _handler = logging.StreamHandler()
     log_format = logging.Formatter('%(name)s - %(asctime)s - %(levelname)s - %(message)s')
-    handler.setFormatter(log_format)
+    _handler.setFormatter(log_format)
     _logger.addHandler(handler)
     _logger.setLevel(logging.DEBUG)
 
@@ -73,11 +72,11 @@ class SSHClient(object):
         try:
             self.client.connect(self.host, username = self.user)
         except socket.gaierror, e:
-            logger.error("Could not resolve host %s" % (self.host,))
-            raise UnknownHostException("%s - %s" % (str(e.strerror), self.host,))
+            logger.error("Could not resolve host '%s'" % (self.host,))
+            raise UnknownHostException("%s - %s" % (str(e.args[1]), self.host,))
         except socket.error, e:
-            logger.error("Error connecting to host %s" % (self.host,))
-            raise ConnectionErrorException("%s for host '%s'" % (str(e.strerror), self.host,))
+            logger.error("Error connecting to host '%s'" % (self.host,))
+            raise ConnectionErrorException("%s for host '%s'" % (str(e.args[1]), self.host,))
 
     def exec_command(self, command, sudo = False, **kwargs):
         """Wrapper to paramiko.SSHClient.exec_command"""
