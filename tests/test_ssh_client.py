@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python
 
 """Unittests for verrot webapp"""
 
@@ -11,7 +11,7 @@ class SSHClientTest(unittest.TestCase):
     def test_ssh_client(self):
         try:
             client = SSHClient('testy')
-        except UnknownHostException as e:
+        except UnknownHostException, e:
             print e
             return
         stdin, stdout, stderr = client.exec_command('ls -ltrh')
