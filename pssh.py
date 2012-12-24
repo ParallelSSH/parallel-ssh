@@ -72,10 +72,10 @@ class SSHClient(object):
         """Connect to host, throw UnknownHost exception on DNS errors"""
         try:
             self.client.connect(self.host, username = self.user)
-        except socket.gaierror as e:
+        except socket.gaierror, e:
             logger.error("Could not resolve host %s" % (self.host,))
             raise UnknownHostException("%s - %s" % (str(e.strerror), self.host,))
-        except socket.error as e:
+        except socket.error, e:
             logger.error("Error connecting to host %s" % (self.host,))
             raise ConnectionErrorException("%s for host '%s'" % (str(e.strerror), self.host,))
 
