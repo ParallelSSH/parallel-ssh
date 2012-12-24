@@ -6,7 +6,12 @@ Small wrapper library over paramiko that allows for parallel execution of SSH co
 .. image:: https://api.travis-ci.org/pkittenis/parallel-ssh.png?branch=master
         :target: https://travis-ci.org/pkittenis/parallel-ssh
 
-Example
+Installation
+============
+	sudo apt-get install libevent-dev
+	pip install parallel-ssh
+
+Usage Example
 ============
 
 ```python
