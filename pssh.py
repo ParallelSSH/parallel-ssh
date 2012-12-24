@@ -39,6 +39,8 @@ class SSHClient(object):
         """Connect to host honoring any user set configuration in ~/.ssh/config or /etc/ssh/ssh_config
         :type: str
         :param host: Hostname to connect to
+        :type str:
+        :param user: (Optional) User to login as. Defaults to logged in user or user from ~/.ssh/config if set
         :throws: paramiko.AuthenticationException on authentication error
         :throws: ssh_client.UnknownHostException on DNS resolution error
         :throws: ssh_client.ConnectionErrorException on error connecting"""
@@ -102,8 +104,11 @@ class ParallelSSHClient(object):
         :param hosts: Hosts to connect to
         :type: int
         :param pool_size: Pool size - how many commands to run in parallel
+        :type str:
+        :param user: (Optional) User to login as. Defaults to logged in user or user from ~/.ssh/config if set
         :throws: paramiko.AuthenticationException on authentication error
-        :throws: ssh_client.UnknownHostException on DNS resolution error"""
+        :throws: ssh_client.UnknownHostException on DNS resolution error
+        :throws: ssh_client.ConnectionErrorException on error connecting"""
         self.pool = gevent.pool.Pool(size = pool_size)
         self.pool_size = pool_size
         self.hosts = hosts
