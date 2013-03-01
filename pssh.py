@@ -3,11 +3,11 @@
 """Module containing wrapper classes over paramiko.SSHClient
 See SSHClient and ParallelSSHClient"""
 
-import paramiko
-import os
 import gevent.pool
 from gevent import monkey
 monkey.patch_all()
+import paramiko
+import os
 import logging
 import socket
 
