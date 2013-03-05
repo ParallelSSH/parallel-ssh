@@ -120,7 +120,7 @@ class ParallelSSHClient(object):
         self.hosts = hosts
         
         # Initialise connections to all hosts
-        self.host_clients = dict((host[0], SSHClient(host[0], user=host[1] password=host[2])) for host in hosts)
+        self.host_clients = dict((host[0], SSHClient(host[0], user=host[1], password=host[2])) for host in hosts)
 
     def exec_command(self, *args, **kwargs):
         """Run command on all hosts in parallel, honoring self.pool_size"""
