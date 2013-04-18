@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""Unittests for verrot webapp"""
+"""Unittests for parallel-ssh"""
 
 import unittest
 from pssh import SSHClient, ParallelSSHClient, UnknownHostException
