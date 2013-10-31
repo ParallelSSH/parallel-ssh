@@ -104,8 +104,7 @@ class ParallelSSHClient(object):
 
     def __init__(self, hosts,
                  user = None, password = None,
-                 pool_size=10):
-
+                 pool_size = 10):
         """Connect to hosts
         :type: list(str)
         :param hosts: Hosts to connect to
