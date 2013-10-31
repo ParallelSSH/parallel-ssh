@@ -74,7 +74,7 @@ class SSHClient(object):
     def _connect(self):
         """Connect to host, throw UnknownHost exception on DNS errors"""
         try:
-            if self.password is not None:
+            if self.password:
                 self.client.connect(self.host, username=self.user, password=self.password)
             else:
                 self.client.connect(self.host, username=self.user)
@@ -103,6 +103,7 @@ class ParallelSSHClient(object):
     """Uses SSHClient, runs command on multiple hosts in parallel"""
 
     def __init__(self, hosts,
+                 user = None, password = None,
                  pool_size=10):
 
         """Connect to hosts
@@ -112,15 +113,17 @@ class ParallelSSHClient(object):
         :param pool_size: Pool size - how many commands to run in parallel
         :type str:
         :param user: (Optional) User to login as. Defaults to logged in user or user from ~/.ssh/config if set
+        :type str:
+        :param password: (Optional) Password to use for login
         :throws: paramiko.AuthenticationException on authentication error
         :throws: ssh_client.UnknownHostException on DNS resolution error
         :throws: ssh_client.ConnectionErrorException on error connecting"""
         self.pool = gevent.pool.Pool(size = pool_size)
         self.pool_size = pool_size
         self.hosts = hosts
-        
+
         # Initialise connections to all hosts
-        self.host_clients = dict((host[0], SSHClient(host[0], user=host[1], password=host[2])) for host in hosts)
+        self.host_clients = dict((host, SSHClient(host, user = user, password = password)) for host in hosts)
 
     def exec_command(self, *args, **kwargs):
         """Run command on all hosts in parallel, honoring self.pool_size"""
