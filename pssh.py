@@ -36,7 +36,7 @@ class SSHClient(object):
 
     def __init__(self, host,
                  user = None,
-                 password = None):
+                 password = None, port = None):
         """Connect to host honoring any user set configuration in ~/.ssh/config or /etc/ssh/ssh_config
         :type: str
         :param host: Hostname to connect to
@@ -68,16 +68,14 @@ class SSHClient(object):
         self.channel = None
         self.user = user
         self.password = password
+        self.port = port if port else 22
         self.host = resolved_address
         self._connect()
 
     def _connect(self):
         """Connect to host, throw UnknownHost exception on DNS errors"""
         try:
-            if self.password:
-                self.client.connect(self.host, username=self.user, password=self.password)
-            else:
-                self.client.connect(self.host, username=self.user)
+            self.client.connect(self.host, username=self.user, password=self.password, port = self.port)
         except socket.gaierror, e:
             logger.error("Could not resolve host '%s'" % (self.host,))
             raise UnknownHostException("%s - %s" % (str(e.args[1]), self.host,))
@@ -87,6 +85,7 @@ class SSHClient(object):
 
     def exec_command(self, command, sudo = False, **kwargs):
         """Wrapper to paramiko.SSHClient.exec_command"""
+
         channel = self.client.get_transport().open_session()
         channel.get_pty()
         _, stdout, stderr = channel.makefile('wb'), channel.makefile('rb'), channel.makefile_stderr('rb')
@@ -103,7 +102,7 @@ class ParallelSSHClient(object):
     """Uses SSHClient, runs command on multiple hosts in parallel"""
 
     def __init__(self, hosts,
-                 user = None, password = None,
+                 user = None, password = None, port = None,
                  pool_size = 10):
         """Connect to hosts
         :type: list(str)
@@ -120,9 +119,11 @@ class ParallelSSHClient(object):
         self.pool = gevent.pool.Pool(size = pool_size)
         self.pool_size = pool_size
         self.hosts = hosts
-
-        # Initialise connections to all hosts
-        self.host_clients = dict((host, SSHClient(host, user = user, password = password)) for host in hosts)
+        self.user = user
+        self.password = password
+        self.port = port
+        # To hold host clients
+        self.host_clients = dict((host, None) for host in hosts)
 
     def exec_command(self, *args, **kwargs):
         """Run command on all hosts in parallel, honoring self.pool_size"""
@@ -130,6 +131,9 @@ class ParallelSSHClient(object):
 
     def _exec_command(self, host, *args, **kwargs):
         """Make SSHClient, run command on host"""
+        if not self.host_clients[host]:
+            self.host_clients[host] = SSHClient(host, user = self.user, password = self.password,
+                                                port = self.port)
         return self.host_clients[host].exec_command(*args, **kwargs)
 
     def get_stdout(self, greenlet):
