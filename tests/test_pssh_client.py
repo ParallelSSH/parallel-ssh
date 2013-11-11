@@ -6,10 +6,9 @@ import unittest
 import gevent
 from gevent import monkey
 monkey.patch_all()
-from pssh import ParallelSSHClient, UnknownHostException, ConnectionErrorException
+from pssh import ParallelSSHClient, UnknownHostException
 from paramiko import AuthenticationException
 from fake_server.fake_server import listen
-import random
 
 class ParallelSSHClientTest(unittest.TestCase):
 
@@ -18,9 +17,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.fake_resp = 'fake response'
 
     def test_pssh_client_exec_command(self):
-        listen_port = random.randint(1025, 65534)
-        server = gevent.spawn(listen, { self.fake_cmd : self.fake_resp }, listen_port = listen_port)
-        client = ParallelSSHClient(['localhost'], port = listen_port)
+        server = gevent.spawn(listen, { self.fake_cmd : self.fake_resp })
+        client = ParallelSSHClient(['localhost'], port = 2200)
         cmd = client.exec_command(self.fake_cmd)[0]
         output = client.get_stdout(cmd)
         expected = {'localhost' : {'exit_code' : 0}}
@@ -28,11 +26,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         server.kill()
 
     def test_pssh_client_auth_failure(self):
-        listen_port = random.randint(1025, 65534)
-        server = gevent.spawn(listen, { self.fake_cmd : self.fake_resp }, listen_port = listen_port, fail_auth = True)
-        client = ParallelSSHClient(['localhost'], port = listen_port)
+        server = gevent.spawn(listen, { self.fake_cmd : self.fake_resp }, listen_port = 2201, fail_auth = True)
+        client = ParallelSSHClient(['localhost'], port = 2201)
         try:
             cmd = client.exec_command(self.fake_cmd)[0]
         except AuthenticationException:
             pass
-        server.kill()
