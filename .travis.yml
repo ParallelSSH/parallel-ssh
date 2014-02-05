@@ -1,0 +1,12 @@
+language: python
+python:
+  - "2.6"
+  - "2.7"
+before_install:
+  - sudo apt-get install -qq libevent-dev
+install:
+  - pip install -r requirements.txt --use-mirrors
+script: nosetests
+notifications:
+  email:
+    on_failure: change
