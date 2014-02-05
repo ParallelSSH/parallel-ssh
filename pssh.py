@@ -112,6 +112,8 @@ class SSHClient(object):
                                channel.makefile_stderr('rb'))
         if sudo:
             command = 'sudo -S bash -c "%s"' % command.replace('"', '\\"')
+        else:
+            command = 'bash -c "%s"' % command.replace('"', '\\"')
         logger.debug("Running command %s on %s", command, self.host)
         channel.exec_command(command, **kwargs)
         logger.debug("Command finished executing")
