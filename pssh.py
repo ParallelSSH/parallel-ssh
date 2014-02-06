@@ -117,10 +117,9 @@ class SSHClient(object):
         logger.debug("Running command %s on %s", command, self.host)
         channel.exec_command(command, **kwargs)
         logger.debug("Command finished executing")
-        while not channel.recv_ready():
+        while not (channel.recv_ready() or channel.closed):
             gevent.sleep(.2)
         return channel, self.host, stdout, stderr
-
 
 class ParallelSSHClient(object):
     """Uses SSHClient, runs command on multiple hosts in parallel"""
