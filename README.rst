@@ -42,7 +42,7 @@ For example to copy a local file to remote hosts in parallel
 >>> from pssh import ParallelSSHClient
 >>> hosts = ['myhost1', 'myhost2']
 >>> client = ParallelSSHClient(hosts)
->>> cmds = client.copy_file('../test', 'test_dir/test')
+>>> client.copy_file('../test', 'test_dir/test')
 >>> client.pool.join()
 Copied local file ../test to remote destination myhost1:test_dir/test
 Copied local file ../test to remote destination myhost2:test_dir/test
