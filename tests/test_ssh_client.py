@@ -17,6 +17,20 @@ class SSHClientTest(unittest.TestCase):
         stdin, stdout, stderr = client.exec_command('ls -ltrh')
         for line in stdout:
             print line.strip()
+        client.copy_file("fake file", "fake file")
+
+class ParallelSSHClientTest(unittest.TestCase):
+
+    def test_parallel_ssh_client(self):
+        client = ParallelSSHClient(['testy'])
+        cmds = client.exec_command('ls -ltrh')
+        try:
+            print [client.get_stdout(cmd) for cmd in cmds]
+        except UnknownHostException, e:
+            print e
+            return
+        cmds = client.copy_file('fake file', 'fake file')
+        client.pool.join()
 
 if __name__ == '__main__':
     unittest.main()
