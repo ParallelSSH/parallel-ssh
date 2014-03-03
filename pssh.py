@@ -16,7 +16,7 @@ handler = logging.StreamHandler()
 host_log_format = logging.Formatter('%(message)s')
 handler.setFormatter(host_log_format)
 host_logger.addHandler(handler)
-host_logger.setLevel(logging.DEBUG)
+host_logger.setLevel(logging.INFO)
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def _setup_logger(_logger):
     _logger.addHandler(handler)
     _logger.setLevel(logging.DEBUG)
 
-
+    
 class UnknownHostException(Exception):
     """Raised when a host is unknown (dns failure)"""
     pass
@@ -49,8 +49,7 @@ class SSHClient(object):
     """Wrapper class over paramiko.SSHClient with sane defaults"""
 
     def __init__(self, host,
-                 user=None,
-                 password=None, port=None):
+                 user=None, password=None, port=None):
         """Connect to host honoring any user set configuration in ~/.ssh/config
          or /etc/ssh/ssh_config
         :type: str
@@ -121,6 +120,42 @@ class SSHClient(object):
             gevent.sleep(.2)
         return channel, self.host, stdout, stderr
 
+    def _make_sftp(self):
+        """Make SFTP client from open transport"""
+        transport = self.client.get_transport()
+        channel = transport.open_session()
+        return paramiko.SFTPClient.from_transport(transport)
+
+    def mkdir(self, sftp, directory):
+        """Make directory via SFTP channel"""
+        try:
+            sftp.mkdir(directory)
+        except IOError, error:
+            logger.error("Error occured creating directory on %s - %s",
+                         self.host, error)
+
+    def copy_file(self, local_file, remote_file):
+        """Copy local file to host via SFTP"""
+        sftp = self._make_sftp()
+        destination = remote_file.split(os.path.sep)
+        filename = destination[0] if len(destination) == 1 else destination[-1]
+        remote_file = os.path.sep.join(destination)
+        destination = destination[:-1]
+        # import ipdb; ipdb.set_trace()
+        for directory in destination:
+            try:
+                sftp.stat(directory)
+            except IOError:
+                self.mkdir(sftp, directory)
+        try:
+            sftp.put(local_file, remote_file)
+        except Exception, error:
+            logger.error("Error occured copying file to host %s - %s",
+                         self.host, error)
+        else:
+            logger.info("Copied local file %s to remote destination %s:%s",
+                        local_file, self.host, remote_file)
+
 class ParallelSSHClient(object):
     """Uses SSHClient, runs command on multiple hosts in parallel"""
 
@@ -153,7 +188,7 @@ class ParallelSSHClient(object):
         """Run command on all hosts in parallel, honoring self.pool_size"""
         return [self.pool.spawn(self._exec_command, host, *args, **kwargs)
                 for host in self.hosts]
-
+    
     def _exec_command(self, host, *args, **kwargs):
         """Make SSHClient, run command on host"""
         if not self.host_clients[host]:
@@ -172,13 +207,35 @@ class ParallelSSHClient(object):
         channel.close()
         return {host: {'exit_code': channel.recv_exit_status()}}
 
+    def copy_file(self, local_file, remote_file):
+        """Copy local file to remote file in parallel"""
+        return [self.pool.spawn(self._copy_file, host, local_file, remote_file)
+                for host in self.hosts]
 
+    def _copy_file(self, host, local_file, remote_file):
+        """Make sftp client, copy file"""
+        if not self.host_clients[host]:
+            self.host_clients[host] = SSHClient(host, user=self.user,
+                                                password=self.password,
+                                                port=self.port)
+        return self.host_clients[host].copy_file(local_file, remote_file)
+
+    
 def test():
     client = SSHClient('localhost')
     channel, host, stdout, stderr = client.exec_command('ls -ltrh')
     for line in stdout:
         print line.strip()
+    client.copy_file('../test', 'test_dir/test')
+
+def test_parallel():
+    client = ParallelSSHClient(['localhost'])
+    cmds = client.exec_command('ls -ltrh')
+    print [client.get_stdout(cmd) for cmd in cmds]
+    cmds = client.copy_file('../test', 'test_dir/test')
+    client.pool.join()
 
 if __name__ == "__main__":
     _setup_logger(logger)
     test()
+    test_parallel()
