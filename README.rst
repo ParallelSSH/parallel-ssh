@@ -18,12 +18,31 @@ To install gevent you need the libevent-dev package installed. Instructions belo
 	$ sudo apt-get install libevent-dev
 	$ pip install parallel-ssh
 
-************
+*************
 Usage Example
-************
+*************
 
 >>> from pssh import ParallelSSHClient
 >>> hosts = ['myhost1', 'myhost2']
 >>> client = ParallelSSHClient(hosts)
 >>> cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
 >>> print [client.get_stdout(cmd) for cmd in cmds]
+[localhost]     drwxr-xr-x  6 xxx xxx 4.0K Jan  1 00:00 xxx
+[{'localhost': {'exit_code': 0}}]
+
+
+************
+SFTP support
+************
+
+SFTP is supported (scp version 2 protocol) natively, no scp command used.
+
+For example to copy a local file to remote hosts in parallel
+
+>>> from pssh import ParallelSSHClient
+>>> hosts = ['myhost1', 'myhost2']
+>>> client = ParallelSSHClient(hosts)
+>>> cmds = client.copy_file('../test', 'test_dir/test')
+>>> client.pool.join()
+`Copied local file ../test to remote destination localhost:test_dir/test`
+
