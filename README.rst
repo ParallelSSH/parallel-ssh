@@ -44,5 +44,5 @@ For example to copy a local file to remote hosts in parallel
 >>> client = ParallelSSHClient(hosts)
 >>> cmds = client.copy_file('../test', 'test_dir/test')
 >>> client.pool.join()
-`Copied local file ../test to remote destination localhost:test_dir/test`
-
+Copied local file ../test to remote destination myhost1:test_dir/test
+Copied local file ../test to remote destination myhost2:test_dir/test
