@@ -22,6 +22,8 @@ To install gevent you need the libevent-dev package installed. Instructions belo
 Usage Example
 *************
 
+Run `ls` on two remote hosts in parallel.
+
 >>> from pssh import ParallelSSHClient
 >>> hosts = ['myhost1', 'myhost2']
 >>> client = ParallelSSHClient(hosts)
