@@ -41,25 +41,27 @@ class ConnectionErrorException(Exception):
 
 
 class AuthenticationException(Exception):
-    """Raised on authentication error (user/password/ssh key error"""
+    """Raised on authentication error (user/password/ssh key error)"""
     pass
 
 
 class SSHClient(object):
-    """Wrapper class over paramiko.SSHClient with sane defaults"""
+    """Wrapper class over paramiko.SSHClient with sane defaults
+    Honours ~/.ssh/config entries for host username overrides"""
 
     def __init__(self, host,
                  user=None, password=None, port=None):
         """Connect to host honoring any user set configuration in ~/.ssh/config
          or /etc/ssh/ssh_config
-        :type: str
+         
         :param host: Hostname to connect to
-        :type str:
-        :param user: (Optional) User to login as. Defaults to logged in user or
-         user from ~/.ssh/config if set
-        :throws: ssh_client.AuthenticationException on authentication error
-        :throws: ssh_client.UnknownHostException on DNS resolution error
-        :throws: ssh_client.ConnectionErrorException on error connecting"""
+        :type host: str
+        :param user: (Optional) User to login as. Defaults to logged in user or\
+        user from ~/.ssh/config if set
+        :type user: str
+        :raises: ssh_client.AuthenticationException on authentication error
+        :raises: ssh_client.UnknownHostException on DNS resolution error
+        :raises: ssh_client.ConnectionErrorException on error connecting"""
         ssh_config = paramiko.SSHConfig()
         _ssh_config_file = os.path.sep.join([os.path.expanduser('~'),
                                              '.ssh',
@@ -135,7 +137,8 @@ class SSHClient(object):
                          self.host, error)
 
     def copy_file(self, local_file, remote_file):
-        """Copy local file to host via SFTP"""
+        """Copy local file to host via SFTP
+        """
         sftp = self._make_sftp()
         destination = remote_file.split(os.path.sep)
         filename = destination[0] if len(destination) == 1 else destination[-1]
@@ -163,18 +166,32 @@ class ParallelSSHClient(object):
                  user=None, password=None, port=None,
                  pool_size=10):
         """Connect to hosts
-        :type: list(str)
+        
         :param hosts: Hosts to connect to
-        :type: int
+        :type hosts: list(str)
         :param pool_size: Pool size - how many commands to run in parallel
-        :type str:
-        :param user: (Optional) User to login as. Defaults to logged in user or
+        :type pool_size: int
+        :param user: (Optional) User to login as. Defaults to logged in user or\
         user from ~/.ssh/config if set
-        :type str:
-        :param password: (Optional) Password to use for login
-        :throws: paramiko.AuthenticationException on authentication error
-        :throws: ssh_client.UnknownHostException on DNS resolution error
-        :throws: ssh_client.ConnectionErrorException on error connecting"""
+        :type user: str
+        :param password: (Optional) Password to use for login. Defaults to\
+        no password
+        :type password: str
+        
+        :raises: paramiko.AuthenticationException on authentication error
+        :raises: ssh_client.UnknownHostException on DNS resolution error
+        :raises: ssh_client.ConnectionErrorException on error connecting
+
+        Example:
+
+        >>> client = ParallelSSHClient(['myhost1', 'myhost2'])
+        >>> cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
+        >>> output = [client.get_stdout(cmd) for cmd in cmds]
+        [myhost1]     ls: cannot access /tmp/aasdfasdf: No such file or directory
+        [myhost2]     ls: cannot access /tmp/aasdfasdf: No such file or directory
+        >>> print output
+        [{'myhost1': {'exit_code': 2}}, {'myhost2': {'exit_code': 2}}]
+        """
         self.pool = gevent.pool.Pool(size=pool_size)
         self.pool_size = pool_size
         self.hosts = hosts
@@ -185,7 +202,27 @@ class ParallelSSHClient(object):
         self.host_clients = dict((host, None) for host in hosts)
 
     def exec_command(self, *args, **kwargs):
-        """Run command on all hosts in parallel, honoring self.pool_size"""
+        """Run command on all hosts in parallel, honoring self.pool_size
+
+        :param args: Position arguments for command
+        :type args: tuple
+        :param kwargs: Keyword arguments for command
+        :type kwargs: dict
+
+        :rtype: List of :mod:`gevent.Greenlet`
+
+        Example:
+      
+        >>> cmds = client.exec_command('ls -ltrh')
+        
+        Wait for completion, no stdout:
+        
+        >>> for cmd in cmds:
+        >>>     cmd.join()
+        
+        Alternatively/in addition print stdout for each command:
+        
+        >>> print [get_stdout(cmd) for cmd in cmds]"""
         return [self.pool.spawn(self._exec_command, host, *args, **kwargs)
                 for host in self.hosts]
     
