@@ -8,6 +8,10 @@ parallel-ssh uses asychronous network requests, there is *no* multi-threading or
 .. image:: https://api.travis-ci.org/pkittenis/parallel-ssh.png?branch=master
 	:target: https://travis-ci.org/pkittenis/parallel-ssh
 
+Module documentation can be found at the repository's `github pages`__
+
+__ http://pkittenis.github.io/parallel-ssh
+
 ************
 Installation
 ************

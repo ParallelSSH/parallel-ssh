@@ -47,16 +47,17 @@ class AuthenticationException(Exception):
 
 class SSHClient(object):
     """Wrapper class over paramiko.SSHClient with sane defaults
-    Honours ~/.ssh/config entries for host username overrides"""
+    Honours ~/.ssh/config and /etc/ssh/ssh_config entries for host username \
+    overrides"""
 
     def __init__(self, host,
                  user=None, password=None, port=None):
-        """Connect to host honoring any user set configuration in ~/.ssh/config
-         or /etc/ssh/ssh_config
+        """Connect to host honouring any user set configuration in ~/.ssh/config \
+        or /etc/ssh/ssh_config
          
         :param host: Hostname to connect to
         :type host: str
-        :param user: (Optional) User to login as. Defaults to logged in user or\
+        :param user: (Optional) User to login as. Defaults to logged in user or \
         user from ~/.ssh/config if set
         :type user: str
         :raises: ssh_client.AuthenticationException on authentication error
@@ -106,7 +107,24 @@ class SSHClient(object):
             raise AuthenticationException(e)
 
     def exec_command(self, command, sudo=False, **kwargs):
-        """Wrapper to paramiko.SSHClient.exec_command"""
+        """Wrapper to :mod:`paramiko.SSHClient.exec_command`
+
+        Opens a new SSH session with a pty and runs command with given \
+        `kwargs` if any. Greenlet then yields (sleeps) while waiting for \
+        command to finish executing or channel to close indicating the same.
+
+        :param command: Shell command to execute
+        :type command: str
+        :param sudo: (Optional) Run with sudo. Defaults to False
+        :type sudo: bool
+        :param kwargs: (Optional) Keyword arguments to be passed to remote \
+        command
+        :type kwargs: dict                
+        :rtype: Tuple of `(channel, hostname, stdout, stderr)`. \
+        Channel is the remote SSH channel, needed to ensure all of stdout has \
+        been got, hostname is remote hostname the copy is to, stdout and \
+        stderr are buffers containing command output.
+        """
         channel = self.client.get_transport().open_session()
         channel.get_pty()
         (_, stdout, stderr) = (channel.makefile('wb'), channel.makefile('rb'),
@@ -129,7 +147,14 @@ class SSHClient(object):
         return paramiko.SFTPClient.from_transport(transport)
 
     def mkdir(self, sftp, directory):
-        """Make directory via SFTP channel"""
+        """Make directory via SFTP channel
+        
+        :param sftp: SFTP client object
+        :type sftp: :mod:`paramiko.SFTPClient`
+        :param directory: Remote directory to create
+        :type directory: str
+
+        Catches and logs at error level remote IOErrors on creating directory."""
         try:
             sftp.mkdir(directory)
         except IOError, error:
@@ -137,14 +162,21 @@ class SSHClient(object):
                          self.host, error)
 
     def copy_file(self, local_file, remote_file):
-        """Copy local file to host via SFTP
+        """Copy local file to host via SFTP/SCP
+
+        Copy is done natively using SFTP/SCP version 2 protocol, no scp command \
+        is used or required.
+
+        :param local_file: Local filepath to copy to remote host
+        :type local_file: str
+        :param remote_file: Remote filepath on remote host to copy file to
+        :type remote_file: str
         """
         sftp = self._make_sftp()
         destination = remote_file.split(os.path.sep)
         filename = destination[0] if len(destination) == 1 else destination[-1]
         remote_file = os.path.sep.join(destination)
         destination = destination[:-1]
-        # import ipdb; ipdb.set_trace()
         for directory in destination:
             try:
                 sftp.stat(directory)
@@ -160,29 +192,35 @@ class SSHClient(object):
                         local_file, self.host, remote_file)
 
 class ParallelSSHClient(object):
-    """Uses SSHClient, runs command on multiple hosts in parallel"""
+    """
+    Uses :mod:`pssh.SSHClient`, performs tasks over SSH on multiple hosts in \
+    parallel"""
 
     def __init__(self, hosts,
                  user=None, password=None, port=None,
                  pool_size=10):
-        """Connect to hosts
-        
+        """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
         :param pool_size: Pool size - how many commands to run in parallel
         :type pool_size: int
         :param user: (Optional) User to login as. Defaults to logged in user or\
-        user from ~/.ssh/config if set
+        user from ~/.ssh/config or /etc/ssh/ssh_config if set
         :type user: str
         :param password: (Optional) Password to use for login. Defaults to\
         no password
         :type password: str
-        
+        :param port: (Optional) Port number to use for SSH connection. Defaults\
+        to None which uses SSH default
+        :type port: int
+        :param pool_size: (Optional) Greenlet pool size. Controls on how many\
+        hosts to execute tasks in parallel. Defaults to 10
+        :type pool_size: int
         :raises: paramiko.AuthenticationException on authentication error
         :raises: ssh_client.UnknownHostException on DNS resolution error
         :raises: ssh_client.ConnectionErrorException on error connecting
-
-        Example:
+        
+        **Example**
 
         >>> client = ParallelSSHClient(['myhost1', 'myhost2'])
         >>> cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
@@ -191,6 +229,26 @@ class ParallelSSHClient(object):
         [myhost2]     ls: cannot access /tmp/aasdfasdf: No such file or directory
         >>> print output
         [{'myhost1': {'exit_code': 2}}, {'myhost2': {'exit_code': 2}}]
+
+        .. note ::
+          
+          **Connection persistence**
+          
+          Connections to hosts will remain established for the duration of the
+          object's life. To close them, just `del` or reuse the object reference.
+          
+          >>> client = ParallelSSHClient(['localhost'])
+          >>> cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf')
+          >>> cmds[0].join()
+          
+          :netstat: ``tcp        0      0 127.0.0.1:53054         127.0.0.1:22            ESTABLISHED``
+          
+          Connection remains active after commands have finished executing. Any \
+          additional commands will use the same connection.
+          
+          >>> del client
+          
+          Connection is terminated.
         """
         self.pool = gevent.pool.Pool(size=pool_size)
         self.pool_size = pool_size
@@ -211,7 +269,7 @@ class ParallelSSHClient(object):
 
         :rtype: List of :mod:`gevent.Greenlet`
 
-        Example:
+        **Example**:
       
         >>> cmds = client.exec_command('ls -ltrh')
         
@@ -222,7 +280,13 @@ class ParallelSSHClient(object):
         
         Alternatively/in addition print stdout for each command:
         
-        >>> print [get_stdout(cmd) for cmd in cmds]"""
+        >>> print [get_stdout(cmd) for cmd in cmds]
+
+        Retrieving stdout implies join, meaning get_stdout will wait
+        for completion of all commands before returning output.
+        
+        You may call get_stdout on already completed greenlets to re-get
+        their output as many times as you want."""
         return [self.pool.spawn(self._exec_command, host, *args, **kwargs)
                 for host in self.hosts]
     
@@ -235,7 +299,21 @@ class ParallelSSHClient(object):
         return self.host_clients[host].exec_command(*args, **kwargs)
 
     def get_stdout(self, greenlet):
-        """Print stdout from greenlet and return exit code for host"""
+        """Print stdout from greenlet and return exit code for host
+        :param greenlet: Greenlet object containing an \
+        SSH channel reference, hostname, stdout and stderr buffers
+        :type greenlet: :mod:`gevent.Greenlet`
+
+        :mod:`pssh.get_stdout` will close the open SSH channel but this does **not**
+        close the established connection to the remote host, only the
+        authenticated SSH channel within it. This is standard practise
+        in SSH when a command has finished executing. A new command
+        will open a new channel which is very fast on already established
+        connections.
+
+        :rtype: Dictionary containing {host: {'exit_code': exit code}} entry \
+        for example {'myhost1': {'exit_code': 0}}
+        """
         channel, host, stdout, stderr = greenlet.get()
         for line in stdout:
             host_logger.info("[%s]\t%s", host, line.strip(),)
@@ -245,7 +323,25 @@ class ParallelSSHClient(object):
         return {host: {'exit_code': channel.recv_exit_status()}}
 
     def copy_file(self, local_file, remote_file):
-        """Copy local file to remote file in parallel"""
+        """Copy local file to remote file in parallel
+        
+        :param local_file: Local filepath to copy to remote host
+        :type local_file: str
+        :param remote_file: Remote filepath on remote host to copy file to
+        :type remote_file: str
+
+        .. note ::
+          Remote directories in `remote_file` that do not exist will be
+          created as long as permissions allow.
+
+        .. note ::
+          Path separation is handled client side so it is possible to copy
+          to/from hosts with differing path separators, like from/to Linux
+          and Windows.
+
+        :rtype: List(:mod:`gevent.Greenlet`) of greenlets for remote copy \
+        commands
+        """
         return [self.pool.spawn(self._copy_file, host, local_file, remote_file)
                 for host in self.hosts]
 

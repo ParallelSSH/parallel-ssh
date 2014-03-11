@@ -14,6 +14,7 @@
 
 import sys
 sys.path.append("..")
+import pssh
 import os
 
 # If extensions (or modules to document with autodoc) are in another directory,
