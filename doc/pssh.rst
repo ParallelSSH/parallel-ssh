@@ -2,5 +2,5 @@ pssh module
 ===========
 
 .. automodule:: pssh
-    :members:
+    :members: ParallelSSHClient, SSHClient, UnknownHostException, ConnectionErrorException, AuthenticationException
     :undoc-members:
