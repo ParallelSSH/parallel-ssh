@@ -6,12 +6,12 @@
 Welcome to Parallel-SSH's documentation!
 ========================================
 
-Contents:
-
 .. toctree::
    :maxdepth: 4
 
-   pssh
+.. automodule:: pssh
+    :members: ParallelSSHClient, SSHClient, UnknownHostException, ConnectionErrorException, AuthenticationException
+    :undoc-members:
 
 
 Indices and tables
