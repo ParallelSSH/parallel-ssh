@@ -81,7 +81,7 @@ class SSHClient(object):
             raise UnknownHostException("%s - %s" % (str(e.args[1]), self.host,))
         except socket.error, e:
             logger.error("Error connecting to host '%s'" % (self.host,))
-            raise ConnectionErrorException("%s for host '%s'" % (str(e.args[1]), self.host,))
+            raise ConnectionErrorException("%s for host '%s:%s'" % (str(e.args[1]), self.host, self.port,))
 
     def exec_command(self, command, sudo = False, **kwargs):
         """Wrapper to paramiko.SSHClient.exec_command"""

@@ -6,13 +6,12 @@ our clients do not use them.
 Server private key is hardcoded, server listen code inspired by demo_server.py in paramiko repository"""
 
 import os
-import socket
+from gevent import socket
+import gevent.event
 import sys
-import threading
 import traceback
 import logging
 import paramiko
-import time
 
 logger = logging.getLogger(__name__)
 paramiko_logger = logging.getLogger('paramiko.transport')
@@ -21,7 +20,7 @@ host_key = paramiko.RSAKey(filename = os.path.sep.join([os.path.dirname(__file__
 
 class Server (paramiko.ServerInterface):
     def __init__(self, cmd_req_response = {}, fail_auth = False):
-        self.event = threading.Event()
+        self.event = gevent.event.Event()
         self.cmd_req_response = cmd_req_response
         self.fail_auth = fail_auth
 
@@ -68,10 +67,12 @@ def _make_socket(listen_ip, listen_port):
 def listen(cmd_req_response, listen_ip = '127.0.0.1', listen_port = 2200, fail_auth = False):
     """Run a fake ssh server and given a cmd_to_run, send given response"""
     sock = _make_socket(listen_ip, listen_port)
-    if not sock: return
+    if not sock:
+        logger.error("Could not establish listening connection on %s:%s", listen_ip, listen_port)
+        return 
     try:
         sock.listen(100)
-        logger.info('Listening for connection ...')
+        logger.info('Listening for connection on %s:%s..', listen_ip, listen_port)
         client, addr = sock.accept()
     except Exception, e:
         logger.error('*** Listen/accept failed: %s' % (str(e),))
@@ -103,7 +104,7 @@ def listen(cmd_req_response, listen_ip = '127.0.0.1', listen_port = 2200, fail_a
             chan.close()
             return
         while not chan.send_ready():
-            time.sleep(.5)
+            gevent.sleep(.5)
         chan.close()
 
     except Exception, e:
