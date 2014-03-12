@@ -5,12 +5,10 @@
 import unittest
 import gevent
 from pssh import ParallelSSHClient, UnknownHostException, \
-    AuthenticationException, ConnectionErrorException, _setup_logger
+    AuthenticationException, ConnectionErrorException
 from fake_server.fake_server import listen, logger as server_logger
 import random
 import logging
-
-# _setup_logger(server_logger)
 
 class ParallelSSHClientTest(unittest.TestCase):
 
