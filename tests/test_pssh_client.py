@@ -21,8 +21,8 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_pssh_client_exec_command(self):
         listen_port = random.randint(1026, 65534)
         server = gevent.spawn(listen, { self.fake_cmd : self.fake_resp }, listen_port = listen_port)
-        server.join(5)
         client = ParallelSSHClient(['localhost'], port=listen_port)
+        gevent.sleep(0)
         cmd = client.exec_command(self.fake_cmd)[0]
         output = client.get_stdout(cmd)
         expected = {'localhost' : {'exit_code' : 0}}
@@ -34,11 +34,13 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_pssh_client_auth_failure(self):
         listen_port = random.randint(2048, 65534)
         server = gevent.spawn(listen, { self.fake_cmd : self.fake_resp },
-                              listen_port=listen_port, fail_auth=True, )# link_callback=)
-        server.join(5)
+                              listen_port=listen_port, fail_auth=True, )
         client = ParallelSSHClient(['localhost'], port=listen_port)
+        gevent.sleep(0)
+        server.join(1)
         cmd = client.exec_command(self.fake_cmd)[0]
-        # Handle exception 
+        server.join(1)
+        # Handle exception
         try:
             cmd.get()
             raise Exception("Expected AuthenticationException, got none")

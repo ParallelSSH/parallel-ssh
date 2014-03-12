@@ -4,12 +4,12 @@
 See SSHClient and ParallelSSHClient"""
 
 import gevent.pool
-from gevent import monkey
-monkey.patch_all()
+from gevent import socket
 import paramiko
 import os
 import logging
-import socket
+from gevent import monkey
+monkey.patch_all()
 
 host_logger = logging.getLogger('host_logging')
 handler = logging.StreamHandler()
