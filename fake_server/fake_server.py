@@ -46,6 +46,9 @@ class Server (paramiko.ServerInterface):
 
     def check_channel_exec_request(self, channel, cmd):
         logger.debug("Got exec request on channel %s for cmd %s" % (channel, cmd,))
+        # Remove any 'bash -c' and/or quotes from command
+        cmd = cmd.replace('bash -c \"', "")
+        cmd = cmd.replace('\"', "")
         if not cmd in self.cmd_req_response:
             return False
         channel.send(self.cmd_req_response[cmd])
