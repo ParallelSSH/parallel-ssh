@@ -100,7 +100,8 @@ class SSHClient(object):
             raise UnknownHostException("%s - %s" % (str(e.args[1]),
                                                     self.host,))
         except socket.error, e:
-            logger.error("Error connecting to host '%s'" % (self.host,))
+            logger.error("Error connecting to host '%s:%s'" % (self.host,
+                                                               self.port,))
             raise ConnectionErrorException("%s for host '%s:%s'" % (str(e.args[1]),
                                                                     self.host,
                                                                     self.port,))
