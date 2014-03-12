@@ -19,7 +19,7 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_pssh_client_exec_command(self):
         listen_port = random.randint(1026, 65534)
         server = gevent.spawn(listen, { self.fake_cmd : self.fake_resp }, listen_port = listen_port)
-        gevent.sleep(0)
+        gevent.sleep(1)
         client = ParallelSSHClient(['localhost'], port=listen_port)
         cmd = client.exec_command(self.fake_cmd)[0]
         output = client.get_stdout(cmd)
@@ -33,7 +33,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         listen_port = random.randint(2048, 65534)
         server = gevent.spawn(listen, { self.fake_cmd : self.fake_resp },
                               listen_port=listen_port, fail_auth=True, )# link_callback=)
-        gevent.sleep(0)
+        gevent.sleep(1)
         client = ParallelSSHClient(['localhost'], port=listen_port)
         cmd = client.exec_command(self.fake_cmd)[0]
         # Handle exception 
