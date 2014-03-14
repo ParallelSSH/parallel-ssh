@@ -8,6 +8,8 @@ from pssh import ParallelSSHClient, UnknownHostException, \
 from fake_server.fake_server import listen, make_socket, logger as server_logger
 import random
 import logging
+import gevent
+import threading
 
 _setup_logger(server_logger)
 
@@ -22,20 +24,17 @@ class ParallelSSHClientTest(unittest.TestCase):
     def cleanUp(self):
         del self.listener
 
-    def test_pssh_client_exec_command(self):
-        server = listen({ self.fake_cmd : self.fake_resp }, self.listener)
+    def _run_client_exec_command(self):
         client = ParallelSSHClient(['localhost'], port=self.listen_port)
         cmd = client.exec_command(self.fake_cmd)[0]
         output = client.get_stdout(cmd)
         expected = {'localhost' : {'exit_code' : 0}}
         self.assertEqual(expected, output,
                          msg = "Got unexpected command output - %s" % (output,))
+        gevent.sleep(0)
         del client
-        server.join()
 
-    def test_pssh_client_auth_failure(self):
-        server = listen({ self.fake_cmd : self.fake_resp },
-                        self.listener, fail_auth=True)
+    def _run_client_fail_auth(self):
         client = ParallelSSHClient(['localhost'], port=self.listen_port)
         cmd = client.exec_command(self.fake_cmd)[0]
         # Handle exception
@@ -45,4 +44,18 @@ class ParallelSSHClientTest(unittest.TestCase):
         except AuthenticationException:
             pass
         del client
+
+    def test_pssh_client_exec_command(self):
+        server = listen({ self.fake_cmd : self.fake_resp }, self.listener)
+        client = threading.Thread(target=self._run_client_exec_command)
+        client.start()
+        client.join()
+        server.join()
+
+    def test_pssh_client_auth_failure(self):
+        server = listen({ self.fake_cmd : self.fake_resp },
+                        self.listener, fail_auth=True)
+        client = threading.Thread(target=self._run_client_fail_auth)
+        client.start()
+        client.join()
         server.join()

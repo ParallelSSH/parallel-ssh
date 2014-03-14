@@ -107,6 +107,7 @@ class SSHClient(object):
                                                                     self.port,))
         except paramiko.AuthenticationException, e:
             raise AuthenticationException(e)
+        gevent.sleep(0)
 
     def exec_command(self, command, sudo=False, **kwargs):
         """Wrapper to :mod:`paramiko.SSHClient.exec_command`
@@ -146,6 +147,7 @@ class SSHClient(object):
         """Make SFTP client from open transport"""
         transport = self.client.get_transport()
         channel = transport.open_session()
+        gevent.sleep(0)
         return paramiko.SFTPClient.from_transport(transport)
 
     def mkdir(self, sftp, directory):
@@ -162,6 +164,7 @@ class SSHClient(object):
         except IOError, error:
             logger.error("Error occured creating directory on %s - %s",
                          self.host, error)
+        gevent.sleep(0)
 
     def copy_file(self, local_file, remote_file):
         """Copy local file to host via SFTP/SCP
@@ -192,6 +195,7 @@ class SSHClient(object):
         else:
             logger.info("Copied local file %s to remote destination %s:%s",
                         local_file, self.host, remote_file)
+        gevent.sleep(0)
 
 class ParallelSSHClient(object):
     """
