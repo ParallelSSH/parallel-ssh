@@ -17,6 +17,7 @@ host_log_format = logging.Formatter('%(message)s')
 handler.setFormatter(host_log_format)
 host_logger.addHandler(handler)
 host_logger.setLevel(logging.INFO)
+NUM_RETRIES = 3
 
 logger = logging.getLogger(__name__)
 
@@ -90,24 +91,29 @@ class SSHClient(object):
         self.host = resolved_address
         self._connect()
 
-    def _connect(self):
+    def _connect(self, retries=1):
         """Connect to host, throw UnknownHost exception on DNS errors"""
         try:
             self.client.connect(self.host, username=self.user,
                                 password=self.password, port=self.port)
         except socket.gaierror, e:
             logger.error("Could not resolve host '%s'", self.host,)
+            while retries < NUM_RETRIES:
+                gevent.sleep(5)
+                return self._connect(retries=retries+1)
             raise UnknownHostException("%s - %s" % (str(e.args[1]),
                                                     self.host,))
         except socket.error, e:
             logger.error("Error connecting to host '%s:%s'" % (self.host,
                                                                self.port,))
+            while retries < NUM_RETRIES:
+                gevent.sleep(5)
+                return self._connect(retries=retries+1)
             raise ConnectionErrorException("%s for host '%s:%s'" % (str(e.args[1]),
                                                                     self.host,
                                                                     self.port,))
         except paramiko.AuthenticationException, e:
             raise AuthenticationException(e)
-        gevent.sleep(0)
 
     def exec_command(self, command, sudo=False, **kwargs):
         """Wrapper to :mod:`paramiko.SSHClient.exec_command`
@@ -147,7 +153,6 @@ class SSHClient(object):
         """Make SFTP client from open transport"""
         transport = self.client.get_transport()
         channel = transport.open_session()
-        gevent.sleep(0)
         return paramiko.SFTPClient.from_transport(transport)
 
     def mkdir(self, sftp, directory):
@@ -164,7 +169,6 @@ class SSHClient(object):
         except IOError, error:
             logger.error("Error occured creating directory on %s - %s",
                          self.host, error)
-        gevent.sleep(0)
 
     def copy_file(self, local_file, remote_file):
         """Copy local file to host via SFTP/SCP
@@ -195,7 +199,6 @@ class SSHClient(object):
         else:
             logger.info("Copied local file %s to remote destination %s:%s",
                         local_file, self.host, remote_file)
-        gevent.sleep(0)
 
 class ParallelSSHClient(object):
     """
