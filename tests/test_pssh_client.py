@@ -3,10 +3,9 @@
 """Unittests for parallel-ssh"""
 
 import unittest
-import gevent
 from pssh import ParallelSSHClient, UnknownHostException, \
     AuthenticationException, ConnectionErrorException, _setup_logger
-from fake_server.fake_server import listen, logger as server_logger
+from fake_server.fake_server import listen, make_socket, logger as server_logger
 import random
 import logging
 
@@ -17,35 +16,33 @@ class ParallelSSHClientTest(unittest.TestCase):
     def setUp(self):
         self.fake_cmd = 'fake cmd'
         self.fake_resp = 'fake response'
+        self.listener = make_socket('127.0.0.1')
+        self.listen_port = self.listener.getsockname()[1]
+
+    def cleanUp(self):
+        del self.listener
 
     def test_pssh_client_exec_command(self):
-        listen_port = random.randint(1026, 65534)
-        server = gevent.spawn(listen, { self.fake_cmd : self.fake_resp }, listen_port = listen_port)
-        client = ParallelSSHClient(['localhost'], port=listen_port)
-        gevent.sleep(0)
+        server = listen({ self.fake_cmd : self.fake_resp }, self.listener)
+        client = ParallelSSHClient(['localhost'], port=self.listen_port)
         cmd = client.exec_command(self.fake_cmd)[0]
         output = client.get_stdout(cmd)
         expected = {'localhost' : {'exit_code' : 0}}
         self.assertEqual(expected, output,
                          msg = "Got unexpected command output - %s" % (output,))
-        server.kill()
         del client
+        server.join()
 
     def test_pssh_client_auth_failure(self):
-        listen_port = random.randint(2048, 65534)
-        server = gevent.spawn(listen, { self.fake_cmd : self.fake_resp },
-                              listen_port=listen_port, fail_auth=True, )
-        client = ParallelSSHClient(['localhost'], port=listen_port)
-        gevent.sleep(0)
-        server.join(1)
+        server = listen({ self.fake_cmd : self.fake_resp },
+                        self.listener, fail_auth=True)
+        client = ParallelSSHClient(['localhost'], port=self.listen_port)
         cmd = client.exec_command(self.fake_cmd)[0]
-        server.join(1)
         # Handle exception
         try:
             cmd.get()
             raise Exception("Expected AuthenticationException, got none")
         except AuthenticationException:
             pass
-        server.kill()
         del client
-        
+        server.join()
