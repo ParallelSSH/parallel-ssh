@@ -8,9 +8,10 @@ Server private key is hardcoded, server listen code inspired by demo_server.py i
 paramiko repository
 """
 
+import multiprocessing
 import os
 import socket
-import threading
+# import threading
 from threading import Event
 import sys
 import traceback
@@ -90,9 +91,9 @@ def listen(cmd_req_response, sock, fail_auth = False):
         logger.error('*** Listen failed: %s' % (str(e),))
         traceback.print_exc()
         return
-    accept_thread = threading.Thread(target=handle_ssh_connection,
-                                     args=(cmd_req_response, sock,),
-                                     kwargs={'fail_auth' : fail_auth},)
+    accept_thread = multiprocessing.Process(target=handle_ssh_connection,
+                                            args=(cmd_req_response, sock,),
+                                            kwargs={'fail_auth' : fail_auth},)
     accept_thread.start()
     return accept_thread
 
@@ -146,4 +147,8 @@ if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
     sock = make_socket('127.0.0.1')
     server = listen({'fake' : 'fake response' + os.linesep}, sock)
-    server.join()
+    try:
+        server.join()
+    except KeyboardInterrupt:
+        sys.exit(0)
+        
