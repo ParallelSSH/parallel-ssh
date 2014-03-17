@@ -13,7 +13,7 @@ import gevent
 from gevent import monkey
 monkey.patch_all()
 import os
-import socket
+from gevent import socket
 from gevent.event import Event
 import sys
 import traceback
@@ -89,17 +89,19 @@ def listen(cmd_req_response, sock, fail_auth = False):
     try:
         sock.listen(100)
         logger.info('Listening for connection on %s:%s..', listen_ip, listen_port)
+        client, addr = sock.accept()
     except Exception, e:
         logger.error('*** Listen failed: %s' % (str(e),))
         traceback.print_exc()
         return
-    accept_thread = gevent.spawn(handle_ssh_connection,
-                                 cmd_req_response, sock,
-                                 fail_auth=fail_auth)
+    # accept_thread = gevent.spawn(handle_ssh_connection,
+    #                              cmd_req_response, client, addr,
+    #                              fail_auth=fail_auth)
+    handle_ssh_connection(cmd_req_response, client, addr, fail_auth=fail_auth)
     # accept_thread.start()
-    return accept_thread
+    # return accept_thread
 
-def _handle_ssh_connection(cmd_req_response, t, client, addr, fail_auth = False):
+def _handle_ssh_connection(cmd_req_response, t, fail_auth = False):
     try:
         t.load_server_moduli()
     except:
@@ -129,12 +131,12 @@ def _accept_ssh_data(t, server):
         time.sleep(.5)
     chan.close()
     
-def handle_ssh_connection(cmd_req_response, sock, fail_auth = False):
-    client, addr = sock.accept()
+def handle_ssh_connection(cmd_req_response, client, addr, fail_auth = False):
+    # client, addr = sock.accept()
     logger.info('Got connection..')
     try:
         t = paramiko.Transport(client)
-        _handle_ssh_connection(cmd_req_response, t, client, addr, fail_auth=fail_auth)
+        _handle_ssh_connection(cmd_req_response, t, fail_auth=fail_auth)
     except Exception, e:
         logger.error('*** Caught exception: %s: %s' % (str(e.__class__), str(e),))
         traceback.print_exc()
@@ -144,11 +146,14 @@ def handle_ssh_connection(cmd_req_response, sock, fail_auth = False):
             pass
         return
 
+def start_server(cmd_req_response, sock, fail_auth=False):
+    return gevent.spawn(listen, cmd_req_response, sock, fail_auth=fail_auth)
+
 if __name__ == "__main__":
     logging.basicConfig()
     logger.setLevel(logging.DEBUG)
     sock = make_socket('127.0.0.1')
-    server = listen({'fake' : 'fake response' + os.linesep}, sock)
+    server = start_server({'fake' : 'fake response' + os.linesep}, sock)
     try:
         server.get()
     except KeyboardInterrupt:

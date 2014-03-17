@@ -5,7 +5,7 @@
 import unittest
 from pssh import ParallelSSHClient, UnknownHostException, \
     AuthenticationException, ConnectionErrorException, _setup_logger
-from fake_server.fake_server import listen, make_socket, logger as server_logger
+from fake_server.fake_server import start_server, make_socket, logger as server_logger
 import random
 import logging
 import gevent
@@ -25,7 +25,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         del self.listener
 
     def test_pssh_client_exec_command(self):
-        server = listen({ self.fake_cmd : self.fake_resp }, self.listener)
+        server = start_server({ self.fake_cmd : self.fake_resp }, self.listener)
         gevent.sleep(5)
         client = ParallelSSHClient(['localhost'], port=self.listen_port)
         cmd = client.exec_command(self.fake_cmd)[0]
@@ -37,8 +37,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         server.join()
 
     def test_pssh_client_auth_failure(self):
-        server = listen({ self.fake_cmd : self.fake_resp },
-                        self.listener, fail_auth=True)
+        server = start_server({ self.fake_cmd : self.fake_resp },
+                              self.listener, fail_auth=True)
         gevent.sleep(5)
         client = ParallelSSHClient(['localhost'], port=self.listen_port)
         cmd = client.exec_command(self.fake_cmd)[0]
