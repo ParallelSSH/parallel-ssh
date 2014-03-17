@@ -21,7 +21,7 @@ import logging
 import paramiko
 import time
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("fake_server")
 paramiko_logger = logging.getLogger('paramiko.transport')
 
 host_key = paramiko.RSAKey(filename = os.path.sep.join([os.path.dirname(__file__), 'rsa.key']))
