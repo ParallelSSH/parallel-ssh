@@ -17,8 +17,6 @@ setup(name='parallel-ssh',
         'Programming Language :: Python :: 2.7',
         'Topic :: Utilities',
         'Operating System :: POSIX :: Linux',
-        'Operating System :: POSIX :: Unix',
         'Operating System :: POSIX :: BSD',
-        'Operating System :: Windows',
         ],
       )
