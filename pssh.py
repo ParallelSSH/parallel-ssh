@@ -52,7 +52,8 @@ class SSHClient(object):
     overrides"""
 
     def __init__(self, host,
-                 user=None, password=None, port=None):
+                 user=None, password=None, port=None,
+                 pkey=None):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
          
@@ -87,6 +88,7 @@ class SSHClient(object):
         self.channel = None
         self.user = user
         self.password = password
+        self.pkey = pkey
         self.port = port if port else 22
         self.host = resolved_address
         self._connect()
@@ -95,7 +97,8 @@ class SSHClient(object):
         """Connect to host, throw UnknownHost exception on DNS errors"""
         try:
             self.client.connect(self.host, username=self.user,
-                                password=self.password, port=self.port)
+                                password=self.password, port=self.port,
+                                pkey=self.pkey)
         except socket.gaierror, e:
             logger.error("Could not resolve host '%s'", self.host,)
             while retries < NUM_RETRIES:
@@ -201,12 +204,11 @@ class SSHClient(object):
                         local_file, self.host, remote_file)
 
 class ParallelSSHClient(object):
-    """
-    Uses :mod:`pssh.SSHClient`, performs tasks over SSH on multiple hosts in \
+    """Uses :mod:`pssh.SSHClient`, performs tasks over SSH on multiple hosts in \
     parallel"""
 
     def __init__(self, hosts,
-                 user=None, password=None, port=None,
+                 user=None, password=None, port=None, pkey=None,
                  pool_size=10):
         """
         :param hosts: Hosts to connect to
@@ -265,6 +267,7 @@ class ParallelSSHClient(object):
         self.user = user
         self.password = password
         self.port = port
+        self.pkey = pkey
         # To hold host clients
         self.host_clients = dict((host, None) for host in hosts)
 
@@ -304,7 +307,7 @@ class ParallelSSHClient(object):
         if not self.host_clients[host]:
             self.host_clients[host] = SSHClient(host, user=self.user,
                                                 password=self.password,
-                                                port=self.port)
+                                                port=self.port, pkey=self.pkey)
         return self.host_clients[host].exec_command(*args, **kwargs)
 
     def get_stdout(self, greenlet):
