@@ -89,7 +89,7 @@ def listen(cmd_req_response, sock, fail_auth = False):
     try:
         sock.listen(100)
         logger.info('Listening for connection on %s:%s..', listen_ip, listen_port)
-        client, addr = sock.accept()
+        # client, addr = sock.accept()
     except Exception, e:
         logger.error('*** Listen failed: %s' % (str(e),))
         traceback.print_exc()
@@ -97,7 +97,7 @@ def listen(cmd_req_response, sock, fail_auth = False):
     # accept_thread = gevent.spawn(handle_ssh_connection,
     #                              cmd_req_response, client, addr,
     #                              fail_auth=fail_auth)
-    handle_ssh_connection(cmd_req_response, client, addr, fail_auth=fail_auth)
+    handle_ssh_connection(cmd_req_response, sock, fail_auth=fail_auth)
     # accept_thread.start()
     # return accept_thread
 
@@ -110,8 +110,8 @@ def _handle_ssh_connection(cmd_req_response, t, fail_auth = False):
     server = Server(cmd_req_response = cmd_req_response, fail_auth = fail_auth)
     try:
         t.start_server(server=server)
-    except paramiko.SSHException, _:
-        logger.error('SSH negotiation failed.')
+    except paramiko.SSHException, e:
+        logger.exception('SSH negotiation failed')
         return
     return _accept_ssh_data(t, server)
 
@@ -131,8 +131,8 @@ def _accept_ssh_data(t, server):
         time.sleep(.5)
     chan.close()
     
-def handle_ssh_connection(cmd_req_response, client, addr, fail_auth = False):
-    # client, addr = sock.accept()
+def handle_ssh_connection(cmd_req_response, sock, fail_auth = False):
+    client, addr = sock.accept()
     logger.info('Got connection..')
     try:
         t = paramiko.Transport(client)
