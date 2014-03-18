@@ -9,12 +9,14 @@ paramiko repository
 """
 
 # import multiprocessing
-import gevent
-from gevent import monkey
-monkey.patch_all()
+import threading
+# import gevent
+# from gevent import monkey
+# monkey.patch_all()
 import os
-from gevent import socket
-from gevent.event import Event
+import socket
+# from gevent import socket
+from threading import Event
 import sys
 import traceback
 import logging
@@ -59,7 +61,7 @@ class Server (paramiko.ServerInterface):
         cmd = cmd.replace('\"', "")
         if not cmd in self.cmd_req_response:
             return False
-        channel.send(self.cmd_req_response[cmd])
+        channel.send(self.cmd_req_response[cmd] + os.linesep)
         channel.send_exit_status(0)
         self.event.set()
         return True
@@ -150,14 +152,18 @@ def handle_ssh_connection(cmd_req_response, sock, fail_auth = False):
         return
 
 def start_server(cmd_req_response, sock, fail_auth=False):
-    return gevent.spawn(listen, cmd_req_response, sock, fail_auth=fail_auth)
+    t = threading.Thread(target=listen, args=(cmd_req_response, sock,),
+                         kwargs={'fail_auth' : fail_auth})
+    t.start()
+    return t
+    # return gevent.spawn(listen, cmd_req_response, sock, fail_auth=fail_auth)
 
 if __name__ == "__main__":
     logging.basicConfig()
     logger.setLevel(logging.DEBUG)
     sock = make_socket('127.0.0.1')
-    server = start_server({'fake' : 'fake response' + os.linesep}, sock)
+    server = start_server({'fake' : 'fake response'}, sock)
     try:
-        server.get()
+        server.join()
     except KeyboardInterrupt:
         sys.exit(0)
