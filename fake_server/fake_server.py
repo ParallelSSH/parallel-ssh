@@ -8,15 +8,12 @@ Server private key is hardcoded, server listen code inspired by demo_server.py i
 paramiko repository
 """
 
-# import multiprocessing
-import threading
-# import gevent
-# from gevent import monkey
-# monkey.patch_all()
+import gevent
+from gevent import monkey
+monkey.patch_all()
 import os
-import socket
-# from gevent import socket
-from threading import Event
+from gevent import socket
+from gevent.event import Event
 import sys
 import traceback
 import logging
@@ -38,6 +35,7 @@ class Server (paramiko.ServerInterface):
         return paramiko.OPEN_SUCCEEDED
 
     def check_auth_password(self, username, password):
+        if self.fail_auth: return paramiko.AUTH_FAILED
         return paramiko.AUTH_SUCCESSFUL
 
     def check_auth_publickey(self, username, key):
@@ -152,11 +150,7 @@ def handle_ssh_connection(cmd_req_response, sock, fail_auth = False):
         return
 
 def start_server(cmd_req_response, sock, fail_auth=False):
-    t = threading.Thread(target=listen, args=(cmd_req_response, sock,),
-                         kwargs={'fail_auth' : fail_auth})
-    t.start()
-    return t
-    # return gevent.spawn(listen, cmd_req_response, sock, fail_auth=fail_auth)
+    return gevent.spawn(listen, cmd_req_response, sock, fail_auth=fail_auth)
 
 if __name__ == "__main__":
     logging.basicConfig()
