@@ -4,12 +4,12 @@
 See SSHClient and ParallelSSHClient"""
 
 import gevent.pool
-from gevent import monkey
-monkey.patch_all()
+from gevent import socket
 import paramiko
 import os
 import logging
-import socket
+from gevent import monkey
+monkey.patch_all()
 
 host_logger = logging.getLogger('host_logging')
 handler = logging.StreamHandler()
@@ -17,6 +17,7 @@ host_log_format = logging.Formatter('%(message)s')
 handler.setFormatter(host_log_format)
 host_logger.addHandler(handler)
 host_logger.setLevel(logging.INFO)
+NUM_RETRIES = 3
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,8 @@ class SSHClient(object):
     overrides"""
 
     def __init__(self, host,
-                 user=None, password=None, port=None):
+                 user=None, password=None, port=None,
+                 pkey=None):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
          
@@ -86,23 +88,33 @@ class SSHClient(object):
         self.channel = None
         self.user = user
         self.password = password
+        self.pkey = pkey
         self.port = port if port else 22
         self.host = resolved_address
         self._connect()
 
-    def _connect(self):
+    def _connect(self, retries=1):
         """Connect to host, throw UnknownHost exception on DNS errors"""
         try:
             self.client.connect(self.host, username=self.user,
-                                password=self.password, port=self.port)
+                                password=self.password, port=self.port,
+                                pkey=self.pkey)
         except socket.gaierror, e:
             logger.error("Could not resolve host '%s'", self.host,)
+            while retries < NUM_RETRIES:
+                gevent.sleep(5)
+                return self._connect(retries=retries+1)
             raise UnknownHostException("%s - %s" % (str(e.args[1]),
                                                     self.host,))
         except socket.error, e:
-            logger.error("Error connecting to host '%s'", self.host,)
-            raise ConnectionErrorException("%s for host '%s'" % (str(e.args[1]),
-                                                                 self.host,))
+            logger.error("Error connecting to host '%s:%s'" % (self.host,
+                                                               self.port,))
+            while retries < NUM_RETRIES:
+                gevent.sleep(5)
+                return self._connect(retries=retries+1)
+            raise ConnectionErrorException("%s for host '%s:%s'" % (str(e.args[1]),
+                                                                    self.host,
+                                                                    self.port,))
         except paramiko.AuthenticationException, e:
             raise AuthenticationException(e)
 
@@ -192,12 +204,11 @@ class SSHClient(object):
                         local_file, self.host, remote_file)
 
 class ParallelSSHClient(object):
-    """
-    Uses :mod:`pssh.SSHClient`, performs tasks over SSH on multiple hosts in \
+    """Uses :mod:`pssh.SSHClient`, performs tasks over SSH on multiple hosts in \
     parallel"""
 
     def __init__(self, hosts,
-                 user=None, password=None, port=None,
+                 user=None, password=None, port=None, pkey=None,
                  pool_size=10):
         """
         :param hosts: Hosts to connect to
@@ -256,6 +267,7 @@ class ParallelSSHClient(object):
         self.user = user
         self.password = password
         self.port = port
+        self.pkey = pkey
         # To hold host clients
         self.host_clients = dict((host, None) for host in hosts)
 
@@ -295,7 +307,7 @@ class ParallelSSHClient(object):
         if not self.host_clients[host]:
             self.host_clients[host] = SSHClient(host, user=self.user,
                                                 password=self.password,
-                                                port=self.port)
+                                                port=self.port, pkey=self.pkey)
         return self.host_clients[host].exec_command(*args, **kwargs)
 
     def get_stdout(self, greenlet):
