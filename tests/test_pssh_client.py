@@ -29,12 +29,12 @@ class ParallelSSHClientTest(unittest.TestCase):
         listen_port = sock.getsockname()[1]
         server = start_server({ self.fake_cmd : self.fake_resp }, sock)
         gevent.sleep(1)
-        client = ParallelSSHClient(['localhost'], port=listen_port)
+        client = ParallelSSHClient(['127.0.0.1'], port=listen_port)
         gevent.sleep(2)
         cmd = client.exec_command(self.fake_cmd)[0]
         gevent.sleep(2)
         output = client.get_stdout(cmd)
-        expected = {'localhost' : {'exit_code' : 0}}
+        expected = {'127.0.0.1' : {'exit_code' : 0}}
         self.assertEqual(expected, output,
                          msg = "Got unexpected command output - %s" % (output,))
         del client
@@ -46,7 +46,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         server = start_server({ self.fake_cmd : self.fake_resp },
                               sock, fail_auth=True)
         gevent.sleep(1)
-        client = ParallelSSHClient(['localhost'], port=listen_port)
+        client = ParallelSSHClient(['127.0.0.1'], port=listen_port)
         gevent.sleep(2)
         cmd = client.exec_command(self.fake_cmd)[0]
         gevent.sleep(2)
