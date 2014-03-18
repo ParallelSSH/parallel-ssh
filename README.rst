@@ -8,23 +8,26 @@ parallel-ssh uses asychronous network requests, there is *no* multi-threading or
 .. image:: https://api.travis-ci.org/pkittenis/parallel-ssh.png?branch=master
 	:target: https://travis-ci.org/pkittenis/parallel-ssh
 
-Module documentation can be found at the repository's `github pages`__
+Module documentation can be found at the repository's `github pages`_.
 
-__ http://pkittenis.github.io/parallel-ssh
+.. _`github pages`: http://pkittenis.github.io/parallel-ssh
 
 ************
 Installation
 ************
-To install gevent you need the libevent-dev package installed. Instructions below are for apt-get systems, substitute with your own package manager if necessary.
+
+.. note ::
+   libevent-dev package is no longer required as of gevent 1.0 which has migrated to libev. `parallel-ssh` now requires at least gevent version 1.0.
 
 ::
 
-	$ sudo apt-get install libevent-dev
-	$ pip install parallel-ssh
+   $ pip install parallel-ssh
 
-*************
-Usage Example
-*************
+**************
+Usage Examples
+**************
+
+See documentation on `github pages`_ for more complete examples
 
 Run `ls` on two remote hosts in parallel.
 
