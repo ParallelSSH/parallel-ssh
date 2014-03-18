@@ -113,6 +113,9 @@ def _handle_ssh_connection(cmd_req_response, t, fail_auth = False):
     except paramiko.SSHException, e:
         logger.exception('SSH negotiation failed')
         return
+    except Exception:
+        logger.exception("Error occured starting server")
+        return
     return _accept_ssh_data(t, server)
 
 def _accept_ssh_data(t, server):
@@ -158,4 +161,3 @@ if __name__ == "__main__":
         server.get()
     except KeyboardInterrupt:
         sys.exit(0)
-        
