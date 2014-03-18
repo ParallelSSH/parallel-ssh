@@ -62,9 +62,17 @@ class SSHClient(object):
         :param user: (Optional) User to login as. Defaults to logged in user or \
         user from ~/.ssh/config if set
         :type user: str
-        :raises: ssh_client.AuthenticationException on authentication error
-        :raises: ssh_client.UnknownHostException on DNS resolution error
-        :raises: ssh_client.ConnectionErrorException on error connecting"""
+        :param password: (Optional) Password to use for login. Defaults to\
+        no password
+        :type password: str
+        :param port: (Optional) Port number to use for SSH connection. Defaults\
+        to None which uses SSH default
+        :type port: int
+        :param pkey: (Optional) Client's private key to be used to connect with
+        :type pkey: :mod:`paramiko.PKey`
+        :raises: AuthenticationException on authentication error
+        :raises: UnknownHostException on DNS resolution error
+        :raises: ConnectionErrorException on error connecting"""
         ssh_config = paramiko.SSHConfig()
         _ssh_config_file = os.path.sep.join([os.path.expanduser('~'),
                                              '.ssh',
@@ -224,16 +232,23 @@ class ParallelSSHClient(object):
         :param port: (Optional) Port number to use for SSH connection. Defaults\
         to None which uses SSH default
         :type port: int
+        :param pkey: (Optional) Client's private key to be used to connect with
+        :type pkey: :mod:`paramiko.PKey`
         :param pool_size: (Optional) Greenlet pool size. Controls on how many\
         hosts to execute tasks in parallel. Defaults to 10
         :type pool_size: int
-        :raises: paramiko.AuthenticationException on authentication error
-        :raises: ssh_client.UnknownHostException on DNS resolution error
-        :raises: ssh_client.ConnectionErrorException on error connecting
+        :raises: AuthenticationException on authentication error
+        :raises: UnknownHostException on DNS resolution error
+        :raises: ConnectionErrorException on error connecting
         
         **Example**
 
-        >>> client = ParallelSSHClient(['myhost1', 'myhost2'])
+        >>> from pssh import ParallelSSHClient, AuthenticationException,\
+        		UnknownHostException, ConnectionErrorException
+        >>> try:
+        >>> ... client = ParallelSSHClient(['myhost1', 'myhost2'])
+        >>> except (AuthenticationException, UnknownHostException, ConnectionErrorException):
+        >>> ... return
         >>> cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
         >>> output = [client.get_stdout(cmd) for cmd in cmds]
         [myhost1]     ls: cannot access /tmp/aasdfasdf: No such file or directory
@@ -241,6 +256,12 @@ class ParallelSSHClient(object):
         >>> print output
         [{'myhost1': {'exit_code': 2}}, {'myhost2': {'exit_code': 2}}]
 
+        **Example with specified private key**
+
+        >>> import paramiko
+        >>> client_key = paramiko.RSAKey.from_private_key_file('user.key')
+        >>> client = ParallelSSHClient(['myhost1', 'myhost2'], pkey=client_key)
+        
         .. note ::
           
           **Connection persistence**
