@@ -18,21 +18,13 @@ class ParallelSSHClientTest(unittest.TestCase):
     def setUp(self):
         self.fake_cmd = 'fake cmd'
         self.fake_resp = 'fake response'
-        # self.listener = make_socket('127.0.0.1')
-        # self.listen_port = self.listener.getsockname()[1]
-
-    # def cleanUp(self):
-    #     del self.listener
 
     def test_pssh_client_exec_command(self):
         sock = make_socket('127.0.0.1')
         listen_port = sock.getsockname()[1]
         server = start_server({ self.fake_cmd : self.fake_resp }, sock)
-        gevent.sleep(1)
         client = ParallelSSHClient(['127.0.0.1'], port=listen_port)
-        gevent.sleep(2)
         cmd = client.exec_command(self.fake_cmd)[0]
-        gevent.sleep(2)
         output = client.get_stdout(cmd)
         expected = {'127.0.0.1' : {'exit_code' : 0}}
         self.assertEqual(expected, output,
@@ -45,11 +37,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         listen_port = sock.getsockname()[1]
         server = start_server({ self.fake_cmd : self.fake_resp },
                               sock, fail_auth=True)
-        gevent.sleep(1)
         client = ParallelSSHClient(['127.0.0.1'], port=listen_port)
-        gevent.sleep(2)
         cmd = client.exec_command(self.fake_cmd)[0]
-        gevent.sleep(2)
         # Handle exception
         try:
             cmd.get()
