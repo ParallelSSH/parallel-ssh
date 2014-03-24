@@ -57,17 +57,17 @@ class ParallelSSHClientTest(unittest.TestCase):
         stdout = list(output['127.0.0.1']['stdout'])
         stderr = list(output['127.0.0.1']['stderr'])
         self.assertEqual(expected_exit_code, exit_code,
-                         msg = "Got unexpected exit code - %s, expected %s" % (
-                exit_code,
-                expected_exit_code,))
+                         msg = "Got unexpected exit code - %s, expected %s" %
+                         (exit_code,
+                          expected_exit_code,))
         self.assertEqual(expected_stdout, stdout,
-                         msg = "Got unexpected stdout - %s, expected %s" % (
-                stdout,
-                expected_stdout,))
+                         msg = "Got unexpected stdout - %s, expected %s" % 
+                         (stdout,
+                          expected_stdout,))
         self.assertEqual(expected_stderr, stderr,
-                         msg = "Got unexpected stderr - %s, expected %s" % (
-                stderr,
-                expected_stderr,))
+                         msg = "Got unexpected stderr - %s, expected %s" % 
+                         (stderr,
+                          expected_stderr,))
         del client
         server.join()
 
