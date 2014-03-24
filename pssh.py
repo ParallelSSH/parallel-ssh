@@ -147,6 +147,7 @@ class SSHClient(object):
         """
         channel = self.client.get_transport().open_session()
         channel.get_pty()
+        # stdin (unused), stdout, stderr
         (_, stdout, stderr) = (channel.makefile('wb'), channel.makefile('rb'),
                                channel.makefile_stderr('rb'))
         if sudo:
@@ -260,6 +261,30 @@ class ParallelSSHClient(object):
         >>> print output
         [{'myhost1': {'exit_code': 2}}, {'myhost2': {'exit_code': 2}}]
 
+        **Example with returned stdout and stderr buffers**
+
+        >>> from pssh import ParallelSSHClient, AuthenticationException,\
+        		UnknownHostException, ConnectionErrorException
+        >>> try:
+        >>> ... client = ParallelSSHClient(['myhost1', 'myhost2'])
+        >>> except (AuthenticationException, UnknownHostException, ConnectionErrorException):
+        >>> ... return
+        >>> cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
+        >>> output = [client.get_stdout(cmd, return_buffers=True) for cmd in cmds]
+        >>> print output
+        [{'myhost1': {'exit_code': 2},
+        	      'stdout' : <generator object <genexpr>,
+                      'stderr' : <generator object <genexpr>},
+         {'myhost2': {'exit_code': 2}
+         	      'stdout' : <generator object <genexpr>,
+                      'stderr' : <generator object <genexpr>},
+                      ]
+        >>> for host_stdout in output:
+            ... for line in host_stdout[host_output.keys()[0]]['stdout']:
+                ... print line
+                    ls: cannot access /tmp/aasdfasdf: No such file or directory
+                    ls: cannot access /tmp/aasdfasdf: No such file or directory
+
         **Example with specified private key**
 
         >>> import paramiko
@@ -335,7 +360,7 @@ class ParallelSSHClient(object):
                                                 port=self.port, pkey=self.pkey)
         return self.host_clients[host].exec_command(*args, **kwargs)
 
-    def get_stdout(self, greenlet):
+    def get_stdout(self, greenlet, return_buffers=False):
         """Print stdout from greenlet and return exit code for host
         
         :mod:`pssh.get_stdout` will close the open SSH channel but this does
@@ -345,20 +370,38 @@ class ParallelSSHClient(object):
         will open a new channel which is very fast on already established
         connections.
 
+        By default, stdout and stderr will be logged via the logger named \
+        `host_logger` unless return_buffers is set to True in which case \
+        both buffers are returned along with the exit status.
+
         :param greenlet: Greenlet object containing an \
         SSH channel reference, hostname, stdout and stderr buffers
         :type greenlet: :mod:`gevent.Greenlet`
 
+        :param return_buffers: Flag to turn on returning stdout and stderr \
+        buffers along with exit code. Defaults to off.
+        :type return_buffers: bool
+
         :rtype: Dictionary containing ``{host: {'exit_code': exit code}}`` entry \
         for example ``{'myhost1': {'exit_code': 0}}``
+        :rtype: With return_buffers=True: ``{'myhost1': {'exit_code': 0},
+        						 'stdout' : <iterable>,
+                                                         'stderr' : <iterable>}``
         """
-        channel, host, stdout, stderr = greenlet.get()
-        for line in stdout:
-            host_logger.info("[%s]\t%s", host, line.strip(),)
-        for line in stderr:
-            host_logger.info("[%s] [err] %s", host, line.strip(),)
+        channel, host, _stdout, _stderr = greenlet.get()
+        stdout = (line.strip() for line in _stdout)
+        stderr = (line.strip() for line in _stderr)
         channel.close()
-        return {host: {'exit_code': channel.recv_exit_status()}}
+        # import ipdb; ipdb.set_trace()
+        if not return_buffers:
+            for line in stdout:
+                host_logger.info("[%s]\t%s", host, line,)
+            for line in stderr:
+                host_logger.info("[%s] [err] %s", host, line,)
+            return {host: {'exit_code': channel.recv_exit_status(),}}
+        return {host: {'exit_code': channel.recv_exit_status(),
+                       'stdout' : stdout,
+                       'stderr' : stderr, }}
 
     def copy_file(self, local_file, remote_file):
         """Copy local file to remote file in parallel
@@ -402,7 +445,8 @@ def test():
 def test_parallel():
     client = ParallelSSHClient(['localhost'])
     cmds = client.exec_command('ls -ltrh')
-    print [client.get_stdout(cmd) for cmd in cmds]
+    output = [client.get_stdout(cmd, return_buffers=True) for cmd in cmds]
+    print output
     cmds = client.copy_file('../test', 'test_dir/test')
     client.pool.join()
 
