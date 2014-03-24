@@ -392,7 +392,6 @@ class ParallelSSHClient(object):
         stdout = (line.strip() for line in _stdout)
         stderr = (line.strip() for line in _stderr)
         channel.close()
-        # import ipdb; ipdb.set_trace()
         if not return_buffers:
             for line in stdout:
                 host_logger.info("[%s]\t%s", host, line,)
