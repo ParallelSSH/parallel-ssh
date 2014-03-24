@@ -70,9 +70,9 @@ class SSHClient(object):
         :type port: int
         :param pkey: (Optional) Client's private key to be used to connect with
         :type pkey: :mod:`paramiko.PKey`
-        :raises: AuthenticationException on authentication error
-        :raises: UnknownHostException on DNS resolution error
-        :raises: ConnectionErrorException on error connecting"""
+        :raises: :mod:`pssh.AuthenticationException` on authentication error
+        :raises: :mod:`pssh.UnknownHostException` on DNS resolution error
+        :raises: :mod:`pssh.ConnectionErrorException` on error connecting"""
         ssh_config = paramiko.SSHConfig()
         _ssh_config_file = os.path.sep.join([os.path.expanduser('~'),
                                              '.ssh',
@@ -213,7 +213,11 @@ class SSHClient(object):
 
 class ParallelSSHClient(object):
     """Uses :mod:`pssh.SSHClient`, performs tasks over SSH on multiple hosts in \
-    parallel"""
+    parallel.
+
+    Connections to hosts are established in parallel when an object of this class \
+    is created, therefor any connection and/or authentication failures will happen \
+    on creation and need to be caught."""
 
     def __init__(self, hosts,
                  user=None, password=None, port=None, pkey=None,
@@ -237,9 +241,9 @@ class ParallelSSHClient(object):
         :param pool_size: (Optional) Greenlet pool size. Controls on how many\
         hosts to execute tasks in parallel. Defaults to 10
         :type pool_size: int
-        :raises: AuthenticationException on authentication error
-        :raises: UnknownHostException on DNS resolution error
-        :raises: ConnectionErrorException on error connecting
+        :raises: :mod:`pssh.AuthenticationException` on authentication error
+        :raises: :mod:`pssh.UnknownHostException` on DNS resolution error
+        :raises: :mod:`pssh.ConnectionErrorException` on error connecting
         
         **Example**
 
@@ -333,19 +337,20 @@ class ParallelSSHClient(object):
 
     def get_stdout(self, greenlet):
         """Print stdout from greenlet and return exit code for host
-        :param greenlet: Greenlet object containing an \
-        SSH channel reference, hostname, stdout and stderr buffers
-        :type greenlet: :mod:`gevent.Greenlet`
-
-        :mod:`pssh.get_stdout` will close the open SSH channel but this does **not**
-        close the established connection to the remote host, only the
+        
+        :mod:`pssh.get_stdout` will close the open SSH channel but this does
+        **not** close the established connection to the remote host, only the
         authenticated SSH channel within it. This is standard practise
         in SSH when a command has finished executing. A new command
         will open a new channel which is very fast on already established
         connections.
 
-        :rtype: Dictionary containing {host: {'exit_code': exit code}} entry \
-        for example {'myhost1': {'exit_code': 0}}
+        :param greenlet: Greenlet object containing an \
+        SSH channel reference, hostname, stdout and stderr buffers
+        :type greenlet: :mod:`gevent.Greenlet`
+
+        :rtype: Dictionary containing ``{host: {'exit_code': exit code}}`` entry \
+        for example ``{'myhost1': {'exit_code': 0}}``
         """
         channel, host, stdout, stderr = greenlet.get()
         for line in stdout:
