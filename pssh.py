@@ -216,9 +216,9 @@ class ParallelSSHClient(object):
     """Uses :mod:`pssh.SSHClient`, performs tasks over SSH on multiple hosts in \
     parallel.
 
-    Connections to hosts are established in parallel when an object of this class \
-    is created, therefor any connection and/or authentication failures will happen \
-    on creation and need to be caught."""
+    Connections to hosts are established in parallel when an object of this
+    class is created, therefor any connection and/or authentication exceptions \
+    will happen on creation and need to be caught."""
 
     def __init__(self, hosts,
                  user=None, password=None, port=None, pkey=None,
@@ -272,12 +272,12 @@ class ParallelSSHClient(object):
         >>> cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
         >>> output = [client.get_stdout(cmd, return_buffers=True) for cmd in cmds]
         >>> print output
-        [{'myhost1': {'exit_code': 2},
+        [{'myhost1': {'exit_code': 2,
         	      'stdout' : <generator object <genexpr>,
-                      'stderr' : <generator object <genexpr>},
-         {'myhost2': {'exit_code': 2}
+                      'stderr' : <generator object <genexpr>,}},
+         {'myhost2': {'exit_code': 2,
          	      'stdout' : <generator object <genexpr>,
-                      'stderr' : <generator object <genexpr>},
+                      'stderr' : <generator object <genexpr>,}},
                       ]
         >>> for host_stdout in output:
             ... for line in host_stdout[host_output.keys()[0]]['stdout']:
@@ -361,7 +361,7 @@ class ParallelSSHClient(object):
         return self.host_clients[host].exec_command(*args, **kwargs)
 
     def get_stdout(self, greenlet, return_buffers=False):
-        """Print stdout from greenlet and return exit code for host
+        """Get/print stdout from greenlet and return exit code for host
         
         :mod:`pssh.get_stdout` will close the open SSH channel but this does
         **not** close the established connection to the remote host, only the
@@ -371,8 +371,8 @@ class ParallelSSHClient(object):
         connections.
 
         By default, stdout and stderr will be logged via the logger named \
-        `host_logger` unless return_buffers is set to True in which case \
-        both buffers are returned along with the exit status.
+        ``host_logger`` unless ``return_buffers`` is set to ``True`` in which case \
+        both buffers are instead returned along with the exit status.
 
         :param greenlet: Greenlet object containing an \
         SSH channel reference, hostname, stdout and stderr buffers
@@ -384,9 +384,9 @@ class ParallelSSHClient(object):
 
         :rtype: Dictionary containing ``{host: {'exit_code': exit code}}`` entry \
         for example ``{'myhost1': {'exit_code': 0}}``
-        :rtype: With return_buffers=True: ``{'myhost1': {'exit_code': 0},
-        						 'stdout' : <iterable>,
-                                                         'stderr' : <iterable>}``
+        :rtype: With ``return_buffers=True``: ``{'myhost1': {'exit_code': 0,
+         						     'stdout' : <iterable>,
+                                                             'stderr' : <iterable>,}}``
         """
         channel, host, _stdout, _stderr = greenlet.get()
         stdout = (line.strip() for line in _stdout)
