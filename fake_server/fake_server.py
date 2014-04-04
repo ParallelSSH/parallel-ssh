@@ -19,6 +19,7 @@ import traceback
 import logging
 import paramiko
 import time
+from stub_sftp import StubSFTPServer
 
 logger = logging.getLogger("fake_server")
 paramiko_logger = logging.getLogger('paramiko.transport')
@@ -81,7 +82,6 @@ def listen(cmd_req_response, sock, fail_auth = False):
     response to client connection. Returns (server, socket) tuple \
     where server is a joinable server thread and socket is listening \
     socket of server."""
-    # sock = _make_socket(listen_ip)
     listen_ip, listen_port = sock.getsockname()
     if not sock:
         logger.error("Could not establish listening connection on %s:%s", listen_ip, listen_port)
@@ -89,62 +89,49 @@ def listen(cmd_req_response, sock, fail_auth = False):
     try:
         sock.listen(100)
         logger.info('Listening for connection on %s:%s..', listen_ip, listen_port)
-        # client, addr = sock.accept()
     except Exception, e:
         logger.error('*** Listen failed: %s' % (str(e),))
         traceback.print_exc()
         return
-    # accept_thread = gevent.spawn(handle_ssh_connection,
-    #                              cmd_req_response, client, addr,
-    #                              fail_auth=fail_auth)
     handle_ssh_connection(cmd_req_response, sock, fail_auth=fail_auth)
-    # accept_thread.start()
-    # return accept_thread
 
-def _handle_ssh_connection(cmd_req_response, t, fail_auth = False):
+def _handle_ssh_connection(cmd_req_response, transport, fail_auth = False):
     try:
-        t.load_server_moduli()
+        transport.load_server_moduli()
     except:
         return
-    t.add_server_key(host_key)
+    transport.add_server_key(host_key)
+    transport.set_subsystem_handler('sftp', paramiko.SFTPServer, StubSFTPServer)
     server = Server(cmd_req_response = cmd_req_response, fail_auth = fail_auth)
     try:
-        t.start_server(server=server)
+        transport.start_server(server=server)
     except paramiko.SSHException, e:
         logger.exception('SSH negotiation failed')
         return
     except Exception:
         logger.exception("Error occured starting server")
         return
-    return _accept_ssh_data(t, server)
-
-def _accept_ssh_data(t, server):
-    chan = t.accept(20)
-    if not chan:
+    channel = transport.accept(20)
+    if not channel:
         logger.error("Could not establish channel")
         return
-    logger.info("Authenticated..")
-    chan.send_ready()
-    server.event.wait(10)
-    if not server.event.isSet():
-        logger.error('Client never sent command')
-        chan.close()
-        return
-    while not chan.send_ready():
+    while transport.is_active():
+        time.sleep(1)
+    while not channel.send_ready():
         time.sleep(.5)
-    chan.close()
+    channel.close()
     
 def handle_ssh_connection(cmd_req_response, sock, fail_auth = False):
-    client, addr = sock.accept()
+    conn, addr = sock.accept()
     logger.info('Got connection..')
     try:
-        t = paramiko.Transport(client)
-        _handle_ssh_connection(cmd_req_response, t, fail_auth=fail_auth)
+        transport = paramiko.Transport(conn)
+        _handle_ssh_connection(cmd_req_response, transport, fail_auth=fail_auth)
     except Exception, e:
         logger.error('*** Caught exception: %s: %s' % (str(e.__class__), str(e),))
         traceback.print_exc()
         try:
-            t.close()
+            transport.close()
         except:
             pass
         return
