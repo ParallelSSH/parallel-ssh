@@ -237,7 +237,8 @@ class ParallelSSHClient(object):
         :type port: int
         :param pkey: (Optional) Client's private key to be used to connect with
         :type pkey: :mod:`paramiko.PKey`
-        :param pool_size: Pool size - how many commands to run in parallel
+        :param pool_size: (Optional) Greenlet pool size. Controls on how many\
+        hosts to execute tasks in parallel. Defaults to 10
         :type pool_size: int
         :raises: :mod:`pssh.AuthenticationException` on authentication error
         :raises: :mod:`pssh.UnknownHostException` on DNS resolution error
