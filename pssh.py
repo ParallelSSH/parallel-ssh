@@ -69,7 +69,7 @@ class SSHClient(object):
 
     def __init__(self, host,
                  user=None, password=None, port=None,
-                 pkey=None):
+                 pkey=None, forward_ssh_agent=True):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
          
@@ -86,6 +86,10 @@ class SSHClient(object):
         :type port: int
         :param pkey: (Optional) Client's private key to be used to connect with
         :type pkey: :mod:`paramiko.PKey`
+        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding - \
+        equivalent to `ssh -A` from the `ssh` command line utility.
+        Defaults to True if not set.
+        :type forward_ssh_agent: bool
         :raises: :mod:`pssh.AuthenticationException` on authentication error
         :raises: :mod:`pssh.UnknownHostException` on DNS resolution error
         :raises: :mod:`pssh.ConnectionErrorException` on error connecting"""
@@ -108,6 +112,7 @@ class SSHClient(object):
             user = _user
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
+        self.forward_ssh_agent = forward_ssh_agent
         self.client = client
         self.channel = None
         self.user = user
@@ -162,6 +167,8 @@ class SSHClient(object):
         stderr are buffers containing command output.
         """
         channel = self.client.get_transport().open_session()
+        if self.forward_ssh_agent:
+            agent_handler = paramiko.agent.AgentRequestHandler(channel)
         channel.get_pty()
         # stdin (unused), stdout, stderr
         (_, stdout, stderr) = (channel.makefile('wb'), channel.makefile('rb'),
