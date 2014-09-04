@@ -85,8 +85,8 @@ not match source %s" % (copied_file_data, test_file_data))
         agent.add_key(USER_KEY)
         server = start_server({ self.fake_cmd : self.fake_resp },
                                 self.listen_socket)
-        client = SSHClient('127.0.0.1', port=self.listen_port)
-        client.client._agent = agent
+        client = SSHClient('127.0.0.1', port=self.listen_port,
+                           _agent=agent)
         channel, host, _stdout, _stderr = client.exec_command(self.fake_cmd)
         output = (line.strip() for line in _stdout)
         channel.close()
