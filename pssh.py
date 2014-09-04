@@ -72,7 +72,8 @@ class SSHClient(object):
 
     def __init__(self, host,
                  user=None, password=None, port=None,
-                 pkey=None):
+                 pkey=None, forward_ssh_agent=True,
+                 _agent=None):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
          
@@ -89,6 +90,15 @@ class SSHClient(object):
         :type port: int
         :param pkey: (Optional) Client's private key to be used to connect with
         :type pkey: :mod:`paramiko.PKey`
+        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding - \
+        equivalent to `ssh -A` from the `ssh` command line utility.
+        Defaults to True if not set.
+        :type forward_ssh_agent: bool
+        :param _agent: (Optional) Override SSH agent object with the provided. \
+        This allows for overriding of the default paramiko behaviour of \
+        connecting to local SSH agent to lookup keys with our own SSH agent.
+        Only really useful for testing, hence the internal variable prefix.
+        :type _agent: :mod:`paramiko.agent.Agent`
         :raises: :mod:`pssh.AuthenticationException` on authentication error
         :raises: :mod:`pssh.UnknownHostException` on DNS resolution error
         :raises: :mod:`pssh.ConnectionErrorException` on error connecting
@@ -113,6 +123,7 @@ class SSHClient(object):
             user = _user
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
+        self.forward_ssh_agent = forward_ssh_agent
         self.client = client
         self.channel = None
         self.user = user
@@ -125,6 +136,8 @@ class SSHClient(object):
         if self.proxy_command:
             logger.debug("Proxy configured for destination host %s - ProxyCommand: '%s'" % (
                 self.host, " ".join(self.proxy_command.cmd),))
+        if _agent:
+            self.client._agent = _agent
         self._connect()
 
     def _connect(self, retries=1):
@@ -177,6 +190,8 @@ class SSHClient(object):
         stderr are buffers containing command output.
         """
         channel = self.client.get_transport().open_session()
+        if self.forward_ssh_agent:
+            agent_handler = paramiko.agent.AgentRequestHandler(channel)
         channel.get_pty()
         # stdin (unused), stdout, stderr
         (_, stdout, stderr) = (channel.makefile('wb'), channel.makefile('rb'),

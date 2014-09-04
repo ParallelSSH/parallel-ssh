@@ -53,6 +53,10 @@ class Server (paramiko.ServerInterface):
                                   pixelheight, modes):
         return True
 
+    def check_channel_forward_agent_request(self, channel):
+        logger.debug("Forward agent key request for channel %s" % (channel,))
+        return True
+
     def check_channel_exec_request(self, channel, cmd):
         logger.debug("Got exec request on channel %s for cmd %s" % (channel, cmd,))
         # Remove any 'bash -c' and/or quotes from command
