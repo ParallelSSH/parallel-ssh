@@ -19,13 +19,13 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 """
 
+import logging
 import gevent.pool
 from gevent import socket
-import paramiko
-import os
-import logging
 from gevent import monkey
 monkey.patch_all()
+import paramiko
+import os
 
 host_logger = logging.getLogger('host_logging')
 handler = logging.StreamHandler()
@@ -37,7 +37,6 @@ NUM_RETRIES = 3
 
 logger = logging.getLogger(__name__)
 
-
 def _setup_logger(_logger):
     """Setup default logger"""
     _handler = logging.StreamHandler()
@@ -45,7 +44,6 @@ def _setup_logger(_logger):
     _handler.setFormatter(log_format)
     _logger.addHandler(handler)
     _logger.setLevel(logging.DEBUG)
-
     
 class UnknownHostException(Exception):
     """Raised when a host is unknown (dns failure)"""
@@ -93,7 +91,7 @@ class SSHClient(object):
         _ssh_config_file = os.path.sep.join([os.path.expanduser('~'),
                                              '.ssh',
                                              'config'])
-        # Load ~/.ssh/config if it exists to pick up username
+        # Load ~/.ssh/config if it exists to pick up username, ProxyCommand
         # and host address if set
         if os.path.isfile(_ssh_config_file):
             ssh_config.parse(open(_ssh_config_file))
@@ -115,6 +113,11 @@ class SSHClient(object):
         self.pkey = pkey
         self.port = port if port else 22
         self.host = resolved_address
+        self.proxy_command = paramiko.ProxyCommand(host_config['proxycommand']) if 'proxycommand' in \
+                             host_config else None
+        if self.proxy_command:
+            logger.debug("Proxy configured for destination host %s - ProxyCommand: '%s'" % (
+                self.host, " ".join(self.proxy_command.cmd),))
         self._connect()
 
     def _connect(self, retries=1):
@@ -122,7 +125,8 @@ class SSHClient(object):
         try:
             self.client.connect(self.host, username=self.user,
                                 password=self.password, port=self.port,
-                                pkey=self.pkey)
+                                pkey=self.pkey,
+                                sock=self.proxy_command)
         except socket.gaierror, e:
             logger.error("Could not resolve host '%s'", self.host,)
             while retries < NUM_RETRIES:
