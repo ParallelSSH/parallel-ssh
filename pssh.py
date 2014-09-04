@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 
-"""Module containing wrapper classes over paramiko.SSHClient
-See SSHClient and ParallelSSHClient
+"""Small wrapper library over paramiko that allows for parallel execution of SSH commands on remote hosts and executing simple single host commands over SSH.
+
+parallel-ssh uses asychronous network requests - there is *no* multi-threading or multi-processing used.
+
+This is a *requirement* for commands on many (hundreds/thousands/hundreds of thousands) of hosts which would grind a system to a halt simply by having so many processes/threads all wanting to execute if done with multi-threading/processing.
+
+See :mod:`pssh.SSHClient` and :mod:`pssh.ParallelSSHClient` for class documentation.
 
 Copyright (C) 2014 Panos Kittenis
 
