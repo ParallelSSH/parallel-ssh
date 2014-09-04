@@ -69,7 +69,8 @@ class SSHClient(object):
 
     def __init__(self, host,
                  user=None, password=None, port=None,
-                 pkey=None, forward_ssh_agent=True):
+                 pkey=None, forward_ssh_agent=True,
+                 _agent=None):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
          
@@ -90,6 +91,11 @@ class SSHClient(object):
         equivalent to `ssh -A` from the `ssh` command line utility.
         Defaults to True if not set.
         :type forward_ssh_agent: bool
+        :param _agent: (Optional) Override SSH agent object with the provided. \
+        This allows for overriding of the default paramiko behaviour of \
+        connecting to local SSH agent to lookup keys with our own SSH agent.
+        Only really useful for testing, hence the internal variable prefix.
+        :type _agent: :mod:`paramiko.agent.Agent`
         :raises: :mod:`pssh.AuthenticationException` on authentication error
         :raises: :mod:`pssh.UnknownHostException` on DNS resolution error
         :raises: :mod:`pssh.ConnectionErrorException` on error connecting"""
@@ -120,6 +126,8 @@ class SSHClient(object):
         self.pkey = pkey
         self.port = port if port else 22
         self.host = resolved_address
+        if _agent:
+            self.client._agent = _agent
         self._connect()
 
     def _connect(self, retries=1):
