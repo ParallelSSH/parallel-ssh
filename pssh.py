@@ -60,6 +60,11 @@ class AuthenticationException(Exception):
     pass
 
 
+class ProxyCommandException(Exception):
+    """Raised on ProxyCommand error - ProxyCommand configured exited with error"""
+    pass
+
+
 class SSHClient(object):
     """Wrapper class over paramiko.SSHClient with sane defaults
     Honours ~/.ssh/config and /etc/ssh/ssh_config entries for host username \
@@ -86,7 +91,9 @@ class SSHClient(object):
         :type pkey: :mod:`paramiko.PKey`
         :raises: :mod:`pssh.AuthenticationException` on authentication error
         :raises: :mod:`pssh.UnknownHostException` on DNS resolution error
-        :raises: :mod:`pssh.ConnectionErrorException` on error connecting"""
+        :raises: :mod:`pssh.ConnectionErrorException` on error connecting
+        :raises: :mod:`pssh.ProxyCommandError` on error with ProxyCommand \
+        configured"""
         ssh_config = paramiko.SSHConfig()
         _ssh_config_file = os.path.sep.join([os.path.expanduser('~'),
                                              '.ssh',
@@ -145,6 +152,10 @@ class SSHClient(object):
                                                                     self.port,))
         except paramiko.AuthenticationException, e:
             raise AuthenticationException(e)
+        except paramiko.ProxyCommandFailure, e:
+            logger.error("Error executing ProxyCommand - %s" % (
+                e.message,))
+            raise ProxyCommandException(e.message)
 
     def exec_command(self, command, sudo=False, **kwargs):
         """Wrapper to :mod:`paramiko.SSHClient.exec_command`
