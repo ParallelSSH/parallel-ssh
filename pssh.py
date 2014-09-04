@@ -91,19 +91,19 @@ class SSHClient(object):
         :param pkey: (Optional) Client's private key to be used to connect with
         :type pkey: :mod:`paramiko.PKey`
         :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding - \
-        equivalent to `ssh -A` from the `ssh` command line utility.
+        equivalent to `ssh -A` from the `ssh` command line utility. \
         Defaults to True if not set.
         :type forward_ssh_agent: bool
         :param _agent: (Optional) Override SSH agent object with the provided. \
         This allows for overriding of the default paramiko behaviour of \
-        connecting to local SSH agent to lookup keys with our own SSH agent.
+        connecting to local SSH agent to lookup keys with our own SSH agent. \
         Only really useful for testing, hence the internal variable prefix.
         :type _agent: :mod:`paramiko.agent.Agent`
         :raises: :mod:`pssh.AuthenticationException` on authentication error
         :raises: :mod:`pssh.UnknownHostException` on DNS resolution error
         :raises: :mod:`pssh.ConnectionErrorException` on error connecting
-        :raises: :mod:`pssh.ProxyCommandError` on error with ProxyCommand \
-        configured"""
+        :raises: :mod:`pssh.ProxyCommandException` on error with ProxyCommand configured
+        """
         ssh_config = paramiko.SSHConfig()
         _ssh_config_file = os.path.sep.join([os.path.expanduser('~'),
                                              '.ssh',
@@ -262,9 +262,9 @@ class ParallelSSHClient(object):
     """Uses :mod:`pssh.SSHClient`, performs tasks over SSH on multiple hosts in \
     parallel.
 
-    Connections to hosts are established in parallel when an object of this
-    class is created, therefor any connection and/or authentication exceptions \
-    will happen on creation and need to be caught."""
+    Connections to hosts are established in parallel when ``exec_command`` is called,
+    therefor any connection and/or authentication exceptions will happen on the
+    call to ``exec_command`` and need to be caught."""
 
     def __init__(self, hosts,
                  user=None, password=None, port=None, pkey=None,
@@ -289,16 +289,17 @@ class ParallelSSHClient(object):
         :raises: :mod:`pssh.AuthenticationException` on authentication error
         :raises: :mod:`pssh.UnknownHostException` on DNS resolution error
         :raises: :mod:`pssh.ConnectionErrorException` on error connecting
+        :raises: :mod:`pssh.ProxyCommandException` on error with ProxyCommand configured
         
         **Example**
 
         >>> from pssh import ParallelSSHClient, AuthenticationException,\
         		UnknownHostException, ConnectionErrorException
+        >>> client = ParallelSSHClient(['myhost1', 'myhost2'])
         >>> try:
-        >>> ... client = ParallelSSHClient(['myhost1', 'myhost2'])
+        >>> ... cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
         >>> except (AuthenticationException, UnknownHostException, ConnectionErrorException):
         >>> ... return
-        >>> cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
         >>> output = [client.get_stdout(cmd) for cmd in cmds]
         [myhost1]     ls: cannot access /tmp/aasdfasdf: No such file or directory
         [myhost2]     ls: cannot access /tmp/aasdfasdf: No such file or directory
@@ -309,11 +310,11 @@ class ParallelSSHClient(object):
 
         >>> from pssh import ParallelSSHClient, AuthenticationException,\
         		UnknownHostException, ConnectionErrorException
+        >>> client = ParallelSSHClient(['myhost1', 'myhost2'])
         >>> try:
-        >>> ... client = ParallelSSHClient(['myhost1', 'myhost2'])
+        >>> ... cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
         >>> except (AuthenticationException, UnknownHostException, ConnectionErrorException):
         >>> ... return
-        >>> cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
         >>> output = [client.get_stdout(cmd, return_buffers=True) for cmd in cmds]
         >>> print output
         [{'myhost1': {'exit_code': 2,

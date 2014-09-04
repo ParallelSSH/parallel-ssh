@@ -10,7 +10,7 @@ Welcome to Parallel-SSH's documentation!
    :maxdepth: 4
 
 .. automodule:: pssh
-    :members: ParallelSSHClient, SSHClient, UnknownHostException, ConnectionErrorException, AuthenticationException
+    :members: ParallelSSHClient, SSHClient, UnknownHostException, ConnectionErrorException, AuthenticationException, ProxyCommandException
     :undoc-members:
 
 
