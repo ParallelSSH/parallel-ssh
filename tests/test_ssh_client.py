@@ -22,12 +22,17 @@ import unittest
 from pssh import SSHClient, ParallelSSHClient, UnknownHostException, AuthenticationException, _setup_logger, logger
 from fake_server.fake_server import start_server, make_socket, logger as server_logger, \
     paramiko_logger
+from fake_server.fake_agent import FakeAgent
+import paramiko
 import os
 from test_pssh_client import USER_KEY
 
 # _setup_logger(server_logger)
 # _setup_logger(logger)
 # _setup_logger(paramiko_logger)
+
+USER_KEY = paramiko.RSAKey.from_private_key_file(
+    os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key']))
 
 class SSHClientTest(unittest.TestCase):
     
@@ -67,6 +72,28 @@ not match source %s" % (copied_file_data, test_file_data))
         client.mkdir(client._make_sftp(), remote_dir)
         self.assertTrue(os.path.isdir(remote_dir))
         os.rmdir(remote_dir)
+        del client
+        server.join()
+
+    def test_ssh_agent_authentication(self):
+        """Test authentication via SSH agent.
+        Do not provide public key to use when creating SSHClient,
+        instead override the client's agent with our own fake SSH agent,
+        add our to key to agent and try to login to server.
+        Key should be automatically picked up from the overriden agent"""
+        agent = FakeAgent()
+        agent.add_key(USER_KEY)
+        server = start_server({ self.fake_cmd : self.fake_resp },
+                                self.listen_socket)
+        client = SSHClient('127.0.0.1', port=self.listen_port,
+                           _agent=agent)
+        channel, host, _stdout, _stderr = client.exec_command(self.fake_cmd)
+        output = (line.strip() for line in _stdout)
+        channel.close()
+        output = list(output)
+        expected = [self.fake_resp]
+        self.assertEqual(expected, output,
+                         msg = "Got unexpected command output - %s" % (output,))
         del client
         server.join()
 
