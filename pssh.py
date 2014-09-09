@@ -289,6 +289,10 @@ class ParallelSSHClient(object):
         :type port: int
         :param pkey: (Optional) Client's private key to be used to connect with
         :type pkey: :mod:`paramiko.PKey`
+        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding - \
+        equivalent to `ssh -A` from the `ssh` command line utility. \
+        Defaults to True if not set.
+        :type forward_ssh_agent: bool
         :param pool_size: (Optional) Greenlet pool size. Controls on how many\
         hosts to execute tasks in parallel. Defaults to 10
         :type pool_size: int
