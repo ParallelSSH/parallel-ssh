@@ -273,6 +273,7 @@ class ParallelSSHClient(object):
 
     def __init__(self, hosts,
                  user=None, password=None, port=None, pkey=None,
+                 forward_ssh_agent=True,
                  pool_size=10):
         """
         :param hosts: Hosts to connect to
@@ -366,6 +367,7 @@ class ParallelSSHClient(object):
         self.hosts = hosts
         self.user = user
         self.password = password
+        self.forward_ssh_agent = forward_ssh_agent
         self.port = port
         self.pkey = pkey
         # To hold host clients
@@ -407,7 +409,8 @@ class ParallelSSHClient(object):
         if not self.host_clients[host]:
             self.host_clients[host] = SSHClient(host, user=self.user,
                                                 password=self.password,
-                                                port=self.port, pkey=self.pkey)
+                                                port=self.port, pkey=self.pkey,
+                                                forward_ssh_agent=self.forward_ssh_agent)
         return self.host_clients[host].exec_command(*args, **kwargs)
 
     def get_stdout(self, greenlet, return_buffers=False):
@@ -480,7 +483,8 @@ class ParallelSSHClient(object):
         if not self.host_clients[host]:
             self.host_clients[host] = SSHClient(host, user=self.user,
                                                 password=self.password,
-                                                port=self.port)
+                                                port=self.port, pkey=self.pkey,
+                                                forward_ssh_agent=self.forward_ssh_agent)
         return self.host_clients[host].copy_file(local_file, remote_file)
 
     
