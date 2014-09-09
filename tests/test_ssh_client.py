@@ -49,7 +49,8 @@ class SSHClientTest(unittest.TestCase):
         server, remove files and directory."""
         test_file_data = 'test'
         local_filename = 'test_file'
-        remote_filename = 'test_file_copy'
+        remote_test_dir, remote_filename = 'remote_test_dir', 'test_file_copy'
+        remote_filename = os.path.sep.join([remote_test_dir, remote_filename])
         remote_dir = 'remote_dir'
         test_file = open(local_filename, 'w')
         test_file.writelines([test_file_data + os.linesep])
@@ -59,6 +60,8 @@ class SSHClientTest(unittest.TestCase):
         client = SSHClient('127.0.0.1', port=self.listen_port,
                            pkey=self.user_key)
         client.copy_file(local_filename, remote_filename)
+        self.assertTrue(os.path.isdir(remote_test_dir),
+                        msg="SFTP create remote directory failed")
         self.assertTrue(os.path.isfile(remote_filename),
                         msg="SFTP copy failed")
         copied_file = open(remote_filename, 'r')

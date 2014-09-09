@@ -139,8 +139,8 @@ class SSHClient(object):
         self.proxy_command = paramiko.ProxyCommand(host_config['proxycommand']) if 'proxycommand' in \
                              host_config else None
         if self.proxy_command:
-            logger.debug("Proxy configured for destination host %s - ProxyCommand: '%s'" % (
-                self.host, " ".join(self.proxy_command.cmd),))
+            logger.debug("Proxy configured for destination host %s - ProxyCommand: '%s'",
+                         self.host, " ".join(self.proxy_command.cmd),)
         if _agent:
             self.client._agent = _agent
         self._connect()
@@ -153,26 +153,26 @@ class SSHClient(object):
                                 pkey=self.pkey,
                                 sock=self.proxy_command)
         except socket.gaierror, e:
-            logger.error("Could not resolve host '%s'", self.host,)
+            logger.error("Could not resolve host '%s' - retry %s/%s",
+                         self.host, retries, NUM_RETRIES)
             while retries < NUM_RETRIES:
                 gevent.sleep(5)
                 return self._connect(retries=retries+1)
             raise UnknownHostException("%s - %s" % (str(e.args[1]),
                                                     self.host,))
         except socket.error, e:
-            logger.error("Error connecting to host '%s:%s'" % (self.host,
-                                                               self.port,))
+            logger.error("Error connecting to host '%s:%s' - retry %s/%s",
+                         self.host, self.port, retries, NUM_RETRIES)
             while retries < NUM_RETRIES:
                 gevent.sleep(5)
                 return self._connect(retries=retries+1)
-            raise ConnectionErrorException("%s for host '%s:%s'" % (str(e.args[1]),
-                                                                    self.host,
-                                                                    self.port,))
+            raise ConnectionErrorException("%s for host '%s:%s' - retry %s/%s",
+                                           str(e.args[1]), self.host, self.port,
+                                           retries, NUM_RETRIES,)
         except paramiko.AuthenticationException, e:
             raise AuthenticationException(e)
         except paramiko.ProxyCommandFailure, e:
-            logger.error("Error executing ProxyCommand - %s" % (
-                e.message,))
+            logger.error("Error executing ProxyCommand - %s", e.message,)
             raise ProxyCommandException(e.message)
 
     def exec_command(self, command, sudo=False, **kwargs):
@@ -188,7 +188,7 @@ class SSHClient(object):
         :type sudo: bool
         :param kwargs: (Optional) Keyword arguments to be passed to remote \
         command
-        :type kwargs: dict                
+        :type kwargs: dict
         :rtype: Tuple of `(channel, hostname, stdout, stderr)`. \
         Channel is the remote SSH channel, needed to ensure all of stdout has \
         been got, hostname is remote hostname the copy is to, stdout and \
@@ -215,7 +215,7 @@ class SSHClient(object):
     def _make_sftp(self):
         """Make SFTP client from open transport"""
         transport = self.client.get_transport()
-        channel = transport.open_session()
+        transport.open_session()
         return paramiko.SFTPClient.from_transport(transport)
 
     def mkdir(self, sftp, directory):
@@ -246,7 +246,6 @@ class SSHClient(object):
         """
         sftp = self._make_sftp()
         destination = remote_file.split(os.path.sep)
-        filename = destination[0] if len(destination) == 1 else destination[-1]
         remote_file = os.path.sep.join(destination)
         destination = destination[:-1]
         for directory in destination:
