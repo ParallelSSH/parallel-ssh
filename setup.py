@@ -19,7 +19,7 @@ from distutils.core import setup
 from setuptools import find_packages
 
 setup(name='parallel-ssh',
-      version='0.5',
+      version='0.6',
       description='Wrapper library over paramiko to allow remote execution of tasks. Supports parallel execution on multiple hosts',
       author='Panos Kittenis',
       author_email='pkittenis@gmail.com',
