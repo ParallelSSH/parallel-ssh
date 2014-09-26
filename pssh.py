@@ -41,14 +41,6 @@ host_logger.setLevel(logging.INFO)
 NUM_RETRIES = 3
 
 logger = logging.getLogger(__name__)
-
-def _setup_logger(_logger):
-    """Setup default logger"""
-    _handler = logging.StreamHandler()
-    log_format = logging.Formatter('%(name)s - %(asctime)s - %(levelname)s - %(message)s')
-    _handler.setFormatter(log_format)
-    _logger.addHandler(handler)
-    _logger.setLevel(logging.DEBUG)
     
 class UnknownHostException(Exception):
     """Raised when a host is unknown (dns failure)"""
@@ -122,10 +114,7 @@ class SSHClient(object):
                             'hostname' in host_config
                             else host)
         _user = host_config['user'] if 'user' in host_config else None
-        if user:
-            user = user
-        else:
-            user = _user
+        user = user if user else _user
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
         self.forward_ssh_agent = forward_ssh_agent
@@ -489,24 +478,3 @@ class ParallelSSHClient(object):
                                                 port=self.port, pkey=self.pkey,
                                                 forward_ssh_agent=self.forward_ssh_agent)
         return self.host_clients[host].copy_file(local_file, remote_file)
-
-    
-def test():
-    client = SSHClient('localhost')
-    channel, host, stdout, stderr = client.exec_command('ls -ltrh')
-    for line in stdout:
-        print line.strip()
-    client.copy_file('../test', 'test_dir/test')
-
-def test_parallel():
-    client = ParallelSSHClient(['localhost'])
-    cmds = client.exec_command('ls -ltrh')
-    output = [client.get_stdout(cmd, return_buffers=True) for cmd in cmds]
-    print output
-    cmds = client.copy_file('../test', 'test_dir/test')
-    client.pool.join()
-
-if __name__ == "__main__":
-    _setup_logger(logger)
-    test()
-    test_parallel()

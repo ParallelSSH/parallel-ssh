@@ -19,17 +19,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 """
 
 import unittest
-from pssh import SSHClient, ParallelSSHClient, UnknownHostException, AuthenticationException, _setup_logger, logger
+from pssh import SSHClient, ParallelSSHClient, UnknownHostException, AuthenticationException, logger
 from fake_server.fake_server import start_server, make_socket, logger as server_logger, \
     paramiko_logger
 from fake_server.fake_agent import FakeAgent
 import paramiko
 import os
 from test_pssh_client import USER_KEY
-
-# _setup_logger(server_logger)
-# _setup_logger(logger)
-# _setup_logger(paramiko_logger)
 
 USER_KEY = paramiko.RSAKey.from_private_key_file(
     os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key']))

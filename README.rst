@@ -9,6 +9,14 @@ This is a *requirement* for commands on many (hundreds/thousands/hundreds of tho
 
 .. image:: https://api.travis-ci.org/pkittenis/parallel-ssh.png?branch=master
 	:target: https://travis-ci.org/pkittenis/parallel-ssh
+.. image:: https://coveralls.io/repos/pkittenis/parallel-ssh/badge.png?branch=master
+  :target: https://coveralls.io/r/pkittenis/parallel-ssh?branch=master
+.. image:: https://pypip.in/version/parallel-ssh/badge.png
+  :target: https://pypip.in/version/parallel-ssh
+  :alt: version
+.. image:: https://pypip.in/download/parallel-ssh/badge.png
+  :target: https://pypip.in/download/parallel-ssh
+  :alt: downloads
 
 Module documentation can be found at the repository's `github pages`_.
 
@@ -17,9 +25,6 @@ Module documentation can be found at the repository's `github pages`_.
 ************
 Installation
 ************
-
-.. note ::
-   libevent-dev package is no longer required as of gevent 1.0 which has migrated to libev. `parallel-ssh` now requires at least gevent version 1.0.
 
 ::
 

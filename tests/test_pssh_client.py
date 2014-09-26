@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import unittest
 from pssh import ParallelSSHClient, UnknownHostException, \
-    AuthenticationException, ConnectionErrorException, _setup_logger
+    AuthenticationException, ConnectionErrorException
 from fake_server.fake_server import start_server, make_socket, logger as server_logger, \
     paramiko_logger
 import random
@@ -29,9 +29,6 @@ import gevent
 import threading
 import paramiko
 import os
-
-# _setup_logger(server_logger)
-# _setup_logger(paramiko_logger)
 
 USER_KEY = paramiko.RSAKey.from_private_key_file(
     os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key']))

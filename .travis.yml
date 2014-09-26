@@ -4,7 +4,10 @@ python:
   - "2.7"
 install:
   - pip install -r requirements.txt
-script: nosetests
+  - pip install coveralls
+script: nosetests --with-coverage --cover-package=pssh
 notifications:
   email:
     on_failure: change
+after_success:
+  coveralls
