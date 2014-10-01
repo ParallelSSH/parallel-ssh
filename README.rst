@@ -17,10 +17,13 @@ This is a *requirement* for commands on many (hundreds/thousands/hundreds of tho
 .. image:: https://pypip.in/download/parallel-ssh/badge.png
   :target: https://pypip.in/download/parallel-ssh
   :alt: downloads
+.. image:: https://readthedocs.org/projects/parallel-ssh/badge/?version=latest
+  :target: http://parallel-ssh.readthedocs.org/en/latest/
+  :alt: Latest documentation
 
-Module documentation can be found at the repository's `github pages`_.
+Module documentation can be found at `read the docs`_.
 
-.. _`github pages`: http://pkittenis.github.io/parallel-ssh
+.. _`read the docs`: http://parallel-ssh.readthedocs.org/en/latest/
 
 ************
 Installation
@@ -34,7 +37,7 @@ Installation
 Usage Examples
 **************
 
-See documentation on `github pages`_ for more complete examples
+See documentation on `read the docs`_ for more complete examples
 
 Run `ls` on two remote hosts in parallel.
 
