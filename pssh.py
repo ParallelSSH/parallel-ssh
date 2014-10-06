@@ -430,22 +430,47 @@ class ParallelSSHClient(object):
         :rtype: Dictionary containing ``{host: {'exit_code': exit code}}`` entry \
         for example ``{'myhost1': {'exit_code': 0}}``
         :rtype: With ``return_buffers=True``: ``{'myhost1': {'exit_code': 0,
+                                                             'channel' : None or SSH channel of command if command is still executing,
          						     'stdout' : <iterable>,
                                                              'stderr' : <iterable>,}}``
         """
         channel, host, _stdout, _stderr = greenlet.get()
-        stdout = (line.strip() for line in _stdout)
-        stderr = (line.strip() for line in _stderr)
-        channel.close()
-        if not return_buffers:
+        stdout = self._read_output_buffer(_stdout)
+        stderr = self._read_output_buffer(_stderr)
+        if channel.exit_status_ready():
+            channel.close()
+        else:
+            logger.debug("Command still executing on get_stdout call - not closing channel and returning None as exit code.")
+            # If channel is not closed we cannot get full stdout/stderr so must return buffers
+            return_buffers = True
+        # Channel must be closed or reading stdout/stderr will block forever
+        if not return_buffers and channel.closed:
             for line in stdout:
                 host_logger.info("[%s]\t%s", host, line,)
             for line in stderr:
                 host_logger.info("[%s] [err] %s", host, line,)
             return {host: {'exit_code': channel.recv_exit_status(),}}
-        return {host: {'exit_code': channel.recv_exit_status(),
+        gevent.sleep(.2)
+        return {host: {'exit_code': channel.recv_exit_status() if channel.exit_status_ready() else None,
+                       'channel' : channel if not channel.closed else None,
                        'stdout' : stdout,
                        'stderr' : stderr, }}
+
+    def wait_for_exit_status(self, channel):
+        """Block and wait for exit status on channel.
+        WARNING - this will block forever if the command executed never exits
+        :rtype: int - Exit code of command executed"""
+        while not channel.exit_status_ready():
+            gevent.sleep(1)
+        channel.close()
+        return channel.recv_exit_status()
+
+    def _read_output_buffer(self, output_buffer):
+        """Read from output buffers,
+        allowing coroutines to execute in between reading"""
+        for line in output_buffer:
+            gevent.sleep(1)
+            yield line.strip()
 
     def copy_file(self, local_file, remote_file):
         """Copy local file to remote file in parallel
