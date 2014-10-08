@@ -81,10 +81,25 @@ class Server (paramiko.ServerInterface):
         cmd = cmd.replace('\"', "")
         if not cmd in self.cmd_req_response:
             return False
-        channel.send(self.cmd_req_response[cmd] + os.linesep)
-        channel.send_exit_status(0)
         self.event.set()
+        # Check if response is an iterator in which case we
+        # do not return but read from iterator and send responses.
+        # This is to simulate a long running command that has not
+        # finished executing yet.
+        if hasattr(self.cmd_req_response[cmd], 'next'):
+            gevent.spawn(self._long_running_response,
+                         channel, self.cmd_req_response[cmd])
+        else:
+            response = self.cmd_req_response[cmd] + os.linesep
+            channel.send_exit_status(0)
         return True
+
+    def _long_running_response(self, channel, responder):
+        for response in responder:
+            channel.send(response + os.linesep)
+            gevent.sleep(0)
+        channel.send_exit_status(0)
+        channel.close()
 
 def make_socket(listen_ip):
     """Make socket on given address and available port chosen by OS"""

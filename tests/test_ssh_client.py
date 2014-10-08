@@ -75,7 +75,7 @@ not match source %s" % (copied_file_data, test_file_data))
         for dirpath in [remote_dir, remote_test_dir]:
             os.rmdir(dirpath)
         del client
-        server.join()
+        server.kill()
 
     def test_ssh_agent_authentication(self):
         """Test authentication via SSH agent.
@@ -97,7 +97,7 @@ not match source %s" % (copied_file_data, test_file_data))
         self.assertEqual(expected, output,
                          msg = "Got unexpected command output - %s" % (output,))
         del client
-        server.join()
+        server.kill()
 
 if __name__ == '__main__':
     unittest.main()

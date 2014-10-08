@@ -39,10 +39,21 @@ class ParallelSSHClientTest(unittest.TestCase):
     def setUp(self):
         self.fake_cmd = 'fake cmd'
         self.fake_resp = 'fake response'
+        self.long_running_cmd = 'long running'
         self.user_key = USER_KEY
         self.listen_socket = make_socket('127.0.0.1')
         self.listen_port = self.listen_socket.getsockname()[1]
 
+    def long_running_response(self, responses):
+        i = 0
+        while True:
+            if i >= responses:
+                raise StopIteration
+            gevent.sleep(0)
+            yield 'long running response'
+            gevent.sleep(1)
+            i += 1
+            
     def tearDown(self):
         del self.listen_socket
         
@@ -56,7 +67,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(expected, output,
                          msg = "Got unexpected command output - %s" % (output,))
         del client
-        server.join()
+        server.kill()
 
     def test_pssh_client_exec_command_get_buffers(self):
         server = start_server({ self.fake_cmd : self.fake_resp }, self.listen_socket)
@@ -83,7 +94,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                          (stderr,
                           expected_stderr,))
         del client
-        server.join()
+        server.kill()
 
     def test_pssh_client_auth_failure(self):
         server = start_server({ self.fake_cmd : self.fake_resp },
@@ -98,7 +109,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         except AuthenticationException:
             pass
         del client
-        server.join()
+        server.kill()
 
     def test_pssh_client_exec_command_password(self):
         """Test password authentication. Fake server accepts any password
@@ -112,4 +123,20 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(expected, output,
                          msg = "Got unexpected command output - %s" % (output,))
         del client
-        server.join()
+        server.kill()
+                
+    def test_pssh_client_long_running_command(self):
+        expected_lines = 1
+        server = start_server({ self.long_running_cmd :
+                                self.long_running_response(expected_lines) },
+                              self.listen_socket)
+        client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
+                                   pkey=self.user_key)
+        cmd = client.exec_command(self.long_running_cmd)[0]
+        output = client.get_stdout(cmd)
+        self.assertTrue('127.0.0.1' in output, msg="Got no output for command")
+        stdout = list(output['127.0.0.1']['stdout'])
+        self.assertTrue(len(stdout) == expected_lines, msg="Expected %s lines of response, got %s" %
+                        (expected_lines, len(stdout)))
+        del client
+        server.kill()
