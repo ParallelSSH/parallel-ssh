@@ -68,11 +68,12 @@ class SSHClientTest(unittest.TestCase):
         self.assertEqual(test_file_data, copied_file_data,
                          msg="Data in destination file %s does \
 not match source %s" % (copied_file_data, test_file_data))
-        os.unlink(local_filename)
-        os.unlink(remote_filename)
+        for filepath in [local_filename, remote_filename]:
+            os.unlink(filepath)
         client.mkdir(client._make_sftp(), remote_dir)
         self.assertTrue(os.path.isdir(remote_dir))
-        os.rmdir(remote_dir)
+        for dirpath in [remote_dir, remote_test_dir]:
+            os.rmdir(dirpath)
         del client
         server.join()
 
@@ -88,10 +89,10 @@ not match source %s" % (copied_file_data, test_file_data))
                                 self.listen_socket)
         client = SSHClient('127.0.0.1', port=self.listen_port,
                            _agent=agent)
-        channel, host, _stdout, _stderr = client.exec_command(self.fake_cmd)
-        output = (line.strip() for line in _stdout)
+        channel, host, stdout, stderr = client.exec_command(self.fake_cmd)
         channel.close()
-        output = list(output)
+        output = list(stdout)
+        stderr = list(stderr)
         expected = [self.fake_resp]
         self.assertEqual(expected, output,
                          msg = "Got unexpected command output - %s" % (output,))

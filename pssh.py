@@ -192,8 +192,10 @@ class SSHClient(object):
             agent_handler = paramiko.agent.AgentRequestHandler(channel)
         channel.get_pty()
         # stdin (unused), stdout, stderr
-        (_, stdout, stderr) = (channel.makefile('wb'), channel.makefile('rb'),
-                               channel.makefile_stderr('rb'))
+        (_stdout, _stderr) = (channel.makefile('rb'),
+                              channel.makefile_stderr('rb'))
+        stdout, stderr = self._read_output_buffer(_stdout), \
+                         self._read_output_buffer(_stderr)
         if sudo:
             command = 'sudo -S bash -c "%s"' % command.replace('"', '\\"')
         else:
@@ -204,6 +206,13 @@ class SSHClient(object):
         while not (channel.recv_ready() or channel.closed):
             gevent.sleep(.2)
         return channel, self.host, stdout, stderr
+
+    def _read_output_buffer(self, output_buffer):
+        """Read from output buffers,
+        allowing coroutines to execute in between reading"""
+        for line in output_buffer:
+            gevent.sleep(1)
+            yield line.strip()
 
     def _make_sftp(self):
         """Make SFTP client from open transport"""
@@ -434,9 +443,8 @@ class ParallelSSHClient(object):
          						     'stdout' : <iterable>,
                                                              'stderr' : <iterable>,}}``
         """
-        channel, host, _stdout, _stderr = greenlet.get()
-        stdout = self._read_output_buffer(_stdout)
-        stderr = self._read_output_buffer(_stderr)
+        gevent.sleep(.2)
+        channel, host, stdout, stderr = greenlet.get()
         if channel.exit_status_ready():
             channel.close()
         else:
@@ -464,13 +472,6 @@ class ParallelSSHClient(object):
             gevent.sleep(1)
         channel.close()
         return channel.recv_exit_status()
-
-    def _read_output_buffer(self, output_buffer):
-        """Read from output buffers,
-        allowing coroutines to execute in between reading"""
-        for line in output_buffer:
-            gevent.sleep(1)
-            yield line.strip()
 
     def copy_file(self, local_file, remote_file):
         """Copy local file to remote file in parallel
