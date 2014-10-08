@@ -1,6 +1,18 @@
+[run]
+source = pssh
+
 [report]
 omit =
     */python?.?/*
     */site-packages/nose/*
     fake_server/*
     tests/*
+    pssh_local.py
+    setup.py
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    logger.debug

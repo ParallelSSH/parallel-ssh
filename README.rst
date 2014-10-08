@@ -8,20 +8,18 @@ parallel-ssh uses asychronous network requests - there is *no* multi-threading o
 This is a *requirement* for commands on many (hundreds/thousands/hundreds of thousands) of hosts which would grind a system to a halt simply by having so many processes/threads all wanting to execute if done with multi-threading/processing.
 
 .. image:: https://api.travis-ci.org/pkittenis/parallel-ssh.png?branch=master
-	:target: https://travis-ci.org/pkittenis/parallel-ssh
+  :target: https://travis-ci.org/pkittenis/parallel-ssh
 .. image:: https://coveralls.io/repos/pkittenis/parallel-ssh/badge.png?branch=master
   :target: https://coveralls.io/r/pkittenis/parallel-ssh?branch=master
 .. image:: https://pypip.in/version/parallel-ssh/badge.png
-  :target: https://pypip.in/version/parallel-ssh
+  :target: https://pypi.python.org/pypi/parallel-ssh
   :alt: version
 .. image:: https://pypip.in/download/parallel-ssh/badge.png
-  :target: https://pypip.in/download/parallel-ssh
+  :target: https://pypi.python.org/pypi/parallel-ssh
   :alt: downloads
 .. image:: https://readthedocs.org/projects/parallel-ssh/badge/?version=latest
   :target: http://parallel-ssh.readthedocs.org/en/latest/
   :alt: Latest documentation
-
-Module documentation can be found at `read the docs`_.
 
 .. _`read the docs`: http://parallel-ssh.readthedocs.org/en/latest/
 
@@ -37,7 +35,7 @@ Installation
 Usage Examples
 **************
 
-See documentation on `read the docs`_ for more complete examples
+See documentation on `read the docs`_ for more complete examples.
 
 Run `ls` on two remote hosts in parallel.
 
@@ -54,7 +52,7 @@ Run `ls` on two remote hosts in parallel.
 SFTP support
 ************
 
-SFTP is supported (scp version 2 protocol) natively, no scp command used.
+SFTP is supported (scp version 2) natively, no scp command used.
 
 For example to copy a local file to remote hosts in parallel
 

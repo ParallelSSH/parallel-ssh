@@ -1,27 +1,31 @@
 #!/usr/bin/env python
 
+# This file is part of parallel-ssh.
+
+# Copyright (C) 2014 Panos Kittenis
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation, version 2.1.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
 """Small wrapper library over paramiko that allows for parallel execution of SSH commands on remote hosts and executing simple single host commands over SSH.
 
 parallel-ssh uses asychronous network requests - there is *no* multi-threading or multi-processing used.
 
 This is a *requirement* for commands on many (hundreds/thousands/hundreds of thousands) of hosts which would grind a system to a halt simply by having so many processes/threads all wanting to execute if done with multi-threading/processing.
 
-See :mod:`pssh.SSHClient` and :mod:`pssh.ParallelSSHClient` for class documentation.
+The `libev event loop library<http://software.schmorp.de/pkg/libev.html>_` is utilised on *nix systems. Windows is not supported.
 
-Copyright (C) 2014 Panos Kittenis
-
-This library is free software; you can redistribute it and/or
-modify it under the terms of the GNU Lesser General Public
-License as published by the Free Software Foundation, version 2.1.
-
-This library is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-Lesser General Public License for more details.
-
-You should have received a copy of the GNU Lesser General Public
-License along with this library; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+See :mod:`pssh.ParallelSSHClient` and :mod:`pssh.SSHClient` for class documentation.
 """
 
 import logging
@@ -284,10 +288,6 @@ class ParallelSSHClient(object):
         :param pool_size: (Optional) Greenlet pool size. Controls on how many\
         hosts to execute tasks in parallel. Defaults to 10
         :type pool_size: int
-        :raises: :mod:`pssh.AuthenticationException` on authentication error
-        :raises: :mod:`pssh.UnknownHostException` on DNS resolution error
-        :raises: :mod:`pssh.ConnectionErrorException` on error connecting
-        :raises: :mod:`pssh.ProxyCommandException` on error with ProxyCommand configured
         
         **Example**
 
