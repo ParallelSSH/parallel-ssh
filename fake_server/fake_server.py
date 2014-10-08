@@ -90,7 +90,7 @@ class Server (paramiko.ServerInterface):
             gevent.spawn(self._long_running_response,
                          channel, self.cmd_req_response[cmd])
         else:
-            response = self.cmd_req_response[cmd] + os.linesep
+            channel.send(self.cmd_req_response[cmd] + os.linesep)
             channel.send_exit_status(0)
         return True
 
@@ -152,6 +152,7 @@ def _handle_ssh_connection(cmd_req_response, transport, fail_auth = False):
         logger.error("Could not establish channel")
         return
     while transport.is_active():
+        logger.debug("Transport active, waiting..")
         time.sleep(1)
     while not channel.send_ready():
         time.sleep(.5)

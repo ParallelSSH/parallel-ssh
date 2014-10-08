@@ -67,7 +67,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(expected, output,
                          msg = "Got unexpected command output - %s" % (output,))
         del client
-        server.kill()
+        server.join()
 
     def test_pssh_client_exec_command_get_buffers(self):
         server = start_server({ self.fake_cmd : self.fake_resp }, self.listen_socket)
@@ -94,7 +94,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                          (stderr,
                           expected_stderr,))
         del client
-        server.kill()
+        server.join()
 
     def test_pssh_client_auth_failure(self):
         server = start_server({ self.fake_cmd : self.fake_resp },
@@ -109,7 +109,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         except AuthenticationException:
             pass
         del client
-        server.kill()
+        server.join()
 
     def test_pssh_client_exec_command_password(self):
         """Test password authentication. Fake server accepts any password
@@ -123,7 +123,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(expected, output,
                          msg = "Got unexpected command output - %s" % (output,))
         del client
-        server.kill()
+        server.join()
                 
     def test_pssh_client_long_running_command(self):
         expected_lines = 1
