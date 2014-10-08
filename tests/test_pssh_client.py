@@ -126,7 +126,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         server.join()
                 
     def test_pssh_client_long_running_command(self):
-        expected_lines = 1
+        expected_lines = 5
         server = start_server({ self.long_running_cmd :
                                 self.long_running_response(expected_lines) },
                               self.listen_socket)
