@@ -52,7 +52,7 @@ Frequently asked questions
 **************************
 
 :Q:
- Are SSH agent used?
+ Are SSH agents used?
 
 :A:
  All available keys in a running SSH agent in addition to SSH keys in the user's home directory, `~/.ssh/id_dsa`, `~/.ssh/id_rsa` et al are automatically used by ParallelSSH.
