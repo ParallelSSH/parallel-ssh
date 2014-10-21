@@ -51,22 +51,22 @@ Run `ls` on two remote hosts in parallel.
 Frequently asked questions
 **************************
 
-Q.
+:Q:
  Are SSH agent used?
 
-A.
+:A:
  All available keys in a running SSH agent in addition to SSH keys in the user's home directory, `~/.ssh/id_dsa`, `~/.ssh/id_rsa` et al are automatically used by ParallelSSH.
 
-Q.
+:Q:
   Can ParallelSSH forward my SSH agent?
 
-A.
+:A:
   SSH agent forwarding, what `ssh -A` does on the command line, is supported and enabled by default. Creating an object as `ParallelSSH(forward_ssh_agent=False)` will disable that behaviour.
 
-Q.
+:Q:
   Is proxying supported?
 
-A.
+:A:
   ParallelSSH supports proxies as defined in SSH's `ProxyCommand` configuration in `~/.ssh/config`. For example, the following entry in `~/.ssh/config` causes ParallelSSH to use host `bastion` as a proxy for host `target`. See the `SSH manual page <http://unixhelp.ed.ac.uk/CGI/man-cgi?ssh+1>`_ for more information on `ProxyCommand`.
 
 ::
@@ -74,10 +74,10 @@ A.
    Host target
      ProxyCommand ssh bastion -W %h:%p
 
-Q.
+:Q:
  Is there a way to programmatically provide an SSH key?
 
-A.
+:A:
  Yes, use the `pkey` parameter of the `ParallelSSHClient class <http://parallel-ssh.readthedocs.org/en/latest/#pssh.ParallelSSHClient>`_. For example:
 
 >>> import paramiko
