@@ -69,20 +69,20 @@ Frequently asked questions
 :A:
   ParallelSSH supports proxies as defined in SSH's `ProxyCommand` configuration in `~/.ssh/config`. For example, the following entry in `~/.ssh/config` causes ParallelSSH to use host `bastion` as a proxy for host `target`. See the `SSH manual page <http://unixhelp.ed.ac.uk/CGI/man-cgi?ssh+1>`_ for more information on `ProxyCommand`.
 
-::
+  ::
 
    Host target
      ProxyCommand ssh bastion -W %h:%p
 
 :Q:
- Is there a way to programmatically provide an SSH key?
+  Is there a way to programmatically provide an SSH key?
 
 :A:
- Yes, use the `pkey` parameter of the `ParallelSSHClient class <http://parallel-ssh.readthedocs.org/en/latest/#pssh.ParallelSSHClient>`_. For example:
+  Yes, use the `pkey` parameter of the `ParallelSSHClient class <http://parallel-ssh.readthedocs.org/en/latest/#pssh.ParallelSSHClient>`_. For example:
 
->>> import paramiko
->>> my_key = paramiko.RSAKey.from_private_key_file(my_rsa_key)
->>> client = ParallelSSHClient(pkey=my_key)
+  >>> import paramiko
+  >>> my_key = paramiko.RSAKey.from_private_key_file(my_rsa_key)
+  >>> client = ParallelSSHClient(pkey=my_key)
 
 ********
 SFTP/SCP
