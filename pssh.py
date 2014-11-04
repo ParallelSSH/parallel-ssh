@@ -28,11 +28,11 @@ The `libev event loop library<http://software.schmorp.de/pkg/libev.html>_` is ut
 See :mod:`pssh.ParallelSSHClient` and :mod:`pssh.SSHClient` for class documentation.
 """
 
-import logging
 import gevent.pool
 from gevent import socket
 from gevent import monkey
 monkey.patch_all()
+import logging
 import paramiko
 import os
 
@@ -168,7 +168,7 @@ class SSHClient(object):
             logger.error("Error executing ProxyCommand - %s", e.message,)
             raise ProxyCommandException(e.message)
 
-    def exec_command(self, command, sudo=False, **kwargs):
+    def exec_command(self, command, sudo=False, user=None, **kwargs):
         """Wrapper to :mod:`paramiko.SSHClient.exec_command`
 
         Opens a new SSH session with a pty and runs command with given \
@@ -196,8 +196,11 @@ class SSHClient(object):
                               channel.makefile_stderr('rb'))
         stdout, stderr = self._read_output_buffer(_stdout), \
                          self._read_output_buffer(_stderr)
-        if sudo:
+        if sudo and not user:
             command = 'sudo -S bash -c "%s"' % command.replace('"', '\\"')
+        elif user:
+            command = 'sudo -u %s -S bash -c "%s"' % (
+                user, command.replace('"', '\\"'),)
         else:
             command = 'bash -c "%s"' % command.replace('"', '\\"')
         logger.debug("Running command %s on %s", command, self.host)
@@ -211,7 +214,7 @@ class SSHClient(object):
         """Read from output buffers,
         allowing coroutines to execute in between reading"""
         for line in output_buffer:
-            gevent.sleep(1)
+            gevent.sleep()
             yield line.strip()
 
     def _make_sftp(self):
@@ -469,7 +472,7 @@ class ParallelSSHClient(object):
         WARNING - this will block forever if the command executed never exits
         :rtype: int - Exit code of command executed"""
         while not channel.exit_status_ready():
-            gevent.sleep(1)
+            gevent.sleep()
         channel.close()
         return channel.recv_exit_status()
 
