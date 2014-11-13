@@ -8,5 +8,5 @@ notifications:
   email:
     on_failure: change
 after_success:
-  pip install coveralls
-  coveralls
+  - pip install coveralls
+  - coveralls
