@@ -21,13 +21,15 @@
 """Unittests for :mod:`pssh.SSHClient` class"""
 
 import unittest
-from pssh import SSHClient, ParallelSSHClient, UnknownHostException, AuthenticationException, logger
+from pssh import SSHClient, ParallelSSHClient, UnknownHostException, AuthenticationException,\
+    logger, ConnectionErrorException, UnknownHostException
 from fake_server.fake_server import start_server, make_socket, logger as server_logger, \
     paramiko_logger
 from fake_server.fake_agent import FakeAgent
 import paramiko
 import os
 from test_pssh_client import USER_KEY
+import random, string
 
 USER_KEY = paramiko.RSAKey.from_private_key_file(
     os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key']))
@@ -98,6 +100,39 @@ not match source %s" % (copied_file_data, test_file_data))
                          msg = "Got unexpected command output - %s" % (output,))
         del client
         server.join()
+
+    def test_ssh_client_conn_failure(self):
+        """Test connection error failure case - ConnectionErrorException"""
+        self.assertRaises(ConnectionErrorException,
+                          SSHClient, '127.0.0.1', port=self.listen_port,
+                          pkey=self.user_key, num_retries=0)
+
+    def test_ssh_client_retries(self):
+        """Test connection error retries"""
+        expected_num_tries = 2
+        with self.assertRaises(ConnectionErrorException) as cm:
+            SSHClient('127.0.0.1', port=self.listen_port,
+                      pkey=self.user_key, num_retries=expected_num_tries)
+        num_tries = cm.exception.args[-1:][0]
+        self.assertEqual(expected_num_tries, num_tries,
+                         msg="Got unexpected number of retries %s - expected %s"
+                         % (num_tries, expected_num_tries,))
+        host = ''.join([random.choice(string.ascii_letters) for n in xrange(8)])
+        with self.assertRaises(UnknownHostException) as cm:
+            SSHClient(host, port=self.listen_port,
+                      pkey=self.user_key, num_retries=expected_num_tries)
+        num_tries = cm.exception.args[-1:][0]
+        self.assertEqual(expected_num_tries, num_tries,
+                         msg="Got unexpected number of retries %s - expected %s"
+                         % (num_tries, expected_num_tries,))
+
+    def test_ssh_client_conn_failure(self):
+        """Test connection error failure case - ConnectionErrorException"""
+        host = ''.join([random.choice(string.ascii_letters) for n in xrange(8)])
+        self.assertRaises(UnknownHostException,
+                          SSHClient, host, port=self.listen_port,
+                          pkey=self.user_key, num_retries=0)
+
 
 if __name__ == '__main__':
     unittest.main()

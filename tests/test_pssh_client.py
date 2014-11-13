@@ -140,3 +140,40 @@ class ParallelSSHClientTest(unittest.TestCase):
                         (expected_lines, len(stdout)))
         del client
         server.kill()
+        
+    def test_pssh_client_retries(self):
+        """Test connection error retries"""
+        expected_num_tries = 2
+        with self.assertRaises(ConnectionErrorException) as cm:
+            client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
+                                       pkey=self.user_key, num_retries=expected_num_tries)
+            cmd = client.exec_command('blah')[0]
+            cmd.get()
+        num_tries = cm.exception.args[-1:][0]
+        self.assertEqual(expected_num_tries, num_tries,
+                         msg="Got unexpected number of retries %s - expected %s"
+                         % (num_tries, expected_num_tries,))
+
+    def test_pssh_copy_file(self):
+        """Test parallel copy file"""
+        test_file_data = 'test'
+        local_filename = 'test_file'
+        remote_test_dir, remote_filename = 'remote_test_dir', 'test_file_copy'
+        remote_filename = os.path.sep.join([remote_test_dir, remote_filename])
+        test_file = open(local_filename, 'w')
+        test_file.writelines([test_file_data + os.linesep])
+        test_file.close()
+        server = start_server({ self.fake_cmd : self.fake_resp },
+                              self.listen_socket)
+        client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
+                                   pkey=self.user_key)
+        cmds = client.copy_file(local_filename, remote_filename)
+        cmds[0].get()
+        self.assertTrue(os.path.isdir(remote_test_dir),
+                        msg="SFTP create remote directory failed")
+        self.assertTrue(os.path.isfile(remote_filename),
+                        msg="SFTP copy failed")
+        for filepath in [local_filename, remote_filename]:
+            os.unlink(filepath)
+        del client
+        server.join()

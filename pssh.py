@@ -42,7 +42,7 @@ host_log_format = logging.Formatter('%(message)s')
 handler.setFormatter(host_log_format)
 host_logger.addHandler(handler)
 host_logger.setLevel(logging.INFO)
-NUM_RETRIES = 3
+DEFAULT_RETRIES = 3
 
 logger = logging.getLogger(__name__)
     
@@ -74,7 +74,7 @@ class SSHClient(object):
     def __init__(self, host,
                  user=None, password=None, port=None,
                  pkey=None, forward_ssh_agent=True,
-                 _agent=None):
+                 num_retries=DEFAULT_RETRIES, _agent=None):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
          
@@ -91,6 +91,9 @@ class SSHClient(object):
         :type port: int
         :param pkey: (Optional) Client's private key to be used to connect with
         :type pkey: :mod:`paramiko.PKey`
+        :param num_retries: (Optional) Number of retries for connection attempts\
+        before the client gives up. Defaults to 3.
+        :type num_retries: int
         :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding - \
         equivalent to `ssh -A` from the `ssh` command line utility. \
         Defaults to True if not set.
@@ -136,6 +139,7 @@ class SSHClient(object):
                          self.host, " ".join(self.proxy_command.cmd),)
         if _agent:
             self.client._agent = _agent
+        self.num_retries = num_retries
         self._connect()
 
     def _connect(self, retries=1):
@@ -147,21 +151,22 @@ class SSHClient(object):
                                 sock=self.proxy_command)
         except socket.gaierror, e:
             logger.error("Could not resolve host '%s' - retry %s/%s",
-                         self.host, retries, NUM_RETRIES)
-            while retries < NUM_RETRIES:
+                         self.host, retries, self.num_retries)
+            while retries < self.num_retries:
                 gevent.sleep(5)
                 return self._connect(retries=retries+1)
-            raise UnknownHostException("%s - %s" % (str(e.args[1]),
-                                                    self.host,))
+            raise UnknownHostException("%s - %s - retry %s/%s",
+                                       str(e.args[1]),
+                                       self.host, retries, self.num_retries)
         except socket.error, e:
             logger.error("Error connecting to host '%s:%s' - retry %s/%s",
-                         self.host, self.port, retries, NUM_RETRIES)
-            while retries < NUM_RETRIES:
+                         self.host, self.port, retries, self.num_retries)
+            while retries < self.num_retries:
                 gevent.sleep(5)
                 return self._connect(retries=retries+1)
             raise ConnectionErrorException("%s for host '%s:%s' - retry %s/%s",
                                            str(e.args[1]), self.host, self.port,
-                                           retries, NUM_RETRIES,)
+                                           retries, self.num_retries,)
         except paramiko.AuthenticationException, e:
             raise AuthenticationException(e)
         except paramiko.ProxyCommandFailure, e:
@@ -191,9 +196,8 @@ class SSHClient(object):
         if self.forward_ssh_agent:
             agent_handler = paramiko.agent.AgentRequestHandler(channel)
         channel.get_pty()
-        # stdin (unused), stdout, stderr
-        (_stdout, _stderr) = (channel.makefile('rb'),
-                              channel.makefile_stderr('rb'))
+        _stdout, _stderr = channel.makefile('rb'), \
+                           channel.makefile_stderr('rb')
         stdout, stderr = self._read_output_buffer(_stdout), \
                          self._read_output_buffer(_stderr)
         if sudo and not user:
@@ -277,7 +281,7 @@ class ParallelSSHClient(object):
 
     def __init__(self, hosts,
                  user=None, password=None, port=None, pkey=None,
-                 forward_ssh_agent=True,
+                 forward_ssh_agent=True, num_retries=DEFAULT_RETRIES,
                  pool_size=10):
         """
         :param hosts: Hosts to connect to
@@ -293,6 +297,9 @@ class ParallelSSHClient(object):
         :type port: int
         :param pkey: (Optional) Client's private key to be used to connect with
         :type pkey: :mod:`paramiko.PKey`
+        :param num_retries: (Optional) Number of retries for connection attempts\
+        before the client gives up. Defaults to 3.
+        :type num_retries: int
         :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding - \
         equivalent to `ssh -A` from the `ssh` command line utility. \
         Defaults to True if not set.
@@ -374,6 +381,7 @@ class ParallelSSHClient(object):
         self.forward_ssh_agent = forward_ssh_agent
         self.port = port
         self.pkey = pkey
+        self.num_retries = num_retries
         # To hold host clients
         self.host_clients = dict((host, None) for host in hosts)
 
@@ -414,7 +422,8 @@ class ParallelSSHClient(object):
             self.host_clients[host] = SSHClient(host, user=self.user,
                                                 password=self.password,
                                                 port=self.port, pkey=self.pkey,
-                                                forward_ssh_agent=self.forward_ssh_agent)
+                                                forward_ssh_agent=self.forward_ssh_agent,
+                                                num_retries=self.num_retries)
         return self.host_clients[host].exec_command(*args, **kwargs)
 
     def get_stdout(self, greenlet, return_buffers=False):
@@ -467,14 +476,15 @@ class ParallelSSHClient(object):
                        'stdout' : stdout,
                        'stderr' : stderr, }}
 
-    def wait_for_exit_status(self, channel):
-        """Block and wait for exit status on channel.
-        WARNING - this will block forever if the command executed never exits
-        :rtype: int - Exit code of command executed"""
-        while not channel.exit_status_ready():
-            gevent.sleep()
-        channel.close()
-        return channel.recv_exit_status()
+    # WIP
+    # def wait_for_exit_status(self, channel):
+    #     """Block and wait for exit status on channel.
+    #     WARNING - this will block forever if the command executed never exits
+    #     :rtype: int - Exit code of command executed"""
+    #     while not channel.exit_status_ready():
+    #         gevent.sleep()
+    #     channel.close()
+    #     return channel.recv_exit_status()
 
     def copy_file(self, local_file, remote_file):
         """Copy local file to remote file in parallel
