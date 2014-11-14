@@ -6,9 +6,11 @@ omit =
     */python?.?/*
     */site-packages/nose/*
     fake_server/*
-    tests/*
+    */test*
+    eggs/*
     pssh_local.py
     setup.py
+    /home/travis/virtualenv/python*/lib/python*/*
 exclude_lines =
     pragma: no cover
     def __repr__
@@ -16,3 +18,4 @@ exclude_lines =
     raise NotImplementedError
     if __name__ == .__main__.:
     logger.debug
+    return self.host_clients[host]
