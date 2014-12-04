@@ -45,7 +45,7 @@ host_logger.setLevel(logging.INFO)
 DEFAULT_RETRIES = 3
 
 logger = logging.getLogger(__name__)
-    
+
 class UnknownHostException(Exception):
     """Raised when a host is unknown (dns failure)"""
     pass
@@ -74,10 +74,10 @@ class SSHClient(object):
     def __init__(self, host,
                  user=None, password=None, port=None,
                  pkey=None, forward_ssh_agent=True,
-                 num_retries=DEFAULT_RETRIES, _agent=None):
+                 num_retries=DEFAULT_RETRIES, _agent=None, **paramiko_kwargs):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
-         
+
         :param host: Hostname to connect to
         :type host: str
         :param user: (Optional) User to login as. Defaults to logged in user or \
@@ -140,21 +140,21 @@ class SSHClient(object):
         if _agent:
             self.client._agent = _agent
         self.num_retries = num_retries
-        self._connect()
+        self._connect(**paramiko_kwargs)
 
-    def _connect(self, retries=1):
+    def _connect(self, retries=1, **paramiko_kwargs):
         """Connect to host, throw UnknownHost exception on DNS errors"""
         try:
             self.client.connect(self.host, username=self.user,
                                 password=self.password, port=self.port,
                                 pkey=self.pkey,
-                                sock=self.proxy_command)
+                                sock=self.proxy_command, **paramiko_kwargs)
         except socket.gaierror, e:
             logger.error("Could not resolve host '%s' - retry %s/%s",
                          self.host, retries, self.num_retries)
             while retries < self.num_retries:
                 gevent.sleep(5)
-                return self._connect(retries=retries+1)
+                return self._connect(retries=retries+1, **paramiko_kwargs)
             raise UnknownHostException("%s - %s - retry %s/%s",
                                        str(e.args[1]),
                                        self.host, retries, self.num_retries)
@@ -163,7 +163,7 @@ class SSHClient(object):
                          self.host, self.port, retries, self.num_retries)
             while retries < self.num_retries:
                 gevent.sleep(5)
-                return self._connect(retries=retries+1)
+                return self._connect(retries=retries+1, **paramiko_kwargs)
             raise ConnectionErrorException("%s for host '%s:%s' - retry %s/%s",
                                            str(e.args[1]), self.host, self.port,
                                            retries, self.num_retries,)
@@ -229,7 +229,7 @@ class SSHClient(object):
 
     def mkdir(self, sftp, directory):
         """Make directory via SFTP channel
-        
+
         :param sftp: SFTP client object
         :type sftp: :mod:`paramiko.SFTPClient`
         :param directory: Remote directory to create
@@ -307,11 +307,11 @@ class ParallelSSHClient(object):
         :param pool_size: (Optional) Greenlet pool size. Controls on how many\
         hosts to execute tasks in parallel. Defaults to 10
         :type pool_size: int
-        
+
         **Example**
 
         >>> from pssh import ParallelSSHClient, AuthenticationException,\
-        		UnknownHostException, ConnectionErrorException
+                UnknownHostException, ConnectionErrorException
         >>> client = ParallelSSHClient(['myhost1', 'myhost2'])
         >>> try:
         >>> ... cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
@@ -326,7 +326,7 @@ class ParallelSSHClient(object):
         **Example with returned stdout and stderr buffers**
 
         >>> from pssh import ParallelSSHClient, AuthenticationException,\
-        		UnknownHostException, ConnectionErrorException
+                UnknownHostException, ConnectionErrorException
         >>> client = ParallelSSHClient(['myhost1', 'myhost2'])
         >>> try:
         >>> ... cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
@@ -335,10 +335,10 @@ class ParallelSSHClient(object):
         >>> output = [client.get_stdout(cmd, return_buffers=True) for cmd in cmds]
         >>> print output
         [{'myhost1': {'exit_code': 2,
-        	      'stdout' : <generator object <genexpr>,
+                  'stdout' : <generator object <genexpr>,
                       'stderr' : <generator object <genexpr>,}},
          {'myhost2': {'exit_code': 2,
-         	      'stdout' : <generator object <genexpr>,
+                  'stdout' : <generator object <genexpr>,
                       'stderr' : <generator object <genexpr>,}},
                       ]
         >>> for host_stdout in output:
@@ -352,25 +352,25 @@ class ParallelSSHClient(object):
         >>> import paramiko
         >>> client_key = paramiko.RSAKey.from_private_key_file('user.key')
         >>> client = ParallelSSHClient(['myhost1', 'myhost2'], pkey=client_key)
-        
+
         .. note ::
-          
+
           **Connection persistence**
-          
+
           Connections to hosts will remain established for the duration of the
           object's life. To close them, just `del` or reuse the object reference.
-          
+
           >>> client = ParallelSSHClient(['localhost'])
           >>> cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf')
           >>> cmds[0].join()
-          
+
           :netstat: ``tcp        0      0 127.0.0.1:53054         127.0.0.1:22            ESTABLISHED``
-          
+
           Connection remains active after commands have finished executing. Any \
           additional commands will use the same connection.
-          
+
           >>> del client
-          
+
           Connection is terminated.
         """
         self.pool = gevent.pool.Pool(size=pool_size)
@@ -396,26 +396,26 @@ class ParallelSSHClient(object):
         :rtype: List of :mod:`gevent.Greenlet`
 
         **Example**:
-      
+
         >>> cmds = client.exec_command('ls -ltrh')
-        
+
         Wait for completion, no stdout:
-        
+
         >>> for cmd in cmds:
         >>>     cmd.join()
-        
+
         Alternatively/in addition print stdout for each command:
-        
+
         >>> print [get_stdout(cmd) for cmd in cmds]
 
         Retrieving stdout implies join, meaning get_stdout will wait
         for completion of all commands before returning output.
-        
+
         You may call get_stdout on already completed greenlets to re-get
         their output as many times as you want."""
         return [self.pool.spawn(self._exec_command, host, *args, **kwargs)
                 for host in self.hosts]
-    
+
     def _exec_command(self, host, *args, **kwargs):
         """Make SSHClient, run command on host"""
         if not self.host_clients[host]:
@@ -428,7 +428,7 @@ class ParallelSSHClient(object):
 
     def get_stdout(self, greenlet, return_buffers=False):
         """Get/print stdout from greenlet and return exit code for host
-        
+
         :mod:`pssh.get_stdout` will close the open SSH channel but this does
         **not** close the established connection to the remote host, only the
         authenticated SSH channel within it. This is standard practise
@@ -452,7 +452,7 @@ class ParallelSSHClient(object):
         for example ``{'myhost1': {'exit_code': 0}}``
         :rtype: With ``return_buffers=True``: ``{'myhost1': {'exit_code': 0,
                                                              'channel' : None or SSH channel of command if command is still executing,
-         						     'stdout' : <iterable>,
+                                     'stdout' : <iterable>,
                                                              'stderr' : <iterable>,}}``
         """
         gevent.sleep(.2)
@@ -488,7 +488,7 @@ class ParallelSSHClient(object):
 
     def copy_file(self, local_file, remote_file):
         """Copy local file to remote file in parallel
-        
+
         :param local_file: Local filepath to copy to remote host
         :type local_file: str
         :param remote_file: Remote filepath on remote host to copy file to
