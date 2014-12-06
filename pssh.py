@@ -94,6 +94,9 @@ class SSHClient(object):
         :param num_retries: (Optional) Number of retries for connection attempts\
         before the client gives up. Defaults to 3.
         :type num_retries: int
+        :param timeout: (Optional) Number of seconds to timout connection attempts\
+        before the client gives up. Defaults to 10.
+        :type timeout: int
         :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding - \
         equivalent to `ssh -A` from the `ssh` command line utility. \
         Defaults to True if not set.
@@ -301,6 +304,9 @@ class ParallelSSHClient(object):
         :param num_retries: (Optional) Number of retries for connection attempts\
         before the client gives up. Defaults to 3.
         :type num_retries: int
+        :param timeout: (Optional) Number of seconds to timout connection attempts\
+        before the client gives up. Defaults to 10.
+        :type timeout: int
         :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding - \
         equivalent to `ssh -A` from the `ssh` command line utility. \
         Defaults to True if not set.
