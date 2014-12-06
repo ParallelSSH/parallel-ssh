@@ -74,7 +74,7 @@ class SSHClient(object):
     def __init__(self, host,
                  user=None, password=None, port=None,
                  pkey=None, forward_ssh_agent=True,
-                 num_retries=DEFAULT_RETRIES, _agent=None, **paramiko_kwargs):
+                 num_retries=DEFAULT_RETRIES, _agent=None, timeout=None):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
 
@@ -140,21 +140,22 @@ class SSHClient(object):
         if _agent:
             self.client._agent = _agent
         self.num_retries = num_retries
-        self._connect(**paramiko_kwargs)
+        self.timeout = timeout if timeout else 10
+        self._connect()
 
-    def _connect(self, retries=1, **paramiko_kwargs):
+    def _connect(self, retries=1):
         """Connect to host, throw UnknownHost exception on DNS errors"""
         try:
             self.client.connect(self.host, username=self.user,
                                 password=self.password, port=self.port,
                                 pkey=self.pkey,
-                                sock=self.proxy_command, **paramiko_kwargs)
+                                sock=self.proxy_command, timeout=self.timeout)
         except socket.gaierror, e:
             logger.error("Could not resolve host '%s' - retry %s/%s",
                          self.host, retries, self.num_retries)
             while retries < self.num_retries:
                 gevent.sleep(5)
-                return self._connect(retries=retries+1, **paramiko_kwargs)
+                return self._connect(retries=retries+1)
             raise UnknownHostException("%s - %s - retry %s/%s",
                                        str(e.args[1]),
                                        self.host, retries, self.num_retries)
@@ -163,7 +164,7 @@ class SSHClient(object):
                          self.host, self.port, retries, self.num_retries)
             while retries < self.num_retries:
                 gevent.sleep(5)
-                return self._connect(retries=retries+1, **paramiko_kwargs)
+                return self._connect(retries=retries+1)
             raise ConnectionErrorException("%s for host '%s:%s' - retry %s/%s",
                                            str(e.args[1]), self.host, self.port,
                                            retries, self.num_retries,)
@@ -281,7 +282,7 @@ class ParallelSSHClient(object):
 
     def __init__(self, hosts,
                  user=None, password=None, port=None, pkey=None,
-                 forward_ssh_agent=True, num_retries=DEFAULT_RETRIES,
+                 forward_ssh_agent=True, num_retries=DEFAULT_RETRIES, timeout=None,
                  pool_size=10):
         """
         :param hosts: Hosts to connect to
@@ -382,6 +383,7 @@ class ParallelSSHClient(object):
         self.port = port
         self.pkey = pkey
         self.num_retries = num_retries
+        self.timeout = timeout
         # To hold host clients
         self.host_clients = dict((host, None) for host in hosts)
 
@@ -423,7 +425,8 @@ class ParallelSSHClient(object):
                                                 password=self.password,
                                                 port=self.port, pkey=self.pkey,
                                                 forward_ssh_agent=self.forward_ssh_agent,
-                                                num_retries=self.num_retries)
+                                                num_retries=self.num_retries,
+                                                timeout=self.timeout)
         return self.host_clients[host].exec_command(*args, **kwargs)
 
     def get_stdout(self, greenlet, return_buffers=False):
