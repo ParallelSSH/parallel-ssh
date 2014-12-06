@@ -143,7 +143,7 @@ class SSHClient(object):
         if _agent:
             self.client._agent = _agent
         self.num_retries = num_retries
-        self.timeout = timeout if timeout else 10
+        self.timeout = timeout
         self._connect()
 
     def _connect(self, retries=1):
@@ -168,8 +168,10 @@ class SSHClient(object):
             while retries < self.num_retries:
                 gevent.sleep(5)
                 return self._connect(retries=retries+1)
+
+            error_type = e.args[1] if len(e.args) > 1 else e.args[0]
             raise ConnectionErrorException("%s for host '%s:%s' - retry %s/%s",
-                                           str(e.args[1]), self.host, self.port,
+                                           str(error_type), self.host, self.port,
                                            retries, self.num_retries,)
         except paramiko.AuthenticationException, e:
             raise AuthenticationException(e)
