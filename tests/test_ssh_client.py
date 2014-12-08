@@ -35,7 +35,7 @@ USER_KEY = paramiko.RSAKey.from_private_key_file(
     os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key']))
 
 class SSHClientTest(unittest.TestCase):
-    
+
     def setUp(self):
         self.fake_cmd = 'fake cmd'
         self.fake_resp = 'fake response'
@@ -133,6 +133,13 @@ not match source %s" % (copied_file_data, test_file_data))
                           SSHClient, host, port=self.listen_port,
                           pkey=self.user_key, num_retries=0)
 
+    def test_ssh_client_timeout(self):
+        """Test connection timeout error"""
+        with self.assertRaises(ConnectionErrorException) as cm:
+            SSHClient('127.0.0.1', port=self.listen_port,
+                      pkey=self.user_key, num_retries=0, timeout=1)
+
+        self.assertEqual(cm.exception.args[1], 'timed out')
 
 if __name__ == '__main__':
     unittest.main()
