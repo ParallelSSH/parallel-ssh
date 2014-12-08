@@ -111,6 +111,27 @@ class ParallelSSHClientTest(unittest.TestCase):
         del client
         server.join()
 
+    def test_pssh_client_timeout(self):
+        server = start_server({ self.fake_cmd : self.fake_resp },
+                              self.listen_socket,
+                              timeout=0.2)
+        client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
+                                   pkey=self.user_key,
+                                   timeout=0.1)
+        cmd = client.exec_command(self.fake_cmd)[0]
+        # Handle exception
+        try:
+            gevent.sleep(0.5)
+            cmd.get()
+            if not server.exception:
+                raise Exception("Expected EOFError from socket timeout, got none")
+            raise server.exception
+        except gevent.Timeout:
+            pass
+        del client
+        server.join()
+
+
     def test_pssh_client_exec_command_password(self):
         """Test password authentication. Fake server accepts any password
         even empty string"""

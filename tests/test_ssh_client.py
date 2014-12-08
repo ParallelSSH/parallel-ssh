@@ -20,11 +20,14 @@
 
 """Unittests for :mod:`pssh.SSHClient` class"""
 
+import gevent
+import socket
+import time
 import unittest
 from pssh import SSHClient, ParallelSSHClient, UnknownHostException, AuthenticationException,\
-    logger, ConnectionErrorException, UnknownHostException
+     logger, ConnectionErrorException, UnknownHostException, SSHException
 from fake_server.fake_server import start_server, make_socket, logger as server_logger, \
-    paramiko_logger
+     paramiko_logger
 from fake_server.fake_agent import FakeAgent
 import paramiko
 import os
@@ -126,20 +129,13 @@ not match source %s" % (copied_file_data, test_file_data))
                          msg="Got unexpected number of retries %s - expected %s"
                          % (num_tries, expected_num_tries,))
 
-    def test_ssh_client_conn_failure(self):
+    def test_ssh_client_unknown_host_failure(self):
         """Test connection error failure case - ConnectionErrorException"""
         host = ''.join([random.choice(string.ascii_letters) for n in xrange(8)])
         self.assertRaises(UnknownHostException,
                           SSHClient, host, port=self.listen_port,
                           pkey=self.user_key, num_retries=0)
 
-    def test_ssh_client_timeout(self):
-        """Test connection timeout error"""
-        with self.assertRaises(ConnectionErrorException) as cm:
-            SSHClient('127.0.0.1', port=self.listen_port,
-                      pkey=self.user_key, num_retries=0, timeout=1)
-
-        self.assertEqual(cm.exception.args[1], 'timed out')
 
 if __name__ == '__main__':
     unittest.main()

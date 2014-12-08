@@ -66,6 +66,11 @@ class ProxyCommandException(Exception):
     pass
 
 
+class SSHException(Exception):
+    """Raised on SSHException error - error authenticating with SSH server"""
+    pass
+
+
 class SSHClient(object):
     """Wrapper class over paramiko.SSHClient with sane defaults
     Honours ~/.ssh/config and /etc/ssh/ssh_config entries for host username \
@@ -178,6 +183,10 @@ class SSHClient(object):
         except paramiko.ProxyCommandFailure, e:
             logger.error("Error executing ProxyCommand - %s", e.message,)
             raise ProxyCommandException(e.message)
+        # SSHException is more general so should below other types
+        # of SSH failure
+        except paramiko.SSHException, e:
+            raise SSHException(e)
 
     def exec_command(self, command, sudo=False, user=None, **kwargs):
         """Wrapper to :mod:`paramiko.SSHClient.exec_command`
@@ -316,11 +325,11 @@ class ParallelSSHClient(object):
         :param pool_size: (Optional) Greenlet pool size. Controls on how many\
         hosts to execute tasks in parallel. Defaults to 10
         :type pool_size: int
-
+        
         **Example**
 
         >>> from pssh import ParallelSSHClient, AuthenticationException,\
-                UnknownHostException, ConnectionErrorException
+        		UnknownHostException, ConnectionErrorException
         >>> client = ParallelSSHClient(['myhost1', 'myhost2'])
         >>> try:
         >>> ... cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
@@ -335,7 +344,7 @@ class ParallelSSHClient(object):
         **Example with returned stdout and stderr buffers**
 
         >>> from pssh import ParallelSSHClient, AuthenticationException,\
-                UnknownHostException, ConnectionErrorException
+        		UnknownHostException, ConnectionErrorException
         >>> client = ParallelSSHClient(['myhost1', 'myhost2'])
         >>> try:
         >>> ... cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
@@ -344,10 +353,10 @@ class ParallelSSHClient(object):
         >>> output = [client.get_stdout(cmd, return_buffers=True) for cmd in cmds]
         >>> print output
         [{'myhost1': {'exit_code': 2,
-                  'stdout' : <generator object <genexpr>,
+                      'stdout' : <generator object <genexpr>,
                       'stderr' : <generator object <genexpr>,}},
          {'myhost2': {'exit_code': 2,
-                  'stdout' : <generator object <genexpr>,
+                      'stdout' : <generator object <genexpr>,
                       'stderr' : <generator object <genexpr>,}},
                       ]
         >>> for host_stdout in output:
@@ -361,25 +370,25 @@ class ParallelSSHClient(object):
         >>> import paramiko
         >>> client_key = paramiko.RSAKey.from_private_key_file('user.key')
         >>> client = ParallelSSHClient(['myhost1', 'myhost2'], pkey=client_key)
-
+        
         .. note ::
 
           **Connection persistence**
-
+          
           Connections to hosts will remain established for the duration of the
           object's life. To close them, just `del` or reuse the object reference.
-
+          
           >>> client = ParallelSSHClient(['localhost'])
           >>> cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf')
           >>> cmds[0].join()
-
+          
           :netstat: ``tcp        0      0 127.0.0.1:53054         127.0.0.1:22            ESTABLISHED``
-
+          
           Connection remains active after commands have finished executing. Any \
           additional commands will use the same connection.
-
+          
           >>> del client
-
+          
           Connection is terminated.
         """
         self.pool = gevent.pool.Pool(size=pool_size)
@@ -408,19 +417,19 @@ class ParallelSSHClient(object):
         **Example**:
 
         >>> cmds = client.exec_command('ls -ltrh')
-
+        
         Wait for completion, no stdout:
-
+        
         >>> for cmd in cmds:
         >>>     cmd.join()
-
+        
         Alternatively/in addition print stdout for each command:
-
+        
         >>> print [get_stdout(cmd) for cmd in cmds]
 
         Retrieving stdout implies join, meaning get_stdout will wait
         for completion of all commands before returning output.
-
+        
         You may call get_stdout on already completed greenlets to re-get
         their output as many times as you want."""
         return [self.pool.spawn(self._exec_command, host, *args, **kwargs)
@@ -439,7 +448,7 @@ class ParallelSSHClient(object):
 
     def get_stdout(self, greenlet, return_buffers=False):
         """Get/print stdout from greenlet and return exit code for host
-
+        
         :mod:`pssh.get_stdout` will close the open SSH channel but this does
         **not** close the established connection to the remote host, only the
         authenticated SSH channel within it. This is standard practise
@@ -463,7 +472,7 @@ class ParallelSSHClient(object):
         for example ``{'myhost1': {'exit_code': 0}}``
         :rtype: With ``return_buffers=True``: ``{'myhost1': {'exit_code': 0,
                                                              'channel' : None or SSH channel of command if command is still executing,
-                                     'stdout' : <iterable>,
+                                                             'stdout' : <iterable>,
                                                              'stderr' : <iterable>,}}``
         """
         gevent.sleep(.2)

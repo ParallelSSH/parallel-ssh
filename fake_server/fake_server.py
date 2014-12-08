@@ -26,9 +26,8 @@ paramiko repository
 """
 
 import gevent
-from gevent import monkey
-monkey.patch_all()
 import os
+import socket
 from gevent import socket
 from gevent.event import Event
 import sys
@@ -37,6 +36,9 @@ import logging
 import paramiko
 import time
 from stub_sftp import StubSFTPServer
+from gevent import monkey
+monkey.patch_all()
+
 
 logger = logging.getLogger("fake_server")
 paramiko_logger = logging.getLogger('paramiko.transport')
@@ -44,7 +46,7 @@ paramiko_logger = logging.getLogger('paramiko.transport')
 host_key = paramiko.RSAKey(filename = os.path.sep.join([os.path.dirname(__file__), 'rsa.key']))
 
 class Server (paramiko.ServerInterface):
-    def __init__(self, cmd_req_response = {}, fail_auth = False):
+    def __init__(self, cmd_req_response = {}, fail_auth=False):
         self.event = Event()
         self.cmd_req_response = cmd_req_response
         self.fail_auth = fail_auth
@@ -113,7 +115,8 @@ def make_socket(listen_ip):
         return
     return sock
 
-def listen(cmd_req_response, sock, fail_auth = False):
+def listen(cmd_req_response, sock, fail_auth=False,
+           timeout=None):
     """Run a fake ssh server and given a cmd_to_run, send given \
     response to client connection. Returns (server, socket) tuple \
     where server is a joinable server thread and socket is listening \
@@ -129,16 +132,17 @@ def listen(cmd_req_response, sock, fail_auth = False):
         logger.error('*** Listen failed: %s' % (str(e),))
         traceback.print_exc()
         return
-    handle_ssh_connection(cmd_req_response, sock, fail_auth=fail_auth)
+    handle_ssh_connection(cmd_req_response, sock, fail_auth=fail_auth,
+                          timeout=timeout)
 
-def _handle_ssh_connection(cmd_req_response, transport, fail_auth = False):
+def _handle_ssh_connection(cmd_req_response, transport, fail_auth=False):
     try:
         transport.load_server_moduli()
     except:
         return
     transport.add_server_key(host_key)
     transport.set_subsystem_handler('sftp', paramiko.SFTPServer, StubSFTPServer)
-    server = Server(cmd_req_response = cmd_req_response, fail_auth = fail_auth)
+    server = Server(cmd_req_response = cmd_req_response, fail_auth=fail_auth)
     try:
         transport.start_server(server=server)
     except paramiko.SSHException, e:
@@ -158,9 +162,15 @@ def _handle_ssh_connection(cmd_req_response, transport, fail_auth = False):
         time.sleep(.5)
     channel.close()
     
-def handle_ssh_connection(cmd_req_response, sock, fail_auth = False):
+def handle_ssh_connection(cmd_req_response, sock,
+                          fail_auth=False,
+                          timeout=None):
     conn, addr = sock.accept()
     logger.info('Got connection..')
+    if timeout:
+        logger.debug("SSH server sleeping for %s then raising socket.timeout",
+                    timeout)
+        gevent.Timeout(timeout).start()
     try:
         transport = paramiko.Transport(conn)
         _handle_ssh_connection(cmd_req_response, transport, fail_auth=fail_auth)
@@ -173,8 +183,10 @@ def handle_ssh_connection(cmd_req_response, sock, fail_auth = False):
             pass
         return
 
-def start_server(cmd_req_response, sock, fail_auth=False):
-    return gevent.spawn(listen, cmd_req_response, sock, fail_auth=fail_auth)
+def start_server(cmd_req_response, sock, fail_auth=False,
+                 timeout=None):
+    return gevent.spawn(listen, cmd_req_response, sock, fail_auth=fail_auth,
+                        timeout=timeout)
 
 if __name__ == "__main__":
     logging.basicConfig()
