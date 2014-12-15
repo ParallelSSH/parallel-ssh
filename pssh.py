@@ -82,7 +82,7 @@ class SSHClient(object):
                  num_retries=DEFAULT_RETRIES, _agent=None, timeout=None):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
-
+        
         :param host: Hostname to connect to
         :type host: str
         :param user: (Optional) User to login as. Defaults to logged in user or \
@@ -244,7 +244,7 @@ class SSHClient(object):
 
     def mkdir(self, sftp, directory):
         """Make directory via SFTP channel
-
+        
         :param sftp: SFTP client object
         :type sftp: :mod:`paramiko.SFTPClient`
         :param directory: Remote directory to create
@@ -372,7 +372,7 @@ class ParallelSSHClient(object):
         >>> client = ParallelSSHClient(['myhost1', 'myhost2'], pkey=client_key)
         
         .. note ::
-
+        
           **Connection persistence**
           
           Connections to hosts will remain established for the duration of the
@@ -415,7 +415,7 @@ class ParallelSSHClient(object):
         :rtype: List of :mod:`gevent.Greenlet`
 
         **Example**:
-
+        
         >>> cmds = client.exec_command('ls -ltrh')
         
         Wait for completion, no stdout:
@@ -508,7 +508,7 @@ class ParallelSSHClient(object):
 
     def copy_file(self, local_file, remote_file):
         """Copy local file to remote file in parallel
-
+        
         :param local_file: Local filepath to copy to remote host
         :type local_file: str
         :param remote_file: Remote filepath on remote host to copy file to
