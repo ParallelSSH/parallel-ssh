@@ -124,7 +124,7 @@ class ParallelSSHClientTest(unittest.TestCase):
             gevent.sleep(0.5)
             cmd.get()
             if not server.exception:
-                raise Exception("Expected EOFError from socket timeout, got none")
+                raise Exception("Expected gevent.Timeout from socket timeout, got none")
             raise server.exception
         except gevent.Timeout:
             pass

@@ -17,7 +17,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-"""Small wrapper library over paramiko that allows for parallel execution of SSH commands on remote hosts and executing simple single host commands over SSH.
+"""Asynchronous parallel SSH library
 
 parallel-ssh uses asychronous network requests - there is *no* multi-threading or multi-processing used.
 
@@ -28,13 +28,13 @@ The `libev event loop library<http://software.schmorp.de/pkg/libev.html>_` is ut
 See :mod:`pssh.ParallelSSHClient` and :mod:`pssh.SSHClient` for class documentation.
 """
 
-import gevent.pool
-from gevent import socket
-from gevent import monkey
-monkey.patch_all()
+from socket import gaierror as sock_gaierror, error as sock_error
 import logging
 import paramiko
 import os
+import gevent.pool
+from gevent import monkey
+monkey.patch_all()
 
 host_logger = logging.getLogger('host_logging')
 handler = logging.StreamHandler()
@@ -158,7 +158,7 @@ class SSHClient(object):
                                 password=self.password, port=self.port,
                                 pkey=self.pkey,
                                 sock=self.proxy_command, timeout=self.timeout)
-        except socket.gaierror, e:
+        except sock_gaierror, e:
             logger.error("Could not resolve host '%s' - retry %s/%s",
                          self.host, retries, self.num_retries)
             while retries < self.num_retries:
@@ -167,7 +167,7 @@ class SSHClient(object):
             raise UnknownHostException("%s - %s - retry %s/%s",
                                        str(e.args[1]),
                                        self.host, retries, self.num_retries)
-        except socket.error, e:
+        except sock_error, e:
             logger.error("Error connecting to host '%s:%s' - retry %s/%s",
                          self.host, self.port, retries, self.num_retries)
             while retries < self.num_retries:
