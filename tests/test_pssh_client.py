@@ -96,6 +96,48 @@ class ParallelSSHClientTest(unittest.TestCase):
         del client
         server.join()
 
+    def test_pssh_client_run_command_get_output(self):
+        server = start_server({ self.fake_cmd : self.fake_resp }, self.listen_socket)
+        client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
+                                   pkey=self.user_key)
+        output = client.run_command(self.fake_cmd)
+        # import ipdb; ipdb.set_trace()
+        expected_exit_code = 0
+        expected_stdout = [self.fake_resp]
+        expected_stderr = []
+        exit_code = output['127.0.0.1']['exit_code']
+        stdout = list(output['127.0.0.1']['stdout'])
+        stderr = list(output['127.0.0.1']['stderr'])
+        self.assertEqual(expected_exit_code, exit_code,
+                         msg = "Got unexpected exit code - %s, expected %s" %
+                         (exit_code,
+                          expected_exit_code,))
+        self.assertEqual(expected_stdout, stdout,
+                         msg = "Got unexpected stdout - %s, expected %s" % 
+                         (stdout,
+                          expected_stdout,))
+        self.assertEqual(expected_stderr, stderr,
+                         msg = "Got unexpected stderr - %s, expected %s" % 
+                         (stderr,
+                          expected_stderr,))
+        del client
+        server.join()
+
+    def test_pssh_client_run_long_command(self):
+        expected_lines = 5
+        server = start_server({ self.long_running_cmd :
+                                self.long_running_response(expected_lines) },
+                              self.listen_socket)
+        client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
+                                   pkey=self.user_key)
+        output = client.run_command(self.long_running_cmd)
+        self.assertTrue('127.0.0.1' in output, msg="Got no output for command")
+        stdout = list(output['127.0.0.1']['stdout'])
+        self.assertTrue(len(stdout) == expected_lines, msg="Expected %s lines of response, got %s" %
+                        (expected_lines, len(stdout)))
+        del client
+        server.kill()
+
     def test_pssh_client_auth_failure(self):
         server = start_server({ self.fake_cmd : self.fake_resp },
                               self.listen_socket, fail_auth=True)

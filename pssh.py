@@ -28,6 +28,7 @@ The `libev event loop library<http://software.schmorp.de/pkg/libev.html>_` is ut
 See :mod:`pssh.ParallelSSHClient` and :mod:`pssh.SSHClient` for class documentation.
 """
 
+import warnings
 from socket import gaierror as sock_gaierror, error as sock_error
 import logging
 import paramiko
@@ -36,7 +37,7 @@ import gevent.pool
 from gevent import monkey
 monkey.patch_all()
 
-host_logger = logging.getLogger('host_logging')
+host_logger = logging.getLogger('host_logger')
 handler = logging.StreamHandler()
 host_log_format = logging.Formatter('%(message)s')
 handler.setFormatter(host_log_format)
@@ -213,8 +214,9 @@ class SSHClient(object):
         channel.get_pty()
         _stdout, _stderr = channel.makefile('rb'), \
                            channel.makefile_stderr('rb')
-        stdout, stderr = self._read_output_buffer(_stdout), \
-                         self._read_output_buffer(_stderr)
+        stdout, stderr = self._read_output_buffer(_stdout,), \
+                         self._read_output_buffer(_stderr,
+                                                  prefix='\t[err]')
         if sudo and not user:
             command = 'sudo -S bash -c "%s"' % command.replace('"', '\\"')
         elif user:
@@ -229,12 +231,12 @@ class SSHClient(object):
             gevent.sleep(.2)
         return channel, self.host, stdout, stderr
 
-    def _read_output_buffer(self, output_buffer):
-        """Read from output buffers,
-        allowing coroutines to execute in between reading"""
+    def _read_output_buffer(self, output_buffer, prefix=''):
+        """Read from output buffers and log to host_logger"""
         for line in output_buffer:
-            gevent.sleep()
-            yield line.strip()
+            output = line.strip()
+            host_logger.info("[%s]%s\t%s", self.host, prefix, output,)
+            yield output
 
     def _make_sftp(self):
         """Make SFTP client from open transport"""
@@ -404,8 +406,37 @@ class ParallelSSHClient(object):
         # To hold host clients
         self.host_clients = dict((host, None) for host in hosts)
 
+    def run_command(self, *args, **kwargs):
+        """Run command on all hosts in parallel, honoring self.pool_size
+
+        :param args: Position arguments for command
+        :type args: tuple
+        :param kwargs: Keyword arguments for command
+        :type kwargs: dict
+
+        :rtype: List of :mod:`gevent.Greenlet`
+
+        **Example**:
+        
+        >>> output = client.exec_command('ls -ltrh')
+        
+        Wait for completion, no stdout:
+        
+        >>> client.pool.join()
+        
+        Alternatively/in addition print stdout for each command:
+        
+        >>> for host in output:
+        >>>     print output[host]['stdout']
+        """
+        for host in self.hosts:
+            self.pool.spawn(self._exec_command, host, *args, **kwargs)
+        return self.get_output()
+    
     def exec_command(self, *args, **kwargs):
         """Run command on all hosts in parallel, honoring self.pool_size
+
+        **Superseeded by :mod:`ParallelSSH.run_command`**
 
         :param args: Position arguments for command
         :type args: tuple
@@ -446,28 +477,71 @@ class ParallelSSHClient(object):
                                                 timeout=self.timeout)
         return self.host_clients[host].exec_command(*args, **kwargs)
 
+    def get_output(self, commands=None):
+        """Get output from running commands.
+
+        Stdout and stderr are also logged via the logger named ``host_logger``
+        which is enabled by default.
+        ``host_logger`` output can be disabled by removing its handler.
+        >>> logger = logging.getLogger('host_logger')
+        >>> for handler in logger.handlers: logger.removeHandler(handler)
+
+        **Example usage**:
+
+        >>> output = client.get_output()
+        >>> for host in output: print output[host]['stdout']
+        <stdout>
+        >>> # Get exit code after command has finished
+        >>> self.get_exit_code(output[host])
+        0
+
+        :param commands: (Optional) Override commands to get output from.
+        Uses running commands in pool if not given
+        :type commands: :mod:`gevent.Greenlet`
+        :rtype: Dictionary with host as key as in:
+        ``{'myhost1': {'exit_code': exit code if ready else None,
+                       'channel' : SSH channel of command,
+                       'stdout' : <iterable>,
+                       'stderr' : <iterable>,}}``"""
+        if not commands:
+            commands = list(self.pool.greenlets)
+        return {host: {'exit_code': self._get_exit_code(channel),
+                       'channel' : channel,
+                       'stdout' : stdout,
+                       'stderr' : stderr, }
+                       for cmd in commands
+                       for (channel, host, stdout, stderr) in [cmd.get()]}
+
+    def get_exit_code(self, host_output):
+        """Get exit code from host output if available
+        :param host_output: Per host output as returned by `self.get_output`
+        :rtype: int or None if exit code not ready"""
+        if not 'channel' in host_output:
+            logger.error("%s does not look like host output..", host_output,)
+            return
+        channel = host_output['channel']
+        return self._get_exit_code(channel)
+
+    def _get_exit_code(self, channel):
+        """Get exit code from channel if ready"""
+        if not channel.exit_status_ready():
+            return
+        channel.close()
+        return channel.recv_exit_status()
+
     def get_stdout(self, greenlet, return_buffers=False):
         """Get/print stdout from greenlet and return exit code for host
         
-        :mod:`pssh.get_stdout` will close the open SSH channel but this does
-        **not** close the established connection to the remote host, only the
-        authenticated SSH channel within it. This is standard practise
-        in SSH when a command has finished executing. A new command
-        will open a new channel which is very fast on already established
-        connections.
-
-        By default, stdout and stderr will be logged via the logger named \
-        ``host_logger`` unless ``return_buffers`` is set to ``True`` in which case \
-        both buffers are instead returned along with the exit status.
-
+        **Deprecated** - use self.get_output() instead.
+        
         :param greenlet: Greenlet object containing an \
         SSH channel reference, hostname, stdout and stderr buffers
         :type greenlet: :mod:`gevent.Greenlet`
-
+        
         :param return_buffers: Flag to turn on returning stdout and stderr \
         buffers along with exit code. Defaults to off.
         :type return_buffers: bool
-
+        
         :rtype: Dictionary containing ``{host: {'exit_code': exit code}}`` entry \
         for example ``{'myhost1': {'exit_code': 0}}``
         :rtype: With ``return_buffers=True``: ``{'myhost1': {'exit_code': 0,
@@ -475,6 +549,8 @@ class ParallelSSHClient(object):
                                                              'stdout' : <iterable>,
                                                              'stderr' : <iterable>,}}``
         """
+        warnings.warn("This method is being deprecated and will be removed in \
+future releases - use self.get_output instead", DeprecationWarning)
         gevent.sleep(.2)
         channel, host, stdout, stderr = greenlet.get()
         if channel.exit_status_ready():
@@ -495,16 +571,6 @@ class ParallelSSHClient(object):
                        'channel' : channel if not channel.closed else None,
                        'stdout' : stdout,
                        'stderr' : stderr, }}
-
-    # WIP
-    # def wait_for_exit_status(self, channel):
-    #     """Block and wait for exit status on channel.
-    #     WARNING - this will block forever if the command executed never exits
-    #     :rtype: int - Exit code of command executed"""
-    #     while not channel.exit_status_ready():
-    #         gevent.sleep()
-    #     channel.close()
-    #     return channel.recv_exit_status()
 
     def copy_file(self, local_file, remote_file):
         """Copy local file to remote file in parallel

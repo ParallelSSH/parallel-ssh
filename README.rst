@@ -42,10 +42,10 @@ Run `ls` on two remote hosts in parallel.
 >>> from pssh import ParallelSSHClient
 >>> hosts = ['myhost1', 'myhost2']
 >>> client = ParallelSSHClient(hosts)
->>> cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
->>> print [client.get_stdout(cmd) for cmd in cmds]
+>>> output = client.run_command('ls -ltrh /tmp/aasdfasdf', sudo=True)
+>>> for host in output: print output
 [localhost]     drwxr-xr-x  6 xxx xxx 4.0K Jan  1 00:00 xxx
-[{'localhost': {'exit_code': 0}}]
+{'localhost': {'exit_code': 0, 'stdout': <generator>, 'stderr': <generator>, 'channel': channel}}
 
 **************************
 Frequently asked questions
@@ -83,6 +83,14 @@ Frequently asked questions
   >>> import paramiko
   >>> my_key = paramiko.RSAKey.from_private_key_file(my_rsa_key)
   >>> client = ParallelSSHClient(pkey=my_key)
+
+:Q:
+   Why should I use this module and not, for example, `fabric <https://github.com/fabric/fabric>`_?
+
+:A:
+   Fabric is a port of `capistrano <https://github.com/capistrano/capistrano>`_ from ruby to python. Its design goals are to provide a faithful port of capistrano with capistrano's `tasks` and `roles` to python with interactive command line being the intended usage - its use as a library is non-standard and in many cases just plain broken.
+   Furthermore, its parallel commands use a combination of both threads and processes with extremely high CPU usage while its running. Fabric currently stands at more than 130,000 lines of code, a large proportion of which is untested, particularly if used as a library as opposed to less than 700 currently in `ParallelSSH` with over 70% code test coverage.
+   ParallelSSH's design goals are to provide a *library* for running *asynchronous* SSH commands with **minimal** load induced on the system by doing so with the inteded usage being completely programmatic and non-interactive - Fabric provides none of these goals.
 
 ********
 SFTP/SCP
