@@ -330,8 +330,8 @@ class ParallelSSHClient(object):
         
         **Example**
 
-        >>> from pssh import ParallelSSHClient, AuthenticationException,\
-        		UnknownHostException, ConnectionErrorException
+        >>> from pssh import ParallelSSHClient, AuthenticationException, \
+UnknownHostException, ConnectionErrorException
         >>> client = ParallelSSHClient(['myhost1', 'myhost2'])
         >>> try:
         >>> ... output = client.run_command('ls -ltrh /tmp/aasdfasdf', sudo=True)
@@ -503,9 +503,10 @@ future releases - use self.run_command instead", DeprecationWarning)
         Stdout and stderr are also logged via the logger named ``host_logger``
         which is enabled by default.
         ``host_logger`` output can be disabled by removing its handler.
+        
         >>> logger = logging.getLogger('host_logger')
         >>> for handler in logger.handlers: logger.removeHandler(handler)
-
+        
         **Example usage**:
 
         >>> output = client.get_output()
