@@ -292,9 +292,9 @@ class ParallelSSHClient(object):
     """Uses :mod:`pssh.SSHClient`, performs tasks over SSH on multiple hosts in \
     parallel.
 
-    Connections to hosts are established in parallel when ``exec_command`` is called,
+    Connections to hosts are established in parallel when ``run_command`` is called,
     therefor any connection and/or authentication exceptions will happen on the
-    call to ``exec_command`` and need to be caught."""
+    call to ``run_command`` and need to be caught."""
 
     def __init__(self, hosts,
                  user=None, password=None, port=None, pkey=None,
@@ -334,38 +334,30 @@ class ParallelSSHClient(object):
         		UnknownHostException, ConnectionErrorException
         >>> client = ParallelSSHClient(['myhost1', 'myhost2'])
         >>> try:
-        >>> ... cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
+        >>> ... output = client.run_command('ls -ltrh /tmp/aasdfasdf', sudo=True)
         >>> except (AuthenticationException, UnknownHostException, ConnectionErrorException):
         >>> ... return
-        >>> output = [client.get_stdout(cmd) for cmd in cmds]
+        >>> # Commands have started executing at this point
+        >>> # Exit code will probably not be available immediately
+        >>> print output
+        >>> {'myhost1': {'exit_code': None,
+                         'stdout' : <generator>,
+                         'stderr' : <generator>,
+                         'cmd' : <greenlet>,
+                         },
+             'myhost2': {'exit_code': None,
+                         'stdout' : <generator>,
+                         'stderr' : <generator>,
+                         'cmd' : <greenlet>,
+            }}
+        >>> # Print output as it comes in. 
+        >>> for host in output: print output[host]['stdout']
         [myhost1]     ls: cannot access /tmp/aasdfasdf: No such file or directory
         [myhost2]     ls: cannot access /tmp/aasdfasdf: No such file or directory
-        >>> print output
-        [{'myhost1': {'exit_code': 2}}, {'myhost2': {'exit_code': 2}}]
-
-        **Example with returned stdout and stderr buffers**
-
-        >>> from pssh import ParallelSSHClient, AuthenticationException,\
-        		UnknownHostException, ConnectionErrorException
-        >>> client = ParallelSSHClient(['myhost1', 'myhost2'])
-        >>> try:
-        >>> ... cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf', sudo = True)
-        >>> except (AuthenticationException, UnknownHostException, ConnectionErrorException):
-        >>> ... return
-        >>> output = [client.get_stdout(cmd, return_buffers=True) for cmd in cmds]
-        >>> print output
-        [{'myhost1': {'exit_code': 2,
-                      'stdout' : <generator object <genexpr>,
-                      'stderr' : <generator object <genexpr>,}},
-         {'myhost2': {'exit_code': 2,
-                      'stdout' : <generator object <genexpr>,
-                      'stderr' : <generator object <genexpr>,}},
-                      ]
-        >>> for host_stdout in output:
-            ... for line in host_stdout[host_output.keys()[0]]['stdout']:
-                ... print line
-                    ls: cannot access /tmp/aasdfasdf: No such file or directory
-                    ls: cannot access /tmp/aasdfasdf: No such file or directory
+        >>> # Retrieve exit code after commands have finished
+        >>> # `get_exit_code` will return `None` if command has not finished
+        >>> print client.get_exit_code(output[host])
+        0
 
         **Example with specified private key**
 
@@ -381,8 +373,8 @@ class ParallelSSHClient(object):
           object's life. To close them, just `del` or reuse the object reference.
           
           >>> client = ParallelSSHClient(['localhost'])
-          >>> cmds = client.exec_command('ls -ltrh /tmp/aasdfasdf')
-          >>> cmds[0].join()
+          >>> output = client.run_command('ls -ltrh /tmp/aasdfasdf')
+          >>> client.pool.join()
           
           :netstat: ``tcp        0      0 127.0.0.1:53054         127.0.0.1:22            ESTABLISHED``
           
@@ -407,27 +399,48 @@ class ParallelSSHClient(object):
         self.host_clients = dict((host, None) for host in hosts)
 
     def run_command(self, *args, **kwargs):
-        """Run command on all hosts in parallel, honoring self.pool_size
+        """Run command on all hosts in parallel, honoring self.pool_size,
+        and return output buffers. This function will block until all commands
+        have **started** and then return immediately. Any connection and/or
+        authentication exceptions will be raised here and need catching.
 
-        :param args: Position arguments for command
+        :param args: Positional arguments for command
         :type args: tuple
         :param kwargs: Keyword arguments for command
         :type kwargs: dict
 
-        :rtype: List of :mod:`gevent.Greenlet`
+        :rtype: Dictionary with host as key as per :mod:`ParallelSSH.get_output`:
+        ``{'myhost1': {'exit_code': exit code if ready else None,
+                       'channel' : SSH channel of command,
+                       'stdout'  : <iterable>,
+                       'stderr'  : <iterable>,
+                       'cmd'     : <greenlet>}}``
 
         **Example**:
         
-        >>> output = client.exec_command('ls -ltrh')
+        >>> output = client.run_command('ls -ltrh')
+
+        print stdout for each command:
+        
+        >>> for host in output:
+        >>>     for line in output[host]['stdout']: print line
+
+        Get exit code after command has finished:
+
+        >>> for host in output:
+        >>>     for line in output[host]['stdout']: print line
+        >>>     exit_code = client.get_exit_code(output[host])
         
         Wait for completion, no stdout:
         
         >>> client.pool.join()
         
-        Alternatively/in addition print stdout for each command:
-        
+        Capture stdout - **WARNING** - this will store the entirety of stdout
+        into memory and may exhaust available memory if command output is
+        large enough:
         >>> for host in output:
-        >>>     print output[host]['stdout']
+        >>>     stdout = list(output[host]['stdout'])
+        >>>     print "Complete stdout for host %s is %s" % (host, stdout,)
         """
         for host in self.hosts:
             self.pool.spawn(self._exec_command, host, *args, **kwargs)
@@ -501,14 +514,16 @@ class ParallelSSHClient(object):
         :rtype: Dictionary with host as key as in:
         ``{'myhost1': {'exit_code': exit code if ready else None,
                        'channel' : SSH channel of command,
-                       'stdout' : <iterable>,
-                       'stderr' : <iterable>,}}``"""
+                       'stdout'  : <iterable>,
+                       'stderr'  : <iterable>,
+                       'cmd'     : <greenlet>}}``"""
         if not commands:
             commands = list(self.pool.greenlets)
         return {host: {'exit_code': self._get_exit_code(channel),
                        'channel' : channel,
                        'stdout' : stdout,
-                       'stderr' : stderr, }
+                       'stderr' : stderr,
+                       'cmd' : cmd, }
                        for cmd in commands
                        for (channel, host, stdout, stderr) in [cmd.get()]}
 
