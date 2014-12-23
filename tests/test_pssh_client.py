@@ -30,6 +30,7 @@ import gevent
 import threading
 import paramiko
 import os
+import warnings
 
 USER_KEY = paramiko.RSAKey.from_private_key_file(
     os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key']))

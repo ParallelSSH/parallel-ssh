@@ -476,6 +476,8 @@ class ParallelSSHClient(object):
         
         You may call get_stdout on already completed greenlets to re-get
         their output as many times as you want."""
+        warnings.warn("This method is being deprecated and will be removed in \
+future releases - use self.run_command instead", DeprecationWarning)
         return [self.pool.spawn(self._exec_command, host, *args, **kwargs)
                 for host in self.hosts]
 
