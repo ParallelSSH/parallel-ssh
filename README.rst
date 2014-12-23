@@ -1,7 +1,7 @@
 parallel-ssh
 ============
 
-Small wrapper library over paramiko that allows for parallel execution of SSH commands on remote hosts and executing simple single host commands over SSH.
+Library for running asynchronous parallel SSH commands over many hosts.
 
 parallel-ssh uses asychronous network requests - there is *no* multi-threading or multi-processing used.
 
