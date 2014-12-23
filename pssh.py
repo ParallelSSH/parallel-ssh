@@ -410,12 +410,15 @@ class ParallelSSHClient(object):
         :type kwargs: dict
 
         :rtype: Dictionary with host as key as per :mod:`ParallelSSH.get_output`:
-        ``{'myhost1': {'exit_code': exit code if ready else None,
+
+        ::
+        
+          {'myhost1': {'exit_code': exit code if ready else None,
                        'channel' : SSH channel of command,
                        'stdout'  : <iterable>,
                        'stderr'  : <iterable>,
-                       'cmd'     : <greenlet>}}``
-
+                       'cmd'     : <greenlet>}}
+        
         **Example**:
         
         >>> output = client.run_command('ls -ltrh')
@@ -438,9 +441,11 @@ class ParallelSSHClient(object):
         Capture stdout - **WARNING** - this will store the entirety of stdout
         into memory and may exhaust available memory if command output is
         large enough:
+        
         >>> for host in output:
         >>>     stdout = list(output[host]['stdout'])
         >>>     print "Complete stdout for host %s is %s" % (host, stdout,)
+        
         """
         for host in self.hosts:
             self.pool.spawn(self._exec_command, host, *args, **kwargs)
@@ -514,11 +519,16 @@ future releases - use self.run_command instead", DeprecationWarning)
         Uses running commands in pool if not given
         :type commands: :mod:`gevent.Greenlet`
         :rtype: Dictionary with host as key as in:
-        ``{'myhost1': {'exit_code': exit code if ready else None,
+
+        ::
+        
+          {'myhost1': {'exit_code': exit code if ready else None,
                        'channel' : SSH channel of command,
                        'stdout'  : <iterable>,
                        'stderr'  : <iterable>,
-                       'cmd'     : <greenlet>}}``"""
+                       'cmd'     : <greenlet>}}
+        
+        """
         if not commands:
             commands = list(self.pool.greenlets)
         return {host: {'exit_code': self._get_exit_code(channel),
