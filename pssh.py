@@ -28,14 +28,14 @@ The `libev event loop library<http://software.schmorp.de/pkg/libev.html>_` is ut
 See :mod:`pssh.ParallelSSHClient` and :mod:`pssh.SSHClient` for class documentation.
 """
 
+from gevent import monkey
+monkey.patch_all()
+import gevent.pool
 import warnings
 from socket import gaierror as sock_gaierror, error as sock_error
 import logging
 import paramiko
 import os
-import gevent.pool
-from gevent import monkey
-monkey.patch_all()
 
 host_logger = logging.getLogger('host_logger')
 handler = logging.StreamHandler()
@@ -228,7 +228,7 @@ class SSHClient(object):
             command = 'bash -c "%s"' % command.replace('"', '\\"')
         logger.debug("Running command %s on %s", command, self.host)
         channel.exec_command(command, **kwargs)
-        logger.debug("Command finished executing")
+        logger.debug("Command started")
         while not (channel.recv_ready() or channel.closed):
             gevent.sleep(.2)
         return channel, self.host, stdout, stderr
@@ -357,7 +357,7 @@ UnknownHostException, ConnectionErrorException
                          'cmd' : <greenlet>,
             }}
         >>> # Print output as it comes in. 
-        >>> for host in output: print output[host]['stdout']
+        >>> for host in output: for line in output[host]['stdout']: print line
         [myhost1]     ls: cannot access /tmp/aasdfasdf: No such file or directory
         [myhost2]     ls: cannot access /tmp/aasdfasdf: No such file or directory
         >>> # Retrieve exit code after commands have finished

@@ -79,7 +79,7 @@ Frequently asked questions
   Can ParallelSSH forward my SSH agent?
 
 :A:
-  SSH agent forwarding, what `ssh -A` does on the command line, is supported and enabled by default. Creating an object as `ParallelSSH(forward_ssh_agent=False)` will disable that behaviour.
+  SSH agent forwarding, what `ssh -A` does on the command line, is supported and enabled by default. Creating an object as `ParallelSSHClient(forward_ssh_agent=False)` will disable that behaviour.
 
 :Q:
   Is proxying supported?
@@ -101,6 +101,11 @@ Frequently asked questions
   >>> import paramiko
   >>> client_key = paramiko.RSAKey.from_private_key_file('user.key')
   >>> client = ParallelSSHClient(['myhost1', 'myhost2'], pkey=client_key)
+
+:Q:
+   Is there a user's group for feedback and discussion about ParallelSSH?
+:A:
+   There is a public `ParallelSSH Google group <https://groups.google.com/forum/#!forum/parallelssh>`_ setup for this purpose - both posting and viewing are open to the public.
 
 ********
 SFTP/SCP
