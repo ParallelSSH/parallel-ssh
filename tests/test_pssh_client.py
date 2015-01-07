@@ -21,9 +21,9 @@
 
 import unittest
 from pssh import ParallelSSHClient, UnknownHostException, \
-    AuthenticationException, ConnectionErrorException
-from fake_server.fake_server import start_server, make_socket, logger as server_logger, \
-    paramiko_logger
+     AuthenticationException, ConnectionErrorException
+from fake_server.fake_server import start_server, make_socket, \
+     logger as server_logger, paramiko_logger
 import random
 import logging
 import gevent
@@ -165,8 +165,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         output = client.run_command(self.long_running_cmd)
         self.assertTrue('127.0.0.1' in output, msg="Got no output for command")
         stdout = list(output['127.0.0.1']['stdout'])
-        self.assertTrue(len(stdout) == expected_lines, msg="Expected %s lines of response, got %s" %
-                        (expected_lines, len(stdout)))
+        self.assertTrue(len(stdout) == expected_lines,
+                        msg="Expected %s lines of response, got %s" % (
+                            expected_lines, len(stdout)))
         del client
         server.kill()
 
@@ -198,7 +199,8 @@ class ParallelSSHClientTest(unittest.TestCase):
             gevent.sleep(0.5)
             cmd.get()
             if not server.exception:
-                raise Exception("Expected gevent.Timeout from socket timeout, got none")
+                raise Exception(
+                    "Expected gevent.Timeout from socket timeout, got none")
             raise server.exception
         except gevent.Timeout:
             pass
@@ -217,7 +219,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         output = client.get_stdout(cmd)
         expected = {'127.0.0.1' : {'exit_code' : 0}}
         self.assertEqual(expected, output,
-                         msg = "Got unexpected command output - %s" % (output,))
+                         msg="Got unexpected command output - %s" % (output,))
         del client
         server.join()
                 
@@ -232,8 +234,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         output = client.get_stdout(cmd)
         self.assertTrue('127.0.0.1' in output, msg="Got no output for command")
         stdout = list(output['127.0.0.1']['stdout'])
-        self.assertTrue(len(stdout) == expected_lines, msg="Expected %s lines of response, got %s" %
-                        (expected_lines, len(stdout)))
+        self.assertTrue(len(stdout) == expected_lines,
+                        msg="Expected %s lines of response, got %s" % (
+                            expected_lines, len(stdout)))
         del client
         server.kill()
         
@@ -242,7 +245,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         expected_num_tries = 2
         with self.assertRaises(ConnectionErrorException) as cm:
             client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
-                                       pkey=self.user_key, num_retries=expected_num_tries)
+                                       pkey=self.user_key,
+                                       num_retries=expected_num_tries)
             cmd = client.exec_command('blah')[0]
             cmd.get()
         num_tries = cm.exception.args[-1:][0]
@@ -273,3 +277,24 @@ class ParallelSSHClientTest(unittest.TestCase):
             os.unlink(filepath)
         del client
         server.join()
+
+    def test_pssh_pool_size(self):
+        """Test pool size logic"""
+        hosts = ['host-%01d' % d for d in xrange(5)]
+        client = ParallelSSHClient(hosts)
+        expected, actual = len(hosts), client.pool.size
+        self.assertEqual(expected, actual,
+                         msg="Expected pool size to be %s, got %s" % (
+                             expected, actual,))
+        hosts = ['host-%01d' % d for d in xrange(15)]
+        client = ParallelSSHClient(hosts)
+        expected, actual = client.pool_size, client.pool.size
+        self.assertEqual(expected, actual,
+                         msg="Expected pool size to be %s, got %s" % (
+                             expected, actual,))
+        hosts = ['host-%01d' % d for d in xrange(15)]
+        client = ParallelSSHClient(hosts, pool_size=len(hosts)+5)
+        expected, actual = len(hosts), client.pool.size
+        self.assertEqual(expected, actual,
+                         msg="Expected pool size to be %s, got %s" % (
+                             expected, actual,))

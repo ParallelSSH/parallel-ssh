@@ -305,29 +305,33 @@ class ParallelSSHClient(object):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
-        :param user: (Optional) User to login as. Defaults to logged in user or\
+        :param user: (Optional) User to login as. Defaults to logged in user or \
         user from ~/.ssh/config or /etc/ssh/ssh_config if set
         :type user: str
-        :param password: (Optional) Password to use for login. Defaults to\
+        :param password: (Optional) Password to use for login. Defaults to \
         no password
         :type password: str
-        :param port: (Optional) Port number to use for SSH connection. Defaults\
+        :param port: (Optional) Port number to use for SSH connection. Defaults \
         to None which uses SSH default
         :type port: int
         :param pkey: (Optional) Client's private key to be used to connect with
         :type pkey: :mod:`paramiko.PKey`
-        :param num_retries: (Optional) Number of retries for connection attempts\
+        :param num_retries: (Optional) Number of retries for connection attempts \
         before the client gives up. Defaults to 3.
         :type num_retries: int
-        :param timeout: (Optional) Number of seconds to timout connection attempts\
-        before the client gives up. Defaults to 10.
+        :param timeout: (Optional) Number of seconds to timout connection \
+        attempts before the client gives up. Defaults to 10.
         :type timeout: int
         :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding - \
         equivalent to `ssh -A` from the `ssh` command line utility. \
         Defaults to True if not set.
         :type forward_ssh_agent: bool
         :param pool_size: (Optional) Greenlet pool size. Controls on how many\
-        hosts to execute tasks in parallel. Defaults to 10
+        hosts to execute tasks in parallel. Defaults to number of hosts or 10, \
+        whichever is lower. Pool size will be *equal to* number of hosts if number\
+        of hosts is lower than the pool size specified as that would only \
+        increase overhead with no benefits.
+        
         :type pool_size: int
         
         **Example**
@@ -387,8 +391,8 @@ UnknownHostException, ConnectionErrorException
           
           Connection is terminated.
         """
-        self.pool = gevent.pool.Pool(size=pool_size)
-        self.pool_size = pool_size
+        self.pool_size = len(hosts) if len(hosts) < pool_size else pool_size
+        self.pool = gevent.pool.Pool(size=self.pool_size)
         self.hosts = hosts
         self.user = user
         self.password = password
