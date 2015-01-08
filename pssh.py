@@ -62,11 +62,6 @@ class AuthenticationException(Exception):
     pass
 
 
-class ProxyCommandException(Exception):
-    """Raised on ProxyCommand error - ProxyCommand configured exited with error"""
-    pass
-
-
 class SSHException(Exception):
     """Raised on SSHException error - error authenticating with SSH server"""
     pass
@@ -113,16 +108,18 @@ class SSHClient(object):
         connecting to local SSH agent to lookup keys with our own SSH agent. \
         Only really useful for testing, hence the internal variable prefix.
         :type _agent: :mod:`paramiko.agent.Agent`
-        :raises: :mod:`pssh.AuthenticationException` on authentication error
-        :raises: :mod:`pssh.UnknownHostException` on DNS resolution error
-        :raises: :mod:`pssh.ConnectionErrorException` on error connecting
-        :raises: :mod:`pssh.ProxyCommandException` on error with ProxyCommand configured
+        :param proxy_host: (Optional) SSH host to tunnel connection through
+        so that SSH clients connects to self.host via client -> proxy_host -> host
+        :type proxy_host: str
+        :param proxy_port: (Optional) SSH port to use to login to proxy host if set.
+        Defaults to 22.
+        :type proxy_port: int
         """
         ssh_config = paramiko.SSHConfig()
         _ssh_config_file = os.path.sep.join([os.path.expanduser('~'),
                                              '.ssh',
                                              'config'])
-        # Load ~/.ssh/config if it exists to pick up username, ProxyCommand
+        # Load ~/.ssh/config if it exists to pick up username
         # and host address if set
         if os.path.isfile(_ssh_config_file):
             ssh_config.parse(open(_ssh_config_file))
@@ -146,6 +143,7 @@ class SSHClient(object):
         self.num_retries = num_retries
         self.timeout = timeout
         self.proxy_host, self.proxy_port = proxy_host, proxy_port
+        self.proxy_client = None
         if self.proxy_host and self.proxy_port:
             logger.debug("Proxy configured for destination host %s - Proxy host: %s:%s",
                          self.host, self.proxy_host, self.proxy_port,)
@@ -199,9 +197,6 @@ class SSHClient(object):
                                            retries, self.num_retries,)
         except paramiko.AuthenticationException, e:
             raise AuthenticationException(e)
-        except paramiko.ProxyCommandFailure, e:
-            logger.error("Error executing ProxyCommand - %s", e.message,)
-            raise ProxyCommandException(e.message)
         # SSHException is more general so should be below other types
         # of SSH failure
         except paramiko.SSHException, e:
@@ -349,8 +344,13 @@ class ParallelSSHClient(object):
         whichever is lower. Pool size will be *equal to* number of hosts if number\
         of hosts is lower than the pool size specified as that would only \
         increase overhead with no benefits.
-        
         :type pool_size: int
+        :param proxy_host: (Optional) SSH host to tunnel connection through
+        so that SSH clients connects to self.host via client -> proxy_host -> host
+        :type proxy_host: str
+        :param proxy_port: (Optional) SSH port to use to login to proxy host if set.
+        Defaults to 22.
+        :type proxy_port: int
         
         **Example**
 
@@ -425,9 +425,11 @@ UnknownHostException, ConnectionErrorException
 
     def run_command(self, *args, **kwargs):
         """Run command on all hosts in parallel, honoring self.pool_size,
-        and return output buffers. This function will block until all commands
-        have **started** and then return immediately. Any connection and/or
-        authentication exceptions will be raised here and need catching.
+        and return output buffers.
+
+        This function will block until all commands have **started** and
+        then return immediately. Any connection and/or authentication exceptions
+         will be raised here and need catching.
 
         :param args: Positional arguments for command
         :type args: tuple
@@ -435,7 +437,12 @@ UnknownHostException, ConnectionErrorException
         :type kwargs: dict
 
         :rtype: Dictionary with host as key as per :mod:`ParallelSSH.get_output`:
-
+        
+        :raises: :mod:`pssh.AuthenticationException` on authentication error
+        :raises: :mod:`pssh.UnknownHostException` on DNS resolution error
+        :raises: :mod:`pssh.ConnectionErrorException` on error connecting
+        :raises: :mod:`pssh.SSHException` on other undefined SSH errors
+        
         ::
         
           {'myhost1': {'exit_code': exit code if ready else None,
@@ -616,9 +623,9 @@ future releases - use self.get_output instead", DeprecationWarning)
             return_buffers = True
         # Channel must be closed or reading stdout/stderr will block forever
         if not return_buffers and channel.closed:
-            for line in stdout:
+            for _ in stdout:
                 pass
-            for line in stderr:
+            for _ in stderr:
                 pass
             return {host: {'exit_code': channel.recv_exit_status(),}}
         gevent.sleep(.2)
