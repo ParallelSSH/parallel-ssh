@@ -80,7 +80,8 @@ class SSHClient(object):
     def __init__(self, host,
                  user=None, password=None, port=None,
                  pkey=None, forward_ssh_agent=True,
-                 num_retries=DEFAULT_RETRIES, _agent=None, timeout=None):
+                 num_retries=DEFAULT_RETRIES, _agent=None, timeout=None,
+                 proxy_host=None, proxy_port=22):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
         
@@ -135,36 +136,53 @@ class SSHClient(object):
         client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
         self.forward_ssh_agent = forward_ssh_agent
         self.client = client
-        self.channel = None
         self.user = user
         self.password = password
         self.pkey = pkey
         self.port = port if port else 22
         self.host = resolved_address
-        self.proxy_command = paramiko.ProxyCommand(host_config['proxycommand']) if 'proxycommand' in \
-                             host_config else None
-        if self.proxy_command:
-            logger.debug("Proxy configured for destination host %s - ProxyCommand: '%s'",
-                         self.host, " ".join(self.proxy_command.cmd),)
         if _agent:
             self.client._agent = _agent
         self.num_retries = num_retries
         self.timeout = timeout
-        self._connect()
+        self.proxy_host, self.proxy_port = proxy_host, proxy_port
+        if self.proxy_host and self.proxy_port:
+            logger.debug("Proxy configured for destination host %s - Proxy host: %s:%s",
+                         self.host, self.proxy_host, self.proxy_port,)
+            self._connect_proxy()
+        else:
+            self._connect(self.client, self.host, self.port)
 
-    def _connect(self, retries=1):
+    def _connect_proxy(self):
+        """Connects to SSH server and returns transport channel to be used
+        to forward proxy to another SSH server.
+        client (me) -> proxy (ssh server to proxy through) -> \
+        destination (ssh server to run command)
+        :rtype: `:mod:paramiko.Channel` Channel to proxy through"""
+        self.proxy_client = paramiko.SSHClient()
+        self.proxy_client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
+        self._connect(self.proxy_client, self.proxy_host, self.proxy_port)
+        logger.info("Connecting via SSH proxy %s:%s -> %s:%s", self.proxy_host,
+                    self.proxy_port, self.host, self.port,)
+        proxy_channel = self.proxy_client.get_transport().\
+          open_channel('direct-tcpip', (self.host, self.port,),
+                       ('127.0.0.1', 0))
+        return self._connect(self.client, self.host, self.port, sock=proxy_channel)
+        
+    def _connect(self, client, host, port, sock=None, retries=1):
         """Connect to host, throw UnknownHost exception on DNS errors"""
         try:
-            self.client.connect(self.host, username=self.user,
-                                password=self.password, port=self.port,
-                                pkey=self.pkey,
-                                sock=self.proxy_command, timeout=self.timeout)
+            client.connect(host, username=self.user,
+                           password=self.password, port=port,
+                           pkey=self.pkey,
+                           sock=sock, timeout=self.timeout)
         except sock_gaierror, e:
             logger.error("Could not resolve host '%s' - retry %s/%s",
                          self.host, retries, self.num_retries)
             while retries < self.num_retries:
                 gevent.sleep(5)
-                return self._connect(retries=retries+1)
+                return self._connect(client, host, port, sock=sock,
+                                     retries=retries+1)
             raise UnknownHostException("%s - %s - retry %s/%s",
                                        str(e.args[1]),
                                        self.host, retries, self.num_retries)
@@ -173,8 +191,8 @@ class SSHClient(object):
                          self.host, self.port, retries, self.num_retries)
             while retries < self.num_retries:
                 gevent.sleep(5)
-                return self._connect(retries=retries+1)
-
+                return self._connect(client, host, port, sock=sock,
+                                     retries=retries+1)
             error_type = e.args[1] if len(e.args) > 1 else e.args[0]
             raise ConnectionErrorException("%s for host '%s:%s' - retry %s/%s",
                                            str(error_type), self.host, self.port,
@@ -184,7 +202,7 @@ class SSHClient(object):
         except paramiko.ProxyCommandFailure, e:
             logger.error("Error executing ProxyCommand - %s", e.message,)
             raise ProxyCommandException(e.message)
-        # SSHException is more general so should below other types
+        # SSHException is more general so should be below other types
         # of SSH failure
         except paramiko.SSHException, e:
             raise SSHException(e)
@@ -211,7 +229,7 @@ class SSHClient(object):
         channel = self.client.get_transport().open_session()
         if self.forward_ssh_agent:
             agent_handler = paramiko.agent.AgentRequestHandler(channel)
-        channel.get_pty()
+        # channel.get_pty()
         if self.timeout:
             channel.settimeout(self.timeout)
         _stdout, _stderr = channel.makefile('rb'), \
@@ -301,7 +319,7 @@ class ParallelSSHClient(object):
     def __init__(self, hosts,
                  user=None, password=None, port=None, pkey=None,
                  forward_ssh_agent=True, num_retries=DEFAULT_RETRIES, timeout=None,
-                 pool_size=10):
+                 pool_size=10, proxy_host=None, proxy_port=22):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -401,6 +419,7 @@ UnknownHostException, ConnectionErrorException
         self.pkey = pkey
         self.num_retries = num_retries
         self.timeout = timeout
+        self.proxy_host, self.proxy_port = proxy_host, proxy_port
         # To hold host clients
         self.host_clients = dict((host, None) for host in hosts)
 
@@ -500,7 +519,9 @@ future releases - use self.run_command instead", DeprecationWarning)
                                                 port=self.port, pkey=self.pkey,
                                                 forward_ssh_agent=self.forward_ssh_agent,
                                                 num_retries=self.num_retries,
-                                                timeout=self.timeout)
+                                                timeout=self.timeout,
+                                                proxy_host=self.proxy_host,
+                                                proxy_port=self.proxy_port)
         return self.host_clients[host].exec_command(*args, **kwargs)
 
     def get_output(self, commands=None):
