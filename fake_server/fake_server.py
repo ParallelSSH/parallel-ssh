@@ -25,6 +25,8 @@ Server private key is hardcoded, server listen code inspired by demo_server.py i
 paramiko repository
 """
 
+from gevent import monkey
+monkey.patch_all()
 import gevent
 import os
 import socket
@@ -36,8 +38,7 @@ import logging
 import paramiko
 import time
 from stub_sftp import StubSFTPServer
-from gevent import monkey
-monkey.patch_all()
+from tunnel import Tunneler
 
 
 logger = logging.getLogger("fake_server")
@@ -46,10 +47,11 @@ paramiko_logger = logging.getLogger('paramiko.transport')
 host_key = paramiko.RSAKey(filename = os.path.sep.join([os.path.dirname(__file__), 'rsa.key']))
 
 class Server (paramiko.ServerInterface):
-    def __init__(self, cmd_req_response = {}, fail_auth=False):
+    def __init__(self, transport, cmd_req_response = {}, fail_auth=False):
         self.event = Event()
         self.cmd_req_response = cmd_req_response
         self.fail_auth = fail_auth
+        self.transport = transport
 
     def check_channel_request(self, kind, chanid):
         return paramiko.OPEN_SUCCEEDED
@@ -71,6 +73,20 @@ class Server (paramiko.ServerInterface):
     def check_channel_pty_request(self, channel, term, width, height, pixelwidth,
                                   pixelheight, modes):
         return True
+
+    def check_channel_direct_tcpip_request(self, chanid, origin, destination):
+        logger.debug("Proxy connection %s -> %s requested", origin, destination,)
+        extra = {'username' : self.transport.get_username()}
+        logger.debug("Starting proxy connection %s -> %s",
+                     origin, destination, extra=extra)
+        try:
+            tunnel = Tunneler(destination, self.transport, chanid)
+            tunnel.start()
+        except Exception, ex:
+            logger.error("Error creating proxy connection to %s - %s",
+                         destination, ex,)
+            return paramiko.OPEN_FAILED_CONNECT_FAILED
+        return paramiko.OPEN_SUCCEEDED
 
     def check_channel_forward_agent_request(self, channel):
         logger.debug("Forward agent key request for channel %s" % (channel,))
@@ -142,7 +158,8 @@ def _handle_ssh_connection(cmd_req_response, transport, fail_auth=False):
         return
     transport.add_server_key(host_key)
     transport.set_subsystem_handler('sftp', paramiko.SFTPServer, StubSFTPServer)
-    server = Server(cmd_req_response = cmd_req_response, fail_auth=fail_auth)
+    server = Server(transport, cmd_req_response=cmd_req_response,
+                    fail_auth=fail_auth)
     try:
         transport.start_server(server=server)
     except paramiko.SSHException, e:
@@ -157,9 +174,9 @@ def _handle_ssh_connection(cmd_req_response, transport, fail_auth=False):
         return
     while transport.is_active():
         logger.debug("Transport active, waiting..")
-        time.sleep(1)
+        gevent.sleep(1)
     while not channel.send_ready():
-        time.sleep(.5)
+        gevent.sleep(.2)
     channel.close()
     
 def handle_ssh_connection(cmd_req_response, sock,

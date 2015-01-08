@@ -21,7 +21,7 @@
 
 import unittest
 from pssh import ParallelSSHClient, UnknownHostException, \
-     AuthenticationException, ConnectionErrorException
+     AuthenticationException, ConnectionErrorException, logger as pssh_logger
 from fake_server.fake_server import start_server, make_socket, \
      logger as server_logger, paramiko_logger
 import random
@@ -34,6 +34,10 @@ import warnings
 
 USER_KEY = paramiko.RSAKey.from_private_key_file(
     os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key']))
+
+# server_logger.setLevel(logging.DEBUG)
+# pssh_logger.setLevel(logging.DEBUG)
+# logging.basicConfig()
 
 class ParallelSSHClientTest(unittest.TestCase):
 
@@ -67,7 +71,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         output = client.get_stdout(cmd)
         expected = {'127.0.0.1' : {'exit_code' : 0}}
         self.assertEqual(expected, output,
-                         msg = "Got unexpected command output - %s" % (output,))
+                         msg="Got unexpected command output - %s" % (output,))
         del client
         server.join()
 
@@ -85,15 +89,15 @@ class ParallelSSHClientTest(unittest.TestCase):
         stdout = list(output['127.0.0.1']['stdout'])
         stderr = list(output['127.0.0.1']['stderr'])
         self.assertEqual(expected_exit_code, exit_code,
-                         msg = "Got unexpected exit code - %s, expected %s" %
+                         msg="Got unexpected exit code - %s, expected %s" %
                          (exit_code,
                           expected_exit_code,))
         self.assertEqual(expected_stdout, stdout,
-                         msg = "Got unexpected stdout - %s, expected %s" % 
+                         msg="Got unexpected stdout - %s, expected %s" % 
                          (stdout,
                           expected_stdout,))
         self.assertEqual(expected_stderr, stderr,
-                         msg = "Got unexpected stderr - %s, expected %s" % 
+                         msg="Got unexpected stderr - %s, expected %s" % 
                          (stderr,
                           expected_stderr,))
         del client
@@ -112,15 +116,15 @@ class ParallelSSHClientTest(unittest.TestCase):
         stdout = list(output['127.0.0.1']['stdout'])
         stderr = list(output['127.0.0.1']['stderr'])
         self.assertEqual(expected_exit_code, exit_code,
-                         msg = "Got unexpected exit code - %s, expected %s" %
+                         msg="Got unexpected exit code - %s, expected %s" %
                          (exit_code,
                           expected_exit_code,))
         self.assertEqual(expected_stdout, stdout,
-                         msg = "Got unexpected stdout - %s, expected %s" %
+                         msg="Got unexpected stdout - %s, expected %s" %
                          (stdout,
                           expected_stdout,))
         self.assertEqual(expected_stderr, stderr,
-                         msg = "Got unexpected stderr - %s, expected %s" %
+                         msg="Got unexpected stderr - %s, expected %s" %
                          (stderr,
                           expected_stderr,))
         del client
@@ -141,15 +145,15 @@ class ParallelSSHClientTest(unittest.TestCase):
         stdout = list(output['127.0.0.1']['stdout'])
         stderr = list(output['127.0.0.1']['stderr'])
         self.assertEqual(expected_exit_code, exit_code,
-                         msg = "Got unexpected exit code - %s, expected %s" %
+                         msg="Got unexpected exit code - %s, expected %s" %
                          (exit_code,
                           expected_exit_code,))
         self.assertEqual(expected_stdout, stdout,
-                         msg = "Got unexpected stdout - %s, expected %s" % 
+                         msg="Got unexpected stdout - %s, expected %s" % 
                          (stdout,
                           expected_stdout,))
         self.assertEqual(expected_stderr, stderr,
-                         msg = "Got unexpected stderr - %s, expected %s" % 
+                         msg="Got unexpected stderr - %s, expected %s" % 
                          (stderr,
                           expected_stderr,))
         del client
@@ -298,3 +302,28 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(expected, actual,
                          msg="Expected pool size to be %s, got %s" % (
                              expected, actual,))
+
+    def test_ssh_proxy(self):
+        """Test connecting to remote destination via SSH proxy
+        client -> proxy -> destination
+        Proxy SSH server accepts no commands and sends no responses, only
+        proxies to destination. Destination accepts a command as usual."""
+        proxy_server_socket = make_socket('127.0.0.1')
+        proxy_server_port = proxy_server_socket.getsockname()[1]
+        proxy_server = start_server({}, proxy_server_socket)
+        server = start_server({ self.fake_cmd : self.fake_resp },
+                              self.listen_socket)
+        client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
+                                   pkey=self.user_key,
+                                   proxy_host='127.0.0.1',
+                                   proxy_port=proxy_server_port
+                                   )
+        output = client.run_command(self.fake_cmd)
+        stdout = list(output['127.0.0.1']['stdout'])
+        expected_stdout = [self.fake_resp]
+        self.assertEqual(expected_stdout, stdout,
+                         msg="Got unexpected stdout - %s, expected %s" % 
+                         (stdout,
+                          expected_stdout,))
+        server.kill()
+        proxy_server.kill()
