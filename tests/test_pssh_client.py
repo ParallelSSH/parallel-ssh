@@ -252,16 +252,19 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_pssh_client_retries(self):
         """Test connection error retries"""
         expected_num_tries = 2
-        with self.assertRaises(ConnectionErrorException) as cm:
-            client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
-                                       pkey=self.user_key,
-                                       num_retries=expected_num_tries)
-            cmd = client.exec_command('blah')[0]
-            cmd.get()
-        num_tries = cm.exception.args[-1:][0]
-        self.assertEqual(expected_num_tries, num_tries,
-                         msg="Got unexpected number of retries %s - expected %s"
-                         % (num_tries, expected_num_tries,))
+        client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
+                                   pkey=self.user_key,
+                                   num_retries=expected_num_tries)
+        self.assertRaises(ConnectionErrorException, client.run_command, 'blah')
+        try:
+            client.run_command('blah')
+        except ConnectionErrorException, ex:
+            num_tries = ex.args[-1:][0]
+            self.assertEqual(expected_num_tries, num_tries,
+                             msg="Got unexpected number of retries %s - expected %s"
+                             % (num_tries, expected_num_tries,))
+        else:
+            raise Exception('No ConnectionErrorException')
 
     def test_pssh_copy_file(self):
         """Test parallel copy file"""

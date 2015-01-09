@@ -111,23 +111,12 @@ not match source %s" % (copied_file_data, test_file_data))
                           pkey=self.user_key, num_retries=0)
 
     def test_ssh_client_retries(self):
-        """Test connection error retries"""
-        expected_num_tries = 2
-        with self.assertRaises(ConnectionErrorException) as cm:
-            SSHClient('127.0.0.1', port=self.listen_port,
-                      pkey=self.user_key, num_retries=expected_num_tries)
-        num_tries = cm.exception.args[-1:][0]
-        self.assertEqual(expected_num_tries, num_tries,
-                         msg="Got unexpected number of retries %s - expected %s"
-                         % (num_tries, expected_num_tries,))
+        """Test connection error exceptions"""
+        self.assertRaises(ConnectionErrorException, SSHClient, '127.0.0.1', port=self.listen_port,
+                          pkey=self.user_key, num_retries=1)
         host = ''.join([random.choice(string.ascii_letters) for n in xrange(8)])
-        with self.assertRaises(UnknownHostException) as cm:
-            SSHClient(host, port=self.listen_port,
-                      pkey=self.user_key, num_retries=expected_num_tries)
-        num_tries = cm.exception.args[-1:][0]
-        self.assertEqual(expected_num_tries, num_tries,
-                         msg="Got unexpected number of retries %s - expected %s"
-                         % (num_tries, expected_num_tries,))
+        self.assertRaises(UnknownHostException, SSHClient, host, port=self.listen_port,
+                          pkey=self.user_key, num_retries=1)
 
     def test_ssh_client_unknown_host_failure(self):
         """Test connection error failure case - ConnectionErrorException"""
