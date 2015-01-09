@@ -55,6 +55,11 @@ Stdout and stderr buffers are available in output. Iterating on them can be used
 Host myhost1 - output: drwxr-xr-x  6 xxx xxx 4.0K Jan  1 00:00 xxx
 Host myhost2 - output: drwxr-xr-x  6 xxx xxx 4.0K Jan  1 00:00 xxx
 
+Joining on the connection pool can be used to block and wait for all parallel commands to finish if reading stdout/stderr is not required.
+
+>>> client.pool.join()
+
+
 **************************
 Frequently asked questions
 **************************
@@ -82,10 +87,16 @@ Frequently asked questions
   SSH agent forwarding, what `ssh -A` does on the command line, is supported and enabled by default. Creating an object as `ParallelSSHClient(forward_ssh_agent=False)` will disable that behaviour.
 
 :Q:
-  Is proxying supported?
+  Is tunneling/proxying supported?
 
 :A:
-  ParallelSSH supports proxies as defined in SSH's `ProxyCommand` configuration in `~/.ssh/config`. For example, the following entry in `~/.ssh/config` causes ParallelSSH to use host `bastion` as a proxy for host `target`. See the `SSH manual page <http://unixhelp.ed.ac.uk/CGI/man-cgi?ssh+1>`_ for more information on `ProxyCommand`.
+  ParallelSSH natively supports tunelling through an intermediate SSH server. Connecting to a remote host is accomplished via an SSH tunnel using the SSH's protocol direct TCP tunneling feature, using local port forwarding. This is done natively in python and tunnel connections are asynchronous like all other connections in the ParallelSSH library. For example, client -> proxy SSH server -> remote SSH destination.
+
+  Use the `proxy_host` and `proxy_port` parameters to configure your proxy.
+
+  >>> client = ParallelSSHClient(hosts, proxy_host='my_ssh_proxy_host')
+  
+  Note that while connections from the ParallelSSH client to the tunnel host are asynchronous, connections from the tunnel host to the remote destination(s) may not be, depending on the SSH server implementation. If the SSH server uses threading to implement its tunelling and that server is used to tunnel to a large number of remote destinations system load on the tunnel server will increase linearly according to number of remote hosts.
 
   ::
 
