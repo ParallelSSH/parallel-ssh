@@ -147,16 +147,16 @@ class SSHClient(object):
         if self.proxy_host and self.proxy_port:
             logger.debug("Proxy configured for destination host %s - Proxy host: %s:%s",
                          self.host, self.proxy_host, self.proxy_port,)
-            self._connect_proxy()
+            self._connect_tunnel()
         else:
             self._connect(self.client, self.host, self.port)
 
-    def _connect_proxy(self):
-        """Connects to SSH server and returns transport channel to be used
-        to forward proxy to another SSH server.
-        client (me) -> proxy (ssh server to proxy through) -> \
+    def _connect_tunnel(self):
+        """Connects to SSH server via an intermediate SSH tunnel server.
+        client (me) -> tunnel (ssh server to proxy through) -> \
         destination (ssh server to run command)
-        :rtype: `:mod:paramiko.Channel` Channel to proxy through"""
+        :rtype: `:mod:paramiko.SSHClient` Client to remote SSH destination
+        via intermediate SSH tunnel server."""
         self.proxy_client = paramiko.SSHClient()
         self.proxy_client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
         self._connect(self.proxy_client, self.proxy_host, self.proxy_port)
@@ -168,13 +168,19 @@ class SSHClient(object):
         return self._connect(self.client, self.host, self.port, sock=proxy_channel)
         
     def _connect(self, client, host, port, sock=None, retries=1):
-        """Connect to host, throw UnknownHost exception on DNS errors"""
+        """Connect to host
+        
+        :raises: :mod:`pssh.AuthenticationException` on authentication error
+        :raises: :mod:`pssh.UnknownHostException` on DNS resolution error
+        :raises: :mod:`pssh.ConnectionErrorException` on error connecting
+        :raises: :mod:`pssh.SSHException` on other undefined SSH errors
+        """
         try:
             client.connect(host, username=self.user,
                            password=self.password, port=port,
                            pkey=self.pkey,
                            sock=sock, timeout=self.timeout)
-        except sock_gaierror, e:
+        except sock_gaierror, ex:
             logger.error("Could not resolve host '%s' - retry %s/%s",
                          self.host, retries, self.num_retries)
             while retries < self.num_retries:
@@ -182,30 +188,31 @@ class SSHClient(object):
                 return self._connect(client, host, port, sock=sock,
                                      retries=retries+1)
             raise UnknownHostException("%s - %s - retry %s/%s",
-                                       str(e.args[1]),
+                                       str(ex.args[1]),
                                        self.host, retries, self.num_retries)
-        except sock_error, e:
+        except sock_error, ex:
             logger.error("Error connecting to host '%s:%s' - retry %s/%s",
                          self.host, self.port, retries, self.num_retries)
             while retries < self.num_retries:
                 gevent.sleep(5)
                 return self._connect(client, host, port, sock=sock,
                                      retries=retries+1)
-            error_type = e.args[1] if len(e.args) > 1 else e.args[0]
+            error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
             raise ConnectionErrorException("%s for host '%s:%s' - retry %s/%s",
                                            str(error_type), self.host, self.port,
                                            retries, self.num_retries,)
-        except paramiko.AuthenticationException, e:
-            raise AuthenticationException(e)
+        except paramiko.AuthenticationException, ex:
+            raise AuthenticationException(ex)
         # SSHException is more general so should be below other types
         # of SSH failure
-        except paramiko.SSHException, e:
-            raise SSHException(e)
+        except paramiko.SSHException, ex:
+            logger.error("General SSH error - %s", ex)
+            raise SSHException(ex)
 
     def exec_command(self, command, sudo=False, user=None, **kwargs):
         """Wrapper to :mod:`paramiko.SSHClient.exec_command`
 
-        Opens a new SSH session with a pty and runs command with given \
+        Opens a new SSH session with a new pty and runs command with given \
         `kwargs` if any. Greenlet then yields (sleeps) while waiting for \
         command to finish executing or channel to close indicating the same.
 
@@ -224,7 +231,7 @@ class SSHClient(object):
         channel = self.client.get_transport().open_session()
         if self.forward_ssh_agent:
             agent_handler = paramiko.agent.AgentRequestHandler(channel)
-        # channel.get_pty()
+        channel.get_pty()
         if self.timeout:
             channel.settimeout(self.timeout)
         _stdout, _stderr = channel.makefile('rb'), \

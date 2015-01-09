@@ -136,6 +136,21 @@ not match source %s" % (copied_file_data, test_file_data))
                           SSHClient, host, port=self.listen_port,
                           pkey=self.user_key, num_retries=0)
 
+    def test_ssh_client_pty(self):
+        """Test that we get a new pty for our non-interactive SSH sessions"""
+        server = start_server({ self.fake_cmd : self.fake_resp },
+                                self.listen_socket)
+        client = SSHClient('127.0.0.1', port=self.listen_port)
+        channel = client.client.get_transport().open_session()
+        self.assertFalse(channel.event.is_set(),
+                         msg="Got pty without requesting it")
+        channel.get_pty()
+        self.assertTrue(channel.event.is_set(),
+                        msg="Requested pty but got none")
+        channel.close()
+        del channel
+        del client
+        server.join()
 
 if __name__ == '__main__':
     unittest.main()
