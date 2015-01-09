@@ -575,13 +575,13 @@ future releases - use self.run_command instead", DeprecationWarning)
             commands = list(self.pool.greenlets)
         output = {}
         for cmd in commands:
-            for (channel, host, stdout, stderr) in [cmd.get()]:
-                output.setdefault(host, {})
-                output[host].update({'exit_code': self._get_exit_code(channel),
-                                     'channel' : channel,
-                                     'stdout' : stdout,
-                                     'stderr' : stderr,
-                                     'cmd' : cmd, })
+            (channel, host, stdout, stderr) = cmd.get()
+            output.setdefault(host, {})
+            output[host].update({'exit_code': self._get_exit_code(channel),
+                                 'channel' : channel,
+                                 'stdout' : stdout,
+                                 'stderr' : stderr,
+                                 'cmd' : cmd, })
         return output
 
     def get_exit_code(self, host_output):
