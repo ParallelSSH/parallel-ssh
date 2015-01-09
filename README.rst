@@ -98,11 +98,6 @@ Frequently asked questions
   
   Note that while connections from the ParallelSSH client to the tunnel host are asynchronous, connections from the tunnel host to the remote destination(s) may not be, depending on the SSH server implementation. If the SSH server uses threading to implement its tunelling and that server is used to tunnel to a large number of remote destinations system load on the tunnel server will increase linearly according to number of remote hosts.
 
-  ::
-
-   Host target
-     ProxyCommand ssh bastion -W %h:%p
-
 :Q:
   Is there a way to programmatically provide an SSH key?
 
