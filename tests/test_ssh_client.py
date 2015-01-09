@@ -140,7 +140,8 @@ not match source %s" % (copied_file_data, test_file_data))
         """Test that we get a new pty for our non-interactive SSH sessions"""
         server = start_server({ self.fake_cmd : self.fake_resp },
                                 self.listen_socket)
-        client = SSHClient('127.0.0.1', port=self.listen_port)
+        client = SSHClient('127.0.0.1', port=self.listen_port,
+                           pkey=self.user_key)
         channel = client.client.get_transport().open_session()
         self.assertFalse(channel.event.is_set(),
                          msg="Got pty without requesting it")
