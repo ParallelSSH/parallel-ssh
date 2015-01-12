@@ -20,7 +20,7 @@ from setuptools import find_packages
 
 setup(name='parallel-ssh',
       version='0.70',
-      description='Wrapper library over paramiko to allow remote execution of tasks. Supports parallel execution on multiple hosts',
+      description='Asynchronous parallel SSH library',
       author='Panos Kittenis',
       author_email='pkittenis@gmail.com',
       url = "https://github.com/pkittenis/parallel-ssh",
