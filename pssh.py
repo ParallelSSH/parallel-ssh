@@ -352,7 +352,7 @@ class ParallelSSHClient(object):
         of hosts is lower than the pool size specified as that would only \
         increase overhead with no benefits.
         :type pool_size: int
-        :param proxy_host: (Optional) SSH host to tunnel connection through
+        :param proxy_host: (Optional) SSH host to tunnel connection through \
         so that SSH clients connects to self.host via client -> proxy_host -> host
         :type proxy_host: str
         :param proxy_port: (Optional) SSH port to use to login to proxy host if set.
