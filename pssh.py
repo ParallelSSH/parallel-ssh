@@ -108,11 +108,11 @@ class SSHClient(object):
         connecting to local SSH agent to lookup keys with our own SSH agent. \
         Only really useful for testing, hence the internal variable prefix.
         :type _agent: :mod:`paramiko.agent.Agent`
-        :param proxy_host: (Optional) SSH host to tunnel connection through
+        :param proxy_host: (Optional) SSH host to tunnel connection through \
         so that SSH clients connects to self.host via client -> proxy_host -> host
         :type proxy_host: str
-        :param proxy_port: (Optional) SSH port to use to login to proxy host if set.
-        Defaults to 22.
+        :param proxy_port: (Optional) SSH port to use to login to proxy host if \
+        set. Defaults to 22.
         :type proxy_port: int
         """
         ssh_config = paramiko.SSHConfig()
