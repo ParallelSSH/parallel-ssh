@@ -353,10 +353,11 @@ class ParallelSSHClient(object):
         increase overhead with no benefits.
         :type pool_size: int
         :param proxy_host: (Optional) SSH host to tunnel connection through \
-        so that SSH clients connects to self.host via client -> proxy_host -> host
+        so that SSH clients connect to self.host via client -> proxy_host -> \
+        host
         :type proxy_host: str
-        :param proxy_port: (Optional) SSH port to use to login to proxy host if set.
-        Defaults to 22.
+        :param proxy_port: (Optional) SSH port to use to login to proxy host if \
+        set. Defaults to 22.
         :type proxy_port: int
         
         **Example**
