@@ -23,7 +23,7 @@ parallel-ssh uses asychronous network requests - there is *no* multi-threading o
 
 This is a *requirement* for commands on many (hundreds/thousands/hundreds of thousands) of hosts which would grind a system to a halt simply by having so many processes/threads all wanting to execute if done with multi-threading/processing.
 
-The `libev event loop library<http://software.schmorp.de/pkg/libev.html>_` is utilised on *nix systems. Windows is not supported.
+The `libev event loop library <http://software.schmorp.de/pkg/libev.html>`_ is utilised on *nix systems. Windows is not supported.
 
 See :mod:`pssh.ParallelSSHClient` and :mod:`pssh.SSHClient` for class documentation.
 """

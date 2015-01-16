@@ -70,7 +70,7 @@ Frequently asked questions
 :A:
    Fabric is a port of `Capistrano <https://github.com/capistrano/capistrano>`_ from ruby to python. Its design goals are to provide a faithful port of capistrano with its `tasks` and `roles` to python with interactive command line being the intended usage. Its use as a library is non-standard and in `many <https://github.com/fabric/fabric/issues/521>`_ `cases <https://github.com/fabric/fabric/pull/674>`_ `just <https://github.com/fabric/fabric/pull/1215>`_ `plain <https://github.com/fabric/fabric/issues/762>`_ `broken <https://github.com/fabric/fabric/issues/1068>`_.
    
-   Furthermore, its parallel commands use a combination of both threads and processes with extremely high CPU usage and system load while running. Fabric currently stands at over 6,000 lines of code, majority of which is untested, particularly if used as a library as opposed to less than 700 lines of code currently in `ParallelSSH` with over 80% code test coverage.
+   Furthermore, its parallel commands use a combination of both threads and processes with extremely high CPU usage and system load while running. Fabric currently stands at over 6,000 lines of code, majority of which is untested, particularly if used as a library as opposed to less than 700 lines of code mostly consisting of documentation strings currently in `ParallelSSH` with over 80% code test coverage.
    
    ParallelSSH's design goals and motivation are to provide a *library* for running *asynchronous* SSH commands in parallel with **no** load induced on the system by doing so with the intended usage being completely programmatic and non-interactive - Fabric provides none of these goals.
 
