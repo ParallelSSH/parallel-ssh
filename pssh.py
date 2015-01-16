@@ -37,7 +37,7 @@ import logging
 import paramiko
 import os
 
-host_logger = logging.getLogger('host_logger')
+host_logger = logging.getLogger('pssh.host_logger')
 handler = logging.StreamHandler()
 host_log_format = logging.Formatter('%(message)s')
 handler.setFormatter(host_log_format)
@@ -494,33 +494,14 @@ UnknownHostException, ConnectionErrorException
     def exec_command(self, *args, **kwargs):
         """Run command on all hosts in parallel, honoring self.pool_size
 
-        **Superseeded by :mod:`ParallelSSH.run_command`**
+        **Deprecated by :mod:`pssh.ParallelSSH.run_command` **
 
         :param args: Position arguments for command
         :type args: tuple
         :param kwargs: Keyword arguments for command
         :type kwargs: dict
 
-        :rtype: List of :mod:`gevent.Greenlet`
-
-        **Example**:
-        
-        >>> cmds = client.exec_command('ls -ltrh')
-        
-        Wait for completion, no stdout:
-        
-        >>> for cmd in cmds:
-        >>>     cmd.join()
-        
-        Alternatively/in addition print stdout for each command:
-        
-        >>> print [get_stdout(cmd) for cmd in cmds]
-
-        Retrieving stdout implies join, meaning get_stdout will wait
-        for completion of all commands before returning output.
-        
-        You may call get_stdout on already completed greenlets to re-get
-        their output as many times as you want."""
+        :rtype: List of :mod:`gevent.Greenlet`"""
         warnings.warn("This method is being deprecated and will be removed in \
 future releases - use self.run_command instead", DeprecationWarning)
         return [self.pool.spawn(self._exec_command, host, *args, **kwargs)
@@ -541,28 +522,12 @@ future releases - use self.run_command instead", DeprecationWarning)
 
     def get_output(self, commands=None):
         """Get output from running commands.
-
-        Stdout and stderr are also logged via the logger named ``host_logger``
-        which is enabled by default.
-        ``host_logger`` output can be disabled by removing its handler.
         
-        >>> logger = logging.getLogger('host_logger')
-        >>> for handler in logger.handlers: logger.removeHandler(handler)
-        
-        **Example usage**:
-
-        >>> output = client.get_output()
-        >>> for host in output: print output[host]['stdout']
-        <stdout>
-        >>> # Get exit code after command has finished
-        >>> self.get_exit_code(output[host])
-        0
-
-        :param commands: (Optional) Override commands to get output from.
-        Uses running commands in pool if not given
+        :param commands: (Optional) Override commands to get output from.\
+        Uses running commands in pool if not given.
         :type commands: :mod:`gevent.Greenlet`
-        :rtype: Dictionary with host as key as in:
-
+        :rtype: Dictionary with host as key as in:\
+        \
         ::
         
           {'myhost1': {'exit_code': exit code if ready else None,
@@ -571,6 +536,21 @@ future releases - use self.run_command instead", DeprecationWarning)
                        'stderr'  : <iterable>,
                        'cmd'     : <greenlet>}}
         
+        Stdout and stderr are also logged via the logger named ``host_logger``
+        which is enabled by default.
+        ``host_logger`` output can be disabled by removing its handler.
+        
+        >>> logger = logging.getLogger('pssh.host_logger')
+        >>> for handler in logger.handlers: logger.removeHandler(handler)
+        
+        **Example usage**:
+        
+        >>> output = client.get_output()
+        >>> for host in output: print output[host]['stdout']
+        <stdout>
+        >>> # Get exit code after command has finished
+        >>> self.get_exit_code(output[host])
+        0
         """
         if not commands:
             commands = list(self.pool.greenlets)
@@ -610,11 +590,9 @@ future releases - use self.run_command instead", DeprecationWarning)
         :param greenlet: Greenlet object containing an \
         SSH channel reference, hostname, stdout and stderr buffers
         :type greenlet: :mod:`gevent.Greenlet`
-        
         :param return_buffers: Flag to turn on returning stdout and stderr \
         buffers along with exit code. Defaults to off.
         :type return_buffers: bool
-        
         :rtype: Dictionary containing ``{host: {'exit_code': exit code}}`` entry \
         for example ``{'myhost1': {'exit_code': 0}}``
         :rtype: With ``return_buffers=True``: ``{'myhost1': {'exit_code': 0,
