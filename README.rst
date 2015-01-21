@@ -7,13 +7,10 @@ parallel-ssh uses asychronous network requests - there is *no* multi-threading o
 
 This is a *requirement* for commands on many (hundreds/thousands/hundreds of thousands) of hosts which would grind a system to a halt simply by having so many processes/threads all wanting to execute if done with multi-threading/processing.
 
-.. image:: https://api.travis-ci.org/pkittenis/parallel-ssh.png?branch=master
+.. image:: https://travis-ci.org/pkittenis/parallel-ssh.svg?branch=master
   :target: https://travis-ci.org/pkittenis/parallel-ssh
 .. image:: https://coveralls.io/repos/pkittenis/parallel-ssh/badge.png?branch=master
   :target: https://coveralls.io/r/pkittenis/parallel-ssh?branch=master
-.. image:: https://pypip.in/version/parallel-ssh/badge.png
-  :target: https://pypi.python.org/pypi/parallel-ssh
-  :alt: version
 .. image:: https://pypip.in/download/parallel-ssh/badge.png
   :target: https://pypi.python.org/pypi/parallel-ssh
   :alt: downloads
