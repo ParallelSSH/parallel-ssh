@@ -4,21 +4,25 @@
    contain the root `toctree` directive.
 
 Parallel-SSH's documentation
-========================================
+============================
 
 .. toctree::
    :maxdepth: 4
    :hidden:
    :titlesonly:
-
+   
    self
 
+Welcome to ParallelSSH's API documentation.
+
+New users should start with :mod:`pssh.ParallelSSHClient.run_command`.
+
 .. automodule:: pssh
-    :members: ParallelSSHClient, SSHClient, UnknownHostException, ConnectionErrorException, AuthenticationException, ProxyCommandException
-    :undoc-members:
+    :member-order: groupwise
 
 
 Indices and tables
 ==================
 
-* :ref:`modindex`
+* :ref:`genindex`
+* :ref:`search`

@@ -32,8 +32,16 @@ import os
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.intersphinx',
     # 'sphinx.ext.viewcode',
 ]
+
+intersphinx_mapping = {'paramiko': ('http://paramiko-docs.readthedocs.org/en/stable/', None),
+                       'gevent' : ('http://www.gevent.org/', None),
+                       }
+
+# Autodoc settings
+autodoc_default_flags = ['members']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['templates']
@@ -49,7 +57,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Parallel-SSH'
-copyright = u'2014, P Kittenis'
+copyright = u'2015, P Kittenis'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -132,7 +140,7 @@ html_theme = 'default'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['static']
+# html_static_path = ['static']
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
@@ -269,7 +277,7 @@ texinfo_documents = [
 epub_title = u'Parallel-SSH'
 epub_author = u'P Kittenis'
 epub_publisher = u'P Kittenis'
-epub_copyright = u'2014, P Kittenis'
+epub_copyright = u'2015, P Kittenis'
 
 # The basename for the epub file. It defaults to the project name.
 #epub_basename = u'Parallel-SSH'

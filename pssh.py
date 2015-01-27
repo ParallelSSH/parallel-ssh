@@ -23,7 +23,7 @@ parallel-ssh uses asychronous network requests - there is *no* multi-threading o
 
 This is a *requirement* for commands on many (hundreds/thousands/hundreds of thousands) of hosts which would grind a system to a halt simply by having so many processes/threads all wanting to execute if done with multi-threading/processing.
 
-The `libev event loop library <http://software.schmorp.de/pkg/libev.html>`_ is utilised on *nix systems. Windows is not supported.
+The `libev event loop library <http://software.schmorp.de/pkg/libev.html>`_ is utilised on nix systems. Windows is not supported.
 
 See :mod:`pssh.ParallelSSHClient` and :mod:`pssh.SSHClient` for class documentation.
 """
@@ -437,29 +437,21 @@ UnknownHostException, ConnectionErrorException
 
         This function will block until all commands have **started** and
         then return immediately. Any connection and/or authentication exceptions
-         will be raised here and need catching.
+        will be raised here and need catching.
 
         :param args: Positional arguments for command
         :type args: tuple
         :param kwargs: Keyword arguments for command
         :type kwargs: dict
 
-        :rtype: Dictionary with host as key as per :mod:`ParallelSSH.get_output`:
+        :rtype: Dictionary with host as key as per :mod:`ParallelSSH.get_output`
         
         :raises: :mod:`pssh.AuthenticationException` on authentication error
         :raises: :mod:`pssh.UnknownHostException` on DNS resolution error
         :raises: :mod:`pssh.ConnectionErrorException` on error connecting
         :raises: :mod:`pssh.SSHException` on other undefined SSH errors
-        
-        ::
-        
-          {'myhost1': {'exit_code': exit code if ready else None,
-                       'channel' : SSH channel of command,
-                       'stdout'  : <iterable>,
-                       'stderr'  : <iterable>,
-                       'cmd'     : <greenlet>}}
-        
-        **Example**:
+
+        **Example Usage**
         
         >>> output = client.run_command('ls -ltrh')
 
@@ -485,22 +477,32 @@ UnknownHostException, ConnectionErrorException
         >>> for host in output:
         >>>     stdout = list(output[host]['stdout'])
         >>>     print "Complete stdout for host %s is %s" % (host, stdout,)
+
+        **Example Output**
+
+        ::
         
+          {'myhost1': {'exit_code': exit code if ready else None,
+                       'channel' : SSH channel of command,
+                       'stdout'  : <iterable>,
+                       'stderr'  : <iterable>,
+                       'cmd'     : <greenlet>}}
+
         """
         for host in self.hosts:
             self.pool.spawn(self._exec_command, host, *args, **kwargs)
         return self.get_output()
     
     def exec_command(self, *args, **kwargs):
-        """Run command on all hosts in parallel, honoring self.pool_size
-
-        **Deprecated by :mod:`pssh.ParallelSSH.run_command` **
-
+        """Run command on all hosts in parallel, honoring `self.pool_size`
+        
+        **Deprecated by** :mod:`pssh.ParallelSSHClient.run_command`
+        
         :param args: Position arguments for command
         :type args: tuple
         :param kwargs: Keyword arguments for command
         :type kwargs: dict
-
+        
         :rtype: List of :mod:`gevent.Greenlet`"""
         warnings.warn("This method is being deprecated and will be removed in \
 future releases - use self.run_command instead", DeprecationWarning)
@@ -526,8 +528,8 @@ future releases - use self.run_command instead", DeprecationWarning)
         :param commands: (Optional) Override commands to get output from.\
         Uses running commands in pool if not given.
         :type commands: :mod:`gevent.Greenlet`
-        :rtype: Dictionary with host as key as in:\
-        \
+        :rtype: Dictionary with host as key as in:
+
         ::
         
           {'myhost1': {'exit_code': exit code if ready else None,
