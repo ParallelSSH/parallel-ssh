@@ -1,2 +1,2 @@
-paramiko
+paramiko>=1.9
 gevent>=1
