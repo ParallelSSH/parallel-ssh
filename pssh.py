@@ -209,7 +209,7 @@ class SSHClient(object):
             logger.error("General SSH error - %s", ex)
             raise SSHException(ex)
 
-    def exec_command(self, command, sudo=False, user=None, **kwargs):
+    def exec_command(self, command, sudo=False, user=None, pty=True, **kwargs):
         """Wrapper to :mod:`paramiko.SSHClient.exec_command`
 
         Opens a new SSH session with a new pty and runs command with given \
@@ -220,6 +220,8 @@ class SSHClient(object):
         :type command: str
         :param sudo: (Optional) Run with sudo. Defaults to False
         :type sudo: bool
+        :param pty: (Optional) Run with pty. Defaults to True
+        :type pty: bool
         :param kwargs: (Optional) Keyword arguments to be passed to remote \
         command
         :type kwargs: dict
@@ -231,7 +233,8 @@ class SSHClient(object):
         channel = self.client.get_transport().open_session()
         if self.forward_ssh_agent:
             agent_handler = paramiko.agent.AgentRequestHandler(channel)
-        channel.get_pty()
+        if pty:
+            channel.get_pty()
         if self.timeout:
             channel.settimeout(self.timeout)
         _stdout, _stderr = channel.makefile('rb'), \
