@@ -489,9 +489,9 @@ UnknownHostException, ConnectionErrorException
                        'cmd'     : <greenlet>}}
 
         """
-        for host in self.hosts:
-            self.pool.spawn(self._exec_command, host, *args, **kwargs)
-        return self.get_output()
+        cmds = [self.pool.spawn(self._exec_command, host, *args, **kwargs)
+                for host in self.hosts]
+        return self.get_output(commands=cmds)
     
     def exec_command(self, *args, **kwargs):
         """Run command on all hosts in parallel, honoring `self.pool_size`

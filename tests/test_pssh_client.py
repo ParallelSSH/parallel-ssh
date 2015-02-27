@@ -311,6 +311,11 @@ class ParallelSSHClientTest(unittest.TestCase):
                          msg="Expected pool size to be %s, got %s" % (
                              expected, actual,))
 
+    def test_pssh_hosts_more_than_pool_size(self):
+        """Test we can successfully run on more hosts than our pool size and
+        get logs for all hosts"""
+        raise NotImplementedError
+        
     def test_ssh_proxy(self):
         """Test connecting to remote destination via SSH proxy
         client -> proxy -> destination
