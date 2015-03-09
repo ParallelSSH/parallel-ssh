@@ -17,7 +17,7 @@ from distutils.core import setup
 from setuptools import find_packages
 
 setup(name='parallel-ssh',
-      version='0.70.1',
+      version='0.70.2',
       description='Asynchronous parallel SSH library',
       author='Panos Kittenis',
       author_email='pkittenis@gmail.com',
