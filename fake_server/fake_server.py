@@ -119,12 +119,12 @@ class Server (paramiko.ServerInterface):
         channel.send_exit_status(0)
         channel.close()
 
-def make_socket(listen_ip):
+def make_socket(listen_ip, port=0):
     """Make socket on given address and available port chosen by OS"""
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind((listen_ip, 0))
+        sock.bind((listen_ip, port))
     except Exception, e:
         logger.error('Failed to bind to address - %s' % (str(e),))
         traceback.print_exc()

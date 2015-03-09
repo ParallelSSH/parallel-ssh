@@ -231,7 +231,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                          msg="Got unexpected command output - %s" % (output,))
         del client
         server.join()
-                
+
     def test_pssh_client_long_running_command(self):
         expected_lines = 5
         server = start_server({ self.long_running_cmd :
@@ -314,8 +314,32 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_pssh_hosts_more_than_pool_size(self):
         """Test we can successfully run on more hosts than our pool size and
         get logs for all hosts"""
-        raise NotImplementedError
-        
+        # Make a second server on the same port as the first one
+        server2_socket = make_socket('127.0.0.2', port=self.listen_port)
+        server2_port = server2_socket.getsockname()[1]
+        server1 = start_server({ self.fake_cmd : self.fake_resp },
+                               self.listen_socket)
+        server2 = start_server({ self.fake_cmd : self.fake_resp },
+                               server2_socket)
+        hosts = ['127.0.0.1', '127.0.0.2']
+        client = ParallelSSHClient(hosts,
+                                   port=self.listen_port,
+                                   pkey=self.user_key,
+                                   pool_size=1,
+                                   )
+        output = client.run_command(self.fake_cmd)
+        stdout = [list(output[k]['stdout']) for k in output]
+        expected_stdout = [[self.fake_resp], [self.fake_resp]]
+        self.assertEqual(len(hosts), len(output),
+                         msg="Did not get output from all hosts. Got output for \
+%s/%s hosts" % (len(output), len(hosts),))
+        self.assertEqual(expected_stdout, stdout,
+                         msg="Did not get expected output from all hosts. \
+                         Got %s - expected %s" % (stdout, expected_stdout,))
+        del client
+        server1.kill()
+        server2.kill()
+
     def test_ssh_proxy(self):
         """Test connecting to remote destination via SSH proxy
         client -> proxy -> destination

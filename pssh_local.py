@@ -44,14 +44,13 @@ def test():
 
 def test_parallel():
     """Perform ls and copy file with ParallelSSHClient on localhost"""
-    client = ParallelSSHClient(['localhost'])
-    cmds = client.exec_command('ls -ltrh')
-    output = [client.get_stdout(cmd, return_buffers=True) for cmd in cmds]
+    client = ParallelSSHClient(['localhost', 'localhost'])
+    output = client.run_command('ls -ltrh')
     print output
-    cmds = client.copy_file('../test', 'test_dir/test')
-    client.pool.join()
+    # cmds = client.copy_file('../test', 'test_dir/test')
+    # client.pool.join()
 
 if __name__ == "__main__":
     _setup_logger(logger)
-    test()
+    # test()
     test_parallel()
