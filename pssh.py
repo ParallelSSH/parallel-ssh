@@ -75,7 +75,7 @@ class SSHClient(object):
     def __init__(self, host,
                  user=None, password=None, port=None,
                  pkey=None, forward_ssh_agent=True,
-                 num_retries=DEFAULT_RETRIES, _agent=None, timeout=None,
+                 num_retries=DEFAULT_RETRIES, _agent=None, timeout=10,
                  proxy_host=None, proxy_port=22):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
@@ -96,7 +96,7 @@ class SSHClient(object):
         :param num_retries: (Optional) Number of retries for connection attempts\
         before the client gives up. Defaults to 3.
         :type num_retries: int
-        :param timeout: (Optional) Number of seconds to timout connection attempts\
+        :param timeout: (Optional) Number of seconds to timeout connection attempts\
         before the client gives up. Defaults to 10.
         :type timeout: int
         :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding - \
@@ -320,7 +320,7 @@ class ParallelSSHClient(object):
 
     def __init__(self, hosts,
                  user=None, password=None, port=None, pkey=None,
-                 forward_ssh_agent=True, num_retries=DEFAULT_RETRIES, timeout=None,
+                 forward_ssh_agent=True, num_retries=DEFAULT_RETRIES, timeout=10,
                  pool_size=10, proxy_host=None, proxy_port=22):
         """
         :param hosts: Hosts to connect to
@@ -339,7 +339,7 @@ class ParallelSSHClient(object):
         :param num_retries: (Optional) Number of retries for connection attempts \
         before the client gives up. Defaults to 3.
         :type num_retries: int
-        :param timeout: (Optional) Number of seconds to timout connection \
+        :param timeout: (Optional) Number of seconds to timeout connection \
         attempts before the client gives up. Defaults to 10.
         :type timeout: int
         :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding - \
