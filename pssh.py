@@ -431,7 +431,7 @@ UnknownHostException, ConnectionErrorException
         # To hold host clients
         self.host_clients = dict((host, None) for host in hosts)
 
-    def run_command(self, *args, **kwargs):
+    def run_command(self, *args, sudo=False, **kwargs):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output buffers.
 
@@ -441,6 +441,8 @@ UnknownHostException, ConnectionErrorException
 
         :param args: Positional arguments for command
         :type args: tuple
+        :param sudo: (Optional) Run with sudo. Defaults to False
+        :type sudo: bool
         :param kwargs: Keyword arguments for command
         :type kwargs: dict
 
