@@ -431,7 +431,7 @@ UnknownHostException, ConnectionErrorException
         # To hold host clients
         self.host_clients = dict((host, None) for host in hosts)
 
-    def run_command(self, *args, sudo=False, **kwargs):
+    def run_command(self, *args, **kwargs):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output buffers.
 
@@ -471,6 +471,10 @@ UnknownHostException, ConnectionErrorException
         Wait for completion, no stdout:
         
         >>> client.pool.join()
+
+        Run with sudo:
+
+        >>> output = client.run_command('ls -ltrh', sudo=True)
         
         Capture stdout - **WARNING** - this will store the entirety of stdout
         into memory and may exhaust available memory if command output is
