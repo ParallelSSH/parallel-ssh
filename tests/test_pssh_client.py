@@ -194,13 +194,16 @@ class ParallelSSHClientTest(unittest.TestCase):
         server = start_server({ self.fake_cmd : self.fake_resp },
                               self.listen_socket,
                               ssh_exception=True)
-        client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
-                                   pkey=self.user_key)
+        client = ParallelSSHClient(['127.0.0.1'],
+                                   user='fakey', password='fakey',
+                                   port=self.listen_port,
+                                   pkey=paramiko.RSAKey.generate(1024),
+                                   )
         # Handle exception
         try:
             client.run_command(self.fake_cmd)
             raise Exception("Expected SSHException, got none")
-        except SSHException, ex:
+        except SSHException:
             pass
         del client
         server.join()
