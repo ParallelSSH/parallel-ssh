@@ -31,6 +31,8 @@ See :mod:`pssh.ParallelSSHClient` and :mod:`pssh.SSHClient` for class documentat
 from gevent import monkey
 monkey.patch_all()
 import gevent.pool
+import gevent.hub
+gevent.hub.Hub.NOT_ERROR=(Exception,)
 import warnings
 from socket import gaierror as sock_gaierror, error as sock_error
 import logging
@@ -202,12 +204,12 @@ class SSHClient(object):
                                            str(error_type), self.host, self.port,
                                            retries, self.num_retries,)
         except paramiko.AuthenticationException, ex:
-            raise AuthenticationException(ex)
+            raise AuthenticationException(ex.message)
         # SSHException is more general so should be below other types
         # of SSH failure
         except paramiko.SSHException, ex:
             logger.error("General SSH error - %s", ex)
-            raise SSHException(ex)
+            raise SSHException(ex.message)
 
     def exec_command(self, command, sudo=False, user=None, **kwargs):
         """Wrapper to :mod:`paramiko.SSHClient.exec_command`

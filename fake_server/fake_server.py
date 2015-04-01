@@ -47,21 +47,29 @@ paramiko_logger = logging.getLogger('paramiko.transport')
 host_key = paramiko.RSAKey(filename = os.path.sep.join([os.path.dirname(__file__), 'rsa.key']))
 
 class Server (paramiko.ServerInterface):
-    def __init__(self, transport, cmd_req_response = {}, fail_auth=False):
+    def __init__(self, transport, cmd_req_response = {}, fail_auth=False,
+                 ssh_exception=False):
         self.event = Event()
         self.cmd_req_response = cmd_req_response
         self.fail_auth = fail_auth
+        self.ssh_exception = ssh_exception
         self.transport = transport
 
     def check_channel_request(self, kind, chanid):
         return paramiko.OPEN_SUCCEEDED
 
     def check_auth_password(self, username, password):
-        if self.fail_auth: return paramiko.AUTH_FAILED
+        if self.fail_auth:
+            return paramiko.AUTH_FAILED
+        if self.ssh_exception:
+            raise paramiko.SSHException()
         return paramiko.AUTH_SUCCESSFUL
 
     def check_auth_publickey(self, username, key):
-        if self.fail_auth: return paramiko.AUTH_FAILED
+        if self.fail_auth:
+            return paramiko.AUTH_FAILED
+        if self.ssh_exception:
+            raise paramiko.SSHException()
         return paramiko.AUTH_SUCCESSFUL
 
     def get_allowed_auths(self, username):
@@ -131,7 +139,7 @@ def make_socket(listen_ip, port=0):
         return
     return sock
 
-def listen(cmd_req_response, sock, fail_auth=False,
+def listen(cmd_req_response, sock, fail_auth=False, ssh_exception=False,
            timeout=None):
     """Run a fake ssh server and given a cmd_to_run, send given \
     response to client connection. Returns (server, socket) tuple \
@@ -149,9 +157,10 @@ def listen(cmd_req_response, sock, fail_auth=False,
         traceback.print_exc()
         return
     handle_ssh_connection(cmd_req_response, sock, fail_auth=fail_auth,
-                          timeout=timeout)
+                          timeout=timeout, ssh_exception=ssh_exception)
 
-def _handle_ssh_connection(cmd_req_response, transport, fail_auth=False):
+def _handle_ssh_connection(cmd_req_response, transport, fail_auth=False,
+                           ssh_exception=False):
     try:
         transport.load_server_moduli()
     except:
@@ -159,7 +168,7 @@ def _handle_ssh_connection(cmd_req_response, transport, fail_auth=False):
     transport.add_server_key(host_key)
     transport.set_subsystem_handler('sftp', paramiko.SFTPServer, StubSFTPServer)
     server = Server(transport, cmd_req_response=cmd_req_response,
-                    fail_auth=fail_auth)
+                    fail_auth=fail_auth, ssh_exception=ssh_exception)
     try:
         transport.start_server(server=server)
     except paramiko.SSHException, e:
@@ -180,7 +189,7 @@ def _handle_ssh_connection(cmd_req_response, transport, fail_auth=False):
     channel.close()
     
 def handle_ssh_connection(cmd_req_response, sock,
-                          fail_auth=False,
+                          fail_auth=False, ssh_exception=False,
                           timeout=None):
     conn, addr = sock.accept()
     logger.info('Got connection..')
@@ -190,7 +199,8 @@ def handle_ssh_connection(cmd_req_response, sock,
         gevent.Timeout(timeout).start()
     try:
         transport = paramiko.Transport(conn)
-        _handle_ssh_connection(cmd_req_response, transport, fail_auth=fail_auth)
+        _handle_ssh_connection(cmd_req_response, transport, fail_auth=fail_auth,
+                               ssh_exception=ssh_exception)
     except Exception, e:
         logger.error('*** Caught exception: %s: %s' % (str(e.__class__), str(e),))
         traceback.print_exc()
@@ -200,10 +210,10 @@ def handle_ssh_connection(cmd_req_response, sock,
             pass
         return
 
-def start_server(cmd_req_response, sock, fail_auth=False,
+def start_server(cmd_req_response, sock, fail_auth=False, ssh_exception=False,
                  timeout=None):
     return gevent.spawn(listen, cmd_req_response, sock, fail_auth=fail_auth,
-                        timeout=timeout)
+                        timeout=timeout, ssh_exception=ssh_exception)
 
 if __name__ == "__main__":
     logging.basicConfig()
