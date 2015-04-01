@@ -21,7 +21,7 @@
 
 import unittest
 from pssh import ParallelSSHClient, UnknownHostException, \
-     AuthenticationException, ConnectionErrorException, logger as pssh_logger
+     AuthenticationException, ConnectionErrorException, SSHException, logger as pssh_logger
 from fake_server.fake_server import start_server, make_socket, \
      logger as server_logger, paramiko_logger
 import random
@@ -186,6 +186,21 @@ class ParallelSSHClientTest(unittest.TestCase):
             cmd.get()
             raise Exception("Expected AuthenticationException, got none")
         except AuthenticationException:
+            pass
+        del client
+        server.join()
+
+    def test_pssh_client_ssh_exception(self):
+        server = start_server({ self.fake_cmd : self.fake_resp },
+                              self.listen_socket,
+                              ssh_exception=True)
+        client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
+                                   pkey=self.user_key)
+        # Handle exception
+        try:
+            client.run_command(self.fake_cmd)
+            raise Exception("Expected SSHException, got none")
+        except SSHException, ex:
             pass
         del client
         server.join()
