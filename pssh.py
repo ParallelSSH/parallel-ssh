@@ -204,7 +204,8 @@ class SSHClient(object):
                                            str(error_type), self.host, self.port,
                                            retries, self.num_retries,)
         except paramiko.AuthenticationException, ex:
-            raise AuthenticationException(ex.message)
+            msg = ex.message + "Host is '%s:%s'"
+            raise AuthenticationException(msg, host, port)
         # SSHException is more general so should be below other types
         # of SSH failure
         except paramiko.SSHException, ex:
@@ -497,9 +498,19 @@ UnknownHostException, ConnectionErrorException
                        'cmd'     : <greenlet>}}
 
         """
+        stop_on_errors = kwargs['stop_on_errors'] \
+          if 'stop_on_errors' in kwargs else True
+        del kwargs['stop_on_errors']
         cmds = [self.pool.spawn(self._exec_command, host, *args, **kwargs)
                 for host in self.hosts]
-        return self.get_output(commands=cmds)
+        output = {}
+        for cmd in cmds:
+            try:
+                output = self.get_output(cmd)
+            except Exception, ex:
+                if stop_on_errors:
+                    raise ex
+        return output
     
     def exec_command(self, *args, **kwargs):
         """Run command on all hosts in parallel, honoring `self.pool_size`
@@ -530,8 +541,8 @@ future releases - use self.run_command instead", DeprecationWarning)
                                                 proxy_port=self.proxy_port)
         return self.host_clients[host].exec_command(*args, **kwargs)
 
-    def get_output(self, commands=None):
-        """Get output from running commands.
+    def get_output(self, cmd):
+        """Get output from command.
         
         :param commands: (Optional) Override commands to get output from.\
         Uses running commands in pool if not given.
@@ -562,17 +573,23 @@ future releases - use self.run_command instead", DeprecationWarning)
         >>> self.get_exit_code(output[host])
         0
         """
-        if not commands:
-            commands = list(self.pool.greenlets)
         output = {}
-        for cmd in commands:
+        try:
             (channel, host, stdout, stderr) = cmd.get()
-            output.setdefault(host, {})
-            output[host].update({'exit_code': self._get_exit_code(channel),
-                                 'channel' : channel,
-                                 'stdout' : stdout,
-                                 'stderr' : stderr,
-                                 'cmd' : cmd, })
+        except Exception, ex:
+            output[host].update({'exit_code' : None,
+                                 'channel' : None,
+                                 'stdout' : None,
+                                 'stderr' : None,
+                                 'cmd' : cmd,
+                                 'exception' : ex,})
+            raise ex
+        output.setdefault(host, {})
+        output[host].update({'exit_code': self._get_exit_code(channel),
+                             'channel' : channel,
+                             'stdout' : stdout,
+                             'stderr' : stderr,
+                             'cmd' : cmd, })
         return output
 
     def get_exit_code(self, host_output):

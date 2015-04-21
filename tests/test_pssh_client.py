@@ -190,6 +190,35 @@ class ParallelSSHClientTest(unittest.TestCase):
         del client
         server.join()
 
+    def test_pssh_client_hosts_list_part_failure(self):
+        """Test getting output for remainder of host list in the case where one
+        host in the host list has a failure"""
+        server2_socket = make_socket('127.0.0.2', port=self.listen_port)
+        server2_port = server2_socket.getsockname()[1]
+        server1 = start_server({ self.fake_cmd : self.fake_resp },
+                               self.listen_socket, fail_auth=True)
+        server2 = start_server({ self.fake_cmd : self.fake_resp },
+                               server2_socket)
+        hosts = ['127.0.0.1', '127.0.0.2']
+        client = ParallelSSHClient(hosts,
+                                   port=self.listen_port,
+                                   pkey=self.user_key,
+                                   )
+        output = {}
+        try:
+            client.run_command(self.fake_cmd,
+                               output=output,
+                               stop_on_errors=False)
+        except AuthenticationException:
+            pass
+        self.assertTrue(hosts[0] in output,
+                        msg="Failed host does not exist in output - output is %s" % (output,))
+        self.assertTrue(hosts[1] in output,
+                        msg="Successful host does not exist in output - output is %s" % (output,))
+        del client
+        server1.kill()
+        server2.kill()
+
     def test_pssh_client_ssh_exception(self):
         server = start_server({ self.fake_cmd : self.fake_resp },
                               self.listen_socket,
