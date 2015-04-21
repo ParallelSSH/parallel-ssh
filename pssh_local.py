@@ -23,7 +23,7 @@ and ParallelSSHClient.
 from pssh import SSHClient, ParallelSSHClient
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('pssh')
 
 def _setup_logger(_logger):
     """Setup default logger"""
