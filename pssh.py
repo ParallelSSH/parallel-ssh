@@ -210,7 +210,7 @@ class SSHClient(object):
         # of SSH failure
         except paramiko.SSHException, ex:
             logger.error("General SSH error - %s", ex)
-            raise SSHException(ex.message)
+            raise SSHException(ex.message, host)
 
     def exec_command(self, command, sudo=False, user=None, **kwargs):
         """Wrapper to :mod:`paramiko.SSHClient.exec_command`
@@ -498,15 +498,13 @@ UnknownHostException, ConnectionErrorException
                        'cmd'     : <greenlet>}}
 
         """
-        stop_on_errors = kwargs['stop_on_errors'] \
-          if 'stop_on_errors' in kwargs else True
-        del kwargs['stop_on_errors']
+        stop_on_errors = kwargs.pop('stop_on_errors', True)
         cmds = [self.pool.spawn(self._exec_command, host, *args, **kwargs)
                 for host in self.hosts]
         output = {}
         for cmd in cmds:
             try:
-                output = self.get_output(cmd)
+                self.get_output(cmd, output)
             except Exception, ex:
                 if stop_on_errors:
                     raise ex
@@ -541,12 +539,11 @@ future releases - use self.run_command instead", DeprecationWarning)
                                                 proxy_port=self.proxy_port)
         return self.host_clients[host].exec_command(*args, **kwargs)
 
-    def get_output(self, cmd):
+    def get_output(self, cmd, output):
         """Get output from command.
         
-        :param commands: (Optional) Override commands to get output from.\
-        Uses running commands in pool if not given.
-        :type commands: :mod:`gevent.Greenlet`
+        :param cmd: Command to get output from
+        :type cmd: :mod:`gevent.Greenlet`
         :rtype: Dictionary with host as key as in:
 
         ::
@@ -573,10 +570,15 @@ future releases - use self.run_command instead", DeprecationWarning)
         >>> self.get_exit_code(output[host])
         0
         """
-        output = {}
         try:
             (channel, host, stdout, stderr) = cmd.get()
         except Exception, ex:
+            try:
+                host = ex.args[1]
+            except IndexError:
+                logger.error("Got exception with no host argument - cannot update output data with %s", ex)
+                raise ex
+            output.setdefault(host, {})
             output[host].update({'exit_code' : None,
                                  'channel' : None,
                                  'stdout' : None,
@@ -590,7 +592,6 @@ future releases - use self.run_command instead", DeprecationWarning)
                              'stdout' : stdout,
                              'stderr' : stderr,
                              'cmd' : cmd, })
-        return output
 
     def get_exit_code(self, host_output):
         """Get exit code from host output if available

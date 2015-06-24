@@ -137,7 +137,9 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    pkey=self.user_key)
         out = client.run_command(self.fake_cmd)
         cmds = [cmd for host in out for cmd in [out[host]['cmd']]]
-        output = client.get_output(commands=cmds)
+        output = {}
+        for cmd in cmds:
+            client.get_output(cmd, output)
         expected_exit_code = 0
         expected_stdout = [self.fake_resp]
         expected_stderr = []
@@ -204,13 +206,8 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    port=self.listen_port,
                                    pkey=self.user_key,
                                    )
-        output = {}
-        try:
-            client.run_command(self.fake_cmd,
-                               output=output,
-                               stop_on_errors=False)
-        except AuthenticationException:
-            pass
+        output = client.run_command(self.fake_cmd,
+                                    stop_on_errors=False)
         self.assertTrue(hosts[0] in output,
                         msg="Failed host does not exist in output - output is %s" % (output,))
         self.assertTrue(hosts[1] in output,
