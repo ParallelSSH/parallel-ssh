@@ -13,8 +13,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from distutils.core import setup
-from setuptools import find_packages
+from setuptools import setup, find_packages
 import sys
 
 convert_2_to_3 = {}
