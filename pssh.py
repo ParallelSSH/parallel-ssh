@@ -232,8 +232,8 @@ class SSHClient(object):
         if self.forward_ssh_agent:
             agent_handler = paramiko.agent.AgentRequestHandler(channel)
         channel.get_pty()
-        if self.timeout:
-            channel.settimeout(self.timeout)
+        # if self.timeout:
+        #     channel.settimeout(self.timeout)
         _stdout, _stderr = channel.makefile('rb'), \
                            channel.makefile_stderr('rb')
         stdout, stderr = self._read_output_buffer(_stdout,), \
