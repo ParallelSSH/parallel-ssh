@@ -238,12 +238,12 @@ class SSHClient(object):
                          self._read_output_buffer(_stderr,
                                                   prefix='\t[err]')
         if sudo and not user:
-            command = 'sudo -S bash -c "%s"' % command.replace('"', '\\"')
+            command = 'sudo -S bash -c \'%s\'' % command.replace('"', '\\"')
         elif user:
-            command = 'sudo -u %s -S bash -c "%s"' % (
+            command = 'sudo -u %s -S bash -c \'%s\'' % (
                 user, command.replace('"', '\\"'),)
         else:
-            command = 'bash -c "%s"' % command.replace('"', '\\"')
+            command = 'bash -c \'%s\'' % command.replace('"', '\\"')
         logger.debug("Running command %s on %s", command, self.host)
         channel.exec_command(command, **kwargs)
         logger.debug("Command started")
@@ -318,7 +318,7 @@ class ParallelSSHClient(object):
 
     def __init__(self, hosts,
                  user=None, password=None, port=None, pkey=None,
-                 forward_ssh_agent=True, num_retries=DEFAULT_RETRIES, timeout=10,
+                 forward_ssh_agent=True, num_retries=DEFAULT_RETRIES, timeout=120,
                  pool_size=10, proxy_host=None, proxy_port=22):
         """
         :param hosts: Hosts to connect to
