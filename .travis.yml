@@ -1,4 +1,5 @@
 language: python
+cache: pip
 python:
   - 2.6
   - 2.7
@@ -6,7 +7,7 @@ python:
 install:
   - pip install -r requirements.txt
   - pip install coveralls
-script: nosetests --with-coverage --cover-package=pssh
+script: python setup.py nosetests --with-coverage --cover-package=pssh
 notifications:
   email:
     on_failure: change
