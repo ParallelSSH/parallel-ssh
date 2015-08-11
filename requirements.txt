@@ -1,2 +1,2 @@
 paramiko>=1.9
-gevent>=1.0.1
+gevent>=1.1b2

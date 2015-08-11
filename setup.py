@@ -15,6 +15,11 @@
 
 from distutils.core import setup
 from setuptools import find_packages
+import sys
+
+convert_2_to_3 = {}
+if sys.version_info >= (3,):
+    convert_2_to_3['use_2to3'] = True
 
 setup(name='parallel-ssh',
       version='0.70.3',
@@ -34,4 +39,5 @@ setup(name='parallel-ssh',
         'Operating System :: POSIX :: Linux',
         'Operating System :: POSIX :: BSD',
         ],
+        **convert_2_to_3
       )
