@@ -40,11 +40,6 @@ import paramiko
 import os
 
 host_logger = logging.getLogger('pssh.host_logger')
-handler = logging.StreamHandler()
-host_log_format = logging.Formatter('%(message)s')
-handler.setFormatter(host_log_format)
-host_logger.addHandler(handler)
-host_logger.setLevel(logging.INFO)
 DEFAULT_RETRIES = 3
 
 logger = logging.getLogger(__name__)
