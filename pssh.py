@@ -551,7 +551,7 @@ future releases - use self.run_command instead", DeprecationWarning)
         **Example usage**:
         
         >>> output = client.get_output()
-        >>> for host in output: print output[host]['stdout']
+        >>> for host in output: for line in output[host]['stdout']: print line
         <stdout>
         >>> # Get exit code after command has finished
         >>> self.get_exit_code(output[host])
