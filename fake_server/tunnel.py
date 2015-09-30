@@ -46,10 +46,11 @@ class Tunneler(gevent.Greenlet):
                 logger.debug("Tunnel waiting for data..")
                 data = source_chan.recv(1024)
                 dest_socket.sendall(data)
+                gevent.sleep(.1)
                 response_data = dest_socket.recv(1024)
                 source_chan.sendall(response_data)
                 logger.debug("Tunnel sent data..")
-                gevent.sleep(1)
+                gevent.sleep(0)
         finally:
             source_chan.close()
             dest_socket.close()

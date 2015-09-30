@@ -101,33 +101,18 @@ class Server (paramiko.ServerInterface):
 
     def check_channel_exec_request(self, channel, cmd):
         logger.debug("Got exec request on channel %s for cmd %s" % (channel, cmd,))
-        # Remove any 'bash -c' and/or quotes from command
-        # cmd = cmd.replace('bash -c ', "")
-        # cmd = cmd.replace('\"', "")
-        # cmd = cmd.replace('\'', "")
-        # if not cmd in self.cmd_req_response:
-        #     return False
         self.event.set()
         process = gevent.subprocess.Popen(cmd, stdout=gevent.subprocess.PIPE, shell=True)
-        # Check if response is an iterator in which case we
-        # do not return but read from iterator and send responses.
-        # This is to simulate a long running command that has not
-        # finished executing yet.
         gevent.spawn(self._read_response, channel, process)
-        # gevent.sleep(1)
-        # else:
-        #     channel.send(self.cmd_req_response[cmd] + os.linesep)
-        #     channel.send_exit_status(0)
         return True
 
     def _read_response(self, channel, process):
-        # import ipdb; ipdb.set_trace()
         for line in process.stdout:
             channel.send(line)
-            gevent.sleep(0)
         process.communicate()
         channel.send_exit_status(process.returncode)
-        channel.close()
+        logger.debug("Command finished with return code %s", process.returncode)
+        gevent.sleep(0)
 
 def make_socket(listen_ip, port=0):
     """Make socket on given address and available port chosen by OS"""
