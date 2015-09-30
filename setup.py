@@ -13,8 +13,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from distutils.core import setup
-from setuptools import find_packages
+from setuptools import setup, find_packages
 
 setup(name='parallel-ssh',
       version='0.70.3',
@@ -22,8 +21,9 @@ setup(name='parallel-ssh',
       author='Panos Kittenis',
       author_email='pkittenis@gmail.com',
       url = "https://github.com/pkittenis/parallel-ssh",
-      py_modules = ['pssh'],
-      install_requires = ['paramiko', 'gevent'],
+      packages = find_packages('.', exclude=(
+          'embedded_server', 'embedded_server.*')),
+      install_requires = open('requirements.txt').readlines(),
       classifiers = [
         'License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)',
         'Intended Audience :: Developers',
