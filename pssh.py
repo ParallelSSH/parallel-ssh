@@ -605,8 +605,8 @@ future releases - use self.run_command instead", DeprecationWarning)
                                                              'stdout' : <iterable>,
                                                              'stderr' : <iterable>,}}``
         """
-        warnings.warn("This method is being deprecated and will be removed in \
-future releases - use self.get_output instead", DeprecationWarning)
+        warnings.warn("This method is being deprecated and will be removed in"
+                      "future releases - use self.get_output instead", DeprecationWarning)
         gevent.sleep(.2)
         channel, host, stdout, stderr = greenlet.get()
         if channel.exit_status_ready():
