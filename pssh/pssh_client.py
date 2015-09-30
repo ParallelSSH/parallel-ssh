@@ -316,6 +316,16 @@ future releases - use self.run_command instead", DeprecationWarning)
                              'stderr' : stderr,
                              'cmd' : cmd, })
 
+    def get_exit_codes(self, output):
+        """Get exit code for all hosts in output if available.
+        Output parameter is modified in-place.
+        
+        :param output: As returned by `self.get_output`
+        :rtype: None
+        """
+        for host in output:
+            output[host].update({'exit_code': self.get_exit_code(output[host])})
+
     def get_exit_code(self, host_output):
         """Get exit code from host output if available
         :param host_output: Per host output as returned by `self.get_output`

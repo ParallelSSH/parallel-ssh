@@ -25,8 +25,6 @@ Server private key is hardcoded, server listen code inspired by demo_server.py i
 paramiko repository
 """
 
-from gevent import monkey
-monkey.patch_all()
 import gevent
 import os
 import socket
@@ -37,8 +35,8 @@ import traceback
 import logging
 import paramiko
 import time
-from stub_sftp import StubSFTPServer
-from tunnel import Tunneler
+from .stub_sftp import StubSFTPServer
+from .tunnel import Tunneler
 import gevent.subprocess
 
 logger = logging.getLogger("embedded_server")
@@ -112,7 +110,9 @@ class Server (paramiko.ServerInterface):
         process.communicate()
         channel.send_exit_status(process.returncode)
         logger.debug("Command finished with return code %s", process.returncode)
-        gevent.sleep(0)
+        # Let clients consume output from channel before closing
+        gevent.sleep(.2)
+        channel.close()
 
 def make_socket(listen_ip, port=0):
     """Make socket on given address and available port chosen by OS"""
