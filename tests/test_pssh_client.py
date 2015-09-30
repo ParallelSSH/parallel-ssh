@@ -22,7 +22,7 @@
 import unittest
 from pssh import ParallelSSHClient, UnknownHostException, \
      AuthenticationException, ConnectionErrorException, SSHException, logger as pssh_logger
-from fake_server.fake_server import start_server, make_socket, \
+from embedded_server.embedded_server import start_server, make_socket, \
      logger as server_logger, paramiko_logger
 import random
 import logging

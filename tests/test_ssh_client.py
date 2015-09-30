@@ -26,9 +26,9 @@ import time
 import unittest
 from pssh import SSHClient, ParallelSSHClient, UnknownHostException, AuthenticationException,\
      logger, ConnectionErrorException, UnknownHostException, SSHException
-from fake_server.fake_server import start_server, make_socket, logger as server_logger, \
+from embedded_server.embedded_server import start_server, make_socket, logger as server_logger, \
      paramiko_logger
-from fake_server.fake_agent import FakeAgent
+from embedded_server.fake_agent import FakeAgent
 import paramiko
 import os
 from test_pssh_client import USER_KEY

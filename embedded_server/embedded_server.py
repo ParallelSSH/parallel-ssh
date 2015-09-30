@@ -41,7 +41,7 @@ from stub_sftp import StubSFTPServer
 from tunnel import Tunneler
 import gevent.subprocess
 
-logger = logging.getLogger("fake_server")
+logger = logging.getLogger("embedded_server")
 paramiko_logger = logging.getLogger('paramiko.transport')
 
 host_key = paramiko.RSAKey(filename = os.path.sep.join([os.path.dirname(__file__), 'rsa.key']))
@@ -128,10 +128,11 @@ def make_socket(listen_ip, port=0):
 
 def listen(sock, fail_auth=False, ssh_exception=False,
            timeout=None):
-    """Run a fake ssh server and given a cmd_to_run, send given \
-    response to client connection. Returns (server, socket) tuple \
-    where server is a joinable server thread and socket is listening \
-    socket of server."""
+    """Run server and given a cmd_to_run, send given
+    response to client connection. Returns (server, socket) tuple
+    where server is a joinable server thread and socket is listening
+    socket of server.
+    """
     listen_ip, listen_port = sock.getsockname()
     if not sock:
         logger.error("Could not establish listening connection on %s:%s", listen_ip, listen_port)
