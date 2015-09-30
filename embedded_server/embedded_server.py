@@ -39,18 +39,17 @@ import paramiko
 import time
 from stub_sftp import StubSFTPServer
 from tunnel import Tunneler
+import gevent.subprocess
 
-
-logger = logging.getLogger("fake_server")
+logger = logging.getLogger("embedded_server")
 paramiko_logger = logging.getLogger('paramiko.transport')
 
 host_key = paramiko.RSAKey(filename = os.path.sep.join([os.path.dirname(__file__), 'rsa.key']))
 
 class Server (paramiko.ServerInterface):
-    def __init__(self, transport, cmd_req_response = {}, fail_auth=False,
+    def __init__(self, transport, fail_auth=False,
                  ssh_exception=False):
         self.event = Event()
-        self.cmd_req_response = cmd_req_response
         self.fail_auth = fail_auth
         self.ssh_exception = ssh_exception
         self.transport = transport
@@ -102,31 +101,18 @@ class Server (paramiko.ServerInterface):
 
     def check_channel_exec_request(self, channel, cmd):
         logger.debug("Got exec request on channel %s for cmd %s" % (channel, cmd,))
-        # Remove any 'bash -c' and/or quotes from command
-        cmd = cmd.replace('bash -c ', "")
-        cmd = cmd.replace('\"', "")
-        cmd = cmd.replace('\'', "")
-        if not cmd in self.cmd_req_response:
-            return False
         self.event.set()
-        # Check if response is an iterator in which case we
-        # do not return but read from iterator and send responses.
-        # This is to simulate a long running command that has not
-        # finished executing yet.
-        if hasattr(self.cmd_req_response[cmd], 'next'):
-            gevent.spawn(self._long_running_response,
-                         channel, self.cmd_req_response[cmd])
-        else:
-            channel.send(self.cmd_req_response[cmd] + os.linesep)
-            channel.send_exit_status(0)
+        process = gevent.subprocess.Popen(cmd, stdout=gevent.subprocess.PIPE, shell=True)
+        gevent.spawn(self._read_response, channel, process)
         return True
 
-    def _long_running_response(self, channel, responder):
-        for response in responder:
-            channel.send(response + os.linesep)
-            gevent.sleep(0)
-        channel.send_exit_status(0)
-        channel.close()
+    def _read_response(self, channel, process):
+        for line in process.stdout:
+            channel.send(line)
+        process.communicate()
+        channel.send_exit_status(process.returncode)
+        logger.debug("Command finished with return code %s", process.returncode)
+        gevent.sleep(0)
 
 def make_socket(listen_ip, port=0):
     """Make socket on given address and available port chosen by OS"""
@@ -140,12 +126,13 @@ def make_socket(listen_ip, port=0):
         return
     return sock
 
-def listen(cmd_req_response, sock, fail_auth=False, ssh_exception=False,
+def listen(sock, fail_auth=False, ssh_exception=False,
            timeout=None):
-    """Run a fake ssh server and given a cmd_to_run, send given \
-    response to client connection. Returns (server, socket) tuple \
-    where server is a joinable server thread and socket is listening \
-    socket of server."""
+    """Run server and given a cmd_to_run, send given
+    response to client connection. Returns (server, socket) tuple
+    where server is a joinable server thread and socket is listening
+    socket of server.
+    """
     listen_ip, listen_port = sock.getsockname()
     if not sock:
         logger.error("Could not establish listening connection on %s:%s", listen_ip, listen_port)
@@ -157,10 +144,10 @@ def listen(cmd_req_response, sock, fail_auth=False, ssh_exception=False,
         logger.error('*** Listen failed: %s' % (str(e),))
         traceback.print_exc()
         return
-    handle_ssh_connection(cmd_req_response, sock, fail_auth=fail_auth,
+    handle_ssh_connection(sock, fail_auth=fail_auth,
                           timeout=timeout, ssh_exception=ssh_exception)
 
-def _handle_ssh_connection(cmd_req_response, transport, fail_auth=False,
+def _handle_ssh_connection(transport, fail_auth=False,
                            ssh_exception=False):
     try:
         transport.load_server_moduli()
@@ -168,7 +155,7 @@ def _handle_ssh_connection(cmd_req_response, transport, fail_auth=False,
         return
     transport.add_server_key(host_key)
     transport.set_subsystem_handler('sftp', paramiko.SFTPServer, StubSFTPServer)
-    server = Server(transport, cmd_req_response=cmd_req_response,
+    server = Server(transport,
                     fail_auth=fail_auth, ssh_exception=ssh_exception)
     try:
         transport.start_server(server=server)
@@ -189,7 +176,7 @@ def _handle_ssh_connection(cmd_req_response, transport, fail_auth=False,
         gevent.sleep(.2)
     channel.close()
     
-def handle_ssh_connection(cmd_req_response, sock,
+def handle_ssh_connection(sock,
                           fail_auth=False, ssh_exception=False,
                           timeout=None):
     conn, addr = sock.accept()
@@ -200,7 +187,7 @@ def handle_ssh_connection(cmd_req_response, sock,
         gevent.Timeout(timeout).start()
     try:
         transport = paramiko.Transport(conn)
-        _handle_ssh_connection(cmd_req_response, transport, fail_auth=fail_auth,
+        _handle_ssh_connection(transport, fail_auth=fail_auth,
                                ssh_exception=ssh_exception)
     except Exception, e:
         logger.error('*** Caught exception: %s: %s' % (str(e.__class__), str(e),))
@@ -211,16 +198,16 @@ def handle_ssh_connection(cmd_req_response, sock,
             pass
         return
 
-def start_server(cmd_req_response, sock, fail_auth=False, ssh_exception=False,
+def start_server(sock, fail_auth=False, ssh_exception=False,
                  timeout=None):
-    return gevent.spawn(listen, cmd_req_response, sock, fail_auth=fail_auth,
+    return gevent.spawn(listen, sock, fail_auth=fail_auth,
                         timeout=timeout, ssh_exception=ssh_exception)
 
 if __name__ == "__main__":
     logging.basicConfig()
     logger.setLevel(logging.DEBUG)
     sock = make_socket('127.0.0.1')
-    server = start_server({'fake' : 'fake response'}, sock)
+    server = start_server(sock)
     try:
         server.join()
     except KeyboardInterrupt:

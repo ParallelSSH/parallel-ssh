@@ -22,7 +22,7 @@
 import unittest
 from pssh import ParallelSSHClient, UnknownHostException, \
      AuthenticationException, ConnectionErrorException, SSHException, logger as pssh_logger
-from fake_server.fake_server import start_server, make_socket, \
+from embedded_server.embedded_server import start_server, make_socket, \
      logger as server_logger, paramiko_logger
 import random
 import logging
@@ -35,19 +35,20 @@ import warnings
 USER_KEY = paramiko.RSAKey.from_private_key_file(
     os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key']))
 
-# server_logger.setLevel(logging.DEBUG)
-# pssh_logger.setLevel(logging.DEBUG)
-# logging.basicConfig()
+server_logger.setLevel(logging.DEBUG)
+pssh_logger.setLevel(logging.DEBUG)
+logging.basicConfig()
 
 class ParallelSSHClientTest(unittest.TestCase):
 
     def setUp(self):
-        self.fake_cmd = 'fake cmd'
-        self.fake_resp = 'fake response'
-        self.long_running_cmd = 'long running'
+        self.fake_cmd = 'echo me'
+        self.fake_resp = 'me'
+        self.long_cmd = lambda lines: 'for (( i=0; i<%s; i+=1 )) do echo $i; done' % (lines,)
         self.user_key = USER_KEY
         self.listen_socket = make_socket('127.0.0.1')
         self.listen_port = self.listen_socket.getsockname()[1]
+        self.server = start_server(self.listen_socket)
 
     def long_running_response(self, responses):
         i = 0
@@ -58,13 +59,12 @@ class ParallelSSHClientTest(unittest.TestCase):
             yield 'long running response'
             gevent.sleep(1)
             i += 1
-            
+
     def tearDown(self):
+        del self.server
         del self.listen_socket
-        
+            
     def test_pssh_client_exec_command(self):
-        server = start_server({ self.fake_cmd : self.fake_resp },
-                              self.listen_socket)
         client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
                                    pkey=self.user_key)
         cmd = client.exec_command(self.fake_cmd)[0]
@@ -72,12 +72,21 @@ class ParallelSSHClientTest(unittest.TestCase):
         expected = {'127.0.0.1' : {'exit_code' : 0}}
         self.assertEqual(expected, output,
                          msg="Got unexpected command output - %s" % (output,))
-        del client
-        server.join()
+        self.assertTrue(output['127.0.0.1']['exit_code'] == 0)
+
+    def test_pssh_client_no_stdout_non_zero_exit_code(self):
+        client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
+                                   pkey=self.user_key)
+        output = client.run_command('exit 1')
+        expected_exit_code = 1
+        exit_code = output['127.0.0.1']['exit_code']
+        client.pool.join()
+        self.assertEqual(expected_exit_code, exit_code,
+                         msg="Got unexpected exit code - %s, expected %s" %
+                         (exit_code,
+                          expected_exit_code,))
 
     def test_pssh_client_exec_command_get_buffers(self):
-        server = start_server({ self.fake_cmd : self.fake_resp },
-                              self.listen_socket)
         client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
                                    pkey=self.user_key)
         cmd = client.exec_command(self.fake_cmd)[0]
@@ -100,12 +109,8 @@ class ParallelSSHClientTest(unittest.TestCase):
                          msg="Got unexpected stderr - %s, expected %s" % 
                          (stderr,
                           expected_stderr,))
-        del client
-        server.join()
 
     def test_pssh_client_run_command_get_output(self):
-        server = start_server({ self.fake_cmd : self.fake_resp },
-                              self.listen_socket)
         client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
                                    pkey=self.user_key)
         output = client.run_command(self.fake_cmd)
@@ -127,12 +132,8 @@ class ParallelSSHClientTest(unittest.TestCase):
                          msg="Got unexpected stderr - %s, expected %s" %
                          (stderr,
                           expected_stderr,))
-        del client
-        server.join()
 
     def test_pssh_client_run_command_get_output_explicit(self):
-        server = start_server({ self.fake_cmd : self.fake_resp },
-                              self.listen_socket)
         client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
                                    pkey=self.user_key)
         out = client.run_command(self.fake_cmd)
@@ -159,28 +160,24 @@ class ParallelSSHClientTest(unittest.TestCase):
                          (stderr,
                           expected_stderr,))
         del client
-        server.join()
 
     def test_pssh_client_run_long_command(self):
         expected_lines = 5
-        server = start_server({ self.long_running_cmd :
-                                self.long_running_response(expected_lines) },
-                              self.listen_socket)
         client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
                                    pkey=self.user_key)
-        output = client.run_command(self.long_running_cmd)
+        output = client.run_command(self.long_cmd(expected_lines))
         self.assertTrue('127.0.0.1' in output, msg="Got no output for command")
         stdout = list(output['127.0.0.1']['stdout'])
         self.assertTrue(len(stdout) == expected_lines,
                         msg="Expected %s lines of response, got %s" % (
                             expected_lines, len(stdout)))
         del client
-        server.kill()
 
     def test_pssh_client_auth_failure(self):
-        server = start_server({ self.fake_cmd : self.fake_resp },
-                              self.listen_socket, fail_auth=True)
-        client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
+        listen_socket = make_socket('127.0.0.1')
+        listen_port = listen_socket.getsockname()[1]
+        server = start_server(listen_socket, fail_auth=True)
+        client = ParallelSSHClient(['127.0.0.1'], port=listen_port,
                                    pkey=self.user_key)
         cmd = client.exec_command(self.fake_cmd)[0]
         # Handle exception
@@ -217,12 +214,13 @@ class ParallelSSHClientTest(unittest.TestCase):
         server2.kill()
 
     def test_pssh_client_ssh_exception(self):
-        server = start_server({ self.fake_cmd : self.fake_resp },
-                              self.listen_socket,
+        listen_socket = make_socket('127.0.0.1')
+        listen_port = listen_socket.getsockname()[1]
+        server = start_server(listen_socket,
                               ssh_exception=True)
         client = ParallelSSHClient(['127.0.0.1'],
                                    user='fakey', password='fakey',
-                                   port=self.listen_port,
+                                   port=listen_port,
                                    pkey=paramiko.RSAKey.generate(1024),
                                    )
         # Handle exception
@@ -235,12 +233,13 @@ class ParallelSSHClientTest(unittest.TestCase):
         server.join()
 
     def test_pssh_client_timeout(self):
+        listen_socket = make_socket('127.0.0.1')
+        listen_port = listen_socket.getsockname()[1]
         server_timeout=0.2
         client_timeout=server_timeout-0.1
-        server = start_server({ self.fake_cmd : self.fake_resp },
-                              self.listen_socket,
+        server = start_server(listen_socket,
                               timeout=server_timeout)
-        client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
+        client = ParallelSSHClient(['127.0.0.1'], port=listen_port,
                                    pkey=self.user_key,
                                    timeout=client_timeout)
         output = client.run_command(self.fake_cmd)
@@ -264,8 +263,6 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_pssh_client_exec_command_password(self):
         """Test password authentication. Fake server accepts any password
         even empty string"""
-        server = start_server({ self.fake_cmd : self.fake_resp },
-                              self.listen_socket)
         client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
                                    password='')
         cmd = client.exec_command(self.fake_cmd)[0]
@@ -274,29 +271,26 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(expected, output,
                          msg="Got unexpected command output - %s" % (output,))
         del client
-        server.join()
 
     def test_pssh_client_long_running_command(self):
         expected_lines = 5
-        server = start_server({ self.long_running_cmd :
-                                self.long_running_response(expected_lines) },
-                              self.listen_socket)
         client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
                                    pkey=self.user_key)
-        cmd = client.exec_command(self.long_running_cmd)[0]
-        output = client.get_stdout(cmd)
+        cmd = client.exec_command(self.long_cmd(expected_lines))[0]
+        output = client.get_stdout(cmd, return_buffers=True)
         self.assertTrue('127.0.0.1' in output, msg="Got no output for command")
         stdout = list(output['127.0.0.1']['stdout'])
         self.assertTrue(len(stdout) == expected_lines,
                         msg="Expected %s lines of response, got %s" % (
                             expected_lines, len(stdout)))
         del client
-        server.kill()
         
     def test_pssh_client_retries(self):
         """Test connection error retries"""
+        listen_socket = make_socket('127.0.0.1')
+        listen_port = listen_socket.getsockname()[1]
         expected_num_tries = 2
-        client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
+        client = ParallelSSHClient(['127.0.0.1'], port=listen_port,
                                    pkey=self.user_key,
                                    num_retries=expected_num_tries)
         self.assertRaises(ConnectionErrorException, client.run_command, 'blah')
@@ -361,10 +355,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         # Make a second server on the same port as the first one
         server2_socket = make_socket('127.0.0.2', port=self.listen_port)
         server2_port = server2_socket.getsockname()[1]
-        server1 = start_server({ self.fake_cmd : self.fake_resp },
-                               self.listen_socket)
-        server2 = start_server({ self.fake_cmd : self.fake_resp },
-                               server2_socket)
+        server2 = start_server(server2_socket)
         hosts = ['127.0.0.1', '127.0.0.2']
         client = ParallelSSHClient(hosts,
                                    port=self.listen_port,
@@ -381,24 +372,26 @@ class ParallelSSHClientTest(unittest.TestCase):
                          msg="Did not get expected output from all hosts. \
                          Got %s - expected %s" % (stdout, expected_stdout,))
         del client
-        server1.kill()
-        server2.kill()
+        # server1.kill()
+        del server2
 
     def test_ssh_proxy(self):
         """Test connecting to remote destination via SSH proxy
         client -> proxy -> destination
         Proxy SSH server accepts no commands and sends no responses, only
         proxies to destination. Destination accepts a command as usual."""
-        proxy_server_socket = make_socket('127.0.0.1')
+        # self.server.kill()
+        proxy_server_socket = make_socket('127.0.0.2')
         proxy_server_port = proxy_server_socket.getsockname()[1]
-        proxy_server = start_server({}, proxy_server_socket)
-        server = start_server({ self.fake_cmd : self.fake_resp },
-                              self.listen_socket)
+        # server = start_server(self.listen_socket)
+        proxy_server = start_server(proxy_server_socket)
         client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
                                    pkey=self.user_key,
-                                   proxy_host='127.0.0.1',
+                                   proxy_host='127.0.0.2',
                                    proxy_port=proxy_server_port
                                    )
+        # gevent.sleep(1)
+        # import ipdb; ipdb.set_trace()
         output = client.run_command(self.fake_cmd)
         stdout = list(output['127.0.0.1']['stdout'])
         expected_stdout = [self.fake_resp]
@@ -406,5 +399,16 @@ class ParallelSSHClientTest(unittest.TestCase):
                          msg="Got unexpected stdout - %s, expected %s" % 
                          (stdout,
                           expected_stdout,))
-        server.kill()
+        # server.kill()
         proxy_server.kill()
+
+    def test_bash_variable_substitution(self):
+        """Test bash variables work correctly"""
+        client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
+                                   pkey=self.user_key)
+        command = """for i in 1 2 3; do echo $i; done"""
+        output = list(client.run_command(command)['127.0.0.1']['stdout'])
+        expected = ['1','2','3']
+        self.assertEqual(output, expected,
+                         msg="Unexpected output from bash variable substitution %s - should be %s" % (
+                             output, expected,))

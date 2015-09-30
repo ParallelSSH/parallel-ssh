@@ -247,7 +247,8 @@ class SSHClient(object):
         logger.debug("Running command %s on %s", command, self.host)
         channel.exec_command(command, **kwargs)
         logger.debug("Command started")
-        while not (channel.recv_ready() or channel.closed):
+        while not (channel.recv_ready() or channel.closed or
+                   channel.exit_status_ready()):
             gevent.sleep(.2)
         return channel, self.host, stdout, stderr
 
@@ -623,8 +624,8 @@ future releases - use self.run_command instead", DeprecationWarning)
                                                              'stdout' : <iterable>,
                                                              'stderr' : <iterable>,}}``
         """
-        warnings.warn("This method is being deprecated and will be removed in \
-future releases - use self.get_output instead", DeprecationWarning)
+        warnings.warn("This method is being deprecated and will be removed in"
+                      "future releases - use self.get_output instead", DeprecationWarning)
         gevent.sleep(.2)
         channel, host, stdout, stderr = greenlet.get()
         if channel.exit_status_ready():
