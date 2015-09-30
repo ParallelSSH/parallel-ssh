@@ -71,9 +71,21 @@ class ParallelSSHClientTest(unittest.TestCase):
         client.pool.join()
         output = client.get_stdout(cmd)
         expected = {'127.0.0.1' : {'exit_code' : 0}}
-        self.assertEqual(output, expected,
+        self.assertEqual(expected, output,
                          msg="Got unexpected command output - %s" % (output,))
         self.assertTrue(output['127.0.0.1']['exit_code'] == 0)
+
+    def test_pssh_client_no_stdout_non_zero_exit_code(self):
+        client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
+                                   pkey=self.user_key)
+        output = client.run_command('exit 1')
+        expected_exit_code = 1
+        exit_code = output['127.0.0.1']['exit_code']
+        client.pool.join()
+        self.assertEqual(expected_exit_code, exit_code,
+                         msg="Got unexpected exit code - %s, expected %s" %
+                         (exit_code,
+                          expected_exit_code,))
 
     def test_pssh_client_exec_command_get_buffers(self):
         client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
