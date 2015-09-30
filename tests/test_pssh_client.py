@@ -68,7 +68,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient(['127.0.0.1'], port=self.listen_port,
                                    pkey=self.user_key)
         cmd = client.exec_command(self.fake_cmd)[0]
-        client.pool.join()
         output = client.get_stdout(cmd)
         expected = {'127.0.0.1' : {'exit_code' : 0}}
         self.assertEqual(expected, output,
