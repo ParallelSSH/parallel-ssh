@@ -194,10 +194,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         host in the host list has a failure"""
         server2_socket = make_socket('127.0.0.2', port=self.listen_port)
         server2_port = server2_socket.getsockname()[1]
-        server1 = start_server({ self.fake_cmd : self.fake_resp },
-                               self.listen_socket, fail_auth=True)
-        server2 = start_server({ self.fake_cmd : self.fake_resp },
-                               server2_socket)
+        server2 = start_server(server2_socket, fail_auth=True)
         hosts = ['127.0.0.1', '127.0.0.2']
         client = ParallelSSHClient(hosts,
                                    port=self.listen_port,
@@ -206,13 +203,21 @@ class ParallelSSHClientTest(unittest.TestCase):
         output = client.run_command(self.fake_cmd,
                                     stop_on_errors=False)
         self.assertTrue(hosts[0] in output,
-                        msg="Failed host does not exist in output - output is %s" % (output,))
-        self.assertTrue(hosts[1] in output,
                         msg="Successful host does not exist in output - output is %s" % (output,))
+        self.assertTrue(hosts[1] in output,
+                        msg="Failed host does not exist in output - output is %s" % (output,))
+        self.assertTrue('exception' in output[hosts[1]],
+                        msg="Failed host %s has no exception in output - %s" % (hosts[1], output,))
+        try:
+            raise output[hosts[1]]['exception']
+        except AuthenticationException:
+            pass
+        else:
+            raise Exception("Expected AuthenticationException, got %s instead" % (
+                output[hosts[1]]['exception'],))
         del client
-        server1.kill()
         server2.kill()
-
+    
     def test_pssh_client_ssh_exception(self):
         listen_socket = make_socket('127.0.0.1')
         listen_port = listen_socket.getsockname()[1]

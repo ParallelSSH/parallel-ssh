@@ -64,6 +64,20 @@ class SSHException(Exception):
     pass
 
 
+def enable_host_logger():
+    """Enables host logger for logging stdout from remote servers as it
+    becomes available
+    """
+    if logging.StreamHandler in [type(h) for h in host_logger.handlers]:
+        logger.warning("Host logger already has a StreamHandler attached")
+        return
+    handler = logging.StreamHandler()
+    host_log_format = logging.Formatter('%(message)s')
+    handler.setFormatter(host_log_format)
+    host_logger.addHandler(handler)
+    host_logger.setLevel(logging.INFO)
+    
+
 class SSHClient(object):
     """Wrapper class over paramiko.SSHClient with sane defaults
     Honours ~/.ssh/config and /etc/ssh/ssh_config entries for host username \
@@ -540,22 +554,24 @@ future releases - use self.run_command instead", DeprecationWarning)
         
         :param cmd: Command to get output from
         :type cmd: :mod:`gevent.Greenlet`
-        :rtype: Dictionary with host as key as in:
+        :param output: Dictionary containing output to be updated with output
+        from cmd
+        :type output: dict
+        :rtype: None
 
+        `output` parameter is modified in-place and has the following structure
+        
         ::
         
           {'myhost1': {'exit_code': exit code if ready else None,
                        'channel' : SSH channel of command,
                        'stdout'  : <iterable>,
                        'stderr'  : <iterable>,
-                       'cmd'     : <greenlet>}}
+                       'cmd'     : <greenlet>,
+                       'exception' : <exception object if applicable>}}
         
         Stdout and stderr are also logged via the logger named ``host_logger``
-        which is enabled by default.
-        ``host_logger`` output can be disabled by removing its handler.
-        
-        >>> logger = logging.getLogger('pssh.host_logger')
-        >>> for handler in logger.handlers: logger.removeHandler(handler)
+        which can be enabled by calling ``enable_host_logger``
         
         **Example usage**:
         
