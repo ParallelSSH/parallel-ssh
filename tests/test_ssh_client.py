@@ -40,11 +40,17 @@ USER_KEY = paramiko.RSAKey.from_private_key_file(
 class SSHClientTest(unittest.TestCase):
 
     def setUp(self):
-        self.fake_cmd = 'fake cmd'
-        self.fake_resp = 'fake response'
+        self.fake_cmd = 'echo me'
+        self.fake_resp = 'me'
         self.user_key = USER_KEY
-        self.listen_socket = make_socket('127.0.0.1')
+        self.host = '127.0.0.1'
+        self.listen_socket = make_socket(self.host)
         self.listen_port = self.listen_socket.getsockname()[1]
+        self.server = start_server(self.listen_socket)
+
+    def tearDown(self):
+        del self.server
+        del self.listen_socket
 
     def test_ssh_client_sftp(self):
         """Test SFTP features of SSHClient. Copy local filename to server,
@@ -58,9 +64,7 @@ class SSHClientTest(unittest.TestCase):
         test_file = open(local_filename, 'w')
         test_file.writelines([test_file_data + os.linesep])
         test_file.close()
-        server = start_server({ self.fake_cmd : self.fake_resp },
-                              self.listen_socket)
-        client = SSHClient('127.0.0.1', port=self.listen_port,
+        client = SSHClient(self.host, port=self.listen_port,
                            pkey=self.user_key)
         client.copy_file(local_filename, remote_filename)
         self.assertTrue(os.path.isdir(remote_test_dir),
@@ -80,7 +84,6 @@ not match source %s" % (copied_file_data, test_file_data))
         for dirpath in [remote_dir, remote_test_dir]:
             os.rmdir(dirpath)
         del client
-        server.join()
 
     def test_ssh_agent_authentication(self):
         """Test authentication via SSH agent.
@@ -90,9 +93,7 @@ not match source %s" % (copied_file_data, test_file_data))
         Key should be automatically picked up from the overriden agent"""
         agent = FakeAgent()
         agent.add_key(USER_KEY)
-        server = start_server({ self.fake_cmd : self.fake_resp },
-                                self.listen_socket)
-        client = SSHClient('127.0.0.1', port=self.listen_port,
+        client = SSHClient(self.host, port=self.listen_port,
                            _agent=agent)
         channel, host, stdout, stderr = client.exec_command(self.fake_cmd)
         channel.close()
@@ -102,17 +103,16 @@ not match source %s" % (copied_file_data, test_file_data))
         self.assertEqual(expected, output,
                          msg = "Got unexpected command output - %s" % (output,))
         del client
-        server.join()
 
     def test_ssh_client_conn_failure(self):
         """Test connection error failure case - ConnectionErrorException"""
         self.assertRaises(ConnectionErrorException,
-                          SSHClient, '127.0.0.1', port=self.listen_port,
+                          SSHClient, '127.0.0.100', port=self.listen_port,
                           pkey=self.user_key, num_retries=0)
 
     def test_ssh_client_retries(self):
         """Test connection error exceptions"""
-        self.assertRaises(ConnectionErrorException, SSHClient, '127.0.0.1', port=self.listen_port,
+        self.assertRaises(ConnectionErrorException, SSHClient, '127.0.0.100', port=self.listen_port,
                           pkey=self.user_key, num_retries=1)
         host = ''.join([random.choice(string.ascii_letters) for n in xrange(8)])
         self.assertRaises(UnknownHostException, SSHClient, host, port=self.listen_port,
@@ -127,9 +127,7 @@ not match source %s" % (copied_file_data, test_file_data))
 
     def test_ssh_client_pty(self):
         """Test that we get a new pty for our non-interactive SSH sessions"""
-        server = start_server({ self.fake_cmd : self.fake_resp },
-                                self.listen_socket)
-        client = SSHClient('127.0.0.1', port=self.listen_port,
+        client = SSHClient(self.host, port=self.listen_port,
                            pkey=self.user_key)
         channel = client.client.get_transport().open_session()
         self.assertFalse(channel.event.is_set(),
@@ -140,7 +138,6 @@ not match source %s" % (copied_file_data, test_file_data))
         channel.close()
         del channel
         del client
-        server.join()
 
 if __name__ == '__main__':
     unittest.main()
