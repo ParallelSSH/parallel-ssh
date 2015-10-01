@@ -172,7 +172,7 @@ class SSHClient(object):
                                            self.host, self.port,
                                            str(error_type), retries, self.num_retries,)
         except paramiko.AuthenticationException, ex:
-            msg = ex.message + "Host is '%s:%s'"
+            msg = "Host is '%s:%s'"
             raise AuthenticationException(msg, host, port)
         # SSHException is more general so should be below other types
         # of SSH failure

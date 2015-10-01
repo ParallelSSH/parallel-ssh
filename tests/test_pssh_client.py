@@ -437,34 +437,39 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(len(hosts), len(output.keys()),
                          msg="Host list contains %s identical hosts, only got output for %s" % (
                              len(hosts), len(output.keys())))
+        del _socket
 
     def test_connection_error_exception(self):
         """Test that we get connection error exception in output with correct arguments"""
-        # Make socket with no server listening on it
-        _socket = make_socket(self.host)
+        self.server.kill()
+        # Make socket with no server listening on it on separate ip
+        host = '127.0.0.3'
+        _socket = make_socket(host)
         port = _socket.getsockname()[1]
-        hosts = [self.host]
+        hosts = [host]
         client = ParallelSSHClient(hosts, port=port,
                                    pkey=self.user_key)
         output = client.run_command(self.fake_cmd, stop_on_errors=False)
         client.pool.join()
-        self.assertTrue('exception' in output[self.host],
+        self.assertTrue('exception' in output[host],
                         msg="Got no exception for host %s - expected connection error" % (
-                            self.host,))
+                            host,))
         try:
-            raise output[self.host]['exception']
+            raise output[host]['exception']
         except ConnectionErrorException, ex:
-            self.assertEqual(ex.args[1], self.host,
+            self.assertEqual(ex.args[1], host,
                              msg="Exception host argument is %s, should be %s" % (
-                                 ex.args[1], self.host,))
+                                 ex.args[1], host,))
             self.assertEqual(ex.args[2], port,
                              msg="Exception port argument is %s, should be %s" % (
                                  ex.args[2], port,))
         else:
             raise Exception("Expected ConnectionErrorException")
+        del _socket
 
     def test_authentication_exception(self):
-        """Test that we get connection error exception in output with correct arguments"""
+        """Test that we get authentication exception in output with correct arguments"""
+        self.server.kill()
         _socket = make_socket(self.host)
         port = _socket.getsockname()[1]
         server = start_server(_socket, fail_auth=True)
@@ -487,28 +492,34 @@ class ParallelSSHClientTest(unittest.TestCase):
                                  ex.args[2], port,))
         else:
             raise Exception("Expected AuthenticationException")
+        server.kill()
+        del _socket
     
     def test_ssh_exception(self):
-        """Test that we get connection error exception in output with correct arguments"""
-        _socket = make_socket(self.host)
+        """Test that we get ssh exception in output with correct arguments"""
+        self.server.kill()
+        host = '127.0.0.10'
+        _socket = make_socket(host)
         port = _socket.getsockname()[1]
         server = start_server(_socket, ssh_exception=True)
-        hosts = [self.host]
+        hosts = [host]
         client = ParallelSSHClient(hosts, port=port,
                                    pkey=self.user_key)
         output = client.run_command(self.fake_cmd, stop_on_errors=False)
         client.pool.join()
-        self.assertTrue('exception' in output[self.host],
+        self.assertTrue('exception' in output[host],
                         msg="Got no exception for host %s - expected connection error" % (
-                            self.host,))
+                            host,))
         try:
-            raise output[self.host]['exception']
+            raise output[host]['exception']
         except SSHException, ex:
-            self.assertEqual(ex.args[1], self.host,
+            self.assertEqual(ex.args[1], host,
                              msg="Exception host argument is %s, should be %s" % (
-                                 ex.args[1], self.host,))
+                                 ex.args[1], host,))
             self.assertEqual(ex.args[2], port,
                              msg="Exception port argument is %s, should be %s" % (
                                  ex.args[2], port,))
         else:
             raise Exception("Expected SSHException")
+        server.kill()
+        del _socket
