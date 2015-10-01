@@ -395,18 +395,14 @@ class ParallelSSHClientTest(unittest.TestCase):
         client -> proxy -> destination
         Proxy SSH server accepts no commands and sends no responses, only
         proxies to destination. Destination accepts a command as usual."""
-        # self.server.kill()
         proxy_server_socket = make_socket('127.0.0.2')
         proxy_server_port = proxy_server_socket.getsockname()[1]
-        # server = start_server(self.listen_socket)
         proxy_server = start_server(proxy_server_socket)
         client = ParallelSSHClient([self.host], port=self.listen_port,
                                    pkey=self.user_key,
                                    proxy_host='127.0.0.2',
                                    proxy_port=proxy_server_port
                                    )
-        # gevent.sleep(1)
-        # import ipdb; ipdb.set_trace()
         output = client.run_command(self.fake_cmd)
         stdout = list(output[self.host]['stdout'])
         expected_stdout = [self.fake_resp]
@@ -427,3 +423,92 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(output, expected,
                          msg="Unexpected output from bash variable substitution %s - should be %s" % (
                              output, expected,))
+    
+    def test_identical_host_output(self):
+        """Test that we get output when running with duplicated hosts"""
+        # Make socket with no server listening on it just for testing output
+        _socket = make_socket(self.host)
+        port = _socket.getsockname()[1]
+        hosts = [self.host, self.host]
+        client = ParallelSSHClient(hosts, port=port,
+                                   pkey=self.user_key)
+        output = client.run_command(self.fake_cmd, stop_on_errors=False)
+        client.pool.join()
+        self.assertEqual(len(hosts), len(output.keys()),
+                         msg="Host list contains %s identical hosts, only got output for %s" % (
+                             len(hosts), len(output.keys())))
+
+    def test_connection_error_exception(self):
+        """Test that we get connection error exception in output with correct arguments"""
+        # Make socket with no server listening on it
+        _socket = make_socket(self.host)
+        port = _socket.getsockname()[1]
+        hosts = [self.host]
+        client = ParallelSSHClient(hosts, port=port,
+                                   pkey=self.user_key)
+        output = client.run_command(self.fake_cmd, stop_on_errors=False)
+        client.pool.join()
+        self.assertTrue('exception' in output[self.host],
+                        msg="Got no exception for host %s - expected connection error" % (
+                            self.host,))
+        try:
+            raise output[self.host]['exception']
+        except ConnectionErrorException, ex:
+            self.assertEqual(ex.args[1], self.host,
+                             msg="Exception host argument is %s, should be %s" % (
+                                 ex.args[1], self.host,))
+            self.assertEqual(ex.args[2], port,
+                             msg="Exception port argument is %s, should be %s" % (
+                                 ex.args[2], port,))
+        else:
+            raise Exception("Expected ConnectionErrorException")
+
+    def test_authentication_exception(self):
+        """Test that we get connection error exception in output with correct arguments"""
+        _socket = make_socket(self.host)
+        port = _socket.getsockname()[1]
+        server = start_server(_socket, fail_auth=True)
+        hosts = [self.host]
+        client = ParallelSSHClient(hosts, port=port,
+                                   pkey=self.user_key)
+        output = client.run_command(self.fake_cmd, stop_on_errors=False)
+        client.pool.join()
+        self.assertTrue('exception' in output[self.host],
+                        msg="Got no exception for host %s - expected connection error" % (
+                            self.host,))
+        try:
+            raise output[self.host]['exception']
+        except AuthenticationException, ex:
+            self.assertEqual(ex.args[1], self.host,
+                             msg="Exception host argument is %s, should be %s" % (
+                                 ex.args[1], self.host,))
+            self.assertEqual(ex.args[2], port,
+                             msg="Exception port argument is %s, should be %s" % (
+                                 ex.args[2], port,))
+        else:
+            raise Exception("Expected AuthenticationException")
+    
+    def test_ssh_exception(self):
+        """Test that we get connection error exception in output with correct arguments"""
+        _socket = make_socket(self.host)
+        port = _socket.getsockname()[1]
+        server = start_server(_socket, ssh_exception=True)
+        hosts = [self.host]
+        client = ParallelSSHClient(hosts, port=port,
+                                   pkey=self.user_key)
+        output = client.run_command(self.fake_cmd, stop_on_errors=False)
+        client.pool.join()
+        self.assertTrue('exception' in output[self.host],
+                        msg="Got no exception for host %s - expected connection error" % (
+                            self.host,))
+        try:
+            raise output[self.host]['exception']
+        except SSHException, ex:
+            self.assertEqual(ex.args[1], self.host,
+                             msg="Exception host argument is %s, should be %s" % (
+                                 ex.args[1], self.host,))
+            self.assertEqual(ex.args[2], port,
+                             msg="Exception port argument is %s, should be %s" % (
+                                 ex.args[2], port,))
+        else:
+            raise Exception("Expected SSHException")

@@ -19,7 +19,7 @@ Parallel-SSH's documentation
 
 Welcome to ParallelSSH's API documentation.
 
-New users should start with :mod:`pssh.pssh_client.ParallelSSHClient.run_command`.
+New users should start with :mod:`pssh.pssh_client.ParallelSSHClient` and in particular :mod:`pssh.pssh_client.ParallelSSHClient.run_command`.
 
 
 Indices and tables

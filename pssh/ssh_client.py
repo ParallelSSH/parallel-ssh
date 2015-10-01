@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 
-# Copyright (C) 2015 Panos Kittenis
+# Copyright (C) 2015- Panos Kittenis
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -16,7 +16,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-"""Package containing SSHClient class"""
+"""Package containing SSHClient class."""
+
 
 import gevent
 from gevent import monkey
@@ -156,9 +157,9 @@ class SSHClient(object):
                 gevent.sleep(5)
                 return self._connect(client, host, port, sock=sock,
                                      retries=retries+1)
-            raise UnknownHostException("%s - %s - retry %s/%s",
-                                       str(ex.args[1]),
-                                       self.host, retries, self.num_retries)
+            raise UnknownHostException("Unknown host %s - %s - retry %s/%s",
+                                       self.host, str(ex.args[1]), retries,
+                                       self.num_retries)
         except sock_error, ex:
             logger.error("Error connecting to host '%s:%s' - retry %s/%s",
                          self.host, self.port, retries, self.num_retries)
@@ -167,9 +168,9 @@ class SSHClient(object):
                 return self._connect(client, host, port, sock=sock,
                                      retries=retries+1)
             error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
-            raise ConnectionErrorException("%s for host '%s:%s' - retry %s/%s",
-                                           str(error_type), self.host, self.port,
-                                           retries, self.num_retries,)
+            raise ConnectionErrorException("Error connecting to host '%s:%s' - %s - retry %s/%s",
+                                           self.host, self.port,
+                                           str(error_type), retries, self.num_retries,)
         except paramiko.AuthenticationException, ex:
             msg = ex.message + "Host is '%s:%s'"
             raise AuthenticationException(msg, host, port)
@@ -177,7 +178,7 @@ class SSHClient(object):
         # of SSH failure
         except paramiko.SSHException, ex:
             logger.error("General SSH error - %s", ex)
-            raise SSHException(ex.message, host)
+            raise SSHException(ex.message, host, port)
 
     def exec_command(self, command, sudo=False, user=None, **kwargs):
         """Wrapper to :mod:`paramiko.SSHClient.exec_command`
@@ -244,8 +245,9 @@ class SSHClient(object):
         :type sftp: :mod:`paramiko.SFTPClient`
         :param directory: Remote directory to create
         :type directory: str
-
-        Catches and logs at error level remote IOErrors on creating directory."""
+        
+        Catches and logs at error level remote IOErrors on creating directory.
+        """
         try:
             sftp.mkdir(directory)
         except IOError, error:
@@ -254,10 +256,10 @@ class SSHClient(object):
 
     def copy_file(self, local_file, remote_file):
         """Copy local file to host via SFTP/SCP
-
+        
         Copy is done natively using SFTP/SCP version 2 protocol, no scp command \
         is used or required.
-
+        
         :param local_file: Local filepath to copy to remote host
         :type local_file: str
         :param remote_file: Remote filepath on remote host to copy file to

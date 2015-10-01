@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 
-# Copyright (C) 2015 Panos Kittenis
+# Copyright (C) 2015- Panos Kittenis
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-"""Package containing ParallelSSHClient class"""
+"""Package containing ParallelSSHClient class."""
 
 
 from gevent import monkey
@@ -26,6 +26,7 @@ import gevent.pool
 import gevent.hub
 gevent.hub.Hub.NOT_ERROR = (Exception,)
 import warnings
+import hashlib
 from .constants import DEFAULT_RETRIES
 from .ssh_client import SSHClient
 
@@ -37,11 +38,12 @@ logger = logging.getLogger('pssh')
 class ParallelSSHClient(object):
     """Uses :mod:`pssh.ssh_client.SSHClient`, performs tasks over SSH on multiple hosts in \
     parallel.
-
+    
     Connections to hosts are established in parallel when ``run_command`` is called,
     therefor any connection and/or authentication exceptions will happen on the
-    call to ``run_command`` and need to be caught."""
-
+    call to ``run_command`` and need to be caught.
+    """
+    
     def __init__(self, hosts,
                  user=None, password=None, port=None, pkey=None,
                  forward_ssh_agent=True, num_retries=DEFAULT_RETRIES, timeout=120,
@@ -84,39 +86,76 @@ class ParallelSSHClient(object):
         set. Defaults to 22.
         :type proxy_port: int
         
-        **Example**
-
-        >>> from pssh import ParallelSSHClient, AuthenticationException, \
+        **Example Usage**
+        
+        >>> from pssh.pssh_client import ParallelSSHClient
+        >>> from pssh.exceptions import AuthenticationException, \
 UnknownHostException, ConnectionErrorException
+        
         >>> client = ParallelSSHClient(['myhost1', 'myhost2'])
         >>> try:
         >>> ... output = client.run_command('ls -ltrh /tmp/aasdfasdf', sudo=True)
         >>> except (AuthenticationException, UnknownHostException, ConnectionErrorException):
-        >>> ... return
+        >>> ... pass
+        
         >>> # Commands have started executing at this point
         >>> # Exit code will probably not be available immediately
         >>> print output
-        >>> {'myhost1': {'exit_code': None,
+
+        ::
+        
+            {'myhost1': {'exit_code': None,
                          'stdout' : <generator>,
                          'stderr' : <generator>,
                          'cmd' : <greenlet>,
+                         'exception' : None,
                          },
              'myhost2': {'exit_code': None,
                          'stdout' : <generator>,
                          'stderr' : <generator>,
                          'cmd' : <greenlet>,
+                         'exception' : None,
             }}
-        >>> # Print output as it comes in. 
+        
+        **Enabling host logger**
+        
+        There is a host logger in parallel-ssh that can be enabled to show stdout
+        *in parallel* from remote commands on hosts as it comes in.
+        
+        This allows for stdout to be automatically displayed without having to
+        print it serially per host.
+        
+        >>> import pssh.utils
+        >>> pssh.utils.enable_host_logger()
+        >>> output = client.run_command('ls -ltrh')
+        [myhost1]     drwxrwxr-x 6 user group 4.0K Jan 1 HH:MM x
+        [myhost2]     drwxrwxr-x 6 user group 4.0K Jan 1 HH:MM x
+        
+        Retrieve exit codes after commands have finished as below. This is
+        only necessary for long running commands that do not exit immediately.
+        
+        ``exit_code`` in ``output`` will be ``None`` if command has not finished.
+        
+        ``get_exit_codes`` is not a blocking function and will not wait for commands
+        to finish. Use ``client.pool.join()`` to block until all commands have
+        finished.
+        
+        ``output`` parameter is modified in-place.
+        
+        >>> client.get_exit_codes(output)
+        >>> for host in output:
+        >>> ... print output[host]['exit_code']
+        0
+        0
+
+        Print stdout serially per host as it becomes available.
+        
         >>> for host in output: for line in output[host]['stdout']: print line
         [myhost1]     ls: cannot access /tmp/aasdfasdf: No such file or directory
         [myhost2]     ls: cannot access /tmp/aasdfasdf: No such file or directory
-        >>> # Retrieve exit code after commands have finished
-        >>> # `get_exit_code` will return `None` if command has not finished
-        >>> print client.get_exit_code(output[host])
-        0
-
+        
         **Example with specified private key**
-
+        
         >>> import paramiko
         >>> client_key = paramiko.RSAKey.from_private_key_file('user.key')
         >>> client = ParallelSSHClient(['myhost1', 'myhost2'], pkey=client_key)
@@ -167,12 +206,14 @@ UnknownHostException, ConnectionErrorException
         :type args: tuple
         :param sudo: (Optional) Run with sudo. Defaults to False
         :type sudo: bool
+        :param stop_on_errors: (Optional) Raise exception on errors running command. \
+        Defaults to True. With stop_on_errors set to False, exceptions are instead \
+        added to output of `run_command`. See example usage below.
+        :type stop_on_errors: bool
         :param kwargs: Keyword arguments for command
         :type kwargs: dict
-        :param stop_on_errors: (Optional) Raise exception on errors running command. \
-        Defaults to True.
-        :type stop_on_errors: bool
-        :rtype: Dictionary with host as key as per :mod:`pssh.pssh_client.ParallelSSH.get_output`
+        :rtype: Dictionary with host as key as per \
+          :mod:`pssh.pssh_client.ParallelSSHClient.get_output`
         
         :raises: :mod:`pssh.exceptions.AuthenticationException` on authentication error
         :raises: :mod:`pssh.exceptions.UnknownHostException` on DNS resolution error
@@ -180,26 +221,30 @@ UnknownHostException, ConnectionErrorException
         :raises: :mod:`pssh.exceptions.SSHException` on other undefined SSH errors
 
         **Example Usage**
+
+        **Simple run command**
         
         >>> output = client.run_command('ls -ltrh')
-
-        print stdout for each command:
+        
+        *print stdout for each command*
         
         >>> for host in output:
         >>>     for line in output[host]['stdout']: print line
 
-        Get exit code after command has finished:
+        *Get exit codes after command has finished*
 
+        >>> client.get_exit_codes(output)
         >>> for host in output:
-        >>>     for line in output[host]['stdout']: print line
-        >>>     exit_code = client.get_exit_code(output[host])
+        >>> ... print output[host]['exit_code']
+        0
+        0
         
-        Wait for completion, no stdout:
+        *Wait for completion, no stdout*
         
         >>> client.pool.join()
-
-        Run with sudo:
-
+        
+        *Run with sudo*
+        
         >>> output = client.run_command('ls -ltrh', sudo=True)
         
         Capture stdout - **WARNING** - this will store the entirety of stdout
@@ -209,17 +254,35 @@ UnknownHostException, ConnectionErrorException
         >>> for host in output:
         >>>     stdout = list(output[host]['stdout'])
         >>>     print "Complete stdout for host %s is %s" % (host, stdout,)
-
+        
         **Example Output**
-
+        
         ::
         
           {'myhost1': {'exit_code': exit code if ready else None,
                        'channel' : SSH channel of command,
                        'stdout'  : <iterable>,
                        'stderr'  : <iterable>,
-                       'cmd'     : <greenlet>}}
-
+                       'cmd'     : <greenlet>},
+                       'exception' : None}
+        
+        **Do not stop on errors, return per-host exceptions in output**
+        
+        >>> output = client.run_command('ls -ltrh', stop_on_errors=False)
+        >>> client.pool.join()
+        >>> print output
+        
+        ::
+        
+          {'myhost1': {'exit_code': None,
+                       'channel' : None,
+                       'stdout'  : None,
+                       'stderr'  : None,
+                       'cmd'     : None,
+                       'exception' : ConnectionErrorException(
+                           "Error connecting to host '%s:%s' - %s - retry %s/%s",
+                           host, port, 'Connection refused', 3, 3)}}
+        
         """
         stop_on_errors = kwargs.pop('stop_on_errors', True)
         cmds = [self.pool.spawn(self._exec_command, host, *args, **kwargs)
@@ -303,34 +366,43 @@ future releases - use self.run_command instead", DeprecationWarning)
             except IndexError:
                 logger.error("Got exception with no host argument - cannot update output data with %s", ex)
                 raise ex
-            output.setdefault(host, {})
-            output[host].update({'exit_code' : None,
-                                 'channel' : None,
-                                 'stdout' : None,
-                                 'stderr' : None,
-                                 'cmd' : cmd,
-                                 'exception' : ex,})
+            self._update_host_output(output, host, None, None, None, None, cmd,
+                                     exception=ex)
             raise ex
+        self._update_host_output(output, host, self._get_exit_code(channel),
+                                 channel, stdout, stderr, cmd)
+
+    def _update_host_output(self, output, host, exit_code, channel, stdout, stderr, cmd,
+                            exception=None):
+        """Update host output with given data"""
+        if host in output:
+            new_host = "_".join([host, hashlib.sha1().hexdigest()[:10]])
+            logger.warning("Already have output for host %s - changing host key for %s to %s",
+                           host, host, new_host)
+            host = new_host
         output.setdefault(host, {})
-        output[host].update({'exit_code': self._get_exit_code(channel),
+        output[host].update({'exit_code' : exit_code,
                              'channel' : channel,
                              'stdout' : stdout,
                              'stderr' : stderr,
-                             'cmd' : cmd, })
+                             'cmd' : cmd,
+                             'exception' : exception,})
 
     def get_exit_codes(self, output):
-        """Get exit code for all hosts in output if available.
+        """Get exit code for all hosts in output *if available*.
         Output parameter is modified in-place.
         
-        :param output: As returned by `self.get_output`
+        :param output: As returned by :mod:`pssh.pssh_client.ParallelSSHClient.get_output`
         :rtype: None
         """
         for host in output:
             output[host].update({'exit_code': self.get_exit_code(output[host])})
 
     def get_exit_code(self, host_output):
-        """Get exit code from host output if available
-        :param host_output: Per host output as returned by `self.get_output`
+        """Get exit code from host output *if available*.
+        
+        :param host_output: Per host output as returned by \
+          :mod:`pssh.pssh_client.ParallelSSHClient.get_output`
         :rtype: int or None if exit code not ready"""
         if not 'channel' in host_output:
             logger.error("%s does not look like host output..", host_output,)
@@ -348,7 +420,7 @@ future releases - use self.run_command instead", DeprecationWarning)
     def get_stdout(self, greenlet, return_buffers=False):
         """Get/print stdout from greenlet and return exit code for host
         
-        **Deprecated** - use self.get_output() instead.
+        **Deprecated** - use :mod:`pssh.pssh_client.ParallelSSHClient.get_output` instead.
         
         :param greenlet: Greenlet object containing an \
         SSH channel reference, hostname, stdout and stderr buffers
