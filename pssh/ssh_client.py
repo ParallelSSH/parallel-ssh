@@ -177,8 +177,9 @@ class SSHClient(object):
         # SSHException is more general so should be below other types
         # of SSH failure
         except paramiko.SSHException, ex:
-            logger.error("General SSH error - %s", ex)
-            raise SSHException(ex.message, host, port)
+            msg = "General SSH error - %s" % (ex,)
+            logger.error(msg)
+            raise SSHException(msg, host, port)
 
     def exec_command(self, command, sudo=False, user=None, **kwargs):
         """Wrapper to :mod:`paramiko.SSHClient.exec_command`

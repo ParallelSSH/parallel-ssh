@@ -504,7 +504,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         server = start_server(_socket, ssh_exception=True)
         hosts = [host]
         client = ParallelSSHClient(hosts, port=port,
-                                   pkey=self.user_key)
+                                   user='fakey', password='fakey',
+                                   pkey=paramiko.RSAKey.generate(1024))
         output = client.run_command(self.fake_cmd, stop_on_errors=False)
         client.pool.join()
         self.assertTrue('exception' in output[host],
