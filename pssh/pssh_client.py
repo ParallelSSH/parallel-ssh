@@ -35,7 +35,7 @@ logger = logging.getLogger('pssh')
 
 
 class ParallelSSHClient(object):
-    """Uses :mod:`pssh.SSHClient`, performs tasks over SSH on multiple hosts in \
+    """Uses :mod:`pssh.ssh_client.SSHClient`, performs tasks over SSH on multiple hosts in \
     parallel.
 
     Connections to hosts are established in parallel when ``run_command`` is called,
@@ -169,13 +169,15 @@ UnknownHostException, ConnectionErrorException
         :type sudo: bool
         :param kwargs: Keyword arguments for command
         :type kwargs: dict
-
-        :rtype: Dictionary with host as key as per :mod:`ParallelSSH.get_output`
+        :param stop_on_errors: (Optional) Raise exception on errors running command. \
+        Defaults to True.
+        :type stop_on_errors: bool
+        :rtype: Dictionary with host as key as per :mod:`pssh.pssh_client.ParallelSSH.get_output`
         
-        :raises: :mod:`pssh.AuthenticationException` on authentication error
-        :raises: :mod:`pssh.UnknownHostException` on DNS resolution error
-        :raises: :mod:`pssh.ConnectionErrorException` on error connecting
-        :raises: :mod:`pssh.SSHException` on other undefined SSH errors
+        :raises: :mod:`pssh.exceptions.AuthenticationException` on authentication error
+        :raises: :mod:`pssh.exceptions.UnknownHostException` on DNS resolution error
+        :raises: :mod:`pssh.exceptions.ConnectionErrorException` on error connecting
+        :raises: :mod:`pssh.exceptions.SSHException` on other undefined SSH errors
 
         **Example Usage**
         
@@ -234,7 +236,7 @@ UnknownHostException, ConnectionErrorException
     def exec_command(self, *args, **kwargs):
         """Run command on all hosts in parallel, honoring `self.pool_size`
         
-        **Deprecated by** :mod:`pssh.ParallelSSHClient.run_command`
+        **Deprecated by** :mod:`pssh.pssh_client.ParallelSSHClient.run_command`
         
         :param args: Position arguments for command
         :type args: tuple
@@ -265,11 +267,11 @@ future releases - use self.run_command instead", DeprecationWarning)
         
         :param cmd: Command to get output from
         :type cmd: :mod:`gevent.Greenlet`
-        :param output: Dictionary containing output to be updated with output
+        :param output: Dictionary containing output to be updated with output \
         from cmd
         :type output: dict
         :rtype: None
-
+        
         `output` parameter is modified in-place and has the following structure
         
         ::

@@ -7,22 +7,22 @@ Parallel-SSH's documentation
 ============================
 
 .. toctree::
-   :maxdepth: 4
    :hidden:
-   :titlesonly:
    
    self
 
+.. toctree::
+
+   pssh_client
+   ssh_client
+   exceptions
+
 Welcome to ParallelSSH's API documentation.
 
-New users should start with :mod:`pssh.ParallelSSHClient.run_command`.
-
-.. automodule:: pssh
-    :member-order: groupwise
+New users should start with :mod:`pssh.pssh_client.ParallelSSHClient.run_command`.
 
 
 Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`search`

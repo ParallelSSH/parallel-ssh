@@ -122,8 +122,10 @@ class SSHClient(object):
         """Connects to SSH server via an intermediate SSH tunnel server.
         client (me) -> tunnel (ssh server to proxy through) -> \
         destination (ssh server to run command)
+        
         :rtype: `:mod:paramiko.SSHClient` Client to remote SSH destination
-        via intermediate SSH tunnel server."""
+        via intermediate SSH tunnel server.
+        """
         self.proxy_client = paramiko.SSHClient()
         self.proxy_client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
         self._connect(self.proxy_client, self.proxy_host, self.proxy_port)
@@ -137,10 +139,10 @@ class SSHClient(object):
     def _connect(self, client, host, port, sock=None, retries=1):
         """Connect to host
         
-        :raises: :mod:`pssh.AuthenticationException` on authentication error
-        :raises: :mod:`pssh.UnknownHostException` on DNS resolution error
-        :raises: :mod:`pssh.ConnectionErrorException` on error connecting
-        :raises: :mod:`pssh.SSHException` on other undefined SSH errors
+        :raises: :mod:`pssh.exceptions.AuthenticationException` on authentication error
+        :raises: :mod:`pssh.exceptions.UnknownHostException` on DNS resolution error
+        :raises: :mod:`pssh.exceptions.ConnectionErrorException` on error connecting
+        :raises: :mod:`pssh.exceptions.SSHException` on other undefined SSH errors
         """
         try:
             client.connect(host, username=self.user,
