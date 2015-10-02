@@ -44,10 +44,10 @@ Run `ls` on two remote hosts in parallel.
 >>> client = ParallelSSHClient(hosts)
 >>> output = client.run_command('ls -ltrh /tmp/', sudo=True)
 >>> print output
-{'myhost1': {'exit_code': 0, 'stdout': <generator>, 'stderr': <generator>, 'channel': <channel>, 'cmd' : <greenlet>},
- 'myhost2': {'exit_code': 0, 'stdout': <generator>, 'stderr': <generator>, 'channel': <channel>, 'cmd' : <greenlet>}}
+{'myhost1': {'exit_code': 0, 'stdout': <generator>, 'stderr': <generator>, 'channel': <channel>, 'cmd' : <greenlet>, 'exception' : None},
+ 'myhost2': {'exit_code': 0, 'stdout': <generator>, 'stderr': <generator>, 'channel': <channel>, 'cmd' : <greenlet>, 'exception' : None}}
 
-Stdout and stderr buffers are available in output. Iterating on them can be used to get output as it becomes available.
+Stdout and stderr buffers are available in output. Iterating on them can be used to get output as it becomes available. Iteration ends *only when command has finished*.
 
 >>> for host in output:
 >>>     for line in output[host]['stdout']:
