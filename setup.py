@@ -16,14 +16,14 @@
 from setuptools import setup, find_packages
 
 setup(name='parallel-ssh',
-      version='0.80.0',
+      version='0.80.1',
       description='Asynchronous parallel SSH library',
       author='Panos Kittenis',
       author_email='pkittenis@gmail.com',
       url = "https://github.com/pkittenis/parallel-ssh",
       packages = find_packages('.', exclude=(
           'embedded_server', 'embedded_server.*')),
-      install_requires = open('requirements.txt').readlines(),
+      install_requires = ['paramiko', 'gevent'],
       classifiers = [
         'License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)',
         'Intended Audience :: Developers',
