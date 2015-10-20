@@ -387,7 +387,15 @@ future releases - use self.run_command instead", DeprecationWarning)
                              'stderr' : stderr,
                              'cmd' : cmd,
                              'exception' : exception,})
-
+    
+    def join(self, output):
+        """Block until all remote commands in output have finished
+        and retrieve exit codes"""
+        for host in output:
+            for line in output[host]['stdout']:
+                pass
+        self.get_exit_codes(output)
+    
     def get_exit_codes(self, output):
         """Get exit code for all hosts in output *if available*.
         Output parameter is modified in-place.

@@ -293,8 +293,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         # Embedded server is also asynchronous and in the same thread
         # as our client so need to sleep for duration of server connection
         gevent.sleep(expected_lines)
-        client.pool.join()
-        client.get_exit_codes(output)
+        client.join(output)
         self.assertTrue(output[self.host]['exit_code'] == 0,
                         msg="Got non-zero exit code %s" % (
                             output[self.host]['exit_code'],))
