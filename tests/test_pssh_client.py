@@ -42,7 +42,7 @@ logging.basicConfig()
 class ParallelSSHClientTest(unittest.TestCase):
 
     def setUp(self):
-        self.fake_cmd = 'echo me'
+        self.fake_cmd = 'echo "me"'
         self.fake_resp = 'me'
         self.long_cmd = lambda lines: 'for (( i=0; i<%s; i+=1 )) do echo $i; sleep 1; done' % (lines,)
         self.user_key = USER_KEY
