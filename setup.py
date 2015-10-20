@@ -16,7 +16,7 @@
 from setuptools import setup, find_packages
 
 setup(name='parallel-ssh',
-      version='0.80.1',
+      version='0.80.2',
       description='Asynchronous parallel SSH library',
       author='Panos Kittenis',
       author_email='pkittenis@gmail.com',
