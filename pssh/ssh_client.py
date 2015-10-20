@@ -212,12 +212,12 @@ class SSHClient(object):
                          self._read_output_buffer(_stderr,
                                                   prefix='\t[err]')
         if sudo and not user:
-            command = 'sudo -S bash -c \'%s\'' % command.replace('"', '\\"')
+            command = 'sudo -S bash -c \'%s\'' % (command,)
         elif user:
             command = 'sudo -u %s -S bash -c \'%s\'' % (
-                user, command.replace('"', '\\"'),)
+                user, command,)
         else:
-            command = 'bash -c \'%s\'' % command.replace('"', '\\"')
+            command = 'bash -c \'%s\'' % (command,)
         logger.debug("Running command %s on %s", command, self.host)
         channel.exec_command(command, **kwargs)
         logger.debug("Command started")
