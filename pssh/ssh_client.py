@@ -249,11 +249,19 @@ class SSHClient(object):
         
         Catches and logs at error level remote IOErrors on creating directory.
         """
+        sub_dirs = [_dir for _dir in directory.split(os.path.sep) if _dir][:-1]
+        sub_dirs = os.path.sep + os.path.sep.join(sub_dirs) if directory.startswith(os.path.sep) \
+          else os.path.sep.join(sub_dirs)
+        if sub_dirs:
+            try:
+                sftp.stat(sub_dirs)
+            except IOError:
+                return self.mkdir(sftp, sub_dirs)
         try:
             sftp.mkdir(directory)
         except IOError, error:
-            logger.error("Error occured creating directory on %s - %s",
-                         self.host, error)
+            logger.error("Error occured creating directory %s on %s - %s",
+                         directory, self.host, error)
 
     def copy_file(self, local_file, remote_file):
         """Copy local file to host via SFTP/SCP
@@ -267,19 +275,20 @@ class SSHClient(object):
         :type remote_file: str
         """
         sftp = self._make_sftp()
-        destination = remote_file.split(os.path.sep)
-        remote_file = os.path.sep.join(destination)
-        destination = destination[:-1]
-        for directory in destination:
-            try:
-                sftp.stat(directory)
-            except IOError:
-                self.mkdir(sftp, directory)
+        destination = [_dir for _dir in remote_file.split(os.path.sep)
+                       if _dir][:-1]
+        if remote_file.startswith(os.path.sep):
+            destination[0] = os.path.sep + destination[0]
+        # import ipdb; ipdb.set_trace()
+        try:
+            sftp.stat(destination)
+        except IOError:
+            self.mkdir(sftp, destination)
         try:
             sftp.put(local_file, remote_file)
         except Exception, error:
-            logger.error("Error occured copying file to host %s - %s",
-                         self.host, error)
+            logger.error("Error occured copying file %s to remote destination %s:%s - %s",
+                         local_file, self.host, remote_file, error)
         else:
             logger.info("Copied local file %s to remote destination %s:%s",
                         local_file, self.host, remote_file)
