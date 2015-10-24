@@ -25,7 +25,6 @@ monkey.patch_all()
 import logging
 import paramiko
 import os
-import itertools
 from socket import gaierror as sock_gaierror, error as sock_error
 from .exceptions import UnknownHostException, AuthenticationException, \
      ConnectionErrorException, SSHException
