@@ -25,7 +25,6 @@ monkey.patch_all()
 import logging
 import paramiko
 import os
-import itertools
 from socket import gaierror as sock_gaierror, error as sock_error
 from .exceptions import UnknownHostException, AuthenticationException, \
      ConnectionErrorException, SSHException
@@ -293,10 +292,7 @@ class SSHClient(object):
                              local_file, self.host, remote_file, error)
         else:
             file_list = os.listdir(local_file)
-            local_files = []
-            remote_files = []
             for file_name in file_list:
-                local_files.append(os.path.join(local_file, file_name))
-                remote_files.append(os.path.join(remote_file, file_name))
-            for local_path, remote_path in itertools.izip(local_files, remote_files):
+                local_path = os.path.join(local_file, file_name)
+                remote_path = os.path.join(remote_file, file_name)
                 self.copy_file(local_path, remote_path)
