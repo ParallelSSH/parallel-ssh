@@ -23,6 +23,7 @@
 import gevent
 import socket
 import time
+import shutil
 import unittest
 from pssh import SSHClient, ParallelSSHClient, UnknownHostException, AuthenticationException,\
      logger, ConnectionErrorException, UnknownHostException, SSHException
@@ -105,7 +106,8 @@ not match source %s" % (copied_file_data, test_file_data))
         client.copy_file(local_test_path, remote_test_path)
         for path in remote_file_paths:
             self.assertTrue(os.path.isfile(path))
-
+        shutil.rmtree(local_test_path)
+        shutil.rmtree(remote_test_path)
 
     def test_ssh_agent_authentication(self):
         """Test authentication via SSH agent.
