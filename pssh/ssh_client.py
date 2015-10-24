@@ -25,6 +25,7 @@ monkey.patch_all()
 import logging
 import paramiko
 import os
+import itertools
 from socket import gaierror as sock_gaierror, error as sock_error
 from .exceptions import UnknownHostException, AuthenticationException, \
      ConnectionErrorException, SSHException
@@ -274,21 +275,28 @@ class SSHClient(object):
         :param remote_file: Remote filepath on remote host to copy file to
         :type remote_file: str
         """
-        sftp = self._make_sftp()
-        destination = [_dir for _dir in remote_file.split(os.path.sep)
-                       if _dir][:-1]
-        if remote_file.startswith(os.path.sep):
-            destination[0] = os.path.sep + destination[0]
-        # import ipdb; ipdb.set_trace()
-        try:
-            sftp.stat(destination)
-        except IOError:
-            self.mkdir(sftp, destination)
-        try:
-            sftp.put(local_file, remote_file)
-        except Exception, error:
-            logger.error("Error occured copying file %s to remote destination %s:%s - %s",
-                         local_file, self.host, remote_file, error)
+        if os.path.isfile(local_file):
+            sftp = self._make_sftp()
+            destination = [_dir for _dir in remote_file.split(os.path.sep)
+                           if _dir][:-1]
+            if remote_file.startswith(os.path.sep):
+                destination[0] = os.path.sep + destination[0]
+            # import ipdb; ipdb.set_trace()
+            try:
+                sftp.stat(destination)
+            except IOError:
+                self.mkdir(sftp, destination)
+            try:
+                sftp.put(local_file, remote_file)
+            except Exception, error:
+                logger.error("Error occured copying file %s to remote destination %s:%s - %s",
+                             local_file, self.host, remote_file, error)
         else:
-            logger.info("Copied local file %s to remote destination %s:%s",
-                        local_file, self.host, remote_file)
+            file_list = os.listdir(local_file)
+            local_files = []
+            remote_files = []
+            for file_name in file_list:
+                local_files.append(os.path.join(local_file, file_name))
+                remote_files.append(os.path.join(remote_file, file_name))
+            for local_path, remote_path in itertools.izip(local_files, remote_files):
+                self.copy_file(local_path, remote_path)
