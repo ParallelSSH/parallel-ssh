@@ -285,7 +285,16 @@ class SSHClient(object):
             return self.mkdir(sftp, sub_dirs)
         return True
 
-    def copy_file(self, local_file, remote_file):
+    def _copy_dir(self, local_dir, remote_dir):
+        """Calls copy_file on every file in the specified directory, copying
+        them to the specified remote directory."""
+        file_list = os.listdir(local_dir)
+        for file_name in file_list:
+            local_path = os.path.join(local_dir, file_name)
+            remote_path = os.path.join(remote_dir, file_name)
+            self.copy_file(local_path, remote_path)
+
+    def copy_file(self, local_file, remote_file, recurse=False):
         """Copy local file to host via SFTP/SCP
         
         Copy is done natively using SFTP/SCP version 2 protocol, no scp command \
@@ -296,14 +305,14 @@ class SSHClient(object):
         :param remote_file: Remote filepath on remote host to copy file to
         :type remote_file: str
         """
-        if os.path.isfile(local_file):
+        if os.path.isfile(local_file) or not recurse:
             sftp = self._make_sftp()
             destination = [_dir for _dir in remote_file.split(os.path.sep)
                            if _dir][:-1][0]
             if remote_file.startswith(os.path.sep):
                 destination = os.path.sep + destination
             try:
-                sftp.stat(destination)
+                sftp.stat(destination[0])
             except IOError:
                 self.mkdir(sftp, destination)
             sftp.chdir()
@@ -313,8 +322,4 @@ class SSHClient(object):
                 logger.error("Error occured copying file %s to remote destination %s:%s - %s",
                              local_file, self.host, remote_file, error)
         else:
-            file_list = os.listdir(local_file)
-            for file_name in file_list:
-                local_path = os.path.join(local_file, file_name)
-                remote_path = os.path.join(remote_file, file_name)
-                self.copy_file(local_path, remote_path)
+            self._copy_dir(local_file, remote_file)
