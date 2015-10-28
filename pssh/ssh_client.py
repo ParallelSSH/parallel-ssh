@@ -304,22 +304,23 @@ class SSHClient(object):
         :type local_file: str
         :param remote_file: Remote filepath on remote host to copy file to
         :type remote_file: str
+        :param recurse: Whether or not to descend into directories recursively.
+        :type recurse: bool
         """
-        if os.path.isfile(local_file) or not recurse:
-            sftp = self._make_sftp()
-            destination = [_dir for _dir in remote_file.split(os.path.sep)
-                           if _dir][:-1][0]
-            if remote_file.startswith(os.path.sep):
-                destination = os.path.sep + destination
-            try:
-                sftp.stat(destination[0])
-            except IOError:
-                self.mkdir(sftp, destination)
-            sftp.chdir()
-            try:
-                sftp.put(local_file, remote_file)
-            except Exception, error:
-                logger.error("Error occured copying file %s to remote destination %s:%s - %s",
-                             local_file, self.host, remote_file, error)
-        else:
-            self._copy_dir(local_file, remote_file)
+        if os.path.isdir(local_file) and recurse:
+            return self._copy_dir(local_file, remote_file)
+        sftp = self._make_sftp()
+        destination = [_dir for _dir in remote_file.split(os.path.sep)
+                       if _dir][:-1]
+        if remote_file.startswith(os.path.sep):
+            destination[0] = os.path.sep + destination[0]
+        # import ipdb; ipdb.set_trace()
+        try:
+            sftp.stat(destination[0])
+        except IOError:
+            self.mkdir(sftp, destination[0])
+        try:
+            sftp.put(local_file, remote_file)
+        except Exception, error:
+            logger.error("Error occured copying file %s to remote destination %s:%s - %s",
+                         local_file, self.host, remote_file, error)
