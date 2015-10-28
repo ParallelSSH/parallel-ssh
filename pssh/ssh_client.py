@@ -239,7 +239,7 @@ class SSHClient(object):
         transport.open_session()
         return paramiko.SFTPClient.from_transport(transport)
 
-    def mkdir(self, sftp, directory):
+    def _mkdir(self, sftp, directory):
         """Make directory via SFTP channel
         
         :param sftp: SFTP client object
@@ -249,19 +249,41 @@ class SSHClient(object):
         
         Catches and logs at error level remote IOErrors on creating directory.
         """
-        sub_dirs = [_dir for _dir in directory.split(os.path.sep) if _dir][:-1]
-        sub_dirs = os.path.sep + os.path.sep.join(sub_dirs) if directory.startswith(os.path.sep) \
-          else os.path.sep.join(sub_dirs)
-        if sub_dirs:
-            try:
-                sftp.stat(sub_dirs)
-            except IOError:
-                return self.mkdir(sftp, sub_dirs)
         try:
             sftp.mkdir(directory)
         except IOError, error:
             logger.error("Error occured creating directory %s on %s - %s",
                          directory, self.host, error)
+        logger.debug("Creating remote directory %s", directory)
+        return True
+
+    def mkdir(self, sftp, directory):
+        """Make directory via SFTP channel.
+        
+        Parent paths in the directory are created if they do not exist.
+        
+        :param sftp: SFTP client object
+        :type sftp: :mod:`paramiko.SFTPClient`
+        :param directory: Remote directory to create
+        :type directory: str
+        
+        Catches and logs at error level remote IOErrors on creating directory.
+        """
+        try:
+            parent_path, sub_dirs = directory.split(os.path.sep, 1)
+        except ValueError:
+            parent_path = directory.split(os.path.sep, 1)[0]
+            sub_dirs = None
+        if not parent_path and directory.startswith(os.path.sep):
+            parent_path, sub_dirs = sub_dirs.split(os.path.sep, 1)
+        try:
+            sftp.stat(parent_path)
+        except IOError:
+            self._mkdir(sftp, parent_path)
+        sftp.chdir(parent_path)
+        if sub_dirs:
+            return self.mkdir(sftp, sub_dirs)
+        return True
 
     def copy_file(self, local_file, remote_file):
         """Copy local file to host via SFTP/SCP
@@ -276,14 +298,14 @@ class SSHClient(object):
         """
         sftp = self._make_sftp()
         destination = [_dir for _dir in remote_file.split(os.path.sep)
-                       if _dir][:-1]
+                       if _dir][:-1][0]
         if remote_file.startswith(os.path.sep):
-            destination[0] = os.path.sep + destination[0]
-        # import ipdb; ipdb.set_trace()
+            destination = os.path.sep + destination
         try:
             sftp.stat(destination)
         except IOError:
             self.mkdir(sftp, destination)
+        sftp.chdir()
         try:
             sftp.put(local_file, remote_file)
         except Exception, error:

@@ -33,6 +33,7 @@ import paramiko
 import os
 from test_pssh_client import USER_KEY
 import random, string
+import shutil
 
 USER_KEY = paramiko.RSAKey.from_private_key_file(
     os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key']))
@@ -51,6 +52,61 @@ class SSHClientTest(unittest.TestCase):
     def tearDown(self):
         del self.server
         del self.listen_socket
+        
+    def test_ssh_client_mkdir_recursive(self):
+        """Test SFTP mkdir of SSHClient"""
+        base_path = 'remote_test_dir1'
+        remote_dir = os.path.sep.join([base_path,
+                                       'remote_test_dir2',
+                                       'remote_test_dir3'])
+        try:
+            shutil.rmtree(base_path)
+        except OSError:
+            pass
+        client = SSHClient(self.host, port=self.listen_port,
+                           pkey=self.user_key)
+        client.mkdir(client._make_sftp(), remote_dir)
+        self.assertTrue(os.path.isdir(remote_dir),
+                        msg="SFTP recursive mkdir failed")
+        shutil.rmtree(base_path)
+        del client
+
+    def test_ssh_client_mkdir_recursive_abspath(self):
+        """Test SFTP mkdir of SSHClient with absolute path
+        
+        Absolute SFTP paths resolve under the users' home directory,
+        not the root filesystem
+        """
+        base_path = 'tmp'
+        remote_dir = os.path.sep.join([base_path,
+                                       'remote_test_dir2',
+                                       'remote_test_dir3'])
+        try:
+            shutil.rmtree(base_path)
+        except OSError:
+            pass
+        client = SSHClient(self.host, port=self.listen_port,
+                           pkey=self.user_key)
+        client.mkdir(client._make_sftp(), '/' + remote_dir)
+        self.assertTrue(os.path.isdir(remote_dir),
+                        msg="SFTP recursive mkdir failed")
+        shutil.rmtree(base_path)
+        del client
+
+    def test_ssh_client_mkdir_single(self):
+        """Test SFTP mkdir of SSHClient"""
+        remote_dir = 'remote_test_dir1'
+        try:
+            shutil.rmtree(remote_dir)
+        except OSError:
+            pass
+        client = SSHClient(self.host, port=self.listen_port,
+                           pkey=self.user_key)
+        client.mkdir(client._make_sftp(), remote_dir)
+        self.assertTrue(os.path.isdir(remote_dir),
+                        msg="SFTP recursive mkdir failed")
+        shutil.rmtree(remote_dir)
+        del client
 
     def test_ssh_client_sftp(self):
         """Test SFTP features of SSHClient. Copy local filename to server,
