@@ -103,7 +103,7 @@ not match source %s" % (copied_file_data, test_file_data))
             test_file.close()
         client = SSHClient(self.host, port=self.listen_port,
                            pkey=self.user_key)
-        client.copy_file(local_test_path, remote_test_path)
+        client.copy_file(local_test_path, remote_test_path, recurse=True)
         for path in remote_file_paths:
             self.assertTrue(os.path.isfile(path))
         shutil.rmtree(local_test_path)
