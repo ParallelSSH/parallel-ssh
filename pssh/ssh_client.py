@@ -292,7 +292,7 @@ class SSHClient(object):
         for file_name in file_list:
             local_path = os.path.join(local_dir, file_name)
             remote_path = os.path.join(remote_dir, file_name)
-            self.copy_file(local_path, remote_path)
+            self.copy_file(local_path, remote_path, recurse=True)
 
     def copy_file(self, local_file, remote_file, recurse=False):
         """Copy local file to host via SFTP/SCP
