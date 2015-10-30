@@ -309,6 +309,9 @@ class SSHClient(object):
         """
         if os.path.isdir(local_file) and recurse:
             return self._copy_dir(local_file, remote_file)
+        elif os.path.isdir(local_file) and not recurse:
+            raise ValueError("Recurse must be true if local_file is a "
+                             "directory.")
         sftp = self._make_sftp()
         destination = [_dir for _dir in remote_file.split(os.path.sep)
                        if _dir][:-1][0]

@@ -165,6 +165,26 @@ not match source %s" % (copied_file_data, test_file_data))
         shutil.rmtree(local_test_path)
         shutil.rmtree(remote_test_path)
 
+    def test_ssh_client_directory_no_recurse(self):
+        """Tests copying directories with SSH client. Copy all the files from
+        local directory to server, then make sure they are all present."""
+        test_file_data = 'test'
+        local_test_path = 'directory_test'
+        remote_test_path = 'directory_test_copied'
+        os.mkdir(local_test_path)
+        remote_file_paths = []
+        for i in range(0, 10):
+            local_file_path = os.path.join(local_test_path, 'foo' + str(i))
+            remote_file_path = os.path.join(remote_test_path, 'foo' + str(i))
+            remote_file_paths.append(remote_file_path)
+            test_file = open(local_file_path, 'w')
+            test_file.write(test_file_data)
+            test_file.close()
+        client = SSHClient(self.host, port=self.listen_port,
+                           pkey=self.user_key)
+        self.assertRaises(ValueError, client.copy_file, local_test_path, remote_test_path)
+        shutil.rmtree(local_test_path)
+
     def test_ssh_agent_authentication(self):
         """Test authentication via SSH agent.
         Do not provide public key to use when creating SSHClient,
