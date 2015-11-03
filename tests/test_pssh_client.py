@@ -426,9 +426,9 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_identical_host_output(self):
         """Test that we get output when running with duplicated hosts"""
         # Make socket with no server listening on it just for testing output
-        _socket = make_socket(self.host)
-        port = _socket.getsockname()[1]
-        hosts = [self.host, self.host]
+        _socket1, _socket2 = make_socket(self.host), make_socket(self.host)
+        port = _socket1.getsockname()[1]
+        hosts = [self.host, self.host, self.host]
         client = ParallelSSHClient(hosts, port=port,
                                    pkey=self.user_key)
         output = client.run_command(self.fake_cmd, stop_on_errors=False)
@@ -436,7 +436,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(len(hosts), len(output.keys()),
                          msg="Host list contains %s identical hosts, only got output for %s" % (
                              len(hosts), len(output.keys())))
-        del _socket
+        del _socket1, _socket2
 
     def test_connection_error_exception(self):
         """Test that we get connection error exception in output with correct arguments"""

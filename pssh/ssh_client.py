@@ -18,7 +18,9 @@
 
 """Package containing SSHClient class."""
 
-
+import sys
+if 'threading' in sys.modules:
+    del sys.modules['threading']
 import gevent
 from gevent import monkey
 monkey.patch_all()

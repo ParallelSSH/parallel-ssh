@@ -18,7 +18,9 @@
 
 """Package containing ParallelSSHClient class."""
 
-
+import sys
+if 'threading' in sys.modules:
+    del sys.modules['threading']
 from gevent import monkey
 monkey.patch_all()
 import logging
@@ -26,7 +28,8 @@ import gevent.pool
 import gevent.hub
 gevent.hub.Hub.NOT_ERROR = (Exception,)
 import warnings
-import hashlib
+import string
+import random
 from .constants import DEFAULT_RETRIES
 from .ssh_client import SSHClient
 
@@ -137,7 +140,7 @@ UnknownHostException, ConnectionErrorException
         ``exit_code`` in ``output`` will be ``None`` if command has not finished.
         
         ``get_exit_codes`` is not a blocking function and will not wait for commands
-        to finish. Use ``client.pool.join()`` to block until all commands have
+        to finish. Use ``client.join(output)`` to block until all commands have
         finished.
         
         ``output`` parameter is modified in-place.
@@ -169,7 +172,7 @@ UnknownHostException, ConnectionErrorException
           
           >>> client = ParallelSSHClient(['localhost'])
           >>> output = client.run_command('ls -ltrh /tmp/aasdfasdf')
-          >>> client.pool.join()
+          >>> client.join(output)
           
           :netstat: ``tcp        0      0 127.0.0.1:53054         127.0.0.1:22            ESTABLISHED``
           
@@ -239,9 +242,9 @@ UnknownHostException, ConnectionErrorException
         0
         0
         
-        *Wait for completion, no stdout*
+        *Wait for completion, no stdout printing*
         
-        >>> client.pool.join()
+        >>> client.join(output)
         
         *Run with sudo*
         
@@ -269,7 +272,7 @@ UnknownHostException, ConnectionErrorException
         **Do not stop on errors, return per-host exceptions in output**
         
         >>> output = client.run_command('ls -ltrh', stop_on_errors=False)
-        >>> client.pool.join()
+        >>> client.join(output)
         >>> print output
         
         ::
@@ -376,7 +379,10 @@ future releases - use self.run_command instead", DeprecationWarning)
                             exception=None):
         """Update host output with given data"""
         if host in output:
-            new_host = "_".join([host, hashlib.sha1().hexdigest()[:10]])
+            new_host = "_".join([host,
+                                 ''.join(random.choice(
+                                     string.ascii_lowercase + string.digits)
+                                     for _ in xrange(8))])
             logger.warning("Already have output for host %s - changing host key for %s to %s",
                            host, host, new_host)
             host = new_host
