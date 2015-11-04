@@ -335,3 +335,48 @@ class SSHClient(object):
         else:
             logger.info("Copied local file %s to remote destination %s:%s",
                         local_file, self.host, remote_file)
+
+    def _copy_dir_to_local(self, remote_dir, local_dir):
+        """Copies the remote directory to the local host."""
+        sftp = self._make_sftp()
+        file_list = sftp.listdir(remote_dir)
+        for file_name in file_list:
+            remote_path = os.path.join(remote_dir, file_name)
+            local_path = os.path.join(local_dir, file_name)
+            self.copy_file_to_local(remote_path, local_path, recurse=True)
+
+    def copy_file_to_local(self, remote_file, local_file, recurse=False):
+        """Copy remote file to local host via SFTP/SCP
+
+        Copy is done natively using SFTP/SCP version 2 protocol, no scp command \
+        is used or required.
+
+        :param remote_file: Remote filepath to copy the file from.
+        :type remote_file: str
+        :param local_file: Local filepath where the file will be copied.
+        :type local_file: str
+        :param recurse: Whether or not to recursively copy directories.
+        :type recurse: bool
+        """
+        sftp = self._make_sftp()
+        try:
+            sftp.listdir(remote_file)
+            remote_dir_exists = True
+        except IOError or OSError:
+            remote_dir_exists = False
+        if remote_dir_exists and recurse:
+            return self._copy_dir_to_local(remote_file, local_file)
+        destination = [_dir for _dir in local_file.split(os.path.sep)
+                       if _dir][:-1][0]
+        if local_file.startswith(os.path.sep):
+            destination = os.path.sep + destination
+        if not os.path.exists(destination):
+            os.mkdir(destination)
+        try:
+            sftp.get(remote_file, local_file)
+        except Exception, error:
+            logger.error("Error occured copying file %s from remote destination %s:%s - %s",
+                         local_file, self.host, remote_file, error)
+        else:
+            logger.info("Copied local file %s from remote destination %s:%s",
+                        local_file, self.host, remote_file)
