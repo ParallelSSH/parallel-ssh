@@ -287,7 +287,16 @@ class SSHClient(object):
             return self.mkdir(sftp, sub_dirs)
         return True
 
-    def copy_file(self, local_file, remote_file):
+    def _copy_dir(self, local_dir, remote_dir):
+        """Call copy_file on every file in the specified directory, copying
+        them to the specified remote directory."""
+        file_list = os.listdir(local_dir)
+        for file_name in file_list:
+            local_path = os.path.join(local_dir, file_name)
+            remote_path = os.path.join(remote_dir, file_name)
+            self.copy_file(local_path, remote_path, recurse=True)
+
+    def copy_file(self, local_file, remote_file, recurse=False):
         """Copy local file to host via SFTP/SCP
         
         Copy is done natively using SFTP/SCP version 2 protocol, no scp command \
@@ -297,7 +306,17 @@ class SSHClient(object):
         :type local_file: str
         :param remote_file: Remote filepath on remote host to copy file to
         :type remote_file: str
+        :param recurse: Whether or not to descend into directories recursively.
+        :type recurse: bool
+
+        :raises: :mod:'ValueError' when a directory is supplied to local_file \
+        and recurse is not set
         """
+        if os.path.isdir(local_file) and recurse:
+            return self._copy_dir(local_file, remote_file)
+        elif os.path.isdir(local_file) and not recurse:
+            raise ValueError("Recurse must be true if local_file is a "
+                             "directory.")
         sftp = self._make_sftp()
         destination = [_dir for _dir in remote_file.split(os.path.sep)
                        if _dir][:-1][0]
