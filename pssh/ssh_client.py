@@ -286,7 +286,7 @@ class SSHClient(object):
         return True
 
     def _copy_dir(self, local_dir, remote_dir):
-        """Calls copy_file on every file in the specified directory, copying
+        """Call copy_file on every file in the specified directory, copying
         them to the specified remote directory."""
         file_list = os.listdir(local_dir)
         for file_name in file_list:
@@ -306,6 +306,9 @@ class SSHClient(object):
         :type remote_file: str
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
+
+        :raises: :mod:'ValueError' when a directory is supplied to local_file \
+        and recurse is not set
         """
         if os.path.isdir(local_file) and recurse:
             return self._copy_dir(local_file, remote_file)
