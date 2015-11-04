@@ -357,6 +357,9 @@ class SSHClient(object):
         :type local_file: str
         :param recurse: Whether or not to recursively copy directories.
         :type recurse: bool
+
+        :raises: :mod:'ValueError' when a directory is supplied to remote_file \
+        and recurse is not set
         """
         sftp = self._make_sftp()
         try:
@@ -366,6 +369,9 @@ class SSHClient(object):
             remote_dir_exists = False
         if remote_dir_exists and recurse:
             return self._copy_dir_to_local(remote_file, local_file)
+        elif remote_dir_exists and not recurse:
+            raise ValueError("Recurse must be true if local_file is a "
+                             "directory.")
         destination = [_dir for _dir in local_file.split(os.path.sep)
                        if _dir][:-1][0]
         if local_file.startswith(os.path.sep):
