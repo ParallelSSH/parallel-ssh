@@ -377,7 +377,10 @@ class SSHClient(object):
         if local_file.startswith(os.path.sep):
             destination = os.path.sep + destination
         if not os.path.exists(destination):
-            os.mkdir(destination)
+            try:
+                os.makedirs(destination)
+            except OSError:
+                logger.error("Unable to create local directory structure.")
         try:
             sftp.get(remote_file, local_file)
         except Exception, error:
