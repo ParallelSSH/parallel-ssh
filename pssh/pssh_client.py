@@ -871,11 +871,6 @@ future releases - use self.run_command instead", DeprecationWarning)
           created as long as permissions allow.
 
         .. note ::
-          Path separation is handled client side so it is possible to copy
-          to/from hosts with differing path separators, like from/to Linux
-          and Windows.
-
-        .. note ::
           File names will be de-duplicated by appending the hostname to the
           filepath.
 
@@ -892,4 +887,4 @@ future releases - use self.run_command instead", DeprecationWarning)
                                                 password=self.password,
                                                 port=self.port, pkey=self.pkey,
                                                 forward_ssh_agent=self.forward_ssh_agent)
-        return self.host_clients[host].copy_file_to_local(remote_file, local_file + '_' + host)
+        return self.host_clients[host].copy_file_to_local(remote_file, '_'.join([local_file, host]))
