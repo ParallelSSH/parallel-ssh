@@ -360,13 +360,7 @@ class SSHClient(object):
             raise ValueError("Recurse must be true if local_file is a "
                              "directory.")
         sftp = self._make_sftp()
-        try:
-            destination = os.path.sep.join([_dir for _dir in remote_file.split(os.path.sep)
-                           if _dir][:-1])
-        except IndexError:
-            destination = ''
-        if remote_file.startswith(os.path.sep) or not destination:
-            destination = os.path.sep + destination
+        destination = self._parent_path_split(remote_file)
         if os.path.sep in remote_file:
             self.mkdir(sftp, destination)
         sftp.chdir()
@@ -415,15 +409,13 @@ class SSHClient(object):
         elif remote_dir_exists and not recurse:
             raise ValueError("Recurse must be true if local_file is a "
                              "directory.")
-        destination = [_dir for _dir in local_file.split(os.path.sep)
-                       if _dir][:-1][0]
-        if local_file.startswith(os.path.sep):
-            destination = os.path.sep + destination
+        destination = self._parent_path_split(local_file)
         if not os.path.exists(destination):
             try:
                 os.makedirs(destination)
-            except OSError:
+            except OSError, exception:
                 logger.error("Unable to create local directory structure.")
+                raise exception
         try:
             sftp.get(remote_file, local_file)
         except Exception, error:
@@ -432,3 +424,11 @@ class SSHClient(object):
         else:
             logger.info("Copied local file %s from remote destination %s:%s",
                         local_file, self.host, remote_file)
+
+    @staticmethod
+    def _parent_path_split(file_path):
+        destination = [_dir for _dir in file_path.split(os.path.sep)
+                       if _dir][:-1][0]
+        if file_path.startswith(os.path.sep):
+            destination = os.path.sep + destination
+        return destination
