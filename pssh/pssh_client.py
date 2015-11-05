@@ -857,4 +857,39 @@ future releases - use self.run_command instead", DeprecationWarning)
                 agent=self.agent,
                 channel_timeout=self.channel_timeout)
         return self.host_clients[host].copy_file(local_file, remote_file,
-                                                 recurse=recurse)
+
+    def copy_file_to_local(self, remote_file, local_file):
+        """Copy remote file to local file in parallel
+
+        :param remote_file: remote filepath to copy to local host
+        :type remote_file: str
+        :param local_file: local filepath on local host to copy file to
+        :type local_file: str
+
+        .. note ::
+          Local directories in `local_file` that do not exist will be
+          created as long as permissions allow.
+
+        .. note ::
+          Path separation is handled client side so it is possible to copy
+          to/from hosts with differing path separators, like from/to Linux
+          and Windows.
+
+        .. note ::
+          File names will be de-duplicated by appending the hostname to the
+          filepath.
+
+        :rtype: List(:mod:`gevent.Greenlet`) of greenlets for remote copy \
+        commands
+        """
+        return [self.pool.spawn(self._copy_file_to_local, host, remote_file, local_file)
+                for host in self.hosts]
+
+    def _copy_file_to_local(self, host, remote_file, local_file):
+        """Make sftp client, copy file to local"""
+        if not self.host_clients[host]:
+            self.host_clients[host] = SSHClient(host, user=self.user,
+                                                password=self.password,
+                                                port=self.port, pkey=self.pkey,
+                                                forward_ssh_agent=self.forward_ssh_agent)
+        return self.host_clients[host].copy_file_to_local(remote_file, local_file + '_' + host)
