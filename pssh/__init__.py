@@ -27,6 +27,7 @@ The `libev event loop library <http://software.schmorp.de/pkg/libev.html>`_ is u
 
 See :mod:`pssh.ParallelSSHClient` and :mod:`pssh.SSHClient` for class documentation.
 """
+import gevent.monkey; gevent.monkey.patch_thread()
 import logging
 from .utils import enable_host_logger
 from .pssh_client import ParallelSSHClient
