@@ -27,13 +27,12 @@ The `libev event loop library <http://software.schmorp.de/pkg/libev.html>`_ is u
 
 See :mod:`pssh.ParallelSSHClient` and :mod:`pssh.SSHClient` for class documentation.
 """
-import logging
 from .utils import enable_host_logger
 from .pssh_client import ParallelSSHClient
 from .ssh_client import SSHClient
 from .exceptions import UnknownHostException, \
      AuthenticationException, ConnectionErrorException, SSHException
-
+import logging
 
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger('pssh')

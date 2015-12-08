@@ -41,7 +41,7 @@ class SSHClient(object):
     """Wrapper class over paramiko.SSHClient with sane defaults
     Honours ~/.ssh/config and /etc/ssh/ssh_config entries for host username \
     overrides"""
-
+    
     def __init__(self, host,
                  user=None, password=None, port=None,
                  pkey=None, forward_ssh_agent=True,
@@ -185,11 +185,11 @@ class SSHClient(object):
 
     def exec_command(self, command, sudo=False, user=None, **kwargs):
         """Wrapper to :mod:`paramiko.SSHClient.exec_command`
-
+        
         Opens a new SSH session with a new pty and runs command with given \
         `kwargs` if any. Greenlet then yields (sleeps) while waiting for \
         command to finish executing or channel to close indicating the same.
-
+        
         :param command: Shell command to execute
         :type command: str
         :param sudo: (Optional) Run with sudo. Defaults to False
