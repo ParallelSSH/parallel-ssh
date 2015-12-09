@@ -31,6 +31,7 @@ import threading
 import paramiko
 import os
 import warnings
+import shutil
 
 USER_KEY = paramiko.RSAKey.from_private_key_file(
     os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key']))
@@ -341,6 +342,36 @@ class ParallelSSHClientTest(unittest.TestCase):
             os.unlink(filepath)
         del client
         server.join()
+
+    def test_pssh_client_directory(self):
+        """Tests copying directories with SSH client. Copy all the files from
+        local directory to server, then make sure they are all present."""
+        test_file_data = 'test'
+        local_test_path = 'directory_test'
+        remote_test_path = 'directory_test_copied'
+        for path in [local_test_path, remote_test_path]:
+            try:
+                shutil.rmtree(path)
+            except OSError:
+                pass
+        os.mkdir(local_test_path)
+        remote_file_paths = []
+        for i in range(0, 10):
+            local_file_path = os.path.join(local_test_path, 'foo' + str(i))
+            remote_file_path = os.path.join(remote_test_path, 'foo' + str(i))
+            remote_file_paths.append(remote_file_path)
+            test_file = open(local_file_path, 'w')
+            test_file.write(test_file_data)
+            test_file.close()
+        client = ParallelSSHClient([self.host], port=self.listen_port,
+                                   pkey=self.user_key)
+        cmds = client.copy_file(local_test_path, remote_test_path, recurse=True)
+        for cmd in cmds:
+            cmd.get()
+        for path in remote_file_paths:
+            self.assertTrue(os.path.isfile(path))
+        shutil.rmtree(local_test_path)
+        shutil.rmtree(remote_test_path)
 
     def test_pssh_pool_size(self):
         """Test pool size logic"""

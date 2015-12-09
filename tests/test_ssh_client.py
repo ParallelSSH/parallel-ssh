@@ -147,6 +147,11 @@ not match source %s" % (copied_file_data, test_file_data))
         test_file_data = 'test'
         local_test_path = 'directory_test'
         remote_test_path = 'directory_test_copied'
+        for path in [local_test_path, remote_test_path]:
+            try:
+                shutil.rmtree(path)
+            except OSError:
+                pass
         os.mkdir(local_test_path)
         remote_file_paths = []
         for i in range(0, 10):
@@ -170,6 +175,11 @@ not match source %s" % (copied_file_data, test_file_data))
         test_file_data = 'test'
         local_test_path = 'directory_test'
         remote_test_path = 'directory_test_copied'
+        for path in [local_test_path, remote_test_path]:
+            try:
+                shutil.rmtree(path)
+            except OSError:
+                pass
         os.mkdir(local_test_path)
         remote_file_paths = []
         for i in range(0, 10):
