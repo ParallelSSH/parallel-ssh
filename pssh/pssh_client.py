@@ -482,9 +482,8 @@ future releases - use self.run_command instead", DeprecationWarning)
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
         
-        :raises: :mod:'ValueError' when a directory is supplied to local_file \
+        :raises: :mod:`ValueError` when a directory is supplied to local_file \
         and recurse is not set
-        
         
         .. note ::
           Remote directories in `remote_file` that do not exist will be
