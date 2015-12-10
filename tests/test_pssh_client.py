@@ -328,8 +328,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         test_file = open(local_filename, 'w')
         test_file.writelines([test_file_data + os.linesep])
         test_file.close()
-        server = start_server({ self.fake_cmd : self.fake_resp },
-                              self.listen_socket)
         client = ParallelSSHClient([self.host], port=self.listen_port,
                                    pkey=self.user_key)
         cmds = client.copy_file(local_filename, remote_filename)
@@ -341,7 +339,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         for filepath in [local_filename, remote_filename]:
             os.unlink(filepath)
         del client
-        server.join()
 
     def test_pssh_client_directory(self):
         """Tests copying directories with SSH client. Copy all the files from
@@ -417,7 +414,6 @@ class ParallelSSHClientTest(unittest.TestCase):
                          msg="Did not get expected output from all hosts. \
                          Got %s - expected %s" % (stdout, expected_stdout,))
         del client
-        # server1.kill()
         del server2
 
     def test_ssh_proxy(self):
@@ -440,7 +436,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                          msg="Got unexpected stdout - %s, expected %s" % 
                          (stdout,
                           expected_stdout,))
-        # server.kill()
+        self.server.kill()
         proxy_server.kill()
 
     def test_bash_variable_substitution(self):
@@ -537,6 +533,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    user='fakey', password='fakey',
                                    pkey=paramiko.RSAKey.generate(1024))
         output = client.run_command(self.fake_cmd, stop_on_errors=False)
+        gevent.sleep(.2)
         client.pool.join()
         self.assertTrue('exception' in output[host],
                         msg="Got no exception for host %s - expected connection error" % (
