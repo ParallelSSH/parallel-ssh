@@ -496,23 +496,24 @@ future releases - use self.run_command instead", DeprecationWarning)
                                 {'recurse' : recurse})
                 for host in self.hosts]
 
-    def _copy_file(self, host, local_file, remote_file, recurse=False):
+    def _copy_file(self, host, local_file, remote_file, recurse):
         """Make sftp client, copy file"""
         if not self.host_clients[host]:
             self.host_clients[host] = SSHClient(host, user=self.user,
                                                 password=self.password,
                                                 port=self.port, pkey=self.pkey,
                                                 forward_ssh_agent=self.forward_ssh_agent)
-        return self.host_clients[host].copy_file(local_file, remote_file)
+        return self.host_clients[host].copy_file(local_file, remote_file, recurse=recurse)
 
-    def copy_file_to_local(self, remote_file, local_file):
+    def copy_file_to_local(self, remote_file, local_file, recurse=False):
         """Copy remote file to local file in parallel
 
         :param remote_file: remote filepath to copy to local host
         :type remote_file: str
         :param local_file: local filepath on local host to copy file to
         :type local_file: str
-
+        :param recurse: whether or not to recurse
+        :type recurse: bool
         .. note ::
           Local directories in `local_file` that do not exist will be
           created as long as permissions allow.
@@ -524,14 +525,14 @@ future releases - use self.run_command instead", DeprecationWarning)
         :rtype: List(:mod:`gevent.Greenlet`) of greenlets for remote copy \
         commands
         """
-        return [self.pool.spawn(self._copy_file_to_local, host, remote_file, local_file)
+        return [self.pool.spawn(self._copy_file_to_local, host, remote_file, local_file, recurse)
                 for host in self.hosts]
 
-    def _copy_file_to_local(self, host, remote_file, local_file):
+    def _copy_file_to_local(self, host, remote_file, local_file, recurse):
         """Make sftp client, copy file to local"""
         if not self.host_clients[host]:
             self.host_clients[host] = SSHClient(host, user=self.user,
                                                 password=self.password,
                                                 port=self.port, pkey=self.pkey,
                                                 forward_ssh_agent=self.forward_ssh_agent)
-        return self.host_clients[host].copy_file_to_local(remote_file, '_'.join([local_file, host]))
+        return self.host_clients[host].copy_file_to_local(remote_file, '_'.join([local_file, host]), recurse=recurse)
