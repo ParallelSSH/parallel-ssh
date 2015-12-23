@@ -141,7 +141,7 @@ not match source %s" % (copied_file_data, test_file_data))
             os.rmdir(dirpath)
         del client
 
-    def test_ssh_client_directory(self):
+    def test_ssh_client_local_directory(self):
         """Tests copying directories with SSH client. Copy all the files from
         local directory to server, then make sure they are all present."""
         test_file_data = 'test'
@@ -168,6 +168,28 @@ not match source %s" % (copied_file_data, test_file_data))
             self.assertTrue(os.path.isfile(path))
         shutil.rmtree(local_test_path)
         shutil.rmtree(remote_test_path)
+
+    def test_ssh_client_copy_remote_directory(self):
+        """Tests copying a remote directory to the localhost"""
+        remote_test_directory = 'remote_test_dir'
+        local_test_directory = 'local_test_dir'
+        os.mkdir(remote_test_directory)
+        test_files = []
+        for i in range(0, 10):
+            file_name = 'foo' + str(i)
+            test_files.append(file_name)
+            file_path = os.path.join(remote_test_directory, file_name)
+            test_file = open(file_path, 'w')
+            test_file.write('test')
+            test_file.close()
+        client = SSHClient(self.host, port=self.listen_port,
+                           pkey=self.user_key)
+        client.copy_file_to_local(remote_test_directory, local_test_directory, recurse=True)
+        for test_file in test_files:
+            file_path = os.path.join(local_test_directory, test_file)
+            self.assertTrue(os.path.exists(file_path))
+        shutil.rmtree(remote_test_directory)
+        shutil.rmtree(local_test_directory)
 
     def test_ssh_client_directory_no_recurse(self):
         """Tests copying directories with SSH client. Copy all the files from
