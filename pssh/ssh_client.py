@@ -41,7 +41,7 @@ class SSHClient(object):
     """Wrapper class over paramiko.SSHClient with sane defaults
     Honours ~/.ssh/config and /etc/ssh/ssh_config entries for host username \
     overrides"""
-
+    
     def __init__(self, host,
                  user=None, password=None, port=None,
                  pkey=None, forward_ssh_agent=True,
@@ -185,11 +185,11 @@ class SSHClient(object):
 
     def exec_command(self, command, sudo=False, user=None, **kwargs):
         """Wrapper to :mod:`paramiko.SSHClient.exec_command`
-
+        
         Opens a new SSH session with a new pty and runs command with given \
         `kwargs` if any. Greenlet then yields (sleeps) while waiting for \
         command to finish executing or channel to close indicating the same.
-
+        
         :param command: Shell command to execute
         :type command: str
         :param sudo: (Optional) Run with sudo. Defaults to False
@@ -308,8 +308,8 @@ class SSHClient(object):
         :type remote_file: str
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
-
-        :raises: :mod:'ValueError' when a directory is supplied to local_file \
+        
+        :raises: :mod:`ValueError` when a directory is supplied to local_file \
         and recurse is not set
         """
         if os.path.isdir(local_file) and recurse:
@@ -318,7 +318,13 @@ class SSHClient(object):
             raise ValueError("Recurse must be true if local_file is a "
                              "directory.")
         sftp = self._make_sftp()
-        destination = self._parent_path_split(remote_file)
+        try:
+            destination = [_dir for _dir in remote_file.split(os.path.sep)
+                           if _dir][:-1][0]
+        except IndexError:
+            destination = ''
+        if remote_file.startswith(os.path.sep) or not destination:
+            destination = os.path.sep + destination
         try:
             sftp.stat(destination)
         except IOError:

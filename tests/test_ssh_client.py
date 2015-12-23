@@ -34,7 +34,6 @@ import paramiko
 import os
 from test_pssh_client import USER_KEY
 import random, string
-import shutil
 
 USER_KEY = paramiko.RSAKey.from_private_key_file(
     os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key']))
@@ -148,6 +147,11 @@ not match source %s" % (copied_file_data, test_file_data))
         test_file_data = 'test'
         local_test_path = 'directory_test'
         remote_test_path = 'directory_test_copied'
+        for path in [local_test_path, remote_test_path]:
+            try:
+                shutil.rmtree(path)
+            except OSError:
+                pass
         os.mkdir(local_test_path)
         remote_file_paths = []
         for i in range(0, 10):
@@ -171,6 +175,11 @@ not match source %s" % (copied_file_data, test_file_data))
         test_file_data = 'test'
         local_test_path = 'directory_test'
         remote_test_path = 'directory_test_copied'
+        for path in [local_test_path, remote_test_path]:
+            try:
+                shutil.rmtree(path)
+            except OSError:
+                pass
         os.mkdir(local_test_path)
         remote_file_paths = []
         for i in range(0, 10):

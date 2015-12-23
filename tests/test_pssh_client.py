@@ -31,6 +31,7 @@ import threading
 import paramiko
 import os
 import warnings
+import shutil
 
 USER_KEY = paramiko.RSAKey.from_private_key_file(
     os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key']))
@@ -327,8 +328,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         test_file = open(local_filename, 'w')
         test_file.writelines([test_file_data + os.linesep])
         test_file.close()
-        server = start_server({ self.fake_cmd : self.fake_resp },
-                              self.listen_socket)
         client = ParallelSSHClient([self.host], port=self.listen_port,
                                    pkey=self.user_key)
         cmds = client.copy_file(local_filename, remote_filename)
@@ -340,7 +339,36 @@ class ParallelSSHClientTest(unittest.TestCase):
         for filepath in [local_filename, remote_filename]:
             os.unlink(filepath)
         del client
-        server.join()
+
+    def test_pssh_client_directory(self):
+        """Tests copying directories with SSH client. Copy all the files from
+        local directory to server, then make sure they are all present."""
+        test_file_data = 'test'
+        local_test_path = 'directory_test'
+        remote_test_path = 'directory_test_copied'
+        for path in [local_test_path, remote_test_path]:
+            try:
+                shutil.rmtree(path)
+            except OSError:
+                pass
+        os.mkdir(local_test_path)
+        remote_file_paths = []
+        for i in range(0, 10):
+            local_file_path = os.path.join(local_test_path, 'foo' + str(i))
+            remote_file_path = os.path.join(remote_test_path, 'foo' + str(i))
+            remote_file_paths.append(remote_file_path)
+            test_file = open(local_file_path, 'w')
+            test_file.write(test_file_data)
+            test_file.close()
+        client = ParallelSSHClient([self.host], port=self.listen_port,
+                                   pkey=self.user_key)
+        cmds = client.copy_file(local_test_path, remote_test_path, recurse=True)
+        for cmd in cmds:
+            cmd.get()
+        for path in remote_file_paths:
+            self.assertTrue(os.path.isfile(path))
+        shutil.rmtree(local_test_path)
+        shutil.rmtree(remote_test_path)
 
     def test_pssh_copy_file_to_local(self):
         """Test parallel copy file to local host"""
@@ -411,7 +439,6 @@ class ParallelSSHClientTest(unittest.TestCase):
                          msg="Did not get expected output from all hosts. \
                          Got %s - expected %s" % (stdout, expected_stdout,))
         del client
-        # server1.kill()
         del server2
 
     def test_ssh_proxy(self):
@@ -434,7 +461,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                          msg="Got unexpected stdout - %s, expected %s" % 
                          (stdout,
                           expected_stdout,))
-        # server.kill()
+        self.server.kill()
         proxy_server.kill()
 
     def test_bash_variable_substitution(self):
@@ -531,6 +558,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    user='fakey', password='fakey',
                                    pkey=paramiko.RSAKey.generate(1024))
         output = client.run_command(self.fake_cmd, stop_on_errors=False)
+        gevent.sleep(.2)
         client.pool.join()
         self.assertTrue('exception' in output[host],
                         msg="Got no exception for host %s - expected connection error" % (

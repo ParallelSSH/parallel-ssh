@@ -472,30 +472,31 @@ future releases - use self.run_command instead", DeprecationWarning)
                        'stdout' : stdout,
                        'stderr' : stderr, }}
 
-    def copy_file(self, local_file, remote_file):
+    def copy_file(self, local_file, remote_file, recurse=False):
         """Copy local file to remote file in parallel
         
         :param local_file: Local filepath to copy to remote host
         :type local_file: str
         :param remote_file: Remote filepath on remote host to copy file to
         :type remote_file: str
-
+        :param recurse: Whether or not to descend into directories recursively.
+        :type recurse: bool
+        
+        :raises: :mod:`ValueError` when a directory is supplied to local_file \
+        and recurse is not set
+        
         .. note ::
           Remote directories in `remote_file` that do not exist will be
           created as long as permissions allow.
-
-        .. note ::
-          Path separation is handled client side so it is possible to copy
-          to/from hosts with differing path separators, like from/to Linux
-          and Windows.
-
+        
         :rtype: List(:mod:`gevent.Greenlet`) of greenlets for remote copy \
         commands
         """
-        return [self.pool.spawn(self._copy_file, host, local_file, remote_file)
+        return [self.pool.spawn(self._copy_file, host, local_file, remote_file,
+                                {'recurse' : recurse})
                 for host in self.hosts]
 
-    def _copy_file(self, host, local_file, remote_file):
+    def _copy_file(self, host, local_file, remote_file, recurse=False):
         """Make sftp client, copy file"""
         if not self.host_clients[host]:
             self.host_clients[host] = SSHClient(host, user=self.user,
