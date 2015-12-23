@@ -362,6 +362,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                         msg="SFTP copy failed")
         for filepath in [local_filename, remote_filename]:
             os.unlink(filepath)
+        shutil.rmtree(remote_test_dir)
         del client
     
     def test_pssh_client_directory(self):
@@ -472,6 +473,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                         msg="SFTP copy failed")
         for filepath in [remote_filename, local_filename]:
             os.unlink(filepath)
+        shutil.rmtree(local_test_dir)
         del client
         server.join()
 
