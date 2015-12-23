@@ -373,15 +373,15 @@ class SSHClient(object):
         if remote_dir_exists and recurse:
             return self._copy_dir_to_local(remote_file, local_file)
         elif remote_dir_exists and not recurse:
-            raise ValueError("Recurse must be true if local_file is a "
+            raise ValueError("Recurse must be true if remote_file is a "
                              "directory.")
         destination = self._parent_path_split(local_file)
         if not os.path.exists(destination):
             try:
                 os.makedirs(destination)
-            except OSError, exception:
+            except OSError:
                 logger.error("Unable to create local directory structure.")
-                raise exception
+                raise
         try:
             sftp.get(remote_file, local_file)
         except Exception, error:
