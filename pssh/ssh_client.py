@@ -318,11 +318,7 @@ class SSHClient(object):
             raise ValueError("Recurse must be true if local_file is a "
                              "directory.")
         sftp = self._make_sftp()
-        try:
-            destination = [_dir for _dir in remote_file.split(os.path.sep)
-                           if _dir][:-1][0]
-        except IndexError:
-            destination = ''
+        destination = self._parent_path_split(remote_file)
         if remote_file.startswith(os.path.sep) or not destination:
             destination = os.path.sep + destination
         try:
@@ -393,8 +389,11 @@ class SSHClient(object):
 
     @staticmethod
     def _parent_path_split(file_path):
-        destination = [_dir for _dir in file_path.split(os.path.sep)
-                       if _dir][:-1][0]
-        if file_path.startswith(os.path.sep):
+        try:
+            destination = [_dir for _dir in file_path.split(os.path.sep)
+                            if _dir][:-1][0]
+        except IndexError:
+            destination = ''
+        if file_path.startswith(os.path.sep) or not destination:
             destination = os.path.sep + destination
         return destination
