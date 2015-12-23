@@ -319,8 +319,6 @@ class SSHClient(object):
                              "directory.")
         sftp = self._make_sftp()
         destination = self._parent_path_split(remote_file)
-        if remote_file.startswith(os.path.sep) or not destination:
-            destination = os.path.sep + destination
         try:
             sftp.stat(destination)
         except IOError:
