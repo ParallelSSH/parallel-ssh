@@ -361,7 +361,9 @@ class SSHClient(object):
                              "directory.")
         sftp = self._make_sftp()
         destination = self._parent_path_split(remote_file)
-        if os.path.sep in remote_file:
+        try:
+            sftp.stat(destination)
+        except IOError:
             self.mkdir(sftp, destination)
         sftp.chdir()
         try:
@@ -427,8 +429,11 @@ class SSHClient(object):
 
     @staticmethod
     def _parent_path_split(file_path):
-        destination = [_dir for _dir in file_path.split(os.path.sep)
-                       if _dir][:-1][0]
-        if file_path.startswith(os.path.sep):
+        try:
+            destination = [_dir for _dir in file_path.split(os.path.sep)
+                            if _dir][:-1][0]
+        except IndexError:
+            destination = ''
+        if file_path.startswith(os.path.sep) or not destination:
             destination = os.path.sep + destination
         return destination
