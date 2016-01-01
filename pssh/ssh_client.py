@@ -26,7 +26,7 @@ from gevent import monkey
 monkey.patch_all()
 import logging
 import paramiko
-from paramiko import ssh_exception.ChannelException as channel_exception
+from paramiko.ssh_exception import ChannelException as channel_exception
 import os
 from socket import gaierror as sock_gaierror, error as sock_error
 from .exceptions import UnknownHostException, AuthenticationException, \
@@ -139,7 +139,7 @@ class SSHClient(object):
           proxy_channel = self.proxy_client.get_transport().\
             open_channel('direct-tcpip', (self.host, self.port,),
                         ('127.0.0.1', 0))
-        return self._connect(self.client, self.host, self.port, sock=proxy_channel)
+          return self._connect(self.client, self.host, self.port, sock=proxy_channel)
         except channel_exception, ex:
           error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
           raise ConnectionErrorException("Error connecting to host '%s:%s' - %s",
