@@ -50,7 +50,8 @@ class ParallelSSHClient(object):
     def __init__(self, hosts,
                  user=None, password=None, port=None, pkey=None,
                  forward_ssh_agent=True, num_retries=DEFAULT_RETRIES, timeout=120,
-                 pool_size=10, proxy_host=None, proxy_port=22):
+                 pool_size=10, proxy_host=None, proxy_port=22,
+                 agent=None):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -196,6 +197,7 @@ UnknownHostException, ConnectionErrorException
         self.proxy_host, self.proxy_port = proxy_host, proxy_port
         # To hold host clients
         self.host_clients = dict((host, None) for host in hosts)
+        self.agent = agent
 
     def run_command(self, *args, **kwargs):
         """Run command on all hosts in parallel, honoring self.pool_size,
@@ -325,7 +327,8 @@ future releases - use self.run_command instead", DeprecationWarning)
                                                 num_retries=self.num_retries,
                                                 timeout=self.timeout,
                                                 proxy_host=self.proxy_host,
-                                                proxy_port=self.proxy_port)
+                                                proxy_port=self.proxy_port,
+                                                agent=self.agent)
         return self.host_clients[host].exec_command(*args, **kwargs)
 
     def get_output(self, cmd, output):

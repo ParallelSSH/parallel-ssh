@@ -44,7 +44,7 @@ paramiko_logger = logging.getLogger('paramiko.transport')
 
 host_key = paramiko.RSAKey(filename = os.path.sep.join([os.path.dirname(__file__), 'rsa.key']))
 
-class Server (paramiko.ServerInterface):
+class Server(paramiko.ServerInterface):
     def __init__(self, transport, fail_auth=False,
                  ssh_exception=False):
         self.event = Event()

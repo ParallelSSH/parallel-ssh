@@ -46,7 +46,7 @@ class SSHClient(object):
     def __init__(self, host,
                  user=None, password=None, port=None,
                  pkey=None, forward_ssh_agent=True,
-                 num_retries=DEFAULT_RETRIES, _agent=None, timeout=10,
+                 num_retries=DEFAULT_RETRIES, agent=None, timeout=10,
                  proxy_host=None, proxy_port=22):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
@@ -74,11 +74,11 @@ class SSHClient(object):
         equivalent to `ssh -A` from the `ssh` command line utility. \
         Defaults to True if not set.
         :type forward_ssh_agent: bool
-        :param _agent: (Optional) Override SSH agent object with the provided. \
+        :param agent: (Optional) Override SSH agent object with the provided. \
         This allows for overriding of the default paramiko behaviour of \
-        connecting to local SSH agent to lookup keys with our own SSH agent. \
-        Only really useful for testing, hence the internal variable prefix.
-        :type _agent: :mod:`paramiko.agent.Agent`
+        connecting to local SSH agent to lookup keys with our own SSH agent \
+        object.
+        :type agent: :mod:`paramiko.agent.Agent`
         :param proxy_host: (Optional) SSH host to tunnel connection through \
         so that SSH clients connects to self.host via client -> proxy_host -> host
         :type proxy_host: str
@@ -109,8 +109,8 @@ class SSHClient(object):
         self.pkey = pkey
         self.port = port if port else 22
         self.host = resolved_address
-        if _agent:
-            self.client._agent = _agent
+        if agent:
+            self.client._agent = agent
         self.num_retries = num_retries
         self.timeout = timeout
         self.proxy_host, self.proxy_port = proxy_host, proxy_port
