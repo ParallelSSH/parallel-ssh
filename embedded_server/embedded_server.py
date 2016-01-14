@@ -25,6 +25,9 @@ Server private key is hardcoded, server listen code inspired by demo_server.py i
 paramiko repository
 """
 
+import sys
+if 'threading' in sys.modules:
+    del sys.modules['threading']
 import gevent
 import os
 import socket
@@ -106,7 +109,7 @@ class Server(paramiko.ServerInterface):
 
     def _read_response(self, channel, process):
         for line in process.stdout:
-            channel.send(line)
+            channel.send(line.decode('ascii'))
         process.communicate()
         channel.send_exit_status(process.returncode)
         logger.debug("Command finished with return code %s", process.returncode)
