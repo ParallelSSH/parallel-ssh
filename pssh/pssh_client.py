@@ -401,8 +401,10 @@ future releases - use self.run_command instead", DeprecationWarning)
         """Block until all remote commands in output have finished
         and retrieve exit codes"""
         for host in output:
-            for line in output[host]['stdout']:
-                pass
+            stdout = output[host].get('stdout')
+            if stdout:
+                for _ in stdout:
+                    pass
         self.get_exit_codes(output)
     
     def get_exit_codes(self, output):
@@ -429,7 +431,7 @@ future releases - use self.run_command instead", DeprecationWarning)
 
     def _get_exit_code(self, channel):
         """Get exit code from channel if ready"""
-        if not channel.exit_status_ready():
+        if not channel or not channel.exit_status_ready():
             return
         channel.close()
         return channel.recv_exit_status()
