@@ -100,6 +100,14 @@ class SSHClient(object):
                             else host)
         _user = host_config['user'] if 'user' in host_config else None
         user = user if user else _user
+
+        _port = int(host_config['port']) if 'port' in host_config else 22
+        port = port if port else _port
+
+        # FIXME: we take the first key
+        _pkey = paramiko.RSAKey.from_private_key_file(host_config['identityfile'][0]) if 'identityfile' in host_config else None
+        pkey = pkey if pkey else _pkey
+
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
         self.forward_ssh_agent = forward_ssh_agent
@@ -107,7 +115,7 @@ class SSHClient(object):
         self.user = user
         self.password = password
         self.pkey = pkey
-        self.port = port if port else 22
+        self.port = port
         self.host = resolved_address
         if agent:
             self.client._agent = agent
