@@ -237,7 +237,7 @@ class SSHClient(object):
     def _read_output_buffer(self, output_buffer, prefix=''):
         """Read from output buffers and log to host_logger"""
         for line in output_buffer:
-            output = line.strip().decode('ascii')
+            output = line.strip().decode('utf8')
             host_logger.info("[%s]%s\t%s", self.host, prefix, output,)
             yield output
 

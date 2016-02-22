@@ -200,6 +200,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    agent=self.agent)
         output = client.run_command(self.fake_cmd,
                                     stop_on_errors=False)
+        client.join(output)
         self.assertTrue(hosts[0] in output,
                         msg="Successful host does not exist in output - output is %s" % (output,))
         self.assertTrue(hosts[1] in output,
