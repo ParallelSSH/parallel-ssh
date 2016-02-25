@@ -229,9 +229,7 @@ class SSHClient(object):
         logger.debug("Running command %s on %s", command, self.host)
         channel.exec_command(command, **kwargs)
         logger.debug("Command started")
-        while not (channel.recv_ready() or channel.closed or
-                   channel.exit_status_ready()):
-            gevent.sleep(.2)
+        gevent.sleep(0)
         return channel, self.host, stdout, stderr
 
     def _read_output_buffer(self, output_buffer, prefix=''):

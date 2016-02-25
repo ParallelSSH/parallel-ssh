@@ -74,8 +74,8 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_pssh_client_no_stdout_non_zero_exit_code(self):
         output = self.client.run_command('exit 1')
         expected_exit_code = 1
+        self.client.join(output)
         exit_code = output[self.host]['exit_code']
-        self.client.pool.join()
         self.assertEqual(expected_exit_code, exit_code,
                          msg="Got unexpected exit code - %s, expected %s" %
                          (exit_code,
@@ -114,9 +114,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         expected_exit_code = 0
         expected_stdout = [self.fake_resp]
         expected_stderr = []
-        exit_code = output[self.host]['exit_code']
         stdout = list(output[self.host]['stdout'])
         stderr = list(output[self.host]['stderr'])
+        exit_code = output[self.host]['exit_code']
         self.assertEqual(expected_exit_code, exit_code,
                          msg="Got unexpected exit code - %s, expected %s" %
                          (exit_code,
@@ -141,9 +141,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         expected_exit_code = 0
         expected_stdout = [self.fake_resp]
         expected_stderr = []
-        exit_code = output[self.host]['exit_code']
         stdout = list(output[self.host]['stdout'])
         stderr = list(output[self.host]['stderr'])
+        exit_code = output[self.host]['exit_code']
         self.assertEqual(expected_exit_code, exit_code,
                          msg="Got unexpected exit code - %s, expected %s" %
                          (exit_code,
@@ -378,22 +378,25 @@ class ParallelSSHClientTest(unittest.TestCase):
         shutil.rmtree(remote_test_path)
 
     def test_pssh_pool_size(self):
-        """Test pool size logic"""
+        """Test setting pool size to non default values"""
         hosts = ['host-%01d' % d for d in xrange(5)]
-        client = ParallelSSHClient(hosts)
-        expected, actual = len(hosts), client.pool.size
+        pool_size = 2
+        client = ParallelSSHClient(hosts, pool_size=pool_size)
+        expected, actual = pool_size, client.pool.size
         self.assertEqual(expected, actual,
                          msg="Expected pool size to be %s, got %s" % (
                              expected, actual,))
         hosts = ['host-%01d' % d for d in xrange(15)]
-        client = ParallelSSHClient(hosts)
+        pool_size = 5
+        client = ParallelSSHClient(hosts, pool_size=pool_size)
         expected, actual = client.pool_size, client.pool.size
         self.assertEqual(expected, actual,
                          msg="Expected pool size to be %s, got %s" % (
                              expected, actual,))
         hosts = ['host-%01d' % d for d in xrange(15)]
-        client = ParallelSSHClient(hosts, pool_size=len(hosts)+5)
-        expected, actual = len(hosts), client.pool.size
+        pool_size = len(hosts)+5
+        client = ParallelSSHClient(hosts, pool_size=pool_size)
+        expected, actual = pool_size, client.pool.size
         self.assertEqual(expected, actual,
                          msg="Expected pool size to be %s, got %s" % (
                              expected, actual,))
