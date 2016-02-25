@@ -66,9 +66,8 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_pssh_client_exec_command(self):
         cmd = self.client.exec_command(self.fake_cmd)[0]
         output = self.client.get_stdout(cmd)
-        expected = {self.host : {'exit_code' : 0}}
-        self.assertEqual(expected, output,
-                         msg="Got unexpected command output - %s" % (output,))
+        self.assertTrue(self.host in output,
+                        msg="No output for host")
         self.assertTrue(output[self.host]['exit_code'] == 0)
 
     def test_pssh_client_no_stdout_non_zero_exit_code(self):
@@ -271,9 +270,11 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    password='')
         cmd = client.exec_command(self.fake_cmd)[0]
         output = client.get_stdout(cmd)
-        expected = {self.host : {'exit_code' : 0}}
-        self.assertEqual(expected, output,
-                         msg="Got unexpected command output - %s" % (output,))
+        self.assertTrue(self.host in output,
+                        msg="No output for host")
+        self.assertTrue(output[self.host]['exit_code'] == 0,
+                        msg="Expected exit code 0, got %s" % (
+                            output[self.host]['exit_code'],))
         del client
 
     def test_pssh_client_long_running_command(self):
