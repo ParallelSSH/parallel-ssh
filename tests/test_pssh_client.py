@@ -70,10 +70,9 @@ class ParallelSSHClientTest(unittest.TestCase):
                         msg="No output for host")
         self.assertTrue(output[self.host]['exit_code'] == 0)
 
-    def test_pssh_client_no_stdout_non_zero_exit_code(self):
+    def test_pssh_client_no_stdout_non_zero_exit_code_immediate_exit(self):
         output = self.client.run_command('exit 1')
         expected_exit_code = 1
-        self.client.join(output)
         exit_code = output[self.host]['exit_code']
         self.assertEqual(expected_exit_code, exit_code,
                          msg="Got unexpected exit code - %s, expected %s" %
@@ -113,9 +112,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         expected_exit_code = 0
         expected_stdout = [self.fake_resp]
         expected_stderr = []
+        exit_code = output[self.host]['exit_code']
         stdout = list(output[self.host]['stdout'])
         stderr = list(output[self.host]['stderr'])
-        exit_code = output[self.host]['exit_code']
         self.assertEqual(expected_exit_code, exit_code,
                          msg="Got unexpected exit code - %s, expected %s" %
                          (exit_code,
