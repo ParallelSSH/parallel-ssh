@@ -336,7 +336,7 @@ future releases - use self.run_command instead", DeprecationWarning)
 
     def _exec_command(self, host, *args, **kwargs):
         """Make SSHClient, run command on host"""
-        if not self.host_clients[host]:
+        if not host in self.host_clients or not self.host_clients[host]:
             self.host_clients[host] = SSHClient(host, user=self.user,
                                                 password=self.password,
                                                 port=self.port, pkey=self.pkey,
