@@ -345,6 +345,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                         msg="SFTP copy failed")
         for filepath in [local_filename, remote_filename]:
             os.unlink(filepath)
+        shutil.rmtree(remote_test_dir)
         del client
 
     def test_pssh_client_directory(self):
@@ -376,6 +377,32 @@ class ParallelSSHClientTest(unittest.TestCase):
             self.assertTrue(os.path.isfile(path))
         shutil.rmtree(local_test_path)
         shutil.rmtree(remote_test_path)
+
+    def test_pssh_copy_file_to_local(self):
+        """Test parallel copy file to local host"""
+        test_file_data = 'test'
+        remote_filename = 'test_file'
+        local_test_dir, local_filename = 'local_test_dir', 'test_file_copy'
+        local_filename = os.path.sep.join([local_test_dir, local_filename])
+        test_file = open(remote_filename, 'w')
+        test_file.writelines([test_file_data + os.linesep])
+        test_file.close()
+        server = start_server({ self.fake_cmd : self.fake_resp },
+                              self.listen_socket)
+        client = ParallelSSHClient([self.host], port=self.listen_port,
+                                   pkey=self.user_key)
+        cmds = client.copy_file_to_local(remote_filename, local_filename)
+        cmds[0].get()
+        local_filename += '_' + self.host
+        self.assertTrue(os.path.isdir(local_test_dir),
+                        msg="SFTP create local directory failed")
+        self.assertTrue(os.path.isfile(local_filename),
+                        msg="SFTP copy failed")
+        for filepath in [remote_filename, local_filename]:
+            os.unlink(filepath)
+        shutil.rmtree(local_test_dir)
+        del client
+        server.join()
 
     def test_pssh_pool_size(self):
         """Test setting pool size to non default values"""
