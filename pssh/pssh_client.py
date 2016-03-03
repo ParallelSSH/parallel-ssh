@@ -94,7 +94,7 @@ class ParallelSSHClient(object):
         
         >>> from pssh.pssh_client import ParallelSSHClient
         >>> from pssh.exceptions import AuthenticationException, \
-UnknownHostException, ConnectionErrorException
+                UnknownHostException, ConnectionErrorException
         
         >>> client = ParallelSSHClient(['myhost1', 'myhost2'])
         >>> try:
@@ -102,8 +102,9 @@ UnknownHostException, ConnectionErrorException
         >>> except (AuthenticationException, UnknownHostException, ConnectionErrorException):
         >>> ... pass
         
-        >>> # Commands have started executing at this point
-        >>> # Exit code will not be available immediately
+        Commands have started executing at this point.
+        Exit code(s) will not be available immediately.
+        
         >>> print output
 
         ::
@@ -137,9 +138,11 @@ UnknownHostException, ConnectionErrorException
         
         Retrieve exit codes after commands have finished as below.
         
+        ``exit_code`` in ``output`` will be ``None`` if command has not yet finished.
+        
         `parallel-ssh` starts commands asynchronously to enable running multiple
         commands in parallel without blocking.
-
+        
         Because of this, exit codes will not be immediately available even for
         commands that exit immediately.
         
@@ -152,7 +155,11 @@ UnknownHostException, ConnectionErrorException
         is necessary to cause `parallel-ssh` to wait for commands to finish and
         be able to gather exit codes.
         
-        ``exit_code`` in ``output`` will be ``None`` if command has not yet finished.
+        Either iterating over stdout/stderr or `client.join(output)` will cause exit
+        codes to be available in output without explicitly calling `get_exit_codes`.
+        
+        `client.pool.join()` does not update output and will need a call to
+        `get_exit_codes` as shown below.
         
         ``get_exit_codes`` is not a blocking function and will not wait for commands
         to finish. Use ``client.join(output)`` to block until all commands have
@@ -222,11 +229,11 @@ UnknownHostException, ConnectionErrorException
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output buffers.
         
-        This function will block until all commands have **started** and
-        then return immediately.
+        This function will block until all commands been *sent* to remote servers
+        and then return immediately.
         
         Any connection and/or authentication exceptions will be raised here
-        and need catching _unless_ `run_command` is called with
+        and need catching *unless* `run_command` is called with
         `stop_on_errors=False`.
         
         :param args: Positional arguments for command
