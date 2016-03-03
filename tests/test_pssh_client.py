@@ -73,6 +73,7 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_pssh_client_no_stdout_non_zero_exit_code_immediate_exit(self):
         output = self.client.run_command('exit 1')
         expected_exit_code = 1
+        self.client.join(output)
         exit_code = output[self.host]['exit_code']
         self.assertEqual(expected_exit_code, exit_code,
                          msg="Got unexpected exit code - %s, expected %s" %
@@ -112,9 +113,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         expected_exit_code = 0
         expected_stdout = [self.fake_resp]
         expected_stderr = []
-        exit_code = output[self.host]['exit_code']
         stdout = list(output[self.host]['stdout'])
         stderr = list(output[self.host]['stderr'])
+        exit_code = output[self.host]['exit_code']
         self.assertEqual(expected_exit_code, exit_code,
                          msg="Got unexpected exit code - %s, expected %s" %
                          (exit_code,
@@ -439,6 +440,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    proxy_host='127.0.0.2',
                                    proxy_port=proxy_server_port
                                    )
+        gevent.sleep(2)
         output = client.run_command(self.fake_cmd)
         stdout = list(output[self.host]['stdout'])
         expected_stdout = [self.fake_resp]

@@ -103,7 +103,7 @@ UnknownHostException, ConnectionErrorException
         >>> ... pass
         
         >>> # Commands have started executing at this point
-        >>> # Exit code will probably not be available immediately
+        >>> # Exit code will not be available immediately
         >>> print output
 
         ::
@@ -135,10 +135,24 @@ UnknownHostException, ConnectionErrorException
         [myhost1]     drwxrwxr-x 6 user group 4.0K Jan 1 HH:MM x
         [myhost2]     drwxrwxr-x 6 user group 4.0K Jan 1 HH:MM x
         
-        Retrieve exit codes after commands have finished as below. This is
-        only necessary for long running commands that do not exit immediately.
+        Retrieve exit codes after commands have finished as below.
         
-        ``exit_code`` in ``output`` will be ``None`` if command has not finished.
+        `parallel-ssh` starts commands asynchronously to enable running multiple
+        commands in parallel without blocking.
+
+        Because of this, exit codes will not be immediately available even for
+        commands that exit immediately.
+        
+        At least one of ::
+        
+        * Iterating over stdout/stderr
+        * Calling `client.join(output)`
+        * Calling `client.pool.join()` if no output is needed
+        
+        is necessary to cause `parallel-ssh` to wait for commands to finish and
+        be able to gather exit codes.
+        
+        ``exit_code`` in ``output`` will be ``None`` if command has not yet finished.
         
         ``get_exit_codes`` is not a blocking function and will not wait for commands
         to finish. Use ``client.join(output)`` to block until all commands have
@@ -172,6 +186,12 @@ UnknownHostException, ConnectionErrorException
         >>> hosts = ['dc1.myhost1', 'dc2.myhost2']
         >>> client = ParallelSSHClient([h for h in hosts if h.find('dc1')])
         >>> client.run_command(<..>)
+
+        **Overriding host list**
+
+        >>> client.hosts = ['otherhost']
+        >>> print client.run_command('exit 0')
+        >>> {'otherhost': {'exit_code':0}, <..>}
         
         .. note ::
         
@@ -276,6 +296,34 @@ UnknownHostException, ConnectionErrorException
         >>> for host in output:
         >>>     stdout = list(output[host]['stdout'])
         >>>     print "Complete stdout for host %s is %s" % (host, stdout,)
+
+        **Run multiple commands in parallel**
+
+        This short example demonstrates running long running commands in parallel
+        and how long it takes for all commands to start, blocking until they
+        complete and how long it takes for all commands to complete.
+        
+        See examples directory for complete example script. ::
+        
+        output = []
+        
+        start = datetime.datetime.now()
+        cmds = ['sleep 5' for _ in xrange(10)]
+        for cmd in cmds:
+            output.append(client.run_command(cmd, stop_on_errors=False))
+        end = datetime.datetime.now()
+        print "Started %s commands in %s" % (len(cmds), end-start,)
+        start = datetime.datetime.now()
+        for _output in output:
+            for line in _output[host]['stdout']:
+                print line
+        end = datetime.datetime.now()
+        print "All commands finished in %s" % (end-start,)
+        
+        *Output*
+        
+        Started 10 commands in 0:00:00.428629
+        All commands finished in 0:00:05.014757
         
         **Example Output**
         
