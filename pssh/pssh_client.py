@@ -158,12 +158,14 @@ class ParallelSSHClient(object):
         Either iterating over stdout/stderr or `client.join(output)` will cause exit
         codes to be available in output without explicitly calling `get_exit_codes`.
         
+        Use ``client.join(output)`` to block until all commands have finished
+        and gather exit codes at same time.
+        
         `client.pool.join()` does not update output and will need a call to
         `get_exit_codes` as shown below.
         
         ``get_exit_codes`` is not a blocking function and will not wait for commands
-        to finish. Use ``client.join(output)`` to block until all commands have
-        finished.
+        to finish.
         
         ``output`` parameter is modified in-place.
         
@@ -172,7 +174,7 @@ class ParallelSSHClient(object):
         >>> ... print output[host]['exit_code']
         0
         0
-
+        
         Print stdout serially per host as it becomes available.
         
         >>> for host in output: for line in output[host]['stdout']: print line
@@ -326,7 +328,7 @@ class ParallelSSHClient(object):
         
         >>> client.hosts = ['otherhost']
         >>> print client.run_command('exit 0')
-        >>> {'otherhost': {'exit_code':0}, <..>}
+        >>> {'otherhost': {'exit_code': None}, <..>}
         
         **Run multiple commands in parallel**
 
