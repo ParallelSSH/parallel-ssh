@@ -177,21 +177,11 @@ UnknownHostException, ConnectionErrorException
         >>> import paramiko
         >>> client_key = paramiko.RSAKey.from_private_key_file('user.key')
         >>> client = ParallelSSHClient(['myhost1', 'myhost2'], pkey=client_key)
-
-        **Example with expression as host list**
         
-        Any type of iterator may be used as host list, including generator and
-        list comprehension expressions.
+        **Multiple commands**
         
-        >>> hosts = ['dc1.myhost1', 'dc2.myhost2']
-        >>> client = ParallelSSHClient([h for h in hosts if h.find('dc1')])
-        >>> client.run_command(<..>)
-
-        **Overriding host list**
-
-        >>> client.hosts = ['otherhost']
-        >>> print client.run_command('exit 0')
-        >>> {'otherhost': {'exit_code':0}, <..>}
+        >>> for cmd in ['uname', 'whoami']:
+        ...    client.run_command(cmd)
         
         .. note ::
         
@@ -225,7 +215,7 @@ UnknownHostException, ConnectionErrorException
         self.timeout = timeout
         self.proxy_host, self.proxy_port = proxy_host, proxy_port
         # To hold host clients
-        self.host_clients = dict((host, None) for host in hosts)
+        self.host_clients = {}
         self.agent = agent
 
     def run_command(self, *args, **kwargs):
@@ -259,9 +249,9 @@ UnknownHostException, ConnectionErrorException
         :raises: :mod:`pssh.exceptions.UnknownHostException` on DNS resolution error
         :raises: :mod:`pssh.exceptions.ConnectionErrorException` on error connecting
         :raises: :mod:`pssh.exceptions.SSHException` on other undefined SSH errors
-
+        
         **Example Usage**
-
+        
         **Simple run command**
         
         >>> output = client.run_command('ls -ltrh')
@@ -291,41 +281,79 @@ UnknownHostException, ConnectionErrorException
         
         Capture stdout - **WARNING** - this will store the entirety of stdout
         into memory and may exhaust available memory if command output is
-        large enough:
+        large enough.
+        
+        Iterating over stdout/stderr by definition implies blocking until
+        command has finished. To only see output as it comes in without blocking
+        the host logger can be enabled - see `Enabling Host Logger` above.
         
         >>> for host in output:
         >>>     stdout = list(output[host]['stdout'])
         >>>     print "Complete stdout for host %s is %s" % (host, stdout,)
-
+        
+        **Expression as host list**
+        
+        Any type of iterator may be used as host list, including generator and
+        list comprehension expressions.
+        
+        >>> hosts = ['dc1.myhost1', 'dc2.myhost2']
+        # List comprehension
+        >>> client = ParallelSSHClient([h for h in hosts if h.find('dc1')])
+        # Generator
+        >>> client = ParallelSSHClient((h for h in hosts if h.find('dc1')))
+        # Filter
+        >>> client = ParallelSSHClient(filter(lambda h: h.find('dc1'), hosts))
+        >>> client.run_command(<..>)
+        
+        .. note ::
+        
+          Since iterators by design only iterate over a sequence once then stop,
+          `client.hosts` should be re-assigned after each call to `run_command`
+          when using iterators as target of `client.hosts`.
+        
+        **Overriding host list**
+        
+        Host list can be modified in place. Call to `run_command` will create
+        new connections as necessary and output will only contain output for
+        hosts command ran on.
+        
+        >>> client.hosts = ['otherhost']
+        >>> print client.run_command('exit 0')
+        >>> {'otherhost': {'exit_code':0}, <..>}
+        
         **Run multiple commands in parallel**
 
-        This short example demonstrates running long running commands in parallel
-        and how long it takes for all commands to start, blocking until they
-        complete and how long it takes for all commands to complete.
+        This short example demonstrates running long running commands in
+        parallel, how long it takes for all commands to start, blocking until
+        they complete and how long it takes for all commands to complete.
         
-        See examples directory for complete example script. ::
+        See examples directory for complete script. ::
         
-        output = []
-        
-        start = datetime.datetime.now()
-        cmds = ['sleep 5' for _ in xrange(10)]
-        for cmd in cmds:
-            output.append(client.run_command(cmd, stop_on_errors=False))
-        end = datetime.datetime.now()
-        print "Started %s commands in %s" % (len(cmds), end-start,)
-        start = datetime.datetime.now()
-        for _output in output:
-            for line in _output[host]['stdout']:
-                print line
-        end = datetime.datetime.now()
-        print "All commands finished in %s" % (end-start,)
+          output = []
+          host = 'localhost'
+          
+          # Run 10 five second sleeps
+          cmds = ['sleep 5' for _ in xrange(10)]
+          start = datetime.datetime.now()
+          for cmd in cmds:
+              output.append(client.run_command(cmd, stop_on_errors=False))
+          end = datetime.datetime.now()
+          print "Started %s commands in %s" % (len(cmds), end-start,)
+          start = datetime.datetime.now()
+          for _output in output:
+              for line in _output[host]['stdout']:
+                  print line
+          end = datetime.datetime.now()
+          print "All commands finished in %s" % (end-start,)
         
         *Output*
         
-        Started 10 commands in 0:00:00.428629
-        All commands finished in 0:00:05.014757
+        ::
         
-        **Example Output**
+          Started 10 commands in 0:00:00.428629
+          All commands finished in 0:00:05.014757
+        
+        **Output dictionary**
         
         ::
         
@@ -575,7 +603,7 @@ future releases - use self.run_command instead", DeprecationWarning)
 
     def _copy_file(self, host, local_file, remote_file, recurse=False):
         """Make sftp client, copy file"""
-        if not self.host_clients[host]:
+        if not host in self.host_clients or not self.host_clients[host]:
             self.host_clients[host] = SSHClient(
                 host, user=self.user, password=self.password,
                 port=self.port, pkey=self.pkey,

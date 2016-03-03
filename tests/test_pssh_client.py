@@ -419,14 +419,51 @@ class ParallelSSHClientTest(unittest.TestCase):
         stdout = [list(output[k]['stdout']) for k in output]
         expected_stdout = [[self.fake_resp], [self.fake_resp]]
         self.assertEqual(len(hosts), len(output),
-                         msg="Did not get output from all hosts. Got output for \
-%s/%s hosts" % (len(output), len(hosts),))
+                         msg="Did not get output from all hosts. Got output for " \
+                         "%s/%s hosts" % (len(output), len(hosts),))
         self.assertEqual(expected_stdout, stdout,
                          msg="Did not get expected output from all hosts. \
                          Got %s - expected %s" % (stdout, expected_stdout,))
         del client
         del server2
-
+    
+    def test_pssh_hosts_iterator_hosts_modification(self):
+        """Test using iterator as host list and modifying host list in place"""
+        server2_socket = make_socket('127.0.0.2', port=self.listen_port)
+        server2_port = server2_socket.getsockname()[1]
+        server2 = start_server(server2_socket)
+        server3_socket = make_socket('127.0.0.3', port=self.listen_port)
+        server3_port = server3_socket.getsockname()[1]
+        server3 = start_server(server3_socket)
+        hosts = [self.host, '127.0.0.2']
+        client = ParallelSSHClient(iter(hosts),
+                                   port=self.listen_port,
+                                   pkey=self.user_key,
+                                   pool_size=1,
+                                   )
+        output = client.run_command(self.fake_cmd)
+        stdout = [list(output[k]['stdout']) for k in output]
+        expected_stdout = [[self.fake_resp], [self.fake_resp]]
+        self.assertEqual(len(hosts), len(output),
+                         msg="Did not get output from all hosts. Got output for " \
+                         "%s/%s hosts" % (len(output), len(hosts),))
+        # Run again without re-assigning host list, should do nothing
+        output = client.run_command(self.fake_cmd)
+        self.assertFalse(hosts[0] in output,
+                         msg="Expected no host output, got %s" % (output,))
+        self.assertFalse(output,
+                         msg="Expected empty output, got %s" % (output,))
+        # Re-assigning host list with new hosts should work
+        hosts = ['127.0.0.2', '127.0.0.3']
+        client.hosts = iter(hosts)
+        output = client.run_command(self.fake_cmd)
+        self.assertEqual(len(hosts), len(output),
+                         msg="Did not get output from all hosts. Got output for " \
+                         "%s/%s hosts" % (len(output), len(hosts),))
+        self.assertTrue(hosts[1] in output,
+                        msg="Did not get output for new host %s" % (hosts[1],))
+        del client, server2, server3
+    
     def test_ssh_proxy(self):
         """Test connecting to remote destination via SSH proxy
         client -> proxy -> destination
