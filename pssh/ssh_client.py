@@ -218,7 +218,8 @@ class SSHClient(object):
         stdout, stderr = self._read_output_buffer(_stdout,), \
                          self._read_output_buffer(_stderr,
                                                   prefix='\t[err]')
-
+        for _char in ['\\', '"', '$', '`']:
+            command = command.replace(_char, '\%s' % (_char,))
         shell = '$SHELL -c' if not shell else shell
         _command = ''
         if sudo and not user:
@@ -226,9 +227,9 @@ class SSHClient(object):
         elif user:
             _command = 'sudo -u %s -S ' % (user,)
         if use_shell:
-            _command += '%s \'%s\'' % (shell, command,)
+            _command += '%s "%s"' % (shell, command,)
         else:
-            _command += '\'%s\'' % (command,)
+            _command += '"%s"' % (command,)
         logger.debug("Running parsed command %s on %s", _command, self.host)
         channel.exec_command(_command, **kwargs)
         logger.debug("Command started")

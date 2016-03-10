@@ -513,7 +513,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                          msg="Host list contains %s identical hosts, only got output for %s" % (
                              len(hosts), len(output.keys())))
         del _socket1, _socket2
-
+    
     def test_connection_error_exception(self):
         """Test that we get connection error exception in output with correct arguments"""
         self.server.kill()
@@ -541,7 +541,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         else:
             raise Exception("Expected ConnectionErrorException")
         del _socket
-
+    
     def test_authentication_exception(self):
         """Test that we get authentication exception in output with correct arguments"""
         self.server.kill()
@@ -601,16 +601,49 @@ class ParallelSSHClientTest(unittest.TestCase):
             raise Exception("Expected SSHException")
         server.kill()
         del _socket
-
+    
     def test_multiple_single_quotes_in_cmd(self):
+        """Test that we can run a command with multiple single quotes"""
         output = self.client.run_command("echo 'me' 'and me'")
-        self.client.join(output)
         stdout = list(output[self.host]['stdout'])
         expected = 'me and me'
+        self.assertTrue(len(stdout)==1,
+                        msg="Got incorrect number of lines in output - %s" % (stdout,))
         self.assertTrue(output[self.host]['exit_code'] == 0,
                         msg="Error executing cmd with multiple single quotes - %s" % (
                             stdout,))
-        self.assertEqual([expected], stdout,
+        self.assertEqual(expected, stdout[0],
+                         msg="Got unexpected output. Expected %s, got %s" % (
+                             expected, stdout[0],))
+    
+    def test_backtics_in_cmd(self):
+        """Test running command with backtics in it"""
+        output = self.client.run_command("out=`ls` && echo $out")
+        self.client.join(output)
+        self.assertTrue(output[self.host]['exit_code'] == 0,
+                        msg="Error executing cmd with backtics - error code %s" % (
+                            output[self.host]['exit_code'],))
+    
+    def test_multiple_shell_commands(self):
+        """Test running multiple shell commands in one go"""
+        output = self.client.run_command("echo me; echo and; echo me")
+        stdout = list(output[self.host]['stdout'])
+        expected = ["me", "and", "me"]
+        self.assertTrue(output[self.host]['exit_code'] == 0,
+                        msg="Error executing multiple shell cmds - error code %s" % (
+                            output[self.host]['exit_code'],))
+        self.assertEqual(expected, stdout,
                          msg="Got unexpected output. Expected %s, got %s" % (
                              expected, stdout,))
-
+    
+    def test_escaped_quotes(self):
+        """Test escaped quotes in shell variable are handled correctly"""
+        output = self.client.run_command('t="--flags=\\"this\\""; echo $t')
+        stdout = list(output[self.host]['stdout'])
+        expected = ['--flags="this"']
+        self.assertTrue(output[self.host]['exit_code'] == 0,
+                        msg="Error executing multiple shell cmds - error code %s" % (
+                            output[self.host]['exit_code'],))
+        self.assertEqual(expected, stdout,
+                         msg="Got unexpected output. Expected %s, got %s" % (
+                             expected, stdout,))
