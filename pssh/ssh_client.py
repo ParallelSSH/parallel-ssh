@@ -187,12 +187,13 @@ class SSHClient(object):
             logger.error(msg)
             raise SSHException(msg, host, port)
 
-    def exec_command(self, command, sudo=False, user=None, **kwargs):
+    def exec_command(self, command, sudo=False, user=None,
+                     shell=None,
+                     use_shell=True, **kwargs):
         """Wrapper to :mod:`paramiko.SSHClient.exec_command`
         
-        Opens a new SSH session with a new pty and runs command with given \
-        `kwargs` if any. Greenlet then yields (sleeps) while waiting for \
-        command to finish executing or channel to close indicating the same.
+        Opens a new SSH session with a new pty and runs command before yielding 
+        the main gevent loop to allow other greenlets to execute.
         
         :param command: Shell command to execute
         :type command: str
@@ -217,15 +218,19 @@ class SSHClient(object):
         stdout, stderr = self._read_output_buffer(_stdout,), \
                          self._read_output_buffer(_stderr,
                                                   prefix='\t[err]')
+
+        shell = '$SHELL -c' if not shell else shell
+        _command = ''
         if sudo and not user:
-            command = 'sudo -S bash -c \'%s\'' % (command,)
+            _command = 'sudo -S '
         elif user:
-            command = 'sudo -u %s -S bash -c \'%s\'' % (
-                user, command,)
+            _command = 'sudo -u %s -S ' % (user,)
+        if use_shell:
+            _command += '%s \'%s\'' % (shell, command,)
         else:
-            command = 'bash -c \'%s\'' % (command,)
-        logger.debug("Running command %s on %s", command, self.host)
-        channel.exec_command(command, **kwargs)
+            _command += '\'%s\'' % (command,)
+        logger.debug("Running parsed command %s on %s", _command, self.host)
+        channel.exec_command(_command, **kwargs)
         logger.debug("Command started")
         sleep(0)
         return channel, self.host, stdout, stderr

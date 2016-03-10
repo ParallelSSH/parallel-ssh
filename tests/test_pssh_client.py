@@ -601,3 +601,16 @@ class ParallelSSHClientTest(unittest.TestCase):
             raise Exception("Expected SSHException")
         server.kill()
         del _socket
+
+    def test_multiple_single_quotes_in_cmd(self):
+        output = self.client.run_command("echo 'me' 'and me'")
+        self.client.join(output)
+        stdout = list(output[self.host]['stdout'])
+        expected = 'me and me'
+        self.assertTrue(output[self.host]['exit_code'] == 0,
+                        msg="Error executing cmd with multiple single quotes - %s" % (
+                            stdout,))
+        self.assertEqual([expected], stdout,
+                         msg="Got unexpected output. Expected %s, got %s" % (
+                             expected, stdout,))
+
