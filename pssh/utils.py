@@ -26,7 +26,9 @@ logger = logging.getLogger('pssh')
 
 def enable_logger(_logger, level=logging.INFO):
     """Enables logging to stdout for given logger"""
-    if logging.StreamHandler in [type(h) for h in _logger.handlers]:
+    stream_handlers = [h for h in _logger.handlers
+                       if isinstance(h, logging.StreamHandler)]
+    if stream_handlers:
         logger.warning("Logger already has a StreamHandler attached")
         return
     handler = logging.StreamHandler()

@@ -26,7 +26,7 @@ from pprint import pprint
 
 utils.enable_host_logger()
 utils.enable_logger(utils.logger)
-    
+
 def test():
     """Perform ls and copy file with SSHClient on localhost"""
     client = SSHClient('localhost')
