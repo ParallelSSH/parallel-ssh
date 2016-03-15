@@ -20,37 +20,40 @@ attempt to perform an `ls` and copy a test file with both SSHClient
 and ParallelSSHClient.
 """
 
-from pssh import SSHClient, ParallelSSHClient
+from pssh import SSHClient, ParallelSSHClient, utils
 import logging
+from pprint import pprint
 
-logger = logging.getLogger('pssh')
-
-def _setup_logger(_logger):
-    """Setup default logger"""
-    _handler = logging.StreamHandler()
-    log_format = logging.Formatter(
-        '%(name)s - %(asctime)s - %(levelname)s - %(message)s')
-    _handler.setFormatter(log_format)
-    _logger.addHandler(_handler)
-    _logger.setLevel(logging.DEBUG)
+utils.enable_host_logger()
+utils.enable_logger(utils.logger)
     
 def test():
     """Perform ls and copy file with SSHClient on localhost"""
     client = SSHClient('localhost')
     channel, host, stdout, stderr = client.exec_command('ls -ltrh')
     for line in stdout:
-        print line.strip()
+        pprint(line.strip())
     client.copy_file('../test', 'test_dir/test')
 
 def test_parallel():
-    """Perform ls and copy file with ParallelSSHClient on localhost"""
+    """Perform ls and copy file with ParallelSSHClient on localhost.
+    
+    Two identical hosts cause the same command to be executed
+    twice on the same host in two parallel connections.
+    In printed output there will be two identical lines per printed per
+    line of `ls -ltrh` output as output is printed by host_logger as it
+    becomes available and commands are executed in parallel
+    
+    Host output key is de-duplicated so that output for the two
+    commands run on the same host(s) is not lost
+    """
     client = ParallelSSHClient(['localhost', 'localhost'])
     output = client.run_command('ls -ltrh')
-    print output
-    # cmds = client.copy_file('../test', 'test_dir/test')
-    # client.pool.join()
+    client.join(output)
+    pprint(output)
+    cmds = client.copy_file('../test', 'test_dir/test')
+    client.pool.join()
 
 if __name__ == "__main__":
-    _setup_logger(logger)
-    # test()
+    test()
     test_parallel()

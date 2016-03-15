@@ -583,7 +583,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    user='fakey', password='fakey',
                                    pkey=paramiko.RSAKey.generate(1024))
         output = client.run_command(self.fake_cmd, stop_on_errors=False)
-        gevent.sleep(.2)
+        gevent.sleep(1)
         client.pool.join()
         self.assertTrue('exception' in output[host],
                         msg="Got no exception for host %s - expected connection error" % (
