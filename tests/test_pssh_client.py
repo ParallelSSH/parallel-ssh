@@ -472,6 +472,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         proxy_server_socket = make_socket('127.0.0.2')
         proxy_server_port = proxy_server_socket.getsockname()[1]
         proxy_server = start_server(proxy_server_socket)
+        gevent.sleep(2)
         client = ParallelSSHClient([self.host], port=self.listen_port,
                                    pkey=self.user_key,
                                    proxy_host='127.0.0.2',

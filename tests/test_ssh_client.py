@@ -247,5 +247,30 @@ not match source %s" % (copied_file_data, test_file_data))
         del channel
         del client
 
+    def test_ssh_client_pty(self):
+        """Test that running command sans shell works as expected
+        and that shell commands fail accordingly"""
+        client = SSHClient(self.host, port=self.listen_port,
+                           pkey=self.user_key)
+        channel, host, stdout, stderr = client.exec_command(self.fake_cmd, use_shell=False)
+        output = list(stdout)
+        stderr = list(stderr)
+        expected = []
+        exit_code = channel.recv_exit_status()
+        self.assertEqual(expected, output,
+                         msg = "Got unexpected command output - %s" % (output,))
+        self.assertTrue(exit_code==127,
+                        msg="Expected cmd not found error code 127, got %s instead" % (
+                            exit_code,))
+        channel, host, stdout, stderr = client.exec_command('id', use_shell=False)
+        output = list(stdout)
+        exit_code = channel.recv_exit_status()
+        self.assertTrue(output,
+                        msg="Got no output from cmd executed without shell")
+        self.assertTrue(exit_code==0,
+                        msg="Cmd executed with shell failed with error code %s" % (
+                            exit_code,))
+        del client
+
 if __name__ == '__main__':
     unittest.main()

@@ -249,8 +249,9 @@ class ParallelSSHClient(object):
         Defaults to True. With stop_on_errors set to False, exceptions are instead \
         added to output of `run_command`. See example usage below.
         :type stop_on_errors: bool
-        :param kwargs: Keyword arguments for command
-        :type kwargs: dict
+        :param use_shell: (Optional) Run command with or without shell. Defaults \
+        to True - use shell defined in user login to run command string
+        :type use_shell: bool
         :rtype: Dictionary with host as key as per \
           :mod:`pssh.pssh_client.ParallelSSHClient.get_output`
         
