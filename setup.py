@@ -24,7 +24,7 @@ setup(name='parallel-ssh',
       version='0.90.0',
       description='Asynchronous parallel SSH library',
       author='Panos Kittenis',
-      author_email='pkittenis@gmail.com',
+      author_email='22e889d8@opayq.com',
       url = "https://github.com/pkittenis/parallel-ssh",
       packages = find_packages('.', exclude=(
           'embedded_server', 'embedded_server.*')),
