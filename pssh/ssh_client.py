@@ -19,11 +19,7 @@
 """Package containing SSHClient class."""
 
 import sys
-if 'threading' in sys.modules:
-    del sys.modules['threading']
-import gevent
-from gevent import monkey
-monkey.patch_all()
+from gevent import sleep
 import logging
 import paramiko
 from paramiko.ssh_exception import ChannelException as channel_exception
@@ -139,7 +135,7 @@ class SSHClient(object):
           proxy_channel = self.proxy_client.get_transport().\
             open_channel('direct-tcpip', (self.host, self.port,),
                         ('127.0.0.1', 0))
-          gevent.sleep(0)
+          sleep(0)
           return self._connect(self.client, self.host, self.port, sock=proxy_channel)
         except channel_exception, ex:
           error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
@@ -164,7 +160,7 @@ class SSHClient(object):
             logger.error("Could not resolve host '%s' - retry %s/%s",
                          self.host, retries, self.num_retries)
             while retries < self.num_retries:
-                gevent.sleep(5)
+                sleep(5)
                 return self._connect(client, host, port, sock=sock,
                                      retries=retries+1)
             raise UnknownHostException("Unknown host %s - %s - retry %s/%s",
@@ -174,7 +170,7 @@ class SSHClient(object):
             logger.error("Error connecting to host '%s:%s' - retry %s/%s",
                          self.host, self.port, retries, self.num_retries)
             while retries < self.num_retries:
-                gevent.sleep(5)
+                sleep(5)
                 return self._connect(client, host, port, sock=sock,
                                      retries=retries+1)
             error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
@@ -231,7 +227,7 @@ class SSHClient(object):
         logger.debug("Running command %s on %s", command, self.host)
         channel.exec_command(command, **kwargs)
         logger.debug("Command started")
-        gevent.sleep(0)
+        sleep(0)
         return channel, self.host, stdout, stderr
 
     def _read_output_buffer(self, output_buffer, prefix=''):

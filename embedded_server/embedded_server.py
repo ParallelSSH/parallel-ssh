@@ -41,6 +41,7 @@ import time
 from .stub_sftp import StubSFTPServer
 from .tunnel import Tunneler
 import gevent.subprocess
+# import gipc
 
 logger = logging.getLogger("embedded_server")
 paramiko_logger = logging.getLogger('paramiko.transport')
@@ -168,6 +169,7 @@ def _handle_ssh_connection(transport, fail_auth=False,
     except Exception:
         logger.exception("Error occured starting server")
         return
+    gevent.sleep(0)
     channel = transport.accept(20)
     if not channel:
         logger.error("Could not establish channel")
@@ -205,6 +207,14 @@ def start_server(sock, fail_auth=False, ssh_exception=False,
                  timeout=None):
     return gevent.spawn(listen, sock, fail_auth=fail_auth,
                         timeout=timeout, ssh_exception=ssh_exception)
+
+# def start_server_process(listen_ip, fail_auth=False, ssh_exception=False,
+#                          timeout=None):
+#     p = gipc.start_process(target=_make_sock_start_server, args=(listen_ip,),
+#                            kwargs={'fail_auth': fail_auth,
+#                                    'timeout': timeout,
+#                                    'ssh_exception': ssh_exception,})
+#     return p
 
 if __name__ == "__main__":
     logging.basicConfig()
