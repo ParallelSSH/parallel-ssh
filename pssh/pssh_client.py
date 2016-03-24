@@ -249,6 +249,10 @@ class ParallelSSHClient(object):
         Defaults to True. With stop_on_errors set to False, exceptions are instead \
         added to output of `run_command`. See example usage below.
         :type stop_on_errors: bool
+        :param shell: (Optional) Override shell to use to run command with. \
+        Defaults to logged in user's defined shell. Use the shell's command \
+        syntax, eg `shell='bash -c'` or `shell='zsh -c'`.
+        :type shell: str
         :param use_shell: (Optional) Run command with or without shell. Defaults \
         to True - use shell defined in user login to run command string
         :type use_shell: bool
@@ -332,7 +336,7 @@ class ParallelSSHClient(object):
         >>> {'otherhost': {'exit_code': None}, <..>}
         
         **Run multiple commands in parallel**
-
+        
         This short example demonstrates running long running commands in
         parallel, how long it takes for all commands to start, blocking until
         they complete and how long it takes for all commands to complete.
