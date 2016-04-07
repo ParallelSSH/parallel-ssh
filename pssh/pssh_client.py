@@ -34,7 +34,6 @@ from .constants import DEFAULT_RETRIES
 from .ssh_client import SSHClient
 
 
-host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger('pssh')
 
 
@@ -51,7 +50,7 @@ class ParallelSSHClient(object):
                  user=None, password=None, port=None, pkey=None,
                  forward_ssh_agent=True, num_retries=DEFAULT_RETRIES, timeout=120,
                  pool_size=10, proxy_host=None, proxy_port=22,
-                 agent=None):
+                 agent=None, host_config=None):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -89,6 +88,12 @@ class ParallelSSHClient(object):
         :param proxy_port: (Optional) SSH port to use to login to proxy host if \
         set. Defaults to 22.
         :type proxy_port: int
+        :param agent: (Optional) SSH agent object to programmatically supply an \
+        agent to override system SSH agent with
+        :type agent: :mod:`pssh.agent.SSHAgent`
+        :param host_config: (Optional) Per-host configuration for cases where \
+        not all hosts use the same configuration values.
+        :type host_config: dict
         
         **Example Usage**
         
@@ -192,6 +197,18 @@ class ParallelSSHClient(object):
         >>> for cmd in ['uname', 'whoami']:
         ...    client.run_command(cmd)
         
+        **Per-Host configuration**
+        
+        
+        >>> host_config = { 'host1' : {'user': 'user1', 'password': 'pass',
+        ...                            'port': 2222, 'private_key': 'my_key.pem'},
+        ...                 'host2' : {'user': 'user2', 'password': 'pass',
+        ...                            'port': 2223, 'private_key': 'my_other_key.pem'},
+        ...                 }
+        >>> hosts = host_config.keys()
+        >>> client = ParallelSSHClient(hosts, host_config=host_config)
+        >>> client.run_command('uname')
+        
         .. note ::
         
           **Connection persistence**
@@ -226,6 +243,7 @@ class ParallelSSHClient(object):
         # To hold host clients
         self.host_clients = {}
         self.agent = agent
+        self.host_config = host_config if host_config else {}
 
     def run_command(self, *args, **kwargs):
         """Run command on all hosts in parallel, honoring self.pool_size,
@@ -423,13 +441,21 @@ class ParallelSSHClient(object):
 future releases - use self.run_command instead", DeprecationWarning)
         return [self.pool.spawn(self._exec_command, host, *args, **kwargs)
                 for host in self.hosts]
+    
+    def _get_host_config_values(self, host):
+        _user = self.host_config.get(host, {}).get('user', self.user)
+        _port = self.host_config.get(host, {}).get('port', self.port)
+        _password = self.host_config.get(host, {}).get('password', self.password)
+        _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
+        return _user, _port, _password, _pkey
 
     def _exec_command(self, host, *args, **kwargs):
         """Make SSHClient, run command on host"""
         if not host in self.host_clients or not self.host_clients[host]:
-            self.host_clients[host] = SSHClient(host, user=self.user,
-                                                password=self.password,
-                                                port=self.port, pkey=self.pkey,
+            _user, _port, _password, _pkey = self._get_host_config_values(host)
+            self.host_clients[host] = SSHClient(host, user=_user,
+                                                password=_password,
+                                                port=_port, pkey=_pkey,
                                                 forward_ssh_agent=self.forward_ssh_agent,
                                                 num_retries=self.num_retries,
                                                 timeout=self.timeout,
@@ -437,7 +463,7 @@ future releases - use self.run_command instead", DeprecationWarning)
                                                 proxy_port=self.proxy_port,
                                                 agent=self.agent)
         return self.host_clients[host].exec_command(*args, **kwargs)
-
+    
     def get_output(self, cmd, output):
         """Get output from command.
         
@@ -618,9 +644,14 @@ future releases - use self.run_command instead", DeprecationWarning)
     def _copy_file(self, host, local_file, remote_file, recurse=False):
         """Make sftp client, copy file"""
         if not host in self.host_clients or not self.host_clients[host]:
+            _user, _port, _password, _pkey = self._get_host_config_values(host)
             self.host_clients[host] = SSHClient(
-                host, user=self.user, password=self.password,
-                port=self.port, pkey=self.pkey,
-                forward_ssh_agent=self.forward_ssh_agent)
+                host, user=_user, password=_password, port=_port, pkey=_pkey,
+                forward_ssh_agent=self.forward_ssh_agent,
+                num_retries=self.num_retries,
+                timeout=self.timeout,
+                proxy_host=self.proxy_host,
+                proxy_port=self.proxy_port,
+                agent=self.agent)
         return self.host_clients[host].copy_file(local_file, remote_file,
                                                  recurse=recurse)
