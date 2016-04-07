@@ -50,7 +50,7 @@ class ParallelSSHClient(object):
                  user=None, password=None, port=None, pkey=None,
                  forward_ssh_agent=True, num_retries=DEFAULT_RETRIES, timeout=120,
                  pool_size=10, proxy_host=None, proxy_port=22,
-                 agent=None, host_config=None):
+                 agent=None, host_config=None, channel_timeout=None):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -76,10 +76,9 @@ class ParallelSSHClient(object):
         Defaults to True if not set.
         :type forward_ssh_agent: bool
         :param pool_size: (Optional) Greenlet pool size. Controls on how many\
-        hosts to execute tasks in parallel. Defaults to number of hosts or 10, \
-        whichever is lower. Pool size will be *equal to* number of hosts if number\
-        of hosts is lower than the pool size specified as that would only \
-        increase overhead with no benefits.
+        hosts to execute tasks in parallel. Defaults to 10. Values over 500 \
+        are not likely to increase performance due to overhead in the single \
+        thread running our event loop.
         :type pool_size: int
         :param proxy_host: (Optional) SSH host to tunnel connection through \
         so that SSH clients connect to self.host via client -> proxy_host -> \
@@ -94,6 +93,9 @@ class ParallelSSHClient(object):
         :param host_config: (Optional) Per-host configuration for cases where \
         not all hosts use the same configuration values.
         :type host_config: dict
+        :param channel_timeout: (Optional) Time in seconds before an SSH operation \
+        times out.
+        :type channel_timeout: int
         
         **Example Usage**
         
@@ -244,6 +246,7 @@ class ParallelSSHClient(object):
         self.host_clients = {}
         self.agent = agent
         self.host_config = host_config if host_config else {}
+        self.channel_timeout = channel_timeout
 
     def run_command(self, *args, **kwargs):
         """Run command on all hosts in parallel, honoring self.pool_size,
@@ -448,7 +451,7 @@ future releases - use self.run_command instead", DeprecationWarning)
         _password = self.host_config.get(host, {}).get('password', self.password)
         _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
         return _user, _port, _password, _pkey
-
+    
     def _exec_command(self, host, *args, **kwargs):
         """Make SSHClient, run command on host"""
         if not host in self.host_clients or not self.host_clients[host]:
@@ -461,7 +464,8 @@ future releases - use self.run_command instead", DeprecationWarning)
                                                 timeout=self.timeout,
                                                 proxy_host=self.proxy_host,
                                                 proxy_port=self.proxy_port,
-                                                agent=self.agent)
+                                                agent=self.agent,
+                                                channel_timeout=self.channel_timeout)
         return self.host_clients[host].exec_command(*args, **kwargs)
     
     def get_output(self, cmd, output):
@@ -652,6 +656,7 @@ future releases - use self.run_command instead", DeprecationWarning)
                 timeout=self.timeout,
                 proxy_host=self.proxy_host,
                 proxy_port=self.proxy_port,
-                agent=self.agent)
+                agent=self.agent,
+                channel_timeout=self.channel_timeout)
         return self.host_clients[host].copy_file(local_file, remote_file,
                                                  recurse=recurse)

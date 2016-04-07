@@ -20,7 +20,6 @@
 
 import sys
 from gevent import sleep
-import logging
 import paramiko
 from paramiko.ssh_exception import ChannelException as channel_exception
 import os
@@ -28,7 +27,7 @@ from socket import gaierror as sock_gaierror, error as sock_error
 from .exceptions import UnknownHostException, AuthenticationException, \
      ConnectionErrorException, SSHException
 from .constants import DEFAULT_RETRIES
-
+import logging
 
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
@@ -43,7 +42,7 @@ class SSHClient(object):
                  user=None, password=None, port=None,
                  pkey=None, forward_ssh_agent=True,
                  num_retries=DEFAULT_RETRIES, agent=None, timeout=10,
-                 proxy_host=None, proxy_port=22):
+                 proxy_host=None, proxy_port=22, channel_timeout=None):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
         
@@ -81,6 +80,9 @@ class SSHClient(object):
         :param proxy_port: (Optional) SSH port to use to login to proxy host if \
         set. Defaults to 22.
         :type proxy_port: int
+        :param channel_timeout: (Optional) Time in seconds before an SSH operation \
+        times out.
+        :type channel_timeout: int
         """
         ssh_config = paramiko.SSHConfig()
         _ssh_config_file = os.path.sep.join([os.path.expanduser('~'),
@@ -109,6 +111,7 @@ class SSHClient(object):
             self.client._agent = agent
         self.num_retries = num_retries
         self.timeout = timeout
+        self.channel_timeout = channel_timeout
         self.proxy_host, self.proxy_port = proxy_host, proxy_port
         self.proxy_client = None
         if self.proxy_host and self.proxy_port:
@@ -117,7 +120,7 @@ class SSHClient(object):
             self._connect_tunnel()
         else:
             self._connect(self.client, self.host, self.port)
-
+    
     def _connect_tunnel(self):
         """Connects to SSH server via an intermediate SSH tunnel server.
         client (me) -> tunnel (ssh server to proxy through) -> \
@@ -211,8 +214,8 @@ class SSHClient(object):
         if self.forward_ssh_agent:
             agent_handler = paramiko.agent.AgentRequestHandler(channel)
         channel.get_pty()
-        # if self.timeout:
-        #     channel.settimeout(self.timeout)
+        if self.channel_timeout:
+            channel.settimeout(self.channel_timeout)
         _stdout, _stderr = channel.makefile('rb'), \
                            channel.makefile_stderr('rb')
         stdout, stderr = self._read_output_buffer(_stdout,), \

@@ -20,6 +20,11 @@
 
 
 import logging
+import gevent
+from paramiko.rsakey import RSAKey
+from paramiko.dsskey import DSSKey
+from paramiko.ecdsakey import ECDSAKey
+from paramiko import SSHException
 
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger('pssh')
@@ -41,6 +46,23 @@ def enable_host_logger():
     """Enable host logger for logging stdout from remote commands
     as it becomes available"""
     enable_logger(host_logger)
+
+def load_private_key(pkey):
+    """Load private key from pkey file object or filename
+    
+    :param pkey: File object or file name containing private key
+    :type pkey: file/str"""
+    pkey = None
+    if not isinstance(pkey, file):
+        pkey = open(pkey)
+    for keytype in [RSAKey, DSSKey, ECDSAKey]:
+        try:
+            pkey = keytype.from_private_key(pkey)
+        except SSHException:
+            pass
+    if not pkey:
+        logger.error("Failed to load private key using all available key types - giving up..")
+    return pkey
 
 # def enable_pssh_logger():
 #     """Enable parallel-ssh's logger to stdout"""
