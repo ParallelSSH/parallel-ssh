@@ -47,22 +47,22 @@ def enable_host_logger():
     as it becomes available"""
     enable_logger(host_logger)
 
-def load_private_key(pkey):
+def load_private_key(_pkey):
     """Load private key from pkey file object or filename
     
     :param pkey: File object or file name containing private key
     :type pkey: file/str"""
-    pkey = None
-    if not isinstance(pkey, file):
-        pkey = open(pkey)
+    if not hasattr(_pkey, 'read'):
+        _pkey = open(_pkey)
     for keytype in [RSAKey, DSSKey, ECDSAKey]:
         try:
-            pkey = keytype.from_private_key(pkey)
+            pkey = keytype.from_private_key(_pkey)
         except SSHException:
-            pass
-    if not pkey:
-        logger.error("Failed to load private key using all available key types - giving up..")
-    return pkey
+            _pkey.seek(0)
+            continue
+        else:
+            return pkey
+    logger.error("Failed to load private key using all available key types - giving up..")
 
 # def enable_pssh_logger():
 #     """Enable parallel-ssh's logger to stdout"""

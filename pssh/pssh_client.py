@@ -201,11 +201,21 @@ class ParallelSSHClient(object):
         
         **Per-Host configuration**
         
+        Per host configuration can be provided for any of user, password port
+        and private key. Private key value is a :mod:`paramiko.PKey` object as
+        returned by :mod:`pssh.utils.load_private_key`.
         
+        :mod:`pssh.utils.load_private_key` accepts both file names and file-like
+        objects and will attempt to load all available key types, returning
+        `None` if they all fail.
+        
+        >>> from pssh.utils import load_private_key
         >>> host_config = { 'host1' : {'user': 'user1', 'password': 'pass',
-        ...                            'port': 2222, 'private_key': 'my_key.pem'},
+        ...                            'port': 2222,
+        ...                            'private_key': load_private_key('my_key.pem')},
         ...                 'host2' : {'user': 'user2', 'password': 'pass',
-        ...                            'port': 2223, 'private_key': 'my_other_key.pem'},
+        ...                            'port': 2223,
+        ...                            'private_key': load_private_key(open('my_other_key.pem'))},
         ...                 }
         >>> hosts = host_config.keys()
         >>> client = ParallelSSHClient(hosts, host_config=host_config)

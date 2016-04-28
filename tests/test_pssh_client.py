@@ -22,6 +22,7 @@
 import unittest
 from pssh import ParallelSSHClient, UnknownHostException, \
      AuthenticationException, ConnectionErrorException, SSHException, logger as pssh_logger
+from pssh.utils import load_private_key
 from embedded_server.embedded_server import start_server, make_socket, \
      logger as server_logger, paramiko_logger
 from embedded_server.fake_agent import FakeAgent
@@ -34,8 +35,8 @@ import os
 import warnings
 import shutil
 
-USER_KEY = paramiko.RSAKey.from_private_key_file(
-    os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key']))
+PKEY_FILENAME = os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key'])
+USER_KEY = paramiko.RSAKey.from_private_key_file(PKEY_FILENAME)
 
 server_logger.setLevel(logging.DEBUG)
 pssh_logger.setLevel(logging.DEBUG)
@@ -648,3 +649,44 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(expected, stdout,
                          msg="Got unexpected output. Expected %s, got %s" % (
                              expected, stdout,))
+
+    def test_host_config(self):
+        """Test per-host configuration functionality of ParallelSSHClient"""
+        hosts = ['127.0.0.%01d' % n for n in xrange(1,3)]
+        host_config = dict.fromkeys(hosts)
+        servers = []
+        user = 'overriden_user'
+        password = 'overriden_pass'
+        for host in hosts:
+            _socket = make_socket(host)
+            port = _socket.getsockname()[1]
+            host_config[host] = {}
+            host_config[host]['port'] = port
+            host_config[host]['user'] = user
+            host_config[host]['password'] = password
+            server = start_server(_socket, fail_auth=hosts.index(host))
+            servers.append((server, port))
+        pkey_data = load_private_key(PKEY_FILENAME)
+        host_config[hosts[0]]['private_key'] = pkey_data
+        client = ParallelSSHClient(hosts, host_config=host_config)
+        output = client.run_command(self.fake_cmd, stop_on_errors=False)
+        client.join(output)
+        for host in hosts:
+            self.assertTrue(host in output)
+        try:
+            raise output[hosts[1]]['exception']
+        except AuthenticationException, ex:
+            pass
+        else:
+            raise AssertionError("Expected AutnenticationException on host %s",
+                                 hosts[0])
+        self.assertFalse(output[hosts[1]]['exit_code'],
+                         msg="Execution failed on host %s" % (hosts[1],))
+        self.assertTrue(client.host_clients[hosts[0]].user == user,
+                        msg="Host config user override failed")
+        self.assertTrue(client.host_clients[hosts[0]].password == password,
+                        msg="Host config password override failed")
+        self.assertTrue(client.host_clients[hosts[0]].pkey == pkey_data,
+                        msg="Host config pkey override failed")
+        for (server, _) in servers:
+            server.kill()
