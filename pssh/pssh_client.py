@@ -845,18 +845,9 @@ future releases - use self.run_command instead", DeprecationWarning)
 
     def _copy_file(self, host, local_file, remote_file, recurse):
         """Make sftp client, copy file"""
-        if not host in self.host_clients or not self.host_clients[host]:
-            _user, _port, _password, _pkey = self._get_host_config_values(host)
-            self.host_clients[host] = SSHClient(
-                host, user=_user, password=_password, port=_port, pkey=_pkey,
-                forward_ssh_agent=self.forward_ssh_agent,
-                num_retries=self.num_retries,
-                timeout=self.timeout,
-                proxy_host=self.proxy_host,
-                proxy_port=self.proxy_port,
-                agent=self.agent,
-                channel_timeout=self.channel_timeout)
-        return self.host_clients[host].copy_file(local_file, remote_file, recurse=recurse)
+        self._make_ssh_client(host)
+        return self.host_clients[host].copy_file(local_file, remote_file,
+                                                 recurse=recurse)
 
     def copy_file_to_local(self, remote_file, local_file, recurse=False):
         """Copy remote file to local file in parallel
@@ -883,9 +874,19 @@ future releases - use self.run_command instead", DeprecationWarning)
 
     def _copy_file_to_local(self, host, remote_file, local_file, recurse):
         """Make sftp client, copy file to local"""
-        if not self.host_clients[host]:
-            self.host_clients[host] = SSHClient(host, user=self.user,
-                                                password=self.password,
-                                                port=self.port, pkey=self.pkey,
-                                                forward_ssh_agent=self.forward_ssh_agent)
-        return self.host_clients[host].copy_file_to_local(remote_file, '_'.join([local_file, host]), recurse=recurse)
+        self._make_ssh_client(host)
+        return self.host_clients[host].copy_file_to_local(
+                remote_file, '_'.join([local_file, host]), recurse=recurse)
+
+    def _make_ssh_client(self, host):
+        if not host in self.host_clients or not self.host_clients[host]:
+            _user, _port, _password, _pkey = self._get_host_config_values(host)
+            self.host_clients[host] = SSHClient(
+                host, user=_user, password=_password, port=_port, pkey=_pkey,
+                forward_ssh_agent=self.forward_ssh_agent,
+                num_retries=self.num_retries,
+                timeout=self.timeout,
+                proxy_host=self.proxy_host,
+                proxy_port=self.proxy_port,
+                agent=self.agent,
+                channel_timeout=self.channel_timeout)

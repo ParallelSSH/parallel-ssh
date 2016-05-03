@@ -185,6 +185,11 @@ not match source %s" % (copied_file_data, test_file_data))
         """Tests copying a remote directory to the localhost"""
         remote_test_directory = 'remote_test_dir'
         local_test_directory = 'local_test_dir'
+        for path in [local_test_path, remote_test_path]:
+            try:
+                shutil.rmtree(path)
+            except OSError:
+                pass
         os.mkdir(remote_test_directory)
         test_files = []
         for i in range(0, 10):
@@ -263,11 +268,17 @@ not match source %s" % (copied_file_data, test_file_data))
         test_file_data = 'test'
         remote_test_path = 'directory_test_remote'
         local_test_path = 'directory_test_local'
+        for path in [local_test_path, remote_test_path]:
+            try:
+                shutil.rmtree(path)
+            except OSError:
+                pass
         os.mkdir(remote_test_path)
+        os.mkdir(os.path.join(remote_test_path, 'subdir'))
         local_file_paths = []
         for i in range(0, 10):
-            remote_file_path = os.path.join(remote_test_path, 'foo' + str(i))
-            local_file_path = os.path.join(local_test_path, 'foo' + str(i))
+            remote_file_path = os.path.join(remote_test_path, 'subdir', 'foo' + str(i))
+            local_file_path = os.path.join(local_test_path, 'subdir', 'foo' + str(i))
             local_file_paths.append(local_file_path)
             test_file = open(remote_file_path, 'w')
             test_file.write(test_file_data)
@@ -286,6 +297,10 @@ not match source %s" % (copied_file_data, test_file_data))
         test_file_data = 'test'
         remote_test_path = 'directory_test'
         local_test_path = 'directory_test_copied'
+        try:
+            shutil.rmtree(remote_test_path)
+        except OSError:
+            pass
         os.mkdir(remote_test_path)
         local_file_paths = []
         for i in range(0, 10):
