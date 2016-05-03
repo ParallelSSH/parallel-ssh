@@ -417,7 +417,6 @@ class SSHClient(object):
         destination = self._parent_path_split(local_file)
         self._make_local_dir(destination)
         try:
-            import ipdb; ipdb.set_trace()
             sftp.get(remote_file, local_file)
         except Exception, error:
             logger.error("Error occured copying file %s from remote destination %s:%s - %s",
