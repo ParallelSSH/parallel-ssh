@@ -258,6 +258,7 @@ class ParallelSSHClient(object):
         # To hold host clients
         self.host_clients = {}
         self.agent = agent
+        self.allow_agent = allow_agent
         self.host_config = host_config if host_config else {}
         self.channel_timeout = channel_timeout
 
