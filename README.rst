@@ -14,9 +14,6 @@ This is a *requirement* for commands on many (hundreds/thousands/hundreds of tho
   :target: https://travis-ci.org/pkittenis/parallel-ssh
 .. image:: https://coveralls.io/repos/pkittenis/parallel-ssh/badge.png?branch=master
   :target: https://coveralls.io/r/pkittenis/parallel-ssh?branch=master
-.. image:: https://pypip.in/download/parallel-ssh/badge.png
-  :target: https://pypi.python.org/pypi/parallel-ssh
-  :alt: downloads
 .. image:: https://readthedocs.org/projects/parallel-ssh/badge/?version=latest
   :target: http://parallel-ssh.readthedocs.org/en/latest/
   :alt: Latest documentation
