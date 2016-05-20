@@ -41,8 +41,9 @@ class SSHClient(object):
     def __init__(self, host,
                  user=None, password=None, port=None,
                  pkey=None, forward_ssh_agent=True,
-                 num_retries=DEFAULT_RETRIES, agent=None, allow_agent=True,
-                 timeout=10, proxy_host=None, proxy_port=22, channel_timeout=None):
+                 num_retries=DEFAULT_RETRIES, agent=None,
+                 allow_agent=True, timeout=10, proxy_host=None,
+                 proxy_port=22, channel_timeout=None):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
         
