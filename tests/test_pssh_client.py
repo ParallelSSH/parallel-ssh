@@ -690,3 +690,29 @@ class ParallelSSHClientTest(unittest.TestCase):
                         msg="Host config pkey override failed")
         for (server, _) in servers:
             server.kill()
+
+    def test_pssh_client_override_allow_agent_authentication(self):
+        """Test running command with allow_agent set to False"""
+        client = ParallelSSHClient([self.host], port=self.listen_port,
+                                   pkey=self.user_key, allow_agent=False)
+        output = client.run_command(self.fake_cmd)
+        expected_exit_code = 0
+        expected_stdout = [self.fake_resp]
+        expected_stderr = []
+
+        stdout = list(output[self.host]['stdout'])
+        stderr = list(output[self.host]['stderr'])
+        exit_code = output[self.host]['exit_code']
+        self.assertEqual(expected_exit_code, exit_code,
+                         msg="Got unexpected exit code - %s, expected %s" %
+                             (exit_code,
+                              expected_exit_code,))
+        self.assertEqual(expected_stdout, stdout,
+                         msg="Got unexpected stdout - %s, expected %s" %
+                             (stdout,
+                              expected_stdout,))
+        self.assertEqual(expected_stderr, stderr,
+                         msg="Got unexpected stderr - %s, expected %s" %
+                             (stderr,
+                              expected_stderr,))
+        del client

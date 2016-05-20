@@ -41,8 +41,9 @@ class SSHClient(object):
     def __init__(self, host,
                  user=None, password=None, port=None,
                  pkey=None, forward_ssh_agent=True,
-                 num_retries=DEFAULT_RETRIES, agent=None, timeout=10,
-                 proxy_host=None, proxy_port=22, channel_timeout=None):
+                 num_retries=DEFAULT_RETRIES, agent=None,
+                 allow_agent=True, timeout=10, proxy_host=None,
+                 proxy_port=22, channel_timeout=None):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
         
@@ -74,6 +75,10 @@ class SSHClient(object):
         connecting to local SSH agent to lookup keys with our own SSH agent \
         object.
         :type agent: :mod:`paramiko.agent.Agent`
+        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding - \
+        equivalent to `ssh -A` from the `ssh` command line utility. \
+        Defaults to True if not set.
+        :type forward_ssh_agent: bool
         :param proxy_host: (Optional) SSH host to tunnel connection through \
         so that SSH clients connects to self.host via client -> proxy_host -> host
         :type proxy_host: str
@@ -83,6 +88,9 @@ class SSHClient(object):
         :param channel_timeout: (Optional) Time in seconds before an SSH operation \
         times out.
         :type channel_timeout: int
+        :param allow_agent: (Optional) set to False to disable connecting to \
+        the SSH agent
+        :type allow_agent: bool
         """
         ssh_config = paramiko.SSHConfig()
         _ssh_config_file = os.path.sep.join([os.path.expanduser('~'),
@@ -107,6 +115,7 @@ class SSHClient(object):
         self.pkey = pkey
         self.port = port if port else 22
         self.host = resolved_address
+        self.allow_agent = allow_agent
         if agent:
             self.client._agent = agent
         self.num_retries = num_retries
@@ -158,7 +167,8 @@ class SSHClient(object):
             client.connect(host, username=self.user,
                            password=self.password, port=port,
                            pkey=self.pkey,
-                           sock=sock, timeout=self.timeout)
+                           sock=sock, timeout=self.timeout,
+                           allow_agent=self.allow_agent)
         except sock_gaierror, ex:
             logger.error("Could not resolve host '%s' - retry %s/%s",
                          self.host, retries, self.num_retries)

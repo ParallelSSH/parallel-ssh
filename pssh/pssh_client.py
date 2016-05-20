@@ -50,7 +50,7 @@ class ParallelSSHClient(object):
                  user=None, password=None, port=None, pkey=None,
                  forward_ssh_agent=True, num_retries=DEFAULT_RETRIES, timeout=120,
                  pool_size=10, proxy_host=None, proxy_port=22,
-                 agent=None, host_config=None, channel_timeout=None):
+                 agent=None, allow_agent=True, host_config=None, channel_timeout=None):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -96,7 +96,10 @@ class ParallelSSHClient(object):
         :param channel_timeout: (Optional) Time in seconds before an SSH operation \
         times out.
         :type channel_timeout: int
-        
+        :type channel_timeout: int
+        :param allow_agent: (Optional) set to False to disable connecting to \
+        the SSH agent
+        :type allow_agent: bool
         **Example Usage**
         
         >>> from pssh.pssh_client import ParallelSSHClient
@@ -255,6 +258,7 @@ class ParallelSSHClient(object):
         # To hold host clients
         self.host_clients = {}
         self.agent = agent
+        self.allow_agent = allow_agent
         self.host_config = host_config if host_config else {}
         self.channel_timeout = channel_timeout
 
@@ -474,7 +478,7 @@ future releases - use self.run_command instead", DeprecationWarning)
                                                 timeout=self.timeout,
                                                 proxy_host=self.proxy_host,
                                                 proxy_port=self.proxy_port,
-                                                agent=self.agent,
+                                                allow_agent=self.allow_agent, agent=self.agent,
                                                 channel_timeout=self.channel_timeout)
         return self.host_clients[host].exec_command(*args, **kwargs)
     
