@@ -37,16 +37,15 @@ class SSHClient(object):
     """Wrapper class over paramiko.SSHClient with sane defaults
     Honours ~/.ssh/config and /etc/ssh/ssh_config entries for host username \
     overrides"""
-
+    
     def __init__(self, host,
                  user=None, password=None, port=None,
                  pkey=None, forward_ssh_agent=True,
                  num_retries=DEFAULT_RETRIES, agent=None, allow_agent=True,
-                 timeout=10, proxy_host=None, proxy_port=22,
-                 channel_timeout=None):
+                 timeout=10, proxy_host=None, proxy_port=22, channel_timeout=None):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
-
+        
         :param host: Hostname to connect to
         :type host: str
         :param user: (Optional) User to login as. Defaults to logged in user or \
@@ -129,12 +128,12 @@ class SSHClient(object):
             self._connect_tunnel()
         else:
             self._connect(self.client, self.host, self.port)
-
+    
     def _connect_tunnel(self):
         """Connects to SSH server via an intermediate SSH tunnel server.
         client (me) -> tunnel (ssh server to proxy through) -> \
         destination (ssh server to run command)
-
+        
         :rtype: `:mod:paramiko.SSHClient` Client to remote SSH destination
         via intermediate SSH tunnel server.
         """
@@ -154,10 +153,10 @@ class SSHClient(object):
           raise ConnectionErrorException("Error connecting to host '%s:%s' - %s",
                                            self.host, self.port,
                                            str(error_type))
-
+    
     def _connect(self, client, host, port, sock=None, retries=1):
         """Connect to host
-
+        
         :raises: :mod:`pssh.exceptions.AuthenticationException` on authentication error
         :raises: :mod:`pssh.exceptions.UnknownHostException` on DNS resolution error
         :raises: :mod:`pssh.exceptions.ConnectionErrorException` on error connecting
@@ -204,10 +203,10 @@ class SSHClient(object):
                      shell=None,
                      use_shell=True, **kwargs):
         """Wrapper to :mod:`paramiko.SSHClient.exec_command`
-
-        Opens a new SSH session with a new pty and runs command before yielding
+        
+        Opens a new SSH session with a new pty and runs command before yielding 
         the main gevent loop to allow other greenlets to execute.
-
+        
         :param command: Shell command to execute
         :type command: str
         :param sudo: (Optional) Run with sudo. Defaults to False
@@ -264,12 +263,12 @@ class SSHClient(object):
 
     def _mkdir(self, sftp, directory):
         """Make directory via SFTP channel
-
+        
         :param sftp: SFTP client object
         :type sftp: :mod:`paramiko.SFTPClient`
         :param directory: Remote directory to create
         :type directory: str
-
+        
         Catches and logs at error level remote IOErrors on creating directory.
         """
         try:
@@ -282,14 +281,14 @@ class SSHClient(object):
 
     def mkdir(self, sftp, directory):
         """Make directory via SFTP channel.
-
+        
         Parent paths in the directory are created if they do not exist.
-
+        
         :param sftp: SFTP client object
         :type sftp: :mod:`paramiko.SFTPClient`
         :param directory: Remote directory to create
         :type directory: str
-
+        
         Catches and logs at error level remote IOErrors on creating directory.
         """
         try:
@@ -319,17 +318,17 @@ class SSHClient(object):
 
     def copy_file(self, local_file, remote_file, recurse=False):
         """Copy local file to host via SFTP/SCP
-
+        
         Copy is done natively using SFTP/SCP version 2 protocol, no scp command \
         is used or required.
-
+        
         :param local_file: Local filepath to copy to remote host
         :type local_file: str
         :param remote_file: Remote filepath on remote host to copy file to
         :type remote_file: str
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
-
+        
         :raises: :mod:`ValueError` when a directory is supplied to local_file \
         and recurse is not set
         """
