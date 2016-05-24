@@ -65,11 +65,17 @@ Frequently asked questions
    Why should I use this module and not, for example, `fabric <https://github.com/fabric/fabric>`_?
 
 :A:
+   ParallelSSH's design goals and motivation are to provide a *library* for running *asynchronous* SSH commands in parallel with **no** load induced on the system by doing so with the intended usage being completely programmatic and non-interactive - Fabric provides none of these goals.
+   
    Fabric is a port of `Capistrano <https://github.com/capistrano/capistrano>`_ from ruby to python. Its design goals are to provide a faithful port of capistrano with its `tasks` and `roles` to python with interactive command line being the intended usage. Its use as a library is non-standard and in `many <https://github.com/fabric/fabric/issues/521>`_ `cases <https://github.com/fabric/fabric/pull/674>`_ `just <https://github.com/fabric/fabric/pull/1215>`_ `plain <https://github.com/fabric/fabric/issues/762>`_ `broken <https://github.com/fabric/fabric/issues/1068>`_.
    
    Furthermore, its parallel commands use a combination of both threads and processes with extremely high CPU usage and system load while running. Fabric currently stands at over 6,000 lines of code, majority of which is untested, particularly if used as a library as opposed to less than 700 lines of code mostly consisting of documentation strings currently in `ParallelSSH` with over 80% code test coverage.
-   
-   ParallelSSH's design goals and motivation are to provide a *library* for running *asynchronous* SSH commands in parallel with **no** load induced on the system by doing so with the intended usage being completely programmatic and non-interactive - Fabric provides none of these goals.
+
+:Q:
+ Is Windows supported?
+
+:A:
+ Yes. Pip versions >= 8.0 are required for binary package installation of `gevent`, a dependency of `ParallelSSH`. Though `ParallelSSH` is pure python code and will run on any platform that has a working Python interpreter, its `gevent` dependency contains native code which either needs a binary package to be provided for the platform or to be built from source. Binary packages for `gevent` are provided for OSX, Linux and Windows platforms as of this time of writing.
 
 :Q:
  Are SSH agents used?
@@ -87,7 +93,7 @@ Frequently asked questions
   Is tunneling/proxying supported?
 
 :A:
-  ParallelSSH natively supports tunelling through an intermediate SSH server. Connecting to a remote host is accomplished via an SSH tunnel using the SSH's protocol direct TCP tunneling feature, using local port forwarding. This is done natively in python and tunnel connections are asynchronous like all other connections in the ParallelSSH library. For example, client -> proxy SSH server -> remote SSH destination.
+  Yes, `ParallelSSH` natively supports tunelling through an intermediate SSH server. Connecting to a remote host is accomplished via an SSH tunnel using the SSH's protocol direct TCP tunneling feature, using local port forwarding. This is done natively in python and tunnel connections are asynchronous like all other connections in the ParallelSSH library. For example, client -> proxy SSH server -> remote SSH destination.
 
   Use the `proxy_host` and `proxy_port` parameters to configure your proxy.
 
@@ -109,6 +115,7 @@ Frequently asked questions
    Is there a user's group for feedback and discussion about ParallelSSH?
 :A:
    There is a public `ParallelSSH Google group <https://groups.google.com/forum/#!forum/parallelssh>`_ setup for this purpose - both posting and viewing are open to the public.
+
 
 ********
 SFTP/SCP

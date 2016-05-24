@@ -38,9 +38,10 @@ setup(name='parallel-ssh',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
-        'Topic :: Utilities',
+        'Topic :: Software Development :: Libraries :: Python Modules',
         'Operating System :: POSIX :: Linux',
         'Operating System :: POSIX :: BSD',
+        'Operating System :: Microsoft :: Windows',
         ],
         **convert_2_to_3
       )
