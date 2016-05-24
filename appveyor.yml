@@ -106,16 +106,16 @@ install:
 cache:
   - "%TMP%\\py\\"
 
-# build_script:
-#   # Build wheel
-#   - "%PYEXE% setup.py bdist_wheel bdist_wininst"
-#   - ps: "ls dist"
-#   # Now install the wheel.
-#   # I couldn't get wildcards to work for pip install, so stuff it
-#   # into a variable, using python to glob.
-#   - "%PYEXE% -c \"import glob; print(glob.glob('dist/*whl')[0])\" > whl.txt"
-#   - set /p PYWHL=<whl.txt
-#   - pip install %PYWHL%
+build_script:
+  # Build wheel
+  - "%PYEXE% setup.py bdist_wheel bdist_wininst"
+  - ps: "ls dist"
+  # Now install the wheel.
+  # I couldn't get wildcards to work for pip install, so stuff it
+  # into a variable, using python to glob.
+  - "%PYEXE% -c \"import glob; print(glob.glob('dist/*whl')[0])\" > whl.txt"
+  - set /p PYWHL=<whl.txt
+  - pip install %PYWHL%
 
 test_script:
   # Run the project tests
