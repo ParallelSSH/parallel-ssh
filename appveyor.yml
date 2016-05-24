@@ -129,8 +129,8 @@ build_script:
 
 test_script:
   # Run the project tests
-  - %PYEXE% setup.py nosetests --with-coverage --cover-package=pssh
-  - %PYEXE% -c 'import sys; sys.version_info >= (3,) and sys.exit(1)' || eval "2to3 -nw embedded_server/*.py && 2to3 tests/*.py -o tests3 -nw && cp tests/test_client_private_key* tests3/ && python setup.py nosetests -w tests3 --with-coverage --cover-package=pssh"
+  - "%PYEXE% setup.py nosetests --with-coverage --cover-package=pssh"
+  - "%PYEXE% -c 'import sys; sys.version_info >= (3,) and sys.exit(1)' || eval \"2to3 -nw embedded_server/*.py && 2to3 tests/*.py -o tests3 -nw && cp tests/test_client_private_key* tests3/ && python setup.py nosetests -w tests3 --with-coverage --cover-package=pssh\""
 
 after_test:
   # We already built the wheel during build_script, because it's
