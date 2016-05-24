@@ -25,11 +25,6 @@ environment:
       PYTHON_ARCH: "64"
       PYTHON_EXE: python
 
-    - PYTHON: "C:\\Python33-x64"
-      PYTHON_VERSION: "3.3.x" # currently 3.3.5
-      PYTHON_ARCH: "64"
-      PYTHON_EXE: python
-
     - PYTHON: "C:\\Python35"
       PYTHON_VERSION: "3.5.x" # currently 3.5.0
       PYTHON_ARCH: "32"
@@ -37,11 +32,6 @@ environment:
 
     - PYTHON: "C:\\Python27"
       PYTHON_VERSION: "2.7.x" # currently 2.7.11
-      PYTHON_ARCH: "32"
-      PYTHON_EXE: python
-
-    - PYTHON: "C:\\Python33"
-      PYTHON_VERSION: "3.3.x" # currently 3.3.5
       PYTHON_ARCH: "32"
       PYTHON_EXE: python
 
