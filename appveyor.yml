@@ -91,7 +91,7 @@ install:
 
   # Upgrade to the latest version of pip to avoid it displaying warnings
   # about it being out of date.
-  - "pip install --disable-pip-version-check --user --upgrade pip"
+  - "pip install --disable-pip-version-check -U pip"
 
   # Install the build dependencies of the project. If some dependencies contain
   # compiled extensions and are not provided as pre-built wheel packages,
@@ -108,14 +108,14 @@ cache:
 
 build_script:
   # Build wheel
-  - "%PYEXE% setup.py bdist_wheel bdist_wininst"
-  - ps: "ls dist"
-  # Now install the wheel.
-  # I couldn't get wildcards to work for pip install, so stuff it
-  # into a variable, using python to glob.
-  - "%PYEXE% -c \"import glob; print(glob.glob('dist/*whl')[0])\" > whl.txt"
-  - set /p PYWHL=<whl.txt
-  - pip install %PYWHL%
+  - "%PYEXE% setup.py install"
+  # - ps: "ls dist"
+  # # Now install the wheel.
+  # # I couldn't get wildcards to work for pip install, so stuff it
+  # # into a variable, using python to glob.
+  # - "%PYEXE% -c \"import glob; print(glob.glob('dist/*whl')[0])\" > whl.txt"
+  # - set /p PYWHL=<whl.txt
+  # - pip install %PYWHL%
 
 test_script:
   # Run the project tests
