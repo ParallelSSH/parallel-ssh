@@ -75,13 +75,19 @@ Frequently asked questions
  Is Windows supported?
 
 :A:
- The library installs and works on Windows though not formally supported as unit tests are currently posix system only. Pip versions >= 8.0 are required for binary package installation of `gevent` on Windows, a dependency of `ParallelSSH`. Though `ParallelSSH` is pure python code and will run on any platform that has a working Python interpreter, its `gevent` dependency contains native code which either needs a binary package to be provided for the platform or to be built from source. Binary packages for `gevent` are provided for OSX, Linux and Windows platforms as of this time of writing.
+ The library installs and works on Windows though not formally supported as unit tests are currently posix system only. 
+ 
+ Pip versions >= 8.0 are required for binary package installation of `gevent` on Windows, a dependency of `ParallelSSH`. 
+ 
+ Though `ParallelSSH` is pure python code and will run on any platform that has a working Python interpreter, its `gevent` dependency contains native code which either needs a binary package to be provided for the platform or to be built from source. Binary packages for `gevent` are provided for OSX, Linux and Windows platforms as of this time of writing.
 
 :Q:
  Are SSH agents used?
 
 :A:
- All available keys in a running SSH agent in addition to SSH keys in the user's home directory, `~/.ssh/id_dsa`, `~/.ssh/id_rsa` et al are automatically used by ParallelSSH. Use of SSH agent can be disabled by creating a client as `ParallelSSHClient(allow_agent=False)`. `See documentation <http://parallel-ssh.readthedocs.org/en/latest/>`_ for more information.
+ All available keys in a system configured SSH agent in addition to SSH keys in the user's home directory, `~/.ssh/id_dsa`, `~/.ssh/id_rsa` et al are automatically used by ParallelSSH. 
+ 
+ Use of SSH agent can be disabled by creating a client as `ParallelSSHClient(allow_agent=False)`. `See documentation <http://parallel-ssh.readthedocs.org/en/latest/>`_ for more information.
 
 :Q:
   Can ParallelSSH forward my SSH agent?
@@ -105,14 +111,15 @@ Frequently asked questions
   Is there a way to programmatically provide an SSH key?
 
 :A:
-  Yes, use the `pkey` parameter of the `ParallelSSHClient class <http://parallel-ssh.readthedocs.org/en/latest/#pssh.ParallelSSHClient>`_. For example:
+  Yes, use the `pkey` parameter of the `ParallelSSHClient class <http://parallel-ssh.readthedocs.org/en/latest/#pssh.ParallelSSHClient>`_. There is a `load_private_key` helper function in `pssh.utils` that can be used to load any key type. For example:
 
-  >>> import paramiko
-  >>> client_key = paramiko.RSAKey.from_private_key_file('user.key')
+  >>> from pssh import ParallelSSHClient, utils
+  >>> client_key = utils.load_private_key('user.key')
   >>> client = ParallelSSHClient(['myhost1', 'myhost2'], pkey=client_key)
 
 :Q:
    Is there a user's group for feedback and discussion about ParallelSSH?
+
 :A:
    There is a public `ParallelSSH Google group <https://groups.google.com/forum/#!forum/parallelssh>`_ setup for this purpose - both posting and viewing are open to the public.
 
