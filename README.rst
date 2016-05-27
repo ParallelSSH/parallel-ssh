@@ -75,13 +75,13 @@ Frequently asked questions
  Is Windows supported?
 
 :A:
- Yes. Pip versions >= 8.0 are required for binary package installation of `gevent`, a dependency of `ParallelSSH`. Though `ParallelSSH` is pure python code and will run on any platform that has a working Python interpreter, its `gevent` dependency contains native code which either needs a binary package to be provided for the platform or to be built from source. Binary packages for `gevent` are provided for OSX, Linux and Windows platforms as of this time of writing.
+ The library installs and works on Windows though not formally supported as unit tests are currently posix system only. Pip versions >= 8.0 are required for binary package installation of `gevent` on Windows, a dependency of `ParallelSSH`. Though `ParallelSSH` is pure python code and will run on any platform that has a working Python interpreter, its `gevent` dependency contains native code which either needs a binary package to be provided for the platform or to be built from source. Binary packages for `gevent` are provided for OSX, Linux and Windows platforms as of this time of writing.
 
 :Q:
  Are SSH agents used?
 
 :A:
- All available keys in a running SSH agent in addition to SSH keys in the user's home directory, `~/.ssh/id_dsa`, `~/.ssh/id_rsa` et al are automatically used by ParallelSSH.
+ All available keys in a running SSH agent in addition to SSH keys in the user's home directory, `~/.ssh/id_dsa`, `~/.ssh/id_rsa` et al are automatically used by ParallelSSH. Use of SSH agent can be disabled by creating a client as `ParallelSSHClient(allow_agent=False)`. `See documentation <http://parallel-ssh.readthedocs.org/en/latest/>`_ for more information.
 
 :Q:
   Can ParallelSSH forward my SSH agent?
@@ -93,7 +93,7 @@ Frequently asked questions
   Is tunneling/proxying supported?
 
 :A:
-  Yes, `ParallelSSH` natively supports tunelling through an intermediate SSH server. Connecting to a remote host is accomplished via an SSH tunnel using the SSH's protocol direct TCP tunneling feature, using local port forwarding. This is done natively in python and tunnel connections are asynchronous like all other connections in the ParallelSSH library. For example, client -> proxy SSH server -> remote SSH destination.
+  Yes, `ParallelSSH` natively supports tunelling through an intermediate SSH server. Connecting to a remote host is accomplished via an SSH tunnel using the SSH's protocol direct TCP tunneling feature, using local port forwarding. This is done natively in python and tunnel connections are asynchronous like all other connections in the `ParallelSSH` library. For example, client -> proxy SSH server -> remote SSH destination.
 
   Use the `proxy_host` and `proxy_port` parameters to configure your proxy.
 
@@ -125,7 +125,8 @@ SFTP is supported (SCP version 2) natively, no `scp` command required.
 
 For example to copy a local file to remote hosts in parallel
 
->>> from pssh import ParallelSSHClient
+>>> from pssh import ParallelSSHClient, utils
+>>> utils.enable_logger(utils.logger)
 >>> hosts = ['myhost1', 'myhost2']
 >>> client = ParallelSSHClient(hosts)
 >>> client.copy_file('../test', 'test_dir/test')
