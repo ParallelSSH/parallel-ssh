@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # This file is part of parallel-ssh.
 
@@ -245,6 +246,19 @@ not match source %s" % (copied_file_data, test_file_data))
                         msg="Requested pty but got none")
         channel.close()
         del channel
+        del client
+
+    def test_ssh_client_utf_encoding(self):
+        """Test that unicode output works"""
+        client = SSHClient(self.host, port=self.listen_port,
+                           pkey=self.user_key)
+        expected = [u'é']
+        cmd = u"echo 'é'"
+        channel, host, stdout, stderr = client.exec_command(cmd)
+        output = list(stdout)
+        self.assertEqual(expected, output,
+                         msg="Got unexpected unicode output %s - expected %s" % (
+                             output, expected,))
         del client
 
     def test_ssh_client_pty(self):

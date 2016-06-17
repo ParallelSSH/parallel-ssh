@@ -100,17 +100,22 @@ class Server(paramiko.ServerInterface):
         logger.debug("Forward agent key request for channel %s" % (channel,))
         return True
 
-    def check_channel_exec_request(self, channel, cmd):
+    def check_channel_exec_request(self, channel, cmd,
+                                   encoding='utf-8'):
         logger.debug("Got exec request on channel %s for cmd %s" % (channel, cmd,))
         self.event.set()
-        process = gevent.subprocess.Popen(cmd, stdout=gevent.subprocess.PIPE, shell=True)
+        _env = os.environ
+        _env['PYTHONIOENCODING'] = encoding
+        process = gevent.subprocess.Popen(cmd, stdout=gevent.subprocess.PIPE,
+                                          stdin=gevent.subprocess.PIPE,
+                                          shell=True, env=_env)
         gevent.spawn(self._read_response, channel, process)
         return True
 
     def _read_response(self, channel, process):
-        for line in process.stdout:
-            channel.send(line.decode('ascii'))
-        process.communicate()
+        (output, _) = process.communicate()
+        for line in output:
+            channel.send(line)
         channel.send_exit_status(process.returncode)
         logger.debug("Command finished with return code %s", process.returncode)
         # Let clients consume output from channel before closing
@@ -138,11 +143,13 @@ def listen(sock, fail_auth=False, ssh_exception=False,
     """
     listen_ip, listen_port = sock.getsockname()
     if not sock:
-        logger.error("Could not establish listening connection on %s:%s", listen_ip, listen_port)
+        logger.error("Could not establish listening connection on %s:%s",
+                     listen_ip, listen_port)
         return 
     try:
         sock.listen(100)
-        logger.info('Listening for connection on %s:%s..', listen_ip, listen_port)
+        logger.info('Listening for connection on %s:%s..', listen_ip,
+                    listen_port)
     except Exception, e:
         logger.error('*** Listen failed: %s' % (str(e),))
         traceback.print_exc()
@@ -179,7 +186,7 @@ def _handle_ssh_connection(transport, fail_auth=False,
     while not channel.send_ready():
         gevent.sleep(.2)
     channel.close()
-    
+
 def handle_ssh_connection(sock,
                           fail_auth=False, ssh_exception=False,
                           timeout=None):
