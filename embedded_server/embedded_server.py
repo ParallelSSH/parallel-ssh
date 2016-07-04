@@ -113,9 +113,9 @@ class Server(paramiko.ServerInterface):
         return True
 
     def _read_response(self, channel, process):
-        (output, _) = process.communicate()
-        for line in output:
+        for line in process.stdout:
             channel.send(line)
+        process.communicate()
         channel.send_exit_status(process.returncode)
         logger.debug("Command finished with return code %s", process.returncode)
         # Let clients consume output from channel before closing
