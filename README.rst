@@ -1,11 +1,9 @@
 parallel-ssh
 ============
 
-Library for running asynchronous parallel SSH commands over many hosts.
+Asynchronous parallel SSH client library.
 
-parallel-ssh uses asychronous network requests - there is *no* multi-threading or multi-processing used.
-
-This is a *requirement* for commands on many (hundreds/thousands/hundreds of thousands) of hosts which would grind a system to a halt simply by having so many processes/threads all wanting to execute if done with multi-threading/processing.
+Run commands via SSH over tens/hundreds/thousands+ number of servers asynchronously and with minimal system load on the client host.
 
 .. image:: https://img.shields.io/pypi/v/parallel-ssh.svg
   :target: https://pypi.python.org/pypi/parallel-ssh
@@ -26,7 +24,7 @@ Installation
 
 ::
 
-   $ pip install parallel-ssh
+   pip install parallel-ssh
 
 *************
 Usage Example
@@ -34,27 +32,42 @@ Usage Example
 
 See documentation on `read the docs`_ for more complete examples.
 
-Run `ls` on two remote hosts in parallel.
+Run `ls` on two remote hosts in parallel with `sudo`.
 
->>> from pssh import ParallelSSHClient
->>> hosts = ['myhost1', 'myhost2']
->>> client = ParallelSSHClient(hosts)
->>> output = client.run_command('ls -ltrh /tmp/', sudo=True)
->>> print output
-{'myhost1': {'exit_code': 0, 'stdout': <generator>, 'stderr': <generator>, 'channel': <channel>, 'cmd' : <greenlet>, 'exception' : None},
- 'myhost2': {'exit_code': 0, 'stdout': <generator>, 'stderr': <generator>, 'channel': <channel>, 'cmd' : <greenlet>, 'exception' : None}}
+::
+
+  from pssh import ParallelSSHClient
+  hosts = ['myhost1', 'myhost2']
+  client = ParallelSSHClient(hosts)
+  output = client.run_command('ls -ltrh /tmp/', sudo=True)
+  print output
+  {'myhost1': {'exit_code': None, 'stdout': <generator>, 'stderr': <generator>, 'channel': <channel>, 'cmd' : <greenlet>, 'exception' : None},
+   'myhost2': {'exit_code': None, 'stdout': <generator>, 'stderr': <generator>, 'channel': <channel>, 'cmd' : <greenlet>, 'exception' : None}}
 
 Stdout and stderr buffers are available in output. Iterating on them can be used to get output as it becomes available. Iteration ends *only when command has finished*.
 
->>> for host in output:
->>>     for line in output[host]['stdout']:
->>>         print "Host %s - output: %s" % (host, line)
-Host myhost1 - output: drwxr-xr-x  6 xxx xxx 4.0K Jan  1 00:00 xxx
-Host myhost2 - output: drwxr-xr-x  6 xxx xxx 4.0K Jan  1 00:00 xxx
+::
 
-Joining on the connection pool can be used to block and wait for all parallel commands to finish if reading stdout/stderr is not required.
+  for host in output:
+     for line in output[host]['stdout']:
+         print("Host %s - output: %s" % (host, line))
+  Host myhost1 - output: drwxr-xr-x  6 xxx xxx 4.0K Jan  1 00:00 xxx
+  Host myhost1 - output: <..>
+  Host myhost2 - output: drwxr-xr-x  6 xxx xxx 4.0K Jan  1 00:00 xxx
+  Host myhost2 - output: <..>
 
->>> client.pool.join()
+Exit codes become available once stdout/stderr is iterated on or `client.join(output)` is called.
+
+::
+
+  for host in output:
+      print output[host]['exit_code']
+  0
+  0
+
+Joining on the connection pool can be used to block and wait for all parallel commands to finish if output is not required. ::
+
+  client.pool.join()
 
 
 **************************
@@ -75,7 +88,7 @@ Frequently asked questions
  Is Windows supported?
 
 :A:
- The library installs and works on Windows though not formally supported as unit tests are currently posix system only. 
+ The library installs and works on Windows though not formally supported as unit tests are currently Posix system based.
  
  Pip versions >= 8.0 are required for binary package installation of `gevent` on Windows, a dependency of `ParallelSSH`. 
  
@@ -111,11 +124,11 @@ Frequently asked questions
   Is there a way to programmatically provide an SSH key?
 
 :A:
-  Yes, use the `pkey` parameter of the `ParallelSSHClient class <http://parallel-ssh.readthedocs.org/en/latest/#pssh.ParallelSSHClient>`_. There is a `load_private_key` helper function in `pssh.utils` that can be used to load any key type. For example:
+  Yes, use the `pkey` parameter of the `ParallelSSHClient class <http://parallel-ssh.readthedocs.org/en/latest/#pssh.ParallelSSHClient>`_. There is a `load_private_key` helper function in `pssh.utils` that can be used to load any key type. For example::
 
-  >>> from pssh import ParallelSSHClient, utils
-  >>> client_key = utils.load_private_key('user.key')
-  >>> client = ParallelSSHClient(['myhost1', 'myhost2'], pkey=client_key)
+    from pssh import ParallelSSHClient, utils
+    client_key = utils.load_private_key('user.key')
+    client = ParallelSSHClient(['myhost1', 'myhost2'], pkey=client_key)
 
 :Q:
    Is there a user's group for feedback and discussion about ParallelSSH?
@@ -130,13 +143,14 @@ SFTP/SCP
 
 SFTP is supported (SCP version 2) natively, no `scp` command required.
 
-For example to copy a local file to remote hosts in parallel
+For example to copy a local file to remote hosts in parallel::
 
->>> from pssh import ParallelSSHClient, utils
->>> utils.enable_logger(utils.logger)
->>> hosts = ['myhost1', 'myhost2']
->>> client = ParallelSSHClient(hosts)
->>> client.copy_file('../test', 'test_dir/test')
->>> client.pool.join()
-Copied local file ../test to remote destination myhost1:test_dir/test
-Copied local file ../test to remote destination myhost2:test_dir/test
+  from pssh import ParallelSSHClient, utils
+  utils.enable_logger(utils.logger)
+  hosts = ['myhost1', 'myhost2']
+  client = ParallelSSHClient(hosts)
+  client.copy_file('../test', 'test_dir/test')
+  client.pool.join()
+  
+  Copied local file ../test to remote destination myhost1:test_dir/test
+  Copied local file ../test to remote destination myhost2:test_dir/test

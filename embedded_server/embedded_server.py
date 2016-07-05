@@ -18,11 +18,24 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 """
-Fake SSH server to test our SSH clients.
-Supports execution of commands via exec_command. Does _not_ support interactive \
-shells, our clients do not use them.
-Server private key is hardcoded, server listen code inspired by demo_server.py in \
-paramiko repository
+Embedded SSH server to test our SSH clients.
+
+Implements:
+ * Execution of commands via exec_command
+ * Public key and password auth
+ * Direct TCP tunneling
+ * SSH agent forwarding
+ * Stub SFTP server from Paramiko
+ * Forced authentication failure
+
+Does _not_ support interactive shells, our clients do not use them.
+
+Server private key is hardcoded. Server listen code inspired by demo_server.py in \
+Paramiko repository.
+
+Server runs asynchronously in its own greenlet. Call `start_server` with a new `multiprocessing.Process` to run it on a new process with its own event loop.
+
+*Warning* - Note that commands, with or without a shell, are actually run on the system running this server. Destructive commands will actually affect the system as permissions of user running the server allow. *Use at your own risk*.
 """
 
 import sys
