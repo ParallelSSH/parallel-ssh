@@ -32,7 +32,7 @@ Usage Example
 
 See documentation on `read the docs`_ for more complete examples.
 
-Run `ls` on two remote hosts in parallel with `sudo`.
+Run ``ls`` on two remote hosts in parallel with ``sudo``.
 
 ::
 
@@ -56,7 +56,7 @@ Stdout and stderr buffers are available in output. Iterating on them can be used
   Host myhost2 - output: drwxr-xr-x  6 xxx xxx 4.0K Jan  1 00:00 xxx
   Host myhost2 - output: <..>
 
-Exit codes become available once stdout/stderr is iterated on or `client.join(output)` is called.
+Exit codes become available once stdout/stderr is iterated on or ``client.join(output)`` is called.
 
 ::
 
@@ -68,6 +68,23 @@ Exit codes become available once stdout/stderr is iterated on or `client.join(ou
 Joining on the connection pool can be used to block and wait for all parallel commands to finish if output is not required. ::
 
   client.pool.join()
+
+Similarly, if only exit codes are needed but not output ::
+
+  output = client.run_command('exit 0')
+  # Block and gather exit codes. Output variable is updated in-place
+  client.join(output)
+  print output[client.hosts[0]]['exit_code']
+  0
+
+There is a also host logger that can be enabled to log output from remote hosts. The helper function ``pssh.utils.enable_host_logger`` will enable host logging to stdout, for example ::
+
+  import pssh.utils
+  pssh.utils.enable_host_logger()
+  output = client.run_command('uname')
+  client.join(output)
+  
+  [localhost]	Linux
 
 
 **************************
@@ -100,13 +117,13 @@ Frequently asked questions
 :A:
  All available keys in a system configured SSH agent in addition to SSH keys in the user's home directory, `~/.ssh/id_dsa`, `~/.ssh/id_rsa` et al are automatically used by ParallelSSH. 
  
- Use of SSH agent can be disabled by creating a client as `ParallelSSHClient(allow_agent=False)`. `See documentation <http://parallel-ssh.readthedocs.org/en/latest/>`_ for more information.
+ Use of SSH agent can be disabled by creating a client as ``ParallelSSHClient(allow_agent=False)``. `See documentation <http://parallel-ssh.readthedocs.org/en/latest/>`_ for more information.
 
 :Q:
   Can ParallelSSH forward my SSH agent?
 
 :A:
-  SSH agent forwarding, what `ssh -A` does on the command line, is supported and enabled by default. Creating an object as `ParallelSSHClient(forward_ssh_agent=False)` will disable that behaviour.
+  SSH agent forwarding, what ``ssh -A`` does on the command line, is supported and enabled by default. Creating an object as ``ParallelSSHClient(forward_ssh_agent=False)`` will disable that behaviour.
 
 :Q:
   Is tunneling/proxying supported?
@@ -114,7 +131,7 @@ Frequently asked questions
 :A:
   Yes, `ParallelSSH` natively supports tunelling through an intermediate SSH server. Connecting to a remote host is accomplished via an SSH tunnel using the SSH's protocol direct TCP tunneling feature, using local port forwarding. This is done natively in python and tunnel connections are asynchronous like all other connections in the `ParallelSSH` library. For example, client -> proxy SSH server -> remote SSH destination.
 
-  Use the `proxy_host` and `proxy_port` parameters to configure your proxy.
+  Use the ``proxy_host`` and ``proxy_port`` parameters to configure your proxy.
 
   >>> client = ParallelSSHClient(hosts, proxy_host='my_ssh_proxy_host')
   
@@ -124,7 +141,7 @@ Frequently asked questions
   Is there a way to programmatically provide an SSH key?
 
 :A:
-  Yes, use the `pkey` parameter of the `ParallelSSHClient class <http://parallel-ssh.readthedocs.org/en/latest/#pssh.ParallelSSHClient>`_. There is a `load_private_key` helper function in `pssh.utils` that can be used to load any key type. For example::
+  Yes, use the ``pkey`` parameter of the `ParallelSSHClient class <http://parallel-ssh.readthedocs.org/en/latest/#pssh.ParallelSSHClient>`_. There is a ``load_private_key`` helper function in ``pssh.utils`` that can be used to load any supported key type. For example::
 
     from pssh import ParallelSSHClient, utils
     client_key = utils.load_private_key('user.key')
@@ -141,7 +158,7 @@ Frequently asked questions
 SFTP/SCP
 ********
 
-SFTP is supported (SCP version 2) natively, no `scp` command required.
+SFTP is supported (SCP version 2) natively, no ``scp`` command required.
 
 For example to copy a local file to remote hosts in parallel::
 
