@@ -516,7 +516,7 @@ future releases - use self.run_command instead", DeprecationWarning)
         0
         """
         try:
-            (channel, host, stdout, stderr) = cmd.get()
+            (channel, host, stdout, stderr, stdin) = cmd.get()
         except Exception, ex:
             try:
                 host = ex.args[1]
@@ -524,14 +524,14 @@ future releases - use self.run_command instead", DeprecationWarning)
                 logger.error("Got exception with no host argument - "
                              "cannot update output data with %s", ex)
                 raise ex
-            self._update_host_output(output, host, None, None, None, None, cmd,
+            self._update_host_output(output, host, None, None, None, None, None, cmd,
                                      exception=ex)
             raise ex
         self._update_host_output(output, host, self._get_exit_code(channel),
-                                 channel, stdout, stderr, cmd)
+                                 channel, stdout, stderr, stdin, cmd)
 
     def _update_host_output(self, output, host, exit_code, channel, stdout,
-                            stderr, cmd, exception=None):
+                            stderr, stdin, cmd, exception=None):
         """Update host output with given data"""
         if host in output:
             new_host = "_".join([host,
@@ -546,6 +546,7 @@ future releases - use self.run_command instead", DeprecationWarning)
                              'channel' : channel,
                              'stdout' : self._read_buff_ex_code(stdout, output),
                              'stderr' : self._read_buff_ex_code(stderr, output),
+                             'stdin' : stdin,
                              'cmd' : cmd,
                              'exception' : exception,})
 
@@ -615,7 +616,7 @@ future releases - use self.run_command instead", DeprecationWarning)
         warnings.warn("This method is being deprecated and will be removed in"
                       "future releases - use self.get_output instead", DeprecationWarning)
         gevent.sleep(.2)
-        channel, host, stdout, stderr = greenlet.get()
+        channel, host, stdout, stderr, stdin = greenlet.get()
         if channel.exit_status_ready():
             channel.close()
         else:

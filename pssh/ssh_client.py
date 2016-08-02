@@ -202,20 +202,34 @@ class SSHClient(object):
 
     def exec_command(self, command, sudo=False, user=None,
                      shell=None,
-                     use_shell=True, **kwargs):
+                     use_shell=True, use_pty=True,
+                     **kwargs):
         """Wrapper to :mod:`paramiko.SSHClient.exec_command`
         
         Opens a new SSH session with a new pty and runs command before yielding 
         the main gevent loop to allow other greenlets to execute.
         
-        :param command: Shell command to execute
+        :param command: Cxommand to execute
         :type command: str
         :param sudo: (Optional) Run with sudo. Defaults to False
         :type sudo: bool
+        :param user: (Optional) User to switch to via sudo to run command as. \
+        Defaults to user running the python process
+        :type user: str
+        :param shell: (Optional) Shell override to use instead of user login \
+        configured shell. For example ``shell='bash -c'``
+        :param use_shell: (Optional) Force use of shell on/off. \
+        Defaults to `True` for on
+        :type use_shell: bool
+        :param use_pty: (Optional) Enable/Disable use of pseudo terminal \
+        emulation. This is required in vast majority of cases, exception \
+        being where a shell is not used and stdout/stderr/stdin buffers \
+        are not required. Defaults to ``True``
+        :type use_pty: bool
         :param kwargs: (Optional) Keyword arguments to be passed to remote \
         command
         :type kwargs: dict
-        :rtype: Tuple of `(channel, hostname, stdout, stderr)`. \
+        :rtype: Tuple of `(channel, hostname, stdout, stderr, stdin)`. \
         Channel is the remote SSH channel, needed to ensure all of stdout has \
         been got, hostname is remote hostname the copy is to, stdout and \
         stderr are buffers containing command output.
@@ -223,9 +237,11 @@ class SSHClient(object):
         channel = self.client.get_transport().open_session()
         if self.forward_ssh_agent:
             agent_handler = paramiko.agent.AgentRequestHandler(channel)
-        channel.get_pty()
+        if use_pty:
+            channel.get_pty()
         if self.channel_timeout:
             channel.settimeout(self.channel_timeout)
+        stdin = channel.makefile('wb')
         _stdout, _stderr = channel.makefile('rb'), \
                            channel.makefile_stderr('rb')
         stdout, stderr = self._read_output_buffer(_stdout,), \
@@ -247,7 +263,7 @@ class SSHClient(object):
         channel.exec_command(_command, **kwargs)
         logger.debug("Command started")
         sleep(0)
-        return channel, self.host, stdout, stderr
+        return channel, self.host, stdout, stderr, stdin
 
     def _read_output_buffer(self, output_buffer, prefix=''):
         """Read from output buffers and log to host_logger"""
