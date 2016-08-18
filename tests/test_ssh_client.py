@@ -205,7 +205,7 @@ not match source %s" % (copied_file_data, test_file_data))
         agent.add_key(USER_KEY)
         client = SSHClient(self.host, port=self.listen_port,
                            agent=agent)
-        channel, host, stdout, stderr = client.exec_command(self.fake_cmd)
+        channel, host, stdout, stderr, stdin = client.exec_command(self.fake_cmd)
         output = list(stdout)
         stderr = list(stderr)
         expected = [self.fake_resp]
@@ -254,7 +254,7 @@ not match source %s" % (copied_file_data, test_file_data))
                            pkey=self.user_key)
         expected = [u'é']
         cmd = u"echo 'é'"
-        channel, host, stdout, stderr = client.exec_command(cmd)
+        channel, host, stdout, stderr, stdin = client.exec_command(cmd)
         output = list(stdout)
         self.assertEqual(expected, output,
                          msg="Got unexpected unicode output %s - expected %s" % (
@@ -266,7 +266,7 @@ not match source %s" % (copied_file_data, test_file_data))
         and that shell commands fail accordingly"""
         client = SSHClient(self.host, port=self.listen_port,
                            pkey=self.user_key)
-        channel, host, stdout, stderr = client.exec_command(self.fake_cmd, use_shell=False)
+        channel, host, stdout, stderr, stdin = client.exec_command(self.fake_cmd, use_shell=False)
         output = list(stdout)
         stderr = list(stderr)
         expected = []
@@ -276,7 +276,7 @@ not match source %s" % (copied_file_data, test_file_data))
         self.assertTrue(exit_code==127,
                         msg="Expected cmd not found error code 127, got %s instead" % (
                             exit_code,))
-        channel, host, stdout, stderr = client.exec_command('id', use_shell=False)
+        channel, host, stdout, stderr, stdin = client.exec_command('id', use_shell=False)
         output = list(stdout)
         exit_code = channel.recv_exit_status()
         self.assertTrue(output,

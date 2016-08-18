@@ -58,7 +58,8 @@ import gevent.subprocess
 logger = logging.getLogger("embedded_server")
 paramiko_logger = logging.getLogger('paramiko.transport')
 
-host_key = paramiko.RSAKey(filename = os.path.sep.join([os.path.dirname(__file__), 'rsa.key']))
+host_key = paramiko.RSAKey(filename=os.path.sep.join([
+    os.path.dirname(__file__), 'rsa.key']))
 
 class Server(paramiko.ServerInterface):
     def __init__(self, transport, fail_auth=False,
@@ -126,6 +127,8 @@ class Server(paramiko.ServerInterface):
         return True
 
     def _read_response(self, channel, process):
+        gevent.sleep(0)
+        logger.debug("Waiting for output")
         for line in process.stdout:
             channel.send(line)
         process.communicate()
