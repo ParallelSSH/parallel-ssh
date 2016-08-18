@@ -429,14 +429,14 @@ class ParallelSSHClient(object):
                        'exception' : ConnectionErrorException(
                            "Error connecting to host '%s:%s' - %s - retry %s/%s",
                            host, port, 'Connection refused', 3, 3)}}
-
+        
         **Using stdin**
-
+        
         ::
-
+        
           output = client.run_command('read')
           stdin = output['localhost']['stdin']
-          stdin.write("writing to stdin\n")
+          stdin.write("writing to stdin\\n")
           stdin.flush()
           for line in output['localhost']['stdout']:
             print line
