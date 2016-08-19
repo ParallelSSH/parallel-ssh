@@ -27,6 +27,7 @@ from socket import gaierror as sock_gaierror, error as sock_error
 from .exceptions import UnknownHostException, AuthenticationException, \
      ConnectionErrorException, SSHException
 from .constants import DEFAULT_RETRIES
+from .utils import read_openssh_config
 import logging
 
 host_logger = logging.getLogger('pssh.host_logger')
@@ -92,19 +93,7 @@ class SSHClient(object):
         the SSH agent
         :type allow_agent: bool
         """
-        ssh_config = paramiko.SSHConfig()
-        _ssh_config_file = os.path.sep.join([os.path.expanduser('~'),
-                                             '.ssh',
-                                             'config'])
-        # Load ~/.ssh/config if it exists to pick up username
-        # and host address if set
-        if os.path.isfile(_ssh_config_file):
-            ssh_config.parse(open(_ssh_config_file))
-        host_config = ssh_config.lookup(host)
-        resolved_address = (host_config['hostname'] if
-                            'hostname' in host_config
-                            else host)
-        _user = host_config['user'] if 'user' in host_config else None
+        host, _user, _port, _pkey = read_openssh_config(host)
         user = user if user else _user
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
@@ -112,9 +101,9 @@ class SSHClient(object):
         self.client = client
         self.user = user
         self.password = password
-        self.pkey = pkey
-        self.port = port if port else 22
-        self.host = resolved_address
+        self.pkey = pkey if pkey else _pkey
+        self.port = port if port else _port
+        self.host = host
         self.allow_agent = allow_agent
         if agent:
             self.client._agent = agent

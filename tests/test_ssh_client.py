@@ -286,5 +286,8 @@ not match source %s" % (copied_file_data, test_file_data))
                             exit_code,))
         del client
 
+    def test_openssh_config(self):
+        pass
+
 if __name__ == '__main__':
     unittest.main()

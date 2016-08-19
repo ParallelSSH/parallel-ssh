@@ -116,7 +116,7 @@ class ParallelSSHClient(object):
         Exit code(s) will not be available immediately.
         
         >>> print output
-
+        
         ::
         
             {'myhost1': {'exit_code': None,

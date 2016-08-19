@@ -21,10 +21,11 @@
 
 import logging
 import gevent
+import os
 from paramiko.rsakey import RSAKey
 from paramiko.dsskey import DSSKey
 from paramiko.ecdsakey import ECDSAKey
-from paramiko import SSHException
+from paramiko import SSHException, SSHConfig
 
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger('pssh')
@@ -63,6 +64,34 @@ def load_private_key(_pkey):
         else:
             return pkey
     logger.error("Failed to load private key using all available key types - giving up..")
+
+def read_openssh_config(_host, config_file=None):
+    """Parses user's OpenSSH config for per hostname configuration for
+    hostname, user, port and private key values
+
+    :param _host: Hostname to lookup in config"""
+    ssh_config = SSHConfig()
+    _ssh_config_file = config_file if config_file else \
+      os.path.sep.join([os.path.expanduser('~'),
+                        '.ssh', 'config'])
+    # Load ~/.ssh/config if it exists to pick up username
+    # and host address if set
+    if os.path.isfile(_ssh_config_file):
+        ssh_config.parse(open(_ssh_config_file))
+    host_config = ssh_config.lookup(_host)
+    host = (host_config['hostname'] if
+            'hostname' in host_config
+            else _host)
+    user = host_config['user'] if 'user' in host_config else None
+    port = int(host_config['port']) if 'port' in host_config else 22
+    pkey = None
+    # Try configured keys, pick first one that loads
+    if 'identityfile' in host_config:
+        for file_name in host_config['identityfile']:
+            pkey = load_private_key(file_name)
+            if pkey:
+                break
+    return host, user, port, pkey
 
 # def enable_pssh_logger():
 #     """Enable parallel-ssh's logger to stdout"""
