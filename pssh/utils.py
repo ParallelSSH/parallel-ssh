@@ -70,14 +70,15 @@ def read_openssh_config(_host, config_file=None):
     hostname, user, port and private key values
 
     :param _host: Hostname to lookup in config"""
-    ssh_config = SSHConfig()
     _ssh_config_file = config_file if config_file else \
       os.path.sep.join([os.path.expanduser('~'),
                         '.ssh', 'config'])
     # Load ~/.ssh/config if it exists to pick up username
     # and host address if set
-    if os.path.isfile(_ssh_config_file):
-        ssh_config.parse(open(_ssh_config_file))
+    if not os.path.isfile(_ssh_config_file):
+        return
+    ssh_config = SSHConfig()
+    ssh_config.parse(open(_ssh_config_file))
     host_config = ssh_config.lookup(_host)
     host = (host_config['hostname'] if
             'hostname' in host_config
