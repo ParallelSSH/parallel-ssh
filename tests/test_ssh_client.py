@@ -296,15 +296,16 @@ not match source %s" % (copied_file_data, test_file_data))
         _server = start_server(_listen_socket)
         _port = _listen_socket.getsockname()[1]
         _key = USER_KEY_PATH
-        content = [bytes("""Host %s\n""" % (_host,)),
-                   bytes("""  User %s\n""" % (_user,)),
-                   bytes("""  Port %s\n""" % (_port,)),
-                   bytes("""  IdentityFile %s\n""" % (_key,)),
+        content = [("""Host %s\n""" % (_host,)),
+                   ("""  User %s\n""" % (_user,)),
+                   ("""  Port %s\n""" % (_port,)),
+                   ("""  IdentityFile %s\n""" % (_key,)),
                    ]
-        config_file.writelines(content)
+        config_file.writelines([s.encode('utf-8') for s in content])
         config_file.flush()
         host, user, port, pkey = utils.read_openssh_config(
             _host, config_file=config_file.name)
+        config_file.close()
         self.assertEqual(host, _host)
         self.assertEqual(user, _user)
         self.assertEqual(port, _port)
