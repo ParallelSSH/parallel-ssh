@@ -296,10 +296,10 @@ not match source %s" % (copied_file_data, test_file_data))
         _server = start_server(_listen_socket)
         _port = _listen_socket.getsockname()[1]
         _key = USER_KEY_PATH
-        content = ["""Host %s\n""" % (_host,),
-                   """  User %s\n""" % (_user,),
-                   """  Port %s\n""" % (_port,),
-                   """  IdentityFile %s\n""" % (_key,),
+        content = [bytes("""Host %s\n""" % (_host,)),
+                   bytes("""  User %s\n""" % (_user,)),
+                   bytes("""  Port %s\n""" % (_port,)),
+                   bytes("""  IdentityFile %s\n""" % (_key,)),
                    ]
         config_file.writelines(content)
         config_file.flush()
