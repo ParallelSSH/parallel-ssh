@@ -44,7 +44,8 @@ class SSHClient(object):
                  pkey=None, forward_ssh_agent=True,
                  num_retries=DEFAULT_RETRIES, agent=None,
                  allow_agent=True, timeout=10, proxy_host=None,
-                 proxy_port=22, channel_timeout=None):
+                 proxy_port=22, channel_timeout=None,
+                 _openssh_config_file=None):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
         
@@ -93,7 +94,8 @@ class SSHClient(object):
         the SSH agent
         :type allow_agent: bool
         """
-        host, _user, _port, _pkey = read_openssh_config(host)
+        host, _user, _port, _pkey = read_openssh_config(
+            host, config_file=_openssh_config_file)
         user = user if user else _user
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())

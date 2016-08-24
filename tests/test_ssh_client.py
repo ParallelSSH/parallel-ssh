@@ -27,7 +27,7 @@ import time
 import shutil
 import unittest
 from pssh import SSHClient, ParallelSSHClient, UnknownHostException, AuthenticationException,\
-     logger, ConnectionErrorException, UnknownHostException, SSHException
+     logger, ConnectionErrorException, UnknownHostException, SSHException, utils
 from embedded_server.embedded_server import start_server, make_socket, logger as server_logger, \
      paramiko_logger
 from embedded_server.fake_agent import FakeAgent
@@ -35,9 +35,10 @@ import paramiko
 import os
 from test_pssh_client import USER_KEY
 import random, string
+import tempfile
 
-USER_KEY = paramiko.RSAKey.from_private_key_file(
-    os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key']))
+USER_KEY_PATH = os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key'])
+USER_KEY = paramiko.RSAKey.from_private_key_file(USER_KEY_PATH)
 
 class SSHClientTest(unittest.TestCase):
 
@@ -261,7 +262,7 @@ not match source %s" % (copied_file_data, test_file_data))
                              output, expected,))
         del client
 
-    def test_ssh_client_pty(self):
+    def test_ssh_client_shell(self):
         """Test that running command sans shell works as expected
         and that shell commands fail accordingly"""
         client = SSHClient(self.host, port=self.listen_port,
@@ -273,7 +274,7 @@ not match source %s" % (copied_file_data, test_file_data))
         exit_code = channel.recv_exit_status()
         self.assertEqual(expected, output,
                          msg = "Got unexpected command output - %s" % (output,))
-        self.assertTrue(exit_code==127,
+        self.assertTrue(exit_code == 127,
                         msg="Expected cmd not found error code 127, got %s instead" % (
                             exit_code,))
         channel, host, stdout, stderr, stdin = client.exec_command('id', use_shell=False)
@@ -287,7 +288,33 @@ not match source %s" % (copied_file_data, test_file_data))
         del client
 
     def test_openssh_config(self):
-        pass
+        """Test reading and using OpenSSH config file"""
+        config_file = tempfile.NamedTemporaryFile()
+        _host = "127.0.0.2"
+        _user = "config_user"
+        _listen_socket = make_socket(_host)
+        _server = start_server(_listen_socket)
+        _port = _listen_socket.getsockname()[1]
+        _key = USER_KEY_PATH
+        content = ["""Host %s\n""" % (_host,),
+                   """  User %s\n""" % (_user,),
+                   """  Port %s\n""" % (_port,),
+                   """  IdentityFile %s\n""" % (_key,),
+                   ]
+        config_file.writelines(content)
+        config_file.flush()
+        host, user, port, pkey = utils.read_openssh_config(
+            _host, config_file=config_file.name)
+        self.assertEqual(host, _host)
+        self.assertEqual(user, _user)
+        self.assertEqual(port, _port)
+        self.assertTrue(pkey)
+        client = SSHClient(_host, _openssh_config_file=config_file.name)
+        self.assertEqual(client.host, _host)
+        self.assertEqual(client.user, _user)
+        self.assertEqual(client.port, _port)
+        self.assertTrue(client.pkey)
+        del _server, _listen_socket
 
 if __name__ == '__main__':
     unittest.main()
