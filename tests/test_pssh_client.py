@@ -29,7 +29,6 @@ from embedded_server.fake_agent import FakeAgent
 import random
 import logging
 import gevent
-import threading
 import paramiko
 import os
 import warnings
@@ -308,7 +307,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                         msg="Got non-zero exit code %s" % (
                             output[self.host]['exit_code'],))
         del client
-        
+    
     def test_pssh_client_retries(self):
         """Test connection error retries"""
         listen_socket = make_socket(self.host)
@@ -327,7 +326,19 @@ class ParallelSSHClientTest(unittest.TestCase):
                              % (num_tries, expected_num_tries,))
         else:
             raise Exception('No ConnectionErrorException')
-
+    
+    def test_sftp_exceptions(self):
+        self.server.kill()
+        # Make socket with no server listening on it on separate ip
+        host = '127.0.0.3'
+        _socket = make_socket(host)
+        port = _socket.getsockname()[1]
+        client = ParallelSSHClient([self.host], port=port, num_retries=1)
+        cmds = client.copy_file("test", "test")
+        client.pool.join()
+        for cmd in cmds:
+            self.assertRaises(ConnectionErrorException, cmd.get)
+    
     def test_pssh_copy_file(self):
         """Test parallel copy file"""
         test_file_data = 'test'
@@ -348,7 +359,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         for filepath in [local_filename, remote_filename]:
             os.unlink(filepath)
         del client
-
+    
     def test_pssh_client_directory(self):
         """Tests copying directories with SSH client. Copy all the files from
         local directory to server, then make sure they are all present."""
@@ -378,7 +389,7 @@ class ParallelSSHClientTest(unittest.TestCase):
             self.assertTrue(os.path.isfile(path))
         shutil.rmtree(local_test_path)
         shutil.rmtree(remote_test_path)
-
+    
     def test_pssh_pool_size(self):
         """Test setting pool size to non default values"""
         hosts = ['host-%01d' % d for d in xrange(5)]

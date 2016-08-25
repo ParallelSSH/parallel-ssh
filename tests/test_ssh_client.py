@@ -110,6 +110,16 @@ class SSHClientTest(unittest.TestCase):
         shutil.rmtree(remote_dir)
         del client
 
+    def test_sftp_exceptions(self):
+        self.server.kill()
+        # Make socket with no server listening on it on separate ip
+        host = '127.0.0.3'
+        _socket = make_socket(host)
+        port = _socket.getsockname()[1]
+        self.assertRaises(ConnectionErrorException, SSHClient,
+                          host, port=port, num_retries=1)
+        del _socket
+    
     def test_ssh_client_sftp(self):
         """Test SFTP features of SSHClient. Copy local filename to server,
         check that data in both files is the same, make new directory on
