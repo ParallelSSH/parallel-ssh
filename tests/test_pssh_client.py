@@ -199,7 +199,9 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    agent=self.agent)
         output = client.run_command(self.fake_cmd,
                                     stop_on_errors=False)
+        self.assertFalse(client.finished(output))
         client.join(output)
+        self.assertTrue(client.finished(output))
         self.assertTrue(hosts[0] in output,
                         msg="Successful host does not exist in output - output is %s" % (output,))
         self.assertTrue(hosts[1] in output,
@@ -226,15 +228,10 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    port=listen_port,
                                    pkey=paramiko.RSAKey.generate(1024),
                                    )
-        # Handle exception
-        try:
-            client.run_command(self.fake_cmd)
-            raise Exception("Expected SSHException, got none")
-        except SSHException:
-            pass
+        self.assertRaises(SSHException, client.run_command, self.fake_cmd)
         del client
         server.join()
-
+    
     def test_pssh_client_timeout(self):
         listen_socket = make_socket(self.host)
         listen_port = listen_socket.getsockname()[1]
@@ -299,10 +296,12 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue(not output[self.host]['exit_code'],
                         msg="Got exit code %s for still running cmd.." % (
                             output[self.host]['exit_code'],))
+        self.assertFalse(client.finished(output))
         # Embedded server is also asynchronous and in the same thread
         # as our client so need to sleep for duration of server connection
         gevent.sleep(expected_lines)
         client.join(output)
+        self.assertTrue(client.finished(output))
         self.assertTrue(output[self.host]['exit_code'] == 0,
                         msg="Got non-zero exit code %s" % (
                             output[self.host]['exit_code'],))
@@ -727,3 +726,10 @@ class ParallelSSHClientTest(unittest.TestCase):
                              (stderr,
                               expected_stderr,))
         del client
+
+    def test_get_exit_codes_bad_output(self):
+        self.assertFalse(self.client.get_exit_codes({}))
+        self.assertFalse(self.client.get_exit_code({}))
+
+if __name__ == '__main__':
+    unittest.main()
