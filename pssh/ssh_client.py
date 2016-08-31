@@ -21,7 +21,7 @@
 import sys
 from gevent import sleep
 import paramiko
-from paramiko.ssh_exception import ChannelException as channel_exception
+from paramiko.ssh_exception import ChannelException
 import os
 from socket import gaierror as sock_gaierror, error as sock_error
 from .exceptions import UnknownHostException, AuthenticationException, \
@@ -143,7 +143,7 @@ class SSHClient(object):
                         ('127.0.0.1', 0))
           sleep(0)
           return self._connect(self.client, self.host, self.port, sock=proxy_channel)
-        except channel_exception, ex:
+        except ChannelException, ex:
           error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
           raise ConnectionErrorException("Error connecting to host '%s:%s' - %s",
                                          self.host, self.port,
