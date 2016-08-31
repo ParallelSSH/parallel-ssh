@@ -328,7 +328,8 @@ not match source %s" % (copied_file_data, test_file_data))
         del _server, _listen_socket
 
     def test_openssh_config_missing(self):
-        client = SSHClient(self.host, _openssh_config_file='fake', num_retries=1)
+        client = SSHClient(self.host, port=self.listen_port,
+                           _openssh_config_file='fake', num_retries=1)
         self.assertTrue(client)
 
 if __name__ == '__main__':
