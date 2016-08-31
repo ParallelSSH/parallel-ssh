@@ -94,8 +94,11 @@ class SSHClient(object):
         the SSH agent
         :type allow_agent: bool
         """
-        host, _user, _port, _pkey = read_openssh_config(
-            host, config_file=_openssh_config_file)
+        try:
+            host, _user, _port, _pkey = read_openssh_config(
+                host, config_file=_openssh_config_file)
+        except TypeError:
+            host, _user, _port, _pkey = host, None, 22, None
         user = user if user else _user
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
