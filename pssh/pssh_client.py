@@ -603,9 +603,9 @@ future releases - use self.run_command instead", DeprecationWarning)
             exc = sys.exc_info()
             try:
                 host = ex.args[1]
-            except IndexError, ex:
+            except IndexError, _ex:
                 logger.error("Got exception with no host argument - "
-                             "cannot update output data with %s", ex)
+                             "cannot update output data with %s", _ex)
                 raise exc[1], None, exc[2]
             self._update_host_output(output, host, None, None, None, None, None, cmd,
                                      exception=ex)
