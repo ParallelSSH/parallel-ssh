@@ -515,9 +515,9 @@ class ParallelSSHClient(object):
         for cmd in cmds:
             try:
                 self.get_output(cmd, output)
-            except Exception, ex:
+            except Exception:
                 if stop_on_errors:
-                    raise ex
+                    raise
         return output
     
     def exec_command(self, *args, **kwargs):
@@ -600,15 +600,16 @@ future releases - use self.run_command instead", DeprecationWarning)
         try:
             (channel, host, stdout, stderr, stdin) = cmd.get()
         except Exception, ex:
+            exc = sys.exc_info()
             try:
                 host = ex.args[1]
-            except IndexError:
+            except IndexError, ex:
                 logger.error("Got exception with no host argument - "
                              "cannot update output data with %s", ex)
-                raise ex
+                raise exc[1], None, exc[2]
             self._update_host_output(output, host, None, None, None, None, None, cmd,
                                      exception=ex)
-            raise ex
+            raise
         self._update_host_output(output, host, self._get_exit_code(channel),
                                  channel, stdout, stderr, stdin, cmd)
 
