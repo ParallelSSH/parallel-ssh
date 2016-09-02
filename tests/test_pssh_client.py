@@ -184,7 +184,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         except AuthenticationException:
             pass
         del client
-        server.join()
+        server.kill()
 
     def test_pssh_client_hosts_list_part_failure(self):
         """Test getting output for remainder of host list in the case where one
@@ -230,7 +230,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    )
         self.assertRaises(SSHException, client.run_command, self.fake_cmd)
         del client
-        server.join()
+        server.kill()
     
     def test_pssh_client_timeout(self):
         listen_socket = make_socket(self.host)
@@ -258,7 +258,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         #                  msg="Channel timeout %s does not match requested timeout %s" %(
         #                      chan_timeout, client_timeout,))
         del client
-        server.join()
+        server.kill()
 
     def test_pssh_client_exec_command_password(self):
         """Test password authentication. Embedded server accepts any password
@@ -498,6 +498,65 @@ class ParallelSSHClientTest(unittest.TestCase):
                          (stdout,
                           expected_stdout,))
         self.server.kill()
+        proxy_server.kill()
+
+    def test_ssh_proxy_auth(self):
+        """Test connecting to remote destination via SSH proxy
+        client -> proxy -> destination
+        Proxy SSH server accepts no commands and sends no responses, only
+        proxies to destination. Destination accepts a command as usual."""
+        proxy_server_socket = make_socket('127.0.0.2')
+        proxy_server_port = proxy_server_socket.getsockname()[1]
+        proxy_server = start_server(proxy_server_socket)
+        proxy_user = 'proxy_user'
+        proxy_password = 'fake'
+        gevent.sleep(2)
+        client = ParallelSSHClient([self.host], port=self.listen_port,
+                                   pkey=self.user_key,
+                                   proxy_host='127.0.0.2',
+                                   proxy_port=proxy_server_port,
+                                   proxy_user=proxy_user,
+                                   proxy_password='fake',
+                                   proxy_pkey=self.user_key,
+                                   )
+        gevent.sleep(2)
+        output = client.run_command(self.fake_cmd)
+        stdout = list(output[self.host]['stdout'])
+        expected_stdout = [self.fake_resp]
+        self.assertEqual(expected_stdout, stdout,
+                         msg="Got unexpected stdout - %s, expected %s" % (
+                             stdout, expected_stdout,))
+        self.assertEqual(client.host_clients[self.host].proxy_user, proxy_user)
+        self.assertEqual(client.host_clients[self.host].proxy_password, proxy_password)
+        self.assertTrue(client.host_clients[self.host].proxy_pkey)
+        self.server.kill()
+        proxy_server.kill()
+
+    def test_ssh_proxy_auth_fail(self):
+        """Test failures while connecting via proxy"""
+        listen_socket = make_socket(self.host)
+        listen_port = listen_socket.getsockname()[1]
+        self.server.kill()
+        server = start_server(listen_socket,
+                              fail_auth=True)
+        proxy_server_socket = make_socket('127.0.0.2')
+        proxy_server_port = proxy_server_socket.getsockname()[1]
+        proxy_server = start_server(proxy_server_socket)
+        proxy_user = 'proxy_user'
+        proxy_password = 'fake'
+        gevent.sleep(2)
+        client = ParallelSSHClient([self.host], port=listen_port,
+                                   pkey=self.user_key,
+                                   proxy_host='127.0.0.2',
+                                   proxy_port=proxy_server_port,
+                                   proxy_user=proxy_user,
+                                   proxy_password='fake',
+                                   proxy_pkey=self.user_key,
+                                   )
+        gevent.sleep(2)
+        self.assertRaises(AuthenticationException, client.run_command, self.fake_cmd)
+        del client
+        server.kill()
         proxy_server.kill()
 
     def test_bash_variable_substitution(self):

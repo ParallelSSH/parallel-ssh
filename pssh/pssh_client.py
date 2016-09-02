@@ -49,7 +49,8 @@ class ParallelSSHClient(object):
     def __init__(self, hosts,
                  user=None, password=None, port=None, pkey=None,
                  forward_ssh_agent=True, num_retries=DEFAULT_RETRIES, timeout=120,
-                 pool_size=10, proxy_host=None, proxy_port=22,
+                 pool_size=10, proxy_host=None, proxy_port=22, proxy_user=None,
+                 proxy_password=None, proxy_pkey=None,
                  agent=None, allow_agent=True, host_config=None, channel_timeout=None):
         """
         :param hosts: Hosts to connect to
@@ -298,7 +299,9 @@ class ParallelSSHClient(object):
         self.pkey = pkey
         self.num_retries = num_retries
         self.timeout = timeout
-        self.proxy_host, self.proxy_port = proxy_host, proxy_port
+        self.proxy_host, self.proxy_port, self.proxy_user, self.proxy_password, \
+          self.proxy_pkey = proxy_host, proxy_port, proxy_user, \
+          proxy_password, proxy_pkey
         # To hold host clients
         self.host_clients = {}
         self.agent = agent
@@ -555,7 +558,11 @@ future releases - use self.run_command instead", DeprecationWarning)
                                                 timeout=self.timeout,
                                                 proxy_host=self.proxy_host,
                                                 proxy_port=self.proxy_port,
-                                                allow_agent=self.allow_agent, agent=self.agent,
+                                                proxy_user=self.proxy_user,
+                                                proxy_password=self.proxy_password,
+                                                proxy_pkey=self.proxy_pkey,
+                                                allow_agent=self.allow_agent,
+                                                agent=self.agent,
                                                 channel_timeout=self.channel_timeout)
         return self.host_clients[host].exec_command(*args, **kwargs)
     

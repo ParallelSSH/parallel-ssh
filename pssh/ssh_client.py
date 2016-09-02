@@ -44,7 +44,8 @@ class SSHClient(object):
                  pkey=None, forward_ssh_agent=True,
                  num_retries=DEFAULT_RETRIES, agent=None,
                  allow_agent=True, timeout=10, proxy_host=None,
-                 proxy_port=22, channel_timeout=None,
+                 proxy_port=22, proxy_user=None, proxy_password=None,
+                 proxy_pkey=None, channel_timeout=None,
                  _openssh_config_file=None):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
@@ -115,7 +116,9 @@ class SSHClient(object):
         self.num_retries = num_retries
         self.timeout = timeout
         self.channel_timeout = channel_timeout
-        self.proxy_host, self.proxy_port = proxy_host, proxy_port
+        self.proxy_host, self.proxy_port, self.proxy_user, self.proxy_password, \
+          self.proxy_pkey = proxy_host, proxy_port, proxy_user, \
+          proxy_password, proxy_pkey
         self.proxy_client = None
         if self.proxy_host and self.proxy_port:
             logger.debug("Proxy configured for destination host %s - Proxy host: %s:%s",
@@ -134,13 +137,14 @@ class SSHClient(object):
         """
         self.proxy_client = paramiko.SSHClient()
         self.proxy_client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
-        self._connect(self.proxy_client, self.proxy_host, self.proxy_port)
+        self._connect(self.proxy_client, self.proxy_host, self.proxy_port,
+                      user=self.proxy_user, password=self.proxy_password,
+                      pkey=self.proxy_pkey)
         logger.info("Connecting via SSH proxy %s:%s -> %s:%s", self.proxy_host,
                     self.proxy_port, self.host, self.port,)
         try:
-          proxy_channel = self.proxy_client.get_transport().\
-            open_channel('direct-tcpip', (self.host, self.port,),
-                        ('127.0.0.1', 0))
+          proxy_channel = self.proxy_client.get_transport().open_channel(
+            'direct-tcpip', (self.host, self.port,), ('127.0.0.1', 0))
           sleep(0)
           return self._connect(self.client, self.host, self.port, sock=proxy_channel)
         except ChannelException, ex:
@@ -149,7 +153,8 @@ class SSHClient(object):
                                          self.host, self.port,
                                          str(error_type))
     
-    def _connect(self, client, host, port, sock=None, retries=1):
+    def _connect(self, client, host, port, sock=None, retries=1,
+                 user=None, password=None, pkey=None):
         """Connect to host
         
         :raises: :mod:`pssh.exceptions.AuthenticationException` on authentication error
@@ -158,20 +163,20 @@ class SSHClient(object):
         :raises: :mod:`pssh.exceptions.SSHException` on other undefined SSH errors
         """
         try:
-            client.connect(host, username=self.user,
-                           password=self.password, port=port,
-                           pkey=self.pkey,
+            client.connect(host, username=user if user else self.user,
+                           password=password if password else self.password,
+                           port=port, pkey=pkey if pkey else self.pkey,
                            sock=sock, timeout=self.timeout,
                            allow_agent=self.allow_agent)
         except sock_gaierror, ex:
             logger.error("Could not resolve host '%s' - retry %s/%s",
-                         self.host, retries, self.num_retries)
+                         host, retries, self.num_retries)
             while retries < self.num_retries:
                 sleep(5)
                 return self._connect(client, host, port, sock=sock,
                                      retries=retries+1)
             raise UnknownHostException("Unknown host %s - %s - retry %s/%s",
-                                       self.host, str(ex.args[1]), retries,
+                                       host, str(ex.args[1]), retries,
                                        self.num_retries)
         except sock_error, ex:
             logger.error("Error connecting to host '%s:%s' - retry %s/%s",
