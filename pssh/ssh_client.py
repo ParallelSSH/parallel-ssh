@@ -313,7 +313,10 @@ class SSHClient(object):
             parent_path = directory.split(os.path.sep, 1)[0]
             sub_dirs = None
         if not parent_path and directory.startswith(os.path.sep):
-            parent_path, sub_dirs = sub_dirs.split(os.path.sep, 1)
+            try:
+                parent_path, sub_dirs = sub_dirs.split(os.path.sep, 1)
+            except ValueError:
+                return True
         try:
             sftp.stat(parent_path)
         except IOError:
@@ -348,6 +351,7 @@ class SSHClient(object):
         :raises: :mod:`ValueError` when a directory is supplied to local_file \
         and recurse is not set
         """
+        # import ipdb; ipdb.set_trace()
         if os.path.isdir(local_file) and recurse:
             return self._copy_dir(local_file, remote_file)
         elif os.path.isdir(local_file) and not recurse:
@@ -355,15 +359,13 @@ class SSHClient(object):
                              "directory.")
         sftp = self._make_sftp()
         try:
-            destination = [_dir for _dir in remote_file.split(os.path.sep)
-                           if _dir][:-1][0]
+            destination = os.path.sep.join([_dir for _dir in remote_file.split(os.path.sep)
+                           if _dir][:-1])
         except IndexError:
             destination = ''
         if remote_file.startswith(os.path.sep) or not destination:
             destination = os.path.sep + destination
-        try:
-            sftp.stat(destination)
-        except IOError:
+        if os.path.sep in remote_file:
             self.mkdir(sftp, destination)
         sftp.chdir()
         try:
