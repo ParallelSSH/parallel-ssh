@@ -88,6 +88,16 @@ class ParallelSSHClient(object):
         :param proxy_port: (Optional) SSH port to use to login to proxy host if \
         set. Defaults to 22.
         :type proxy_port: int
+        :param proxy_user: (Optional) User to login to ``proxy_host`` as. Defaults to \
+        logged in user.
+        :type proxy_user: str
+        :param proxy_password: (Optional) Password to login to ``proxy_host`` with. \
+        Defaults to no password
+        :type proxy_password: str
+        :param proxy_pkey: (Optional) Private key to be used for authentication \
+        with ``proxy_host``. Defaults to available keys from SSHAgent and user's \
+        home directory keys
+        :type proxy_pkey: :mod:`paramiko.PKey`
         :param agent: (Optional) SSH agent object to programmatically supply an \
         agent to override system SSH agent with
         :type agent: :mod:`pssh.agent.SSHAgent`

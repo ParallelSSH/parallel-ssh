@@ -62,7 +62,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         del self.server
         del self.listen_socket
         del self.client
-            
+    
     def test_pssh_client_exec_command(self):
         cmd = self.client.exec_command(self.fake_cmd)[0]
         output = self.client.get_stdout(cmd)
@@ -360,7 +360,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         del client
     
     def test_pssh_client_directory(self):
-        """Tests copying directories with SSH client. Copy all the files from
+        """Tests copying multiple directories with SSH client. Copy all the files from
         local directory to server, then make sure they are all present."""
         test_file_data = 'test'
         local_test_path = 'directory_test'
@@ -373,8 +373,10 @@ class ParallelSSHClientTest(unittest.TestCase):
         os.mkdir(local_test_path)
         remote_file_paths = []
         for i in range(0, 10):
-            local_file_path = os.path.join(local_test_path, 'foo' + str(i))
-            remote_file_path = os.path.join(remote_test_path, 'foo' + str(i))
+            local_file_path_dir = os.path.join(local_test_path, 'dir_foo' + str(i))
+            os.mkdir(local_file_path_dir)
+            local_file_path = os.path.join(local_file_path_dir, 'foo' + str(i))
+            remote_file_path = os.path.join(remote_test_path, 'dir_foo' + str(i), 'foo' + str(i))
             remote_file_paths.append(remote_file_path)
             test_file = open(local_file_path, 'w')
             test_file.write(test_file_data)
