@@ -8,10 +8,10 @@ Run commands via SSH over tens/hundreds/thousands+ number of servers asynchronou
 .. image:: https://img.shields.io/pypi/v/parallel-ssh.svg
   :target: https://pypi.python.org/pypi/parallel-ssh
   :alt: Latest Version
-.. image:: https://travis-ci.org/pkittenis/parallel-ssh.svg?branch=master
-  :target: https://travis-ci.org/pkittenis/parallel-ssh
-.. image:: https://coveralls.io/repos/pkittenis/parallel-ssh/badge.png?branch=master
-  :target: https://coveralls.io/r/pkittenis/parallel-ssh?branch=master
+.. image:: https://travis-ci.org/ParallelSSH/parallel-ssh.svg?branch=master
+  :target: https://travis-ci.org/ParallelSSH/parallel-ssh
+.. image:: https://coveralls.io/repos/ParallelSSH/parallel-ssh/badge.png?branch=master
+  :target: https://coveralls.io/r/ParallelSSH/parallel-ssh?branch=master
 .. image:: https://readthedocs.org/projects/parallel-ssh/badge/?version=latest
   :target: http://parallel-ssh.readthedocs.org/en/latest/
   :alt: Latest documentation
@@ -40,7 +40,7 @@ Run ``ls`` on two remote hosts in parallel with ``sudo``.
   hosts = ['myhost1', 'myhost2']
   client = ParallelSSHClient(hosts)
   output = client.run_command('ls -ltrh /tmp/', sudo=True)
-  print output
+  print(output)
   {'myhost1': {'exit_code': None, 'stdout': <generator>, 'stderr': <generator>, 'channel': <channel>, 'cmd' : <greenlet>, 'exception' : None},
    'myhost2': {'exit_code': None, 'stdout': <generator>, 'stderr': <generator>, 'channel': <channel>, 'cmd' : <greenlet>, 'exception' : None}}
 
@@ -61,7 +61,7 @@ Exit codes become available once stdout/stderr is iterated on or ``client.join(o
 ::
 
   for host in output:
-      print output[host]['exit_code']
+      print(output[host]['exit_code'])
   0
   0
 
@@ -74,7 +74,7 @@ Similarly, if only exit codes are needed but not output ::
   output = client.run_command('exit 0')
   # Block and gather exit codes. Output variable is updated in-place
   client.join(output)
-  print output[client.hosts[0]]['exit_code']
+  print(output[client.hosts[0]]['exit_code'])
   0
 
 There is a also host logger that can be enabled to log output from remote hosts. The helper function ``pssh.utils.enable_host_logger`` will enable host logging to stdout, for example ::
