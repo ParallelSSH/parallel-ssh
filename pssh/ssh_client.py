@@ -372,6 +372,6 @@ class SSHClient(object):
         except Exception, error:
             logger.error("Error occured copying file %s to remote destination %s:%s - %s",
                          local_file, self.host, remote_file, error)
-        else:
-            logger.info("Copied local file %s to remote destination %s:%s",
-                        local_file, self.host, remote_file)
+            raise error
+        logger.info("Copied local file %s to remote destination %s:%s",
+                    local_file, self.host, remote_file)
