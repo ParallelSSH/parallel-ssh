@@ -290,8 +290,9 @@ class SSHClient(object):
         try:
             sftp.mkdir(directory)
         except IOError, error:
-            logger.error("Error occured creating directory %s on %s - %s",
-                         directory, self.host, error)
+            msg = "Error occured creating directory %s on %s - %s"
+            logger.error(msg, directory, self.host, error)
+            raise IOError(msg, directory, self.host, error)
         logger.debug("Creating remote directory %s", directory)
         return True
 
