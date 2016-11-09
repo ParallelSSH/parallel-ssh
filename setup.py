@@ -29,6 +29,9 @@ setup(name='parallel-ssh',
       packages=find_packages('.', exclude=(
           'embedded_server', 'embedded_server.*')),
       install_requires=['paramiko', 'gevent'],
+      extras_require={':python_version < "3"': ['gevent<=1.1'],
+                      ':python_version >= "3"': ['gevent>=1.1'],
+                      },
       classifiers=[
         'License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)',
         'Intended Audience :: Developers',
