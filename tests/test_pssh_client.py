@@ -33,6 +33,8 @@ import paramiko
 import os
 import warnings
 import shutil
+import sys
+
 
 PKEY_FILENAME = os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key'])
 USER_KEY = paramiko.RSAKey.from_private_key_file(PKEY_FILENAME)
@@ -390,6 +392,60 @@ class ParallelSSHClientTest(unittest.TestCase):
             self.assertTrue(os.path.isfile(path))
         shutil.rmtree(local_test_path)
         shutil.rmtree(remote_test_path)
+
+    def test_pssh_client_copy_file_failure(self):
+        """Test failure scenarios of file copy"""
+        test_file_data = 'test'
+        local_test_path = 'directory_test'
+        remote_test_path = 'directory_test_copied'
+        for path in [local_test_path, remote_test_path]:
+            mask = int('0700') if sys.version_info <= (2,) else 0o700
+            if os.path.isdir(path):
+                os.chmod(path, mask)
+            for root, dirs, files in os.walk(path):
+                os.chmod(root, mask)
+                for _path in files + dirs:
+                    os.chmod(os.path.join(root, _path), mask)
+            try:
+                shutil.rmtree(path)
+            except OSError:
+                pass
+        os.mkdir(local_test_path)
+        os.mkdir(remote_test_path)
+        local_file_path = os.path.join(local_test_path, 'test_file')
+        remote_file_path = os.path.join(remote_test_path, 'test_file')
+        test_file = open(local_file_path, 'w')
+        test_file.write('testing\n')
+        test_file.close()
+        # Permission errors on writing into dir
+        mask = 0111 if sys.version_info <= (2,) else 0o111
+        os.chmod(remote_test_path, mask)
+        client = ParallelSSHClient([self.host], port=self.listen_port,
+                                   pkey=self.user_key)
+        cmds = client.copy_file(local_test_path, remote_test_path, recurse=True)
+        for cmd in cmds:
+            try:
+                cmd.get()
+                raise Exception("Expected IOError exception, got none")
+            except IOError:
+                pass
+        self.assertFalse(os.path.isfile(remote_file_path))
+        # Create directory tree failure test
+        local_file_path = os.path.join(local_test_path, 'test_file')
+        remote_file_path = os.path.join(remote_test_path, 'test_dir', 'test_file')
+        cmds = client.copy_file(local_file_path, remote_file_path, recurse=True)
+        for cmd in cmds:
+            try:
+                cmd.get()
+                raise Exception("Expected IOError exception on creating remote "
+                                "directory, got none")
+            except IOError:
+                pass
+        self.assertFalse(os.path.isfile(remote_file_path))
+        mask = int('0600') if sys.version_info <= (2,) else 0o600
+        os.chmod(remote_test_path, mask)
+        for path in [local_test_path, remote_test_path]:
+            shutil.rmtree(path)
     
     def test_pssh_pool_size(self):
         """Test setting pool size to non default values"""
