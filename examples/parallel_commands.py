@@ -2,9 +2,10 @@ from pssh import ParallelSSHClient
 import datetime
 
 output = []
-host = 'localhost'
+host = '192.168.1.2'
 hosts = [host]
 client = ParallelSSHClient(hosts)
+import ipdb; ipdb.set_trace()
 
 # Run 10 five second sleeps
 cmds = ['sleep 5' for _ in xrange(10)]
@@ -17,5 +18,6 @@ print("Started %s commands on %s host(s) in %s" % (
 start = datetime.datetime.now()
 for _output in output:
     client.join(_output)
+    print(_output)
 end = datetime.datetime.now()
 print("All commands finished in %s" % (end-start,))

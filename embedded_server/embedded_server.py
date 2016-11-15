@@ -30,7 +30,7 @@ Implements:
 
 Does _not_ support interactive shells, our clients do not use them.
 
-Server private key is hardcoded. Server listen code inspired by demo_server.py in \
+Server private key is hardcoded. Server listen code inspired by demo_server.py in
 Paramiko repository.
 
 Server runs asynchronously in its own greenlet. Call `start_server` with a new `multiprocessing.Process` to run it on a new process with its own event loop.
@@ -62,12 +62,34 @@ host_key = paramiko.RSAKey(filename=os.path.sep.join([
     os.path.dirname(__file__), 'rsa.key']))
 
 class Server(paramiko.ServerInterface):
-    def __init__(self, transport, fail_auth=False,
+    """Implements :mod:`paramiko.ServerInterface` to provide an
+    embedded SSH server implementation.
+
+    Start a `Server` with at least a transport and a host key.
+
+    Any SSH2 client with public key or password authentication
+    is allowed, only. Shell requests are not accepted.
+
+    Implemented:
+    * Direct tcp-ip channels (tunneling)
+    * SSH Agent forwarding on request
+    * PTY requests
+    * Exec requests (run a command on server)
+
+    Not Implemented:
+    * Shell requests
+    """
+
+    def __init__(self, transport, host_key, fail_auth=False,
                  ssh_exception=False):
         self.event = Event()
         self.fail_auth = fail_auth
         self.ssh_exception = ssh_exception
         self.transport = transport
+        self.host_key = host_key
+        transport.load_server_moduli()
+        transport.add_server_key(self.host_key)
+        transport.set_subsystem_handler('sftp', paramiko.SFTPServer, StubSFTPServer)
 
     def check_channel_request(self, kind, chanid):
         return paramiko.OPEN_SUCCEEDED
@@ -175,33 +197,29 @@ def listen(sock, fail_auth=False, ssh_exception=False,
 
 def _handle_ssh_connection(transport, fail_auth=False,
                            ssh_exception=False):
-    try:
-        transport.load_server_moduli()
-    except:
-        return
-    transport.add_server_key(host_key)
-    transport.set_subsystem_handler('sftp', paramiko.SFTPServer, StubSFTPServer)
-    server = Server(transport,
+    server = Server(transport, HOST_KEY,
                     fail_auth=fail_auth, ssh_exception=ssh_exception)
+    # server.run()
     try:
         transport.start_server(server=server)
     except paramiko.SSHException as e:
         logger.exception('SSH negotiation failed')
-        return
     except Exception:
         logger.exception("Error occured starting server")
         return
-    gevent.sleep(0)
-    channel = transport.accept(20)
-    if not channel:
-        logger.error("Could not establish channel")
-        return
-    while transport.is_active():
-        logger.debug("Transport active, waiting..")
-        gevent.sleep(1)
-    while not channel.send_ready():
-        gevent.sleep(.2)
-    channel.close()
+    while True:
+        gevent.sleep(0)
+        channel = transport.accept(20)
+        if not channel:
+            logger.error("Could not establish channel")
+            return
+        while transport.is_active():
+            logger.debug("Transport active, waiting..")
+            gevent.sleep(1)
+        while not channel.send_ready():
+            gevent.sleep(.2)
+        channel.close()
+        gevent.sleep(0)
 
 def handle_ssh_connection(sock,
                           fail_auth=False, ssh_exception=False,
@@ -227,8 +245,12 @@ def handle_ssh_connection(sock,
 
 def start_server(sock, fail_auth=False, ssh_exception=False,
                  timeout=None):
-    return gevent.spawn(listen, sock, fail_auth=fail_auth,
-                        timeout=timeout, ssh_exception=ssh_exception)
+    g = gevent.spawn(listen, sock, fail_auth=fail_auth,
+                     timeout=timeout, ssh_exception=ssh_exception)
+    try:
+        g.join()
+    except KeyboardInterrupt:
+        sys.exit(0)
 
 if __name__ == "__main__":
     logging.basicConfig()
