@@ -35,7 +35,7 @@ Paramiko repository.
 
 Server runs asynchronously in its own greenlet. Call `start_server` with a new `multiprocessing.Process` to run it on a new process with its own event loop.
 
-*Warning* - Note that commands, with or without a shell, are actually run on the system running this server. Destructive commands will actually affect the system as permissions of user running the server allow. *Use at your own risk*.
+*Warning* - Note that commands, with or without a shell, are actually run on the system running this server. Destructive commands will affect the system as permissions of user running the server allow. **Use at your own risk**.
 """
 
 import sys
