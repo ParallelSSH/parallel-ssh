@@ -120,7 +120,6 @@ class SSHClient(object):
           self.proxy_pkey = proxy_host, proxy_port, proxy_user, \
           proxy_password, proxy_pkey
         self.proxy_client = None
-        import ipdb; ipdb.set_trace()
         if self.proxy_host and self.proxy_port:
             logger.debug("Proxy configured for destination host %s - Proxy host: %s:%s",
                          self.host, self.proxy_host, self.proxy_port,)

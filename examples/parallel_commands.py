@@ -2,10 +2,9 @@ from pssh import ParallelSSHClient
 import datetime
 
 output = []
-host = '192.168.1.2'
+host = 'localhost'
 hosts = [host]
 client = ParallelSSHClient(hosts)
-import ipdb; ipdb.set_trace()
 
 # Run 10 five second sleeps
 cmds = ['sleep 5' for _ in xrange(10)]
