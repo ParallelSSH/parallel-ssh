@@ -749,16 +749,26 @@ future releases - use self.run_command instead", DeprecationWarning)
 
     def copy_file(self, local_file, remote_file, recurse=False):
         """Copy local file to remote file in parallel
-        
+
+        This function returns a list of greenlets which can be
+        `join`ed on to wait for completion.
+
+        Use `.get` on each greenlet to raise any exceptions from them.
+
+        Exceptions listed here are raised when `.get` is called on each
+        greenlet, not this function itself.
+
         :param local_file: Local filepath to copy to remote host
         :type local_file: str
         :param remote_file: Remote filepath on remote host to copy file to
         :type remote_file: str
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
-        
+
         :raises: :mod:`ValueError` when a directory is supplied to local_file \
         and recurse is not set
+        :raises: :mod:`IOError` on I/O errors writing files
+        :raises: :mod:`OSError` on OS errors like permission denied
         
         .. note ::
         
