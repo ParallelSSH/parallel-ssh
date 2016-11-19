@@ -27,5 +27,5 @@ deploy:
     secure: ZQJ41Nguc7Y5XHvtN8lITIiW1S1jvy0p50rssMUJpa9wVZIh0HcW0K/Xv2v17fDNuOvQlVbsF0sY/BmcRfH7c7nzwt7fRXGOjXbZk5djqwusKXL6zlVN7OKjAY6j2EByOjD9UpDDkB5tDqb4lRBCX87wknii/t+7/8P0ddoBojM=
   on:
     tags: true
-  distributions: sdist bdist_wheel
+  distributions: sdist
   repo: ParallelSSH/parallel-ssh
