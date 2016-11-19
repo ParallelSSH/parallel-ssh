@@ -351,6 +351,8 @@ class SSHClient(object):
         
         :raises: :mod:`ValueError` when a directory is supplied to ``local_file`` \
         and ``recurse`` is not set
+        :raises: :mod:`IOError` on I/O errors writing files
+        :raises: :mod:`OSError` on OS errors like permission denied
         """
         if os.path.isdir(local_file) and recurse:
             return self._copy_dir(local_file, remote_file)
