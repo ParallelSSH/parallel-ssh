@@ -16,12 +16,15 @@
 from setuptools import setup, find_packages
 import sys
 
+import versioneer
+
 convert_2_to_3 = {}
 if sys.version_info >= (3,):
     convert_2_to_3['use_2to3'] = True
 
 setup(name='parallel-ssh',
-      version='0.93.0',
+      version=versioneer.get_version(),
+      cmdclass=versioneer.get_cmdclass(),
       description='Asynchronous parallel SSH library',
       author='Panos Kittenis',
       author_email='22e889d8@opayq.com',

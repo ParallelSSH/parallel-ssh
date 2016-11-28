@@ -1,0 +1,2 @@
+include versioneer.py
+include pssh/_version.py

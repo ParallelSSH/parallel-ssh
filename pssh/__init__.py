@@ -37,3 +37,7 @@ import logging
 
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger('pssh')
+
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions
