@@ -147,7 +147,7 @@ class SSHClient(object):
             'direct-tcpip', (self.host, self.port,), ('127.0.0.1', 0))
           sleep(0)
           return self._connect(self.client, self.host, self.port, sock=proxy_channel)
-        except ChannelException, ex:
+        except ChannelException as ex:
           error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
           raise ConnectionErrorException("Error connecting to host '%s:%s' - %s",
                                          self.host, self.port,
@@ -168,7 +168,7 @@ class SSHClient(object):
                            port=port, pkey=pkey if pkey else self.pkey,
                            sock=sock, timeout=self.timeout,
                            allow_agent=self.allow_agent)
-        except sock_gaierror, ex:
+        except sock_gaierror as ex:
             logger.error("Could not resolve host '%s' - retry %s/%s",
                          host, retries, self.num_retries)
             while retries < self.num_retries:
@@ -178,7 +178,7 @@ class SSHClient(object):
             raise UnknownHostException("Unknown host %s - %s - retry %s/%s",
                                        host, str(ex.args[1]), retries,
                                        self.num_retries)
-        except sock_error, ex:
+        except sock_error as ex:
             logger.error("Error connecting to host '%s:%s' - retry %s/%s",
                          self.host, self.port, retries, self.num_retries)
             while retries < self.num_retries:
@@ -189,12 +189,12 @@ class SSHClient(object):
             raise ConnectionErrorException("Error connecting to host '%s:%s' - %s - retry %s/%s",
                                            self.host, self.port,
                                            str(error_type), retries, self.num_retries,)
-        except paramiko.AuthenticationException, ex:
+        except paramiko.AuthenticationException as ex:
             msg = "Authentication error while connecting to %s:%s."
             raise AuthenticationException(msg, host, port)
         # SSHException is more general so should be below other types
         # of SSH failure
-        except paramiko.SSHException, ex:
+        except paramiko.SSHException as ex:
             msg = "General SSH error - %s" % (ex,)
             logger.error(msg)
             raise SSHException(msg, host, port)
@@ -289,7 +289,7 @@ class SSHClient(object):
         """
         try:
             sftp.mkdir(directory)
-        except IOError, error:
+        except IOError as error:
             msg = "Error occured creating directory %s on %s - %s"
             logger.error(msg, directory, self.host, error)
             raise IOError(msg, directory, self.host, error)
@@ -372,7 +372,7 @@ class SSHClient(object):
         sftp.chdir()
         try:
             sftp.put(local_file, remote_file)
-        except Exception, error:
+        except Exception as error:
             logger.error("Error occured copying file %s to remote destination %s:%s - %s",
                          local_file, self.host, remote_file, error)
             raise error

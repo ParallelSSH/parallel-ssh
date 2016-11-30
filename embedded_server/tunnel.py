@@ -66,6 +66,6 @@ class Tunneler(gevent.Greenlet):
                      self.transport.get_username())
         try:
             self.tunnel(self.socket, channel)
-        except Exception, ex:
+        except Exception as ex:
             logger.exception("Got exception creating tunnel - %s", ex,)
         logger.debug("Finished tunneling")

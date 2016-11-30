@@ -616,11 +616,11 @@ future releases - use self.run_command instead", DeprecationWarning)
         """
         try:
             (channel, host, stdout, stderr, stdin) = cmd.get()
-        except Exception, ex:
+        except Exception as ex:
             exc = sys.exc_info()
             try:
                 host = ex.args[1]
-            except IndexError, _ex:
+            except IndexError as _ex:
                 logger.error("Got exception with no host argument - "
                              "cannot update output data with %s", _ex)
                 raise exc[1], None, exc[2]

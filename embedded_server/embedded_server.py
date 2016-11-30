@@ -104,7 +104,7 @@ class Server(paramiko.ServerInterface):
         try:
             tunnel = Tunneler(destination, self.transport, chanid)
             tunnel.start()
-        except Exception, ex:
+        except Exception as ex:
             logger.error("Error creating proxy connection to %s - %s",
                          destination, ex,)
             return paramiko.OPEN_FAILED_CONNECT_FAILED
@@ -144,7 +144,7 @@ def make_socket(listen_ip, port=0):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind((listen_ip, port))
-    except Exception, e:
+    except Exception as e:
         logger.error('Failed to bind to address - %s' % (str(e),))
         traceback.print_exc()
         return
@@ -166,7 +166,7 @@ def listen(sock, fail_auth=False, ssh_exception=False,
         sock.listen(100)
         logger.info('Listening for connection on %s:%s..', listen_ip,
                     listen_port)
-    except Exception, e:
+    except Exception as e:
         logger.error('*** Listen failed: %s' % (str(e),))
         traceback.print_exc()
         return
@@ -185,7 +185,7 @@ def _handle_ssh_connection(transport, fail_auth=False,
                     fail_auth=fail_auth, ssh_exception=ssh_exception)
     try:
         transport.start_server(server=server)
-    except paramiko.SSHException, e:
+    except paramiko.SSHException as e:
         logger.exception('SSH negotiation failed')
         return
     except Exception:
@@ -216,7 +216,7 @@ def handle_ssh_connection(sock,
         transport = paramiko.Transport(conn)
         _handle_ssh_connection(transport, fail_auth=fail_auth,
                                ssh_exception=ssh_exception)
-    except Exception, e:
+    except Exception as e:
         logger.error('*** Caught exception: %s: %s' % (str(e.__class__), str(e),))
         traceback.print_exc()
         try:
