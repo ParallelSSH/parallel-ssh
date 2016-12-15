@@ -28,6 +28,9 @@ The `libev event loop library <http://software.schmorp.de/pkg/libev.html>`_ is u
 See :mod:`pssh.ParallelSSHClient` and :mod:`pssh.SSHClient` for class documentation.
 """
 
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions
 from .pssh_client import ParallelSSHClient
 from .ssh_client import SSHClient
 from .utils import enable_host_logger
@@ -37,7 +40,3 @@ import logging
 
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger('pssh')
-
-from ._version import get_versions
-__version__ = get_versions()['version']
-del get_versions
