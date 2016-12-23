@@ -37,3 +37,8 @@ class AuthenticationException(Exception):
 class SSHException(Exception):
     """Raised on SSHException error - error authenticating with SSH server"""
     pass
+
+
+class HostArgumentException(Exception):
+    """Raised on errors with per-host command arguments"""
+    pass

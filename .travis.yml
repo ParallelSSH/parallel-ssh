@@ -15,9 +15,6 @@ script:
   - python setup.py nosetests --with-coverage --cover-package=pssh
   # If using py3, run 2to3 on embedded server and tests and run nosetests for new test dir
   - python -c 'import sys; sys.version_info >= (3,) and sys.exit(1)' || eval "2to3 -nw embedded_server/*.py && 2to3 tests/*.py -o tests3 -nw && cp tests/test_client_private_key* tests3/ && python setup.py nosetests -w tests3 --with-coverage --cover-package=pssh"
-notifications:
-  email:
-    on_failure: change
 after_success:
   - coveralls
 deploy:

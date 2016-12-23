@@ -19,25 +19,28 @@
 
 """Unittests for :mod:`pssh.ParallelSSHClient` class"""
 
+
 import unittest
-from pssh import ParallelSSHClient, UnknownHostException, \
-     AuthenticationException, ConnectionErrorException, SSHException, logger as pssh_logger
-from pssh.utils import load_private_key
-from embedded_server.embedded_server import start_server, make_socket, \
-     logger as server_logger, paramiko_logger
-from embedded_server.fake_agent import FakeAgent
 import random
 import logging
-import gevent
-import paramiko
 import os
 import warnings
 import shutil
 import sys
 
+import gevent
+from pssh import ParallelSSHClient, UnknownHostException, \
+     AuthenticationException, ConnectionErrorException, SSHException, \
+     logger as pssh_logger
+from pssh.exceptions import HostArgumentException
+from pssh.utils import load_private_key
+from embedded_server.embedded_server import start_server, make_socket, \
+     logger as server_logger, paramiko_logger
+from embedded_server.fake_agent import FakeAgent
+from paramiko import RSAKey
 
 PKEY_FILENAME = os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key'])
-USER_KEY = paramiko.RSAKey.from_private_key_file(PKEY_FILENAME)
+USER_KEY = RSAKey.from_private_key_file(PKEY_FILENAME)
 
 server_logger.setLevel(logging.DEBUG)
 pssh_logger.setLevel(logging.DEBUG)
@@ -228,7 +231,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient([self.host],
                                    user='fakey', password='fakey',
                                    port=listen_port,
-                                   pkey=paramiko.RSAKey.generate(1024),
+                                   pkey=RSAKey.generate(1024),
                                    )
         self.assertRaises(SSHException, client.run_command, self.fake_cmd)
         del client
@@ -710,7 +713,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         hosts = [host]
         client = ParallelSSHClient(hosts, port=port,
                                    user='fakey', password='fakey',
-                                   pkey=paramiko.RSAKey.generate(1024))
+                                   pkey=RSAKey.generate(1024))
         output = client.run_command(self.fake_cmd, stop_on_errors=False)
         gevent.sleep(1)
         client.pool.join()
@@ -826,7 +829,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         expected_exit_code = 0
         expected_stdout = [self.fake_resp]
         expected_stderr = []
-
         stdout = list(output[self.host]['stdout'])
         stderr = list(output[self.host]['stderr'])
         exit_code = output[self.host]['exit_code']
@@ -847,6 +849,70 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_get_exit_codes_bad_output(self):
         self.assertFalse(self.client.get_exit_codes({}))
         self.assertFalse(self.client.get_exit_code({}))
+
+    def test_per_host_tuple_args(self):
+        server2_socket = make_socket('127.0.0.2', port=self.listen_port)
+        server2_port = server2_socket.getsockname()[1]
+        server2 = start_server(server2_socket)
+        server3_socket = make_socket('127.0.0.3', port=self.listen_port)
+        server3_port = server3_socket.getsockname()[1]
+        server3 = start_server(server3_socket)
+        hosts = [self.host, '127.0.0.2', '127.0.0.3']
+        host_args = ('arg1', 'arg2', 'arg3')
+        cmd = 'echo %s'
+        client = ParallelSSHClient(hosts, port=self.listen_port,
+                                   pkey=self.user_key)
+        output = client.run_command(cmd, host_args=host_args)
+        for i, host in enumerate(hosts):
+            expected = [host_args[i]]
+            stdout = list(output[host]['stdout'])
+            self.assertEqual(expected, stdout)
+            self.assertTrue(output[host]['exit_code'] == 0)
+        host_args = (('arg1', 'arg2'), ('arg3', 'arg4'), ('arg5', 'arg6'),)
+        cmd = 'echo %s %s'
+        output = client.run_command(cmd, host_args=host_args)
+        for i, host in enumerate(hosts):
+            expected = ["%s %s" % host_args[i]]
+            stdout = list(output[host]['stdout'])
+            self.assertEqual(expected, stdout)
+            self.assertTrue(output[host]['exit_code'] == 0)
+        self.assertRaises(HostArgumentException, client.run_command,
+                          cmd, host_args=[host_args[0]])
+
+    def test_per_host_dict_args(self):
+        server2_socket = make_socket('127.0.0.2', port=self.listen_port)
+        server2_port = server2_socket.getsockname()[1]
+        server2 = start_server(server2_socket)
+        server3_socket = make_socket('127.0.0.3', port=self.listen_port)
+        server3_port = server3_socket.getsockname()[1]
+        server3 = start_server(server3_socket)
+        hosts = [self.host, '127.0.0.2', '127.0.0.3']
+        hosts_gen = (h for h in hosts)
+        host_args = [dict(zip(('host_arg1', 'host_arg2',),
+                              ('arg1-%s' % (i,), 'arg2-%s' % (i,),)))
+                     for i, _ in enumerate(hosts)]
+        cmd = 'echo %(host_arg1)s %(host_arg2)s'
+        client = ParallelSSHClient(hosts, port=self.listen_port,
+                                   pkey=self.user_key)
+        output = client.run_command(cmd, host_args=host_args)
+        for i, host in enumerate(hosts):
+            expected = ["%(host_arg1)s %(host_arg2)s" % host_args[i]]
+            stdout = list(output[host]['stdout'])
+            self.assertEqual(expected, stdout)
+            self.assertTrue(output[host]['exit_code'] == 0)
+        self.assertRaises(HostArgumentException, client.run_command,
+                          cmd, host_args=[host_args[0]])
+        # Host list generator should work also
+        client.hosts = hosts_gen
+        output = client.run_command(cmd, host_args=host_args)
+        for i, host in enumerate(hosts):
+            expected = ["%(host_arg1)s %(host_arg2)s" % host_args[i]]
+            stdout = list(output[host]['stdout'])
+            self.assertEqual(expected, stdout)
+            self.assertTrue(output[host]['exit_code'] == 0)
+        client.hosts = (h for h in hosts)
+        self.assertRaises(HostArgumentException, client.run_command,
+                          cmd, host_args=[host_args[0]])
 
 if __name__ == '__main__':
     unittest.main()

@@ -30,6 +30,8 @@ gevent.hub.Hub.NOT_ERROR = (Exception,)
 import warnings
 import string
 import random
+
+from .exceptions import HostArgumentException
 from .constants import DEFAULT_RETRIES
 from .ssh_client import SSHClient
 
@@ -348,6 +350,11 @@ class ParallelSSHClient(object):
         :param use_shell: (Optional) Run command with or without shell. Defaults \
         to True - use shell defined in user login to run command string
         :type use_shell: bool
+        :param host_args: (Optional) Format command string with per-host \
+        arguments in ``host_args``. ``host_args`` length must equal length of \
+        host list - :mod:`pssh.exceptions.HostArgumentException` is raised \
+        otherwise
+        :type host_args: tuple or list
         :rtype: Dictionary with host as key as per \
           :mod:`pssh.pssh_client.ParallelSSHClient.get_output`
         
@@ -355,6 +362,9 @@ class ParallelSSHClient(object):
         :raises: :mod:`pssh.exceptions.UnknownHostException` on DNS resolution error
         :raises: :mod:`pssh.exceptions.ConnectionErrorException` on error connecting
         :raises: :mod:`pssh.exceptions.SSHException` on other undefined SSH errors
+        :raises: :mod:`pssh.exceptions.HostArgumentException` on number of host \
+        arguments not equal to number of hosts
+        :raises: `TypeError` on not enough host arguments for cmd string format
         
         **Example Usage**
         
@@ -364,14 +374,15 @@ class ParallelSSHClient(object):
         
           output = client.run_command('ls -ltrh')
         
-        *print stdout for each command*
+        **Print stdout for each command**
         
         .. code-block:: python
         
           for host in output:
-              for line in output[host]['stdout']: print(line)
+              for line in output[host]['stdout']:
+                  print(line)
         
-        *Get exit codes after command has finished*
+        **Get exit codes after command has finished**
 
         .. code-block:: python
         
@@ -391,7 +402,8 @@ class ParallelSSHClient(object):
           for line in output[host]['stdout']:
               print(line)
         
-        *Run with sudo*
+        **Run with sudo**
+        
 
         .. code-block:: python
         
@@ -410,8 +422,45 @@ class ParallelSSHClient(object):
           for host in output:
               stdout = list(output[host]['stdout'])
               print("Complete stdout for host %s is %s" % (host, stdout,))
+
+        **Command with per-host arguments**
+
+        ``host_args`` keyword parameter can be used to provide string formatting
+        arguments to use to format the command string.
+
+        ``host_args`` should be at least as many as number of hosts.
+
+        Any string format specification characters may be used in command string.
+
+        *Examples*
+        
+        .. code-block:: python
+
+          # Tuple
+          # 
+          # First host in hosts list will use cmd 'host1_cmd',
+          # second host 'host2_cmd' and so on
+          output = client.run_command('%s', host_args=('host1_cmd',
+                                                       'host2_cmd',
+                                                       'host3_cmd',))
+          
+          # Multiple arguments
+          #
+          output = client.run_command('%s %s',
+                                      host_args=(('host1_cmd1', 'host1_cmd2'),
+                                                 ('host2_cmd1', 'host2_cmd2'),
+                                                 ('host3_cmd1', 'host3_cmd2'),))
+          
+          # List of dict
+          # 
+          # Fist host in host list will use cmd 'host-index-0',
+          # second host 'host-index-1' and so on
+          output = client.run_command(
+            '%(cmd)s', host_args=[{'cmd': 'host-index-%s' % (i,))
+                                  for i in range(len(client.hosts))]
         
         **Expression as host list**
+
         
         Any type of iterator may be used as host list, including generator and
         list comprehension expressions.
@@ -477,7 +526,7 @@ class ParallelSSHClient(object):
           Started 10 commands in 0:00:00.428629
           All commands finished in 0:00:05.014757
         
-        **Output dictionary**
+        *Output dictionary*
         
         ::
         
@@ -522,8 +571,20 @@ class ParallelSSHClient(object):
         
         """
         stop_on_errors = kwargs.pop('stop_on_errors', True)
-        cmds = [self.pool.spawn(self._exec_command, host, *args, **kwargs)
-                for host in self.hosts]
+        host_args = kwargs.pop('host_args', None)
+        if host_args:
+            try:
+                cmds = [self.pool.spawn(self._exec_command, host,
+                                        args[0] % host_args[host_i],
+                                        *args[1:], **kwargs)
+                        for host_i, host in enumerate(self.hosts)]
+            except IndexError:
+                raise HostArgumentException(
+                    "Number of host arguments provided does not match "
+                    "number of hosts ")
+        else:
+            cmds = [self.pool.spawn(self._exec_command, host, *args, **kwargs)
+                    for host in self.hosts]
         output = {}
         for cmd in cmds:
             try:
