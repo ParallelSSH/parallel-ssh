@@ -425,10 +425,10 @@ class ParallelSSHClient(object):
 
         **Command with per-host arguments**
 
-        ``host_args`` keyword parameter can be used to provide string formatting
-        arguments to use to format the command string.
+        ``host_args`` keyword parameter can be used to provide arguments to use
+        to format the command string.
 
-        ``host_args`` should be at least as many as number of hosts.
+        Number of ``host_args`` should be at least as many as number of hosts.
 
         Any string format specification characters may be used in command string.
 
