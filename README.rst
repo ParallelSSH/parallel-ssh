@@ -26,7 +26,7 @@ Installation
 
    pip install parallel-ssh
 
-As of version ``0.93.0`` pip versions >= ``0.6.0`` are required for Python 2.6 compatibility. This limitation will be removed in ``1.0.0`` release which will drop ``2.6`` support.
+As of version ``0.93.0`` pip versions >= ``6.0.0`` are required for Python 2.6 compatibility. This limitation will be removed in ``1.0.0`` release which will drop ``2.6`` support.
 
 *************
 Usage Example
