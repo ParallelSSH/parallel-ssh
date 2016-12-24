@@ -11,6 +11,7 @@ omit =
     pssh_local.py
     setup.py
     /home/travis/virtualenv/python*/lib/python*/*
+    */_version.py
 exclude_lines =
     pragma: no cover
     def __repr__
