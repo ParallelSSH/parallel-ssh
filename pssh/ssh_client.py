@@ -298,14 +298,14 @@ class SSHClient(object):
 
     def mkdir(self, sftp, directory):
         """Make directory via SFTP channel.
-        
+
         Parent paths in the directory are created if they do not exist.
-        
+
         :param sftp: SFTP client object
         :type sftp: :mod:`paramiko.SFTPClient`
         :param directory: Remote directory to create
         :type directory: str
-        
+
         Catches and logs at error level remote IOErrors on creating directory.
         """
         try:
@@ -360,7 +360,7 @@ class SSHClient(object):
             raise ValueError("Recurse must be true if local_file is a "
                              "directory.")
         sftp = self._make_sftp()
-        destination = self._parent_path_split(remote_file)
+        destination = self._parent_paths_split(remote_file)
         try:
             sftp.stat(destination)
         except IOError:
@@ -375,70 +375,71 @@ class SSHClient(object):
         logger.info("Copied local file %s to remote destination %s:%s",
                     local_file, self.host, remote_file)
 
-    def _copy_dir_to_local(self, remote_dir, local_dir):
-        """Copies the remote directory to the local host."""
-        sftp = self._make_sftp()
-        file_list = sftp.listdir(remote_dir)
-        for file_name in file_list:
-            remote_path = os.path.join(remote_dir, file_name)
-            local_path = os.path.join(local_dir, file_name)
-            self.copy_file_to_local(remote_path, local_path, recurse=True)
-
-    def copy_file_to_local(self, remote_file, local_file, recurse=False):
+    def copy_remote_file(self, remote_file, local_file, recurse=False,
+                         sftp=None):
         """Copy remote file to local host via SFTP/SCP
 
-        Copy is done natively using SFTP/SCP version 2 protocol, no scp command \
+        Copy is done natively using SFTP/SCP version 2, no scp command \
         is used or required.
 
-        :param remote_file: Remote filepath to copy the file from.
+        :param remote_file: Remote filepath to copy from
         :type remote_file: str
-        :param local_file: Local filepath where the file will be copied.
+        :param local_file: Local filepath where file(s) will be copied to
         :type local_file: str
-        :param recurse: Whether or not to recursively copy directories.
+        :param recurse: Whether or not to recursively copy directories
         :type recurse: bool
 
         :raises: :mod:`ValueError` when a directory is supplied to remote_file \
         and recurse is not set
-        :raises: :mod:`OSError` on OS errors creating directories or file
-        :raises: :mod:`IOError` on IO errors creating directories or file
+        :raises: :mod:`IOError` on I/O errors creating directories or file
+        :raises: :mod:`OSError` on OS errors like permission denied
         """
-        sftp = self._make_sftp()
+        sftp = self._make_sftp() if not sftp else sftp
         try:
-            sftp.listdir(remote_file)
-        except (OSError, IOError):
-            remote_dir_exists = False
+            file_list = sftp.listdir(remote_file)
+        except IOError:
+            # remote_file is not dir
+            pass
         else:
-            remote_dir_exists = True
-        if remote_dir_exists and recurse:
-            return self._copy_dir_to_local(remote_file, local_file)
-        elif remote_dir_exists and not recurse:
-            raise ValueError("Recurse must be true if remote_file is a "
-                             "directory.")
-        destination = self._parent_path_split(local_file)
+            if not recurse:
+                raise ValueError("Recurse must be true if remote_file is a "
+                                 "directory.")
+            return self._copy_remote_dir(file_list, remote_file,
+                                         local_file, sftp)
+        destination = self._parent_paths_split(local_file)
         self._make_local_dir(destination)
         try:
             sftp.get(remote_file, local_file)
-        except Exception, error:
-            logger.error("Error occured copying file %s from remote destination %s:%s - %s",
+        except Exception as error:
+            logger.error("Error occured copying file %s from remote destination"
+                         " %s:%s - %s",
                          local_file, self.host, remote_file, error)
-            raise error
-        else:
-            logger.info("Copied local file %s from remote destination %s:%s",
-                        local_file, self.host, remote_file)
+            raise
+        logger.info("Copied local file %s from remote destination %s:%s",
+                    local_file, self.host, remote_file)
+
+    def _copy_remote_dir(self, file_list, remote_dir, local_dir, sftp):
+        for file_name in file_list:
+            remote_path = os.path.join(remote_dir, file_name)
+            local_path = os.path.join(local_dir, file_name)
+            self.copy_remote_file(remote_path, local_path, sftp=sftp,
+                                  recurse=True)
 
     def _make_local_dir(self, dirpath):
-        if not os.path.exists(dirpath):
-            try:
-                os.makedirs(dirpath)
-            except OSError:
-                logger.error("Unable to create local directory structure for "
-                             "directory %s", dirpath)
-                raise
-
-    def _parent_path_split(self, file_path):
+        if os.path.exists(dirpath):
+            return
         try:
-            destination = [_dir for _dir in file_path.split(os.path.sep)
-                            if _dir][:-1][0]
+            os.makedirs(dirpath)
+        except OSError:
+            logger.error("Unable to create local directory structure for "
+                         "directory %s", dirpath)
+            raise
+
+    def _parent_paths_split(self, file_path):
+        try:
+            destination = os.path.sep.join(
+                [_dir for _dir in file_path.split(os.path.sep)
+                 if _dir][:-1])
         except IndexError:
             destination = ''
         if file_path.startswith(os.path.sep) or not destination:

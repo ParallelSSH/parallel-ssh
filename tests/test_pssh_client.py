@@ -451,31 +451,63 @@ class ParallelSSHClientTest(unittest.TestCase):
         for path in [local_test_path, remote_test_path]:
             shutil.rmtree(path)
     
-    def test_pssh_copy_file_to_local(self):
+    def test_pssh_copy_remote_file(self):
         """Test parallel copy file to local host"""
         test_file_data = 'test'
-        remote_filename = 'test_file'
-        local_test_dir, local_filename = 'local_test_dir', 'test_file_copy'
-        local_filename = os.path.sep.join([local_test_dir, local_filename])
-        test_file = open(remote_filename, 'w')
-        test_file.writelines([test_file_data + os.linesep])
-        test_file.close()
-        server = start_server({ self.fake_cmd : self.fake_resp },
-                              self.listen_socket)
+        local_test_path = 'directory_test_local_remote_copied'
+        remote_test_path = 'directory_test_remote_copy'
+        local_copied_dir = '_'.join([local_test_path, self.host])
+        new_local_copied_dir = '.'.join([local_test_path, self.host])
+        for path in [local_test_path, remote_test_path, local_copied_dir,
+                     new_local_copied_dir]:
+            try:
+                shutil.rmtree(path)
+            except OSError:
+                try:
+                    os.unlink(path)
+                except Exception:
+                    pass
+                pass
+        os.mkdir(remote_test_path)
+        local_file_paths = []
+        for i in range(0, 10):
+            remote_file_path_dir = os.path.join(remote_test_path, 'dir_foo' + str(i))
+            os.mkdir(remote_file_path_dir)
+            remote_file_path = os.path.join(remote_file_path_dir, 'foo' + str(i))
+            local_file_path = os.path.join(local_copied_dir, 'dir_foo' + str(i), 'foo' + str(i))
+            local_file_paths.append(local_file_path)
+            test_file = open(remote_file_path, 'w')
+            test_file.write(test_file_data)
+            test_file.close()
         client = ParallelSSHClient([self.host], port=self.listen_port,
                                    pkey=self.user_key)
-        cmds = client.copy_file_to_local(remote_filename, local_filename)
-        cmds[0].get()
-        local_filename += '_' + self.host
-        self.assertTrue(os.path.isdir(local_test_dir),
-                        msg="SFTP create local directory failed")
-        self.assertTrue(os.path.isfile(local_filename),
-                        msg="SFTP copy failed")
-        for filepath in [remote_filename, local_filename]:
-            os.unlink(filepath)
-        shutil.rmtree(local_test_dir)
-        del client
-        server.join()
+        cmds = client.copy_remote_file(remote_test_path, local_test_path)
+        for cmd in cmds:
+            self.assertRaises(ValueError, cmd.get)
+        cmds = client.copy_remote_file(remote_test_path, local_test_path,
+                                       recurse=True)
+        for cmd in cmds:
+            cmd.get()
+        try:
+            self.assertTrue(os.path.isdir(local_copied_dir))
+            for path in local_file_paths:
+                self.assertTrue(os.path.isfile(path))
+        except Exception:
+            shutil.rmtree(remote_test_path)
+        finally:
+            shutil.rmtree(local_copied_dir)
+        cmds = client.copy_remote_file(remote_test_path, local_test_path,
+                                       suffix_separator='.', recurse=True)
+        for cmd in cmds:
+            cmd.get()
+        new_local_copied_dir = '.'.join([local_test_path, self.host])
+        try:
+            for path in local_file_paths:
+                path = path.replace(local_copied_dir, new_local_copied_dir)
+                self.assertTrue(os.path.isfile(path))
+        finally:
+            shutil.rmtree(new_local_copied_dir)
+            shutil.rmtree(remote_test_path)
 
     def test_pssh_pool_size(self):
         """Test setting pool size to non default values"""
