@@ -843,13 +843,14 @@ future releases - use self.run_command instead", DeprecationWarning)
                                 {'recurse' : recurse})
                 for host in self.hosts]
 
-    def _copy_file(self, host, local_file, remote_file, recurse):
+    def _copy_file(self, host, local_file, remote_file, recurse=False):
         """Make sftp client, copy file"""
         self._make_ssh_client(host)
         return self.host_clients[host].copy_file(local_file, remote_file,
                                                  recurse=recurse)
 
-    def copy_file_to_local(self, remote_file, local_file, recurse=False):
+    def copy_remote_file(self, remote_file, local_file, recurse=False,
+                         suffix_separator='_'):
         """Copy remote file to local file in parallel
 
         :param remote_file: remote filepath to copy to local host
@@ -858,25 +859,34 @@ future releases - use self.run_command instead", DeprecationWarning)
         :type local_file: str
         :param recurse: whether or not to recurse
         :type recurse: bool
+        :param suffix_separator: (Optional) Separator string between \
+        filename and host, defaults to ``_``. Eg for a ``local_file`` value of \
+        ``my_file`` and default seaparator the resulting filename will be \
+        ``my_file_my_host`` for the file from host ``my_host``
+        :type suffix_separator: str
         .. note ::
           Local directories in `local_file` that do not exist will be
           created as long as permissions allow.
 
         .. note ::
           File names will be de-duplicated by appending the hostname to the
-          filepath.
+          filepath separated by ``suffix_separator``.
 
         :rtype: List(:mod:`gevent.Greenlet`) of greenlets for remote copy \
         commands
         """
-        return [self.pool.spawn(self._copy_file_to_local, host, remote_file, local_file, recurse)
-                for host in self.hosts]
+        return [self.pool.spawn(
+            self._copy_remote_file, host, remote_file,
+            local_file, recurse, suffix_separator=suffix_separator)
+            for host in self.hosts]
 
-    def _copy_file_to_local(self, host, remote_file, local_file, recurse):
+    def _copy_remote_file(self, host, remote_file, local_file, recurse,
+                          suffix_separator='_'):
         """Make sftp client, copy file to local"""
+        file_w_suffix = suffix_separator.join([local_file, host])
         self._make_ssh_client(host)
-        return self.host_clients[host].copy_file_to_local(
-                remote_file, '_'.join([local_file, host]), recurse=recurse)
+        return self.host_clients[host].copy_remote_file(
+                remote_file, file_w_suffix, recurse=recurse)
 
     def _make_ssh_client(self, host):
         if not host in self.host_clients or not self.host_clients[host]:
