@@ -814,6 +814,8 @@ future releases - use self.run_command instead", DeprecationWarning)
         This function returns a list of greenlets which can be
         `join`ed on to wait for completion.
 
+        :mod:`gevent.joinall` function may be used to join on all greenlets.
+
         Use `.get` on each greenlet to raise any exceptions from them.
 
         Exceptions listed here are raised when `.get` is called on each
@@ -851,7 +853,17 @@ future releases - use self.run_command instead", DeprecationWarning)
 
     def copy_remote_file(self, remote_file, local_file, recurse=False,
                          suffix_separator='_'):
-        """Copy remote file to local file in parallel
+        """Copy remote file(s) in parallel
+
+        This function, like :mod:`ParallelSSHClient.copy_file`, returns a list
+        of greenlets which can be `join`ed on to wait for completion.
+
+        :mod:`gevent.joinall` function may be used to join on all greenlets.
+
+        Use `.get` on each greenlet to raise any exceptions from them.
+
+        Exceptions listed here are raised when `.get` is called on each
+        greenlet, not this function itself.
 
         :param remote_file: remote filepath to copy to local host
         :type remote_file: str
@@ -860,9 +872,9 @@ future releases - use self.run_command instead", DeprecationWarning)
         :param recurse: whether or not to recurse
         :type recurse: bool
         :param suffix_separator: (Optional) Separator string between \
-        filename and host, defaults to ``_``. Eg for a ``local_file`` value of \
-        ``my_file`` and default seaparator the resulting filename will be \
-        ``my_file_my_host`` for the file from host ``my_host``
+        filename and host, defaults to ``_``. For example, for a ``local_file`` \
+        value of ``my_file`` and default separator the resulting filename will \
+        be ``my_file_my_host`` for the file from host ``my_host``
         :type suffix_separator: str
         .. note ::
           Local directories in `local_file` that do not exist will be
