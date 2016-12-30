@@ -68,13 +68,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         del self.listen_socket
         del self.client
     
-    def test_pssh_client_exec_command(self):
-        cmd = self.client.exec_command(self.fake_cmd)[0]
-        output = self.client.get_stdout(cmd)
-        self.assertTrue(self.host in output,
-                        msg="No output for host")
-        self.assertTrue(output[self.host]['exit_code'] == 0)
-
     def test_pssh_client_no_stdout_non_zero_exit_code_immediate_exit(self):
         output = self.client.run_command('exit 1')
         expected_exit_code = 1
@@ -84,31 +77,6 @@ class ParallelSSHClientTest(unittest.TestCase):
                          msg="Got unexpected exit code - %s, expected %s" %
                          (exit_code,
                           expected_exit_code,))
-
-    def test_pssh_client_exec_command_get_buffers(self):
-        client = ParallelSSHClient([self.host], port=self.listen_port,
-                                   pkey=self.user_key,
-                                   agent=self.agent)
-        cmd = client.exec_command(self.fake_cmd)[0]
-        output = client.get_stdout(cmd, return_buffers=True)
-        expected_exit_code = 0
-        expected_stdout = [self.fake_resp]
-        expected_stderr = []
-        exit_code = output[self.host]['exit_code']
-        stdout = list(output[self.host]['stdout'])
-        stderr = list(output[self.host]['stderr'])
-        self.assertEqual(expected_exit_code, exit_code,
-                         msg="Got unexpected exit code - %s, expected %s" %
-                         (exit_code,
-                          expected_exit_code,))
-        self.assertEqual(expected_stdout, stdout,
-                         msg="Got unexpected stdout - %s, expected %s" % 
-                         (stdout,
-                          expected_stdout,))
-        self.assertEqual(expected_stderr, stderr,
-                         msg="Got unexpected stderr - %s, expected %s" % 
-                         (stderr,
-                          expected_stderr,))
 
     def test_pssh_client_run_command_get_output(self):
         client = ParallelSSHClient([self.host], port=self.listen_port,
@@ -175,21 +143,15 @@ class ParallelSSHClientTest(unittest.TestCase):
         del client
 
     def test_pssh_client_auth_failure(self):
-        listen_socket = make_socket(self.host)
-        listen_port = listen_socket.getsockname()[1]
-        server = start_server(listen_socket, fail_auth=True)
+        self.server.kill()
+        server_socket = make_socket(self.host)
+        listen_port = server_socket.getsockname()[1]
+        server = start_server(server_socket, fail_auth=True)
         client = ParallelSSHClient([self.host], port=listen_port,
                                    pkey=self.user_key,
                                    agent=self.agent)
-        cmd = client.exec_command(self.fake_cmd)[0]
-        # Handle exception
-        try:
-            cmd.get()
-            raise Exception("Expected AuthenticationException, got none")
-        except AuthenticationException:
-            pass
+        self.assertRaises(AuthenticationException, client.run_command, self.fake_cmd)
         del client
-        server.kill()
 
     def test_pssh_client_hosts_list_part_failure(self):
         """Test getting output for remainder of host list in the case where one
@@ -238,6 +200,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         server.kill()
     
     def test_pssh_client_timeout(self):
+        self.server.kill()
         listen_socket = make_socket(self.host)
         listen_port = listen_socket.getsockname()[1]
         server_timeout=0.2
@@ -258,38 +221,21 @@ class ParallelSSHClientTest(unittest.TestCase):
             raise server.exception
         except gevent.Timeout:
             pass
-        # chan_timeout = output[self.host]['channel'].gettimeout()
-        # self.assertEqual(client_timeout, chan_timeout,
-        #                  msg="Channel timeout %s does not match requested timeout %s" %(
-        #                      chan_timeout, client_timeout,))
         del client
         server.kill()
 
-    def test_pssh_client_exec_command_password(self):
+    def test_pssh_client_run_command_password(self):
         """Test password authentication. Embedded server accepts any password
         even empty string"""
         client = ParallelSSHClient([self.host], port=self.listen_port,
                                    password='')
-        cmd = client.exec_command(self.fake_cmd)[0]
-        output = client.get_stdout(cmd)
+        output = client.run_command(self.fake_cmd)
+        client.join(output)
         self.assertTrue(self.host in output,
                         msg="No output for host")
         self.assertTrue(output[self.host]['exit_code'] == 0,
                         msg="Expected exit code 0, got %s" % (
                             output[self.host]['exit_code'],))
-        del client
-
-    def test_pssh_client_long_running_command(self):
-        expected_lines = 5
-        client = ParallelSSHClient([self.host], port=self.listen_port,
-                                   pkey=self.user_key)
-        cmd = client.exec_command(self.long_cmd(expected_lines))[0]
-        output = client.get_stdout(cmd, return_buffers=True)
-        self.assertTrue(self.host in output, msg="Got no output for command")
-        stdout = list(output[self.host]['stdout'])
-        self.assertTrue(len(stdout) == expected_lines,
-                        msg="Expected %s lines of response, got %s" % (
-                            expected_lines, len(stdout)))
         del client
 
     def test_pssh_client_long_running_command_exit_codes(self):
