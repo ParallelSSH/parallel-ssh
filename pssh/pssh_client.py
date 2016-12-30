@@ -594,6 +594,22 @@ class ParallelSSHClient(object):
                     raise
         return output
     
+    def exec_command(self, *args, **kwargs):
+        """Run command on all hosts in parallel, honoring `self.pool_size`
+        
+        **Deprecated by** :mod:`pssh.pssh_client.ParallelSSHClient.run_command`
+        
+        :param args: Position arguments for command
+        :type args: tuple
+        :param kwargs: Keyword arguments for command
+        :type kwargs: dict
+        
+        :rtype: List of :mod:`gevent.Greenlet`"""
+        warnings.warn("This method is being deprecated and will be removed in \
+future releases - use self.run_command instead", DeprecationWarning)
+        return [self.pool.spawn(self._exec_command, host, *args, **kwargs)
+                for host in self.hosts]
+    
     def _get_host_config_values(self, host):
         _user = self.host_config.get(host, {}).get('user', self.user)
         _port = self.host_config.get(host, {}).get('port', self.port)
@@ -750,6 +766,47 @@ class ParallelSSHClient(object):
             return
         channel.close()
         return channel.recv_exit_status()
+
+    def get_stdout(self, greenlet, return_buffers=False):
+        """Get/print stdout from greenlet and return exit code for host
+        
+        **Deprecated** - use :mod:`pssh.pssh_client.ParallelSSHClient.get_output` instead.
+        
+        :param greenlet: Greenlet object containing an \
+        SSH channel reference, hostname, stdout and stderr buffers
+        :type greenlet: :mod:`gevent.Greenlet`
+        :param return_buffers: Flag to turn on returning stdout and stderr \
+        buffers along with exit code. Defaults to off.
+        :type return_buffers: bool
+        :rtype: Dictionary containing ``{host: {'exit_code': exit code}}`` entry \
+        for example ``{'myhost1': {'exit_code': 0}}``
+        :rtype: With ``return_buffers=True``: ``{'myhost1': {'exit_code': 0,
+                                                             'channel' : None or SSH channel of command if command is still executing,
+                                                             'stdout' : <iterable>,
+                                                             'stderr' : <iterable>,}}``
+        """
+        warnings.warn("This method is being deprecated and will be removed in"
+                      "future releases - use self.get_output instead", DeprecationWarning)
+        gevent.sleep(.2)
+        channel, host, stdout, stderr, stdin = greenlet.get()
+        if channel.exit_status_ready():
+            channel.close()
+        else:
+            logger.debug("Command still executing on get_stdout call - not closing channel and returning None as exit code.")
+            # If channel is not closed we cannot get full stdout/stderr so must return buffers
+            return_buffers = True
+        # Channel must be closed or reading stdout/stderr will block forever
+        if not return_buffers and channel.closed:
+            for _ in stdout:
+                pass
+            for _ in stderr:
+                pass
+            return {host: {'exit_code': channel.recv_exit_status(),}}
+        gevent.sleep(.2)
+        return {host: {'exit_code': channel.recv_exit_status() if channel.exit_status_ready() else None,
+                       'channel' : channel if not channel.closed else None,
+                       'stdout' : stdout,
+                       'stderr' : stderr, }}
 
     def copy_file(self, local_file, remote_file, recurse=False):
         """Copy local file to remote file in parallel
