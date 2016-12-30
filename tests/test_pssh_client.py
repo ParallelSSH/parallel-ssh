@@ -221,8 +221,9 @@ class ParallelSSHClientTest(unittest.TestCase):
             raise server.exception
         except gevent.Timeout:
             pass
-        del client
-        server.kill()
+        finally:
+            del client
+            server.kill()
 
     def test_pssh_client_run_command_password(self):
         """Test password authentication. Embedded server accepts any password
