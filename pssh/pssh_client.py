@@ -22,7 +22,6 @@ import sys
 if 'threading' in sys.modules:
     del sys.modules['threading']
 from gevent import monkey
-monkey.patch_all()
 import logging
 import gevent.pool
 import gevent.hub
@@ -53,7 +52,7 @@ class ParallelSSHClient(object):
                  forward_ssh_agent=True, num_retries=DEFAULT_RETRIES, timeout=120,
                  pool_size=10, proxy_host=None, proxy_port=22, proxy_user=None,
                  proxy_password=None, proxy_pkey=None,
-                 agent=None, allow_agent=True, host_config=None, channel_timeout=None):
+                 agent=None, allow_agent=True, host_config=None, channel_timeout=None, monkey_patch=True):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -113,6 +112,8 @@ class ParallelSSHClient(object):
         :param allow_agent: (Optional) set to False to disable connecting to \
         the SSH agent
         :type allow_agent: bool
+        :param monkey_patch: (Optional) whether to use gevent.monkey.patch_all()
+        :type monkey_patch: bool
         
         **Example Usage**
         
@@ -301,6 +302,10 @@ class ParallelSSHClient(object):
           
           Connection is terminated.
         """
+
+        if monkey_patch:
+            monkey.patch_all()
+
         self.pool_size = pool_size
         self.pool = gevent.pool.Pool(size=self.pool_size)
         self.hosts = hosts
