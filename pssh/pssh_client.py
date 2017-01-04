@@ -109,7 +109,6 @@ class ParallelSSHClient(object):
         :param channel_timeout: (Optional) Time in seconds before an SSH operation \
         times out.
         :type channel_timeout: int
-        :type channel_timeout: int
         :param allow_agent: (Optional) set to False to disable connecting to \
         the SSH agent
         :type allow_agent: bool
@@ -117,7 +116,10 @@ class ParallelSSHClient(object):
         **Example Usage**
         
         .. code-block:: python
-        
+
+          from __future__ import print_function
+          from pprint import pprint
+
           from pssh.pssh_client import ParallelSSHClient
           from pssh.exceptions import AuthenticationException, \\
             UnknownHostException, ConnectionErrorException
@@ -133,7 +135,7 @@ class ParallelSSHClient(object):
         
         .. code-block:: python
         
-          print(output)
+          pprint(output)
           
             {'myhost1': {'exit_code': None,
                          'stdout' : <generator>,
@@ -160,13 +162,15 @@ class ParallelSSHClient(object):
         
           import pssh.utils
           pssh.utils.enable_host_logger()
+          
           output = client.run_command('ls -ltrh')
           [myhost1]     drwxrwxr-x 6 user group 4.0K Jan 1 HH:MM x
           [myhost2]     drwxrwxr-x 6 user group 4.0K Jan 1 HH:MM x
         
         Retrieve exit codes after commands have finished as below.
         
-        ``exit_code`` in ``output`` will be ``None`` if command has not yet finished.
+        ``exit_code`` in ``output`` will be ``None`` immediately after call to
+        ``run_command``.
         
         `parallel-ssh` starts commands asynchronously to enable starting multiple
         commands in parallel without blocking.
@@ -178,7 +182,7 @@ class ParallelSSHClient(object):
         
         At least one of
         
-        * Iterating over stdout/stderr
+        * Iterating over stdout/stderr to completion
         * Calling ``client.join(output)``
         
         is necessary to cause `parallel-ssh` to wait for commands to finish and
@@ -186,9 +190,9 @@ class ParallelSSHClient(object):
 
         .. note ::
         
-          **Joining on client pool**
-        
-          ``client.pool.join()`` only blocks *until greenlets have started executing*
+          **Joining on client's gevent pool**
+          
+          ``client.pool.join()`` only blocks *until greenlets have started*
           which will be immediately as long as pool is not full.
         
         **Checking command completion**
@@ -212,7 +216,9 @@ class ParallelSSHClient(object):
         
         Use ``client.join(output)`` to block until all commands have finished
         and gather exit codes at same time.
-        
+
+        However, note that ``client.join(output)`` will consume stdout/stderr.
+
         **Exit code retrieval**
         
         ``get_exit_codes`` is not a blocking function and will not wait for commands
@@ -324,14 +330,19 @@ class ParallelSSHClient(object):
     def run_command(self, *args, **kwargs):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output buffers.
-        
-        This function will block until all commands been *sent* to remote servers
-        and then return immediately.
-        
+
+        This function will block until all commands have been *sent* to remote
+        servers and then return immediately
+
+        More explicitly, function will return after connection and 
+        authentication establishment and after commands have been sent to
+        successfully established SSH channels.
+
         Any connection and/or authentication exceptions will be raised here
-        and need catching *unless* `run_command` is called with
-        `stop_on_errors=False`.
-        
+        and need catching *unless* ``run_command`` is called with
+        ``stop_on_errors=False`` in which case exceptions are added to host
+        output instead.
+
         :param args: Positional arguments for command
         :type args: tuple
         :param sudo: (Optional) Run with sudo. Defaults to False
@@ -755,11 +766,14 @@ class ParallelSSHClient(object):
         """Copy local file to remote file in parallel
 
         This function returns a list of greenlets which can be
-        `join`ed on to wait for completion.
+        `join`-ed on to wait for completion.
 
-        :mod:`gevent.joinall` function may be used to join on all greenlets.
+        :mod:`gevent.joinall` function may be used to join on all greenlets and
+        will also raise exceptions if called with ``raise_error=True`` - default
+        is `False`.
 
-        Use `.get` on each greenlet to raise any exceptions from them.
+        Alternatively call `.get` on each greenlet to raise any exceptions from
+        it.
 
         Exceptions listed here are raised when `.get` is called on each
         greenlet, not this function itself.
@@ -796,17 +810,26 @@ class ParallelSSHClient(object):
 
     def copy_remote_file(self, remote_file, local_file, recurse=False,
                          suffix_separator='_'):
-        """Copy remote file(s) in parallel
+        """Copy remote file(s) in parallel as
+        <local_file><suffix_separator><host>
+
+        With a ``local_file`` value of ``myfile`` and default separator ``_``
+        the resulting filename will be ``myfile_myhost`` for the file from host
+        ``myhost``.
 
         This function, like :mod:`ParallelSSHClient.copy_file`, returns a list
-        of greenlets which can be `join`ed on to wait for completion.
+        of greenlets which can be `join`-ed on to wait for completion.
 
-        :mod:`gevent.joinall` function may be used to join on all greenlets.
+        :mod:`gevent.joinall` function may be used to join on all greenlets and
+        will also raise exceptions if called with ``raise_error=True`` - default
+        is `False`.
 
-        Use `.get` on each greenlet to raise any exceptions from them.
+        Alternatively call `.get` on each greenlet to raise any exceptions from
+        it.
 
-        Exceptions listed here are raised when `.get` is called on each
-        greenlet, not this function itself.
+        Exceptions listed here are raised when
+        ``gevent.joinall(<greenlets>, raise_error=True)`` or ``.get`` is called on
+        each greenlet, not this function itself.
 
         :param remote_file: remote filepath to copy to local host
         :type remote_file: str
@@ -816,9 +839,10 @@ class ParallelSSHClient(object):
         :type recurse: bool
         :param suffix_separator: (Optional) Separator string between \
         filename and host, defaults to ``_``. For example, for a ``local_file`` \
-        value of ``my_file`` and default separator the resulting filename will \
-        be ``my_file_my_host`` for the file from host ``my_host``
+        value of ``myfile`` and default separator the resulting filename will \
+        be ``myfile_myhost`` for the file from host ``myhost``
         :type suffix_separator: str
+
         .. note ::
           Local directories in `local_file` that do not exist will be
           created as long as permissions allow.
@@ -827,7 +851,7 @@ class ParallelSSHClient(object):
           File names will be de-duplicated by appending the hostname to the
           filepath separated by ``suffix_separator``.
 
-        :rtype: List(:mod:`gevent.Greenlet`) of greenlets for remote copy \
+        :rtype: list(:mod:`gevent.Greenlet`) of greenlets for remote copy \
         commands
         """
         return [self.pool.spawn(
