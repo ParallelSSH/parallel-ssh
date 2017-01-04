@@ -77,9 +77,9 @@ Exit codes become available once stdout/stderr is iterated on or ``client.join(o
   0
   0
 
-Joining on the connection pool can be used to block and wait for all parallel commands to finish *if output is not needed*. ::
+The client's join function can be used to block and wait for all parallel commands to finish *if output is not needed*. ::
 
-  client.pool.join()
+  client.join(output)
 
 Similarly, if only exit codes are needed but not output ::
 
