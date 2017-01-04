@@ -327,39 +327,41 @@ class SSHClient(object):
             return self.mkdir(sftp, sub_dirs)
         return True
 
-    def _copy_dir(self, local_dir, remote_dir):
+    def _copy_dir(self, local_dir, remote_dir, sftp):
         """Call copy_file on every file in the specified directory, copying
         them to the specified remote directory."""
         file_list = os.listdir(local_dir)
         for file_name in file_list:
             local_path = os.path.join(local_dir, file_name)
             remote_path = os.path.join(remote_dir, file_name)
-            self.copy_file(local_path, remote_path, recurse=True)
+            self.copy_file(local_path, remote_path, recurse=True,
+                           sftp=sftp)
 
-    def copy_file(self, local_file, remote_file, recurse=False):
+    def copy_file(self, local_file, remote_file, recurse=False,
+                  sftp=None):
         """Copy local file to host via SFTP/SCP
-        
+
         Copy is done natively using SFTP/SCP version 2 protocol, no scp command \
         is used or required.
-        
+
         :param local_file: Local filepath to copy to remote host
         :type local_file: str
         :param remote_file: Remote filepath on remote host to copy file to
         :type remote_file: str
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
-        
+
         :raises: :mod:`ValueError` when a directory is supplied to ``local_file`` \
         and ``recurse`` is not set
         :raises: :mod:`IOError` on I/O errors writing files
         :raises: :mod:`OSError` on OS errors like permission denied
         """
         if os.path.isdir(local_file) and recurse:
-            return self._copy_dir(local_file, remote_file)
+            return self._copy_dir(local_file, remote_file, sftp)
         elif os.path.isdir(local_file) and not recurse:
             raise ValueError("Recurse must be true if local_file is a "
                              "directory.")
-        sftp = self._make_sftp()
+        sftp = self._make_sftp() if not sftp else sftp
         destination = self._parent_paths_split(remote_file)
         try:
             sftp.stat(destination)
