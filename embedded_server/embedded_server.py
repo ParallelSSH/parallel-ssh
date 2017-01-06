@@ -38,12 +38,13 @@ Server runs asynchronously in its own greenlet. Call `start_server` with a new `
 *Warning* - Note that commands, with or without a shell, are actually run on the system running this server. Destructive commands will affect the system as permissions of user running the server allow. **Use at your own risk**.
 """
 
+from gipc import start_process
+from multiprocessing import Process
 import sys
 if 'threading' in sys.modules:
     del sys.modules['threading']
 from gevent import monkey
 monkey.patch_all()
-from multiprocessing import Process
 import os
 import gevent
 from gevent import socket
@@ -53,9 +54,11 @@ import traceback
 import logging
 import paramiko
 import time
+import gevent.subprocess
+import gevent.hub
+
 from .stub_sftp import StubSFTPServer
 from .tunnel import Tunneler
-import gevent.subprocess
 
 logger = logging.getLogger("embedded_server")
 paramiko_logger = logging.getLogger('paramiko.transport')
@@ -86,16 +89,16 @@ class Server(paramiko.ServerInterface):
                  ssh_exception=False,
                  socket=None,
                  port=0,
-                 listen_ip='127.0.0.1',
+                 host='127.0.0.1',
                  timeout=None):
         if not socket:
-            self.socket = make_socket(listen_ip, port)
+            self.socket = make_socket(host, port)
         if not self.socket:
             msg = "Could not establish listening connection on %s:%s"
-            logger.error(msg, listen_ip, port)
-            raise Exception(msg, listen_ip, port)
-        self.listen_ip = listen_ip
-        self.listen_port = self.socket.getsockname()[1]
+            logger.error(msg, host, port)
+            raise Exception(msg, host, port)
+        self.host = host
+        self.port = self.socket.getsockname()[1]
         self.event = Event()
         self.fail_auth = fail_auth
         self.ssh_exception = ssh_exception
@@ -105,15 +108,20 @@ class Server(paramiko.ServerInterface):
 
     def start_listening(self):
         try:
+            gevent.sleep(0)
             self.socket.listen(100)
-            logger.info('Listening for connection on %s:%s..', self.listen_ip,
-                        self.listen_port)
+            logger.info('Listening for connection on %s:%s..', self.host,
+                        self.port)
         except Exception as e:
             logger.error('*** Listen failed: %s' % (str(e),))
             traceback.print_exc()
             raise
+        gevent.sleep()
         conn, addr = self.socket.accept()
+        gevent.sleep(.2)
         logger.info('Got connection..')
+        # import ipdb; ipdb.set_trace()
+        gevent.sleep(.2)
         if self.timeout:
             logger.debug("SSH server sleeping for %s then raising socket.timeout",
                          self.timeout)
@@ -123,21 +131,26 @@ class Server(paramiko.ServerInterface):
         self.transport.add_server_key(self.host_key)
         self.transport.set_subsystem_handler('sftp', paramiko.SFTPServer,
                                              StubSFTPServer)
+        gevent.sleep()
         try:
             self.transport.start_server(server=self)
         except paramiko.SSHException as e:
             logger.exception('SSH negotiation failed')
             raise
+        gevent.sleep(0)
 
     def run(self):
         while True:
             try:
                 self.start_listening()
+                gevent.sleep(0)
             except Exception:
                 logger.exception("Error occured starting server")
                 continue
+            gevent.sleep(0)
             try:
                 self.accept_connections()
+                gevent.sleep(0)
             except Exception as e:
                 logger.error('*** Caught exception: %s: %s' % (str(e.__class__), str(e),))
                 traceback.print_exc()
@@ -152,8 +165,10 @@ class Server(paramiko.ServerInterface):
             gevent.sleep(0)
             channel = self.transport.accept(20)
             if not channel:
-                logger.error("Could not establish channel")
-                return
+                logger.error("Could not establish channel on %s:%s",
+                             self.host, self.port)
+                gevent.sleep(0)
+                continue
             while self.transport.is_active():
                 logger.debug("Transport active, waiting..")
                 gevent.sleep(1)
@@ -190,21 +205,28 @@ class Server(paramiko.ServerInterface):
         return True
 
     def check_channel_direct_tcpip_request(self, chanid, origin, destination):
+        # import ipdb; ipdb.set_trace()
         logger.debug("Proxy connection %s -> %s requested", origin, destination,)
         extra = {'username' : self.transport.get_username()}
         logger.debug("Starting proxy connection %s -> %s",
                      origin, destination, extra=extra)
+        self.event.set()
         try:
-            tunnel = Tunneler(destination, self.transport, chanid)
+            gevent.sleep(.2)
+            tunnel = Process(target=Tunneler, args=(destination, self.transport, chanid,))
+            tunnel.daemon = True
             tunnel.start()
+            gevent.sleep(.2)
         except Exception as ex:
             logger.error("Error creating proxy connection to %s - %s",
                          destination, ex,)
             return paramiko.OPEN_FAILED_CONNECT_FAILED
+        gevent.sleep(2)
         return paramiko.OPEN_SUCCEEDED
 
     def check_channel_forward_agent_request(self, channel):
         logger.debug("Forward agent key request for channel %s" % (channel,))
+        gevent.sleep(0)
         return True
 
     def check_channel_exec_request(self, channel, cmd,
@@ -217,6 +239,7 @@ class Server(paramiko.ServerInterface):
                                           stdin=gevent.subprocess.PIPE,
                                           shell=True, env=_env)
         gevent.spawn(self._read_response, channel, process)
+        gevent.sleep(0)
         return True
 
     def _read_response(self, channel, process):
@@ -230,6 +253,7 @@ class Server(paramiko.ServerInterface):
         # Let clients consume output from channel before closing
         gevent.sleep(.1)
         channel.close()
+        gevent.sleep(0)
 
 def make_socket(listen_ip, port=0):
     """Make socket on given address and available port chosen by OS"""
@@ -246,16 +270,26 @@ def make_socket(listen_ip, port=0):
 def start_server(listen_ip, fail_auth=False, ssh_exception=False,
                  timeout=None,
                  listen_port=0):
-    server = Server(host_key, listen_ip=listen_ip, port=listen_port,
+    # gevent.reinit()
+    gevent.hub.reinit()
+    # h.destroy(destroy_loop=True)
+    # h = gevent.hub.Hub()
+    # h.NOT_ERROR = (Exception,)
+    # gevent.hub.set_hub(h)
+    server = Server(host_key, host=listen_ip, port=listen_port,
                     fail_auth=fail_auth, ssh_exception=ssh_exception,
                     timeout=timeout)
     try:
         server.run()
     except KeyboardInterrupt:
         sys.exit(0)
+    # listen_process = Process(target=server.run)
+    # listen_process.start()
+    # listen_process.join()
 
 def start_server_process(listen_ip, fail_auth=False, ssh_exception=False,
                          timeout=None, listen_port=0):
+    gevent.reinit()
     server = Process(target=start_server, args=(listen_ip,),
                      kwargs={
                          'listen_port': listen_port,
@@ -263,4 +297,6 @@ def start_server_process(listen_ip, fail_auth=False, ssh_exception=False,
                          'ssh_exception': ssh_exception,
                          'timeout': timeout,
                          })
+    server.start()
+    gevent.sleep(.2)
     return server

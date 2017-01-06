@@ -29,9 +29,11 @@ logger = logging.getLogger("fake_server")
 class Tunneler(gevent.Greenlet):    
     def __init__(self, address, transport, chanid):
         gevent.Greenlet.__init__(self)
+        gevent.sleep(.2)
         self.socket = socket.create_connection(address)
         self.transport = transport
         self.chanid = chanid
+        gevent.sleep(0)
 
     def close(self):
         try:
@@ -50,13 +52,16 @@ class Tunneler(gevent.Greenlet):
                 response_data = dest_socket.recv(1024)
                 source_chan.sendall(response_data)
                 logger.debug("Tunnel sent data..")
-                gevent.sleep(0)
+                gevent.sleep(.1)
         finally:
             source_chan.close()
             dest_socket.close()
+        gevent.sleep(0)
 
     def run(self):
+        gevent.sleep(.2)
         channel = self.transport.accept(20)
+        gevent.sleep(0)
         if not channel:
             return
         if not channel.get_id() == self.chanid:
@@ -69,3 +74,4 @@ class Tunneler(gevent.Greenlet):
         except Exception as ex:
             logger.exception("Got exception creating tunnel - %s", ex,)
         logger.debug("Finished tunneling")
+        gevent.sleep(0)

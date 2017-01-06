@@ -27,18 +27,17 @@ import os
 import warnings
 import shutil
 import sys
-from multiprocessing import Process
 
+from embedded_server.embedded_server import start_server, make_socket, \
+     logger as server_logger, paramiko_logger, start_server_process
+from embedded_server.fake_agent import FakeAgent
+from paramiko import RSAKey
 import gevent
 from pssh import ParallelSSHClient, UnknownHostException, \
      AuthenticationException, ConnectionErrorException, SSHException, \
      logger as pssh_logger
 from pssh.exceptions import HostArgumentException
 from pssh.utils import load_private_key
-from embedded_server.embedded_server import start_server, make_socket, \
-     logger as server_logger, paramiko_logger, start_server_process
-from embedded_server.fake_agent import FakeAgent
-from paramiko import RSAKey
 
 PKEY_FILENAME = os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key'])
 USER_KEY = RSAKey.from_private_key_file(PKEY_FILENAME)
@@ -538,22 +537,24 @@ class ParallelSSHClientTest(unittest.TestCase):
         proxy_server_port = self.make_random_port(proxy_host)
         proxy_server = start_server_process(proxy_host,
                                             listen_port=proxy_server_port)
-        client = ParallelSSHClient([self.host], port=self.listen_port,
+        client = ParallelSSHClient([self.host], port=39783,
                                    pkey=self.user_key,
                                    proxy_host=proxy_host,
-                                   proxy_port=proxy_server_port
+                                   proxy_port=proxy_server_port,
                                    )
         gevent.sleep(2)
-        output = client.run_command(self.fake_cmd)
-        gevent.sleep(.2)
-        stdout = list(output[self.host]['stdout'])
-        expected_stdout = [self.fake_resp]
-        self.assertEqual(expected_stdout, stdout,
-                         msg="Got unexpected stdout - %s, expected %s" % 
-                         (stdout,
-                          expected_stdout,))
-        del client
-        proxy_server.terminate()
+        try:
+            output = client.run_command(self.fake_cmd)
+            gevent.sleep(1)
+            stdout = list(output[self.host]['stdout'])
+            expected_stdout = [self.fake_resp]
+            self.assertEqual(expected_stdout, stdout,
+                             msg="Got unexpected stdout - %s, expected %s" % 
+                             (stdout,
+                              expected_stdout,))
+        finally:
+            del client
+            proxy_server.terminate()
 
     def test_ssh_proxy_auth(self):
         """Test connecting to remote destination via SSH proxy
@@ -589,18 +590,19 @@ class ParallelSSHClientTest(unittest.TestCase):
                              proxy_password)
             self.assertTrue(client.host_clients[self.host].proxy_pkey)
         finally:
+            del client
             proxy_server.terminate()
 
     def test_ssh_proxy_auth_fail(self):
         """Test failures while connecting via proxy"""
-        listen_socket = make_socket(self.host)
-        listen_port = listen_socket.getsockname()[1]
-        self.server.kill()
-        server = start_server(listen_socket,
-                              fail_auth=True)
-        proxy_server_socket = make_socket('127.0.0.2')
-        proxy_server_port = proxy_server_socket.getsockname()[1]
-        proxy_server = start_server(proxy_server_socket)
+        # listen_socket = make_socket(self.host)
+        proxy_host = '127.0.0.2'
+        listen_port = self.make_random_port()
+        server = start_server_process(self.host, listen_port=listen_port,
+                                      fail_auth=True)
+        proxy_server_port = self.make_random_port(host=proxy_host)
+        proxy_server = start_server_process(proxy_host,
+                                            listen_port=proxy_server_port)
         proxy_user = 'proxy_user'
         proxy_password = 'fake'
         gevent.sleep(2)
@@ -611,12 +613,15 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    proxy_user=proxy_user,
                                    proxy_password='fake',
                                    proxy_pkey=self.user_key,
+                                   num_retries=1,
                                    )
         gevent.sleep(2)
-        self.assertRaises(AuthenticationException, client.run_command, self.fake_cmd)
-        del client
-        server.kill()
-        proxy_server.kill()
+        try:
+            self.assertRaises(AuthenticationException, client.run_command, self.fake_cmd)
+        finally:
+            del client
+            server.terminate()
+            proxy_server.terminate()
 
     def test_bash_variable_substitution(self):
         """Test bash variables work correctly"""

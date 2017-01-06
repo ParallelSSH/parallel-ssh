@@ -369,13 +369,19 @@ class ParallelSSHClient(object):
         :rtype: Dictionary with host as key as per \
           :mod:`pssh.pssh_client.ParallelSSHClient.get_output`
         
-        :raises: :mod:`pssh.exceptions.AuthenticationException` on authentication error
-        :raises: :mod:`pssh.exceptions.UnknownHostException` on DNS resolution error
-        :raises: :mod:`pssh.exceptions.ConnectionErrorException` on error connecting
-        :raises: :mod:`pssh.exceptions.SSHException` on other undefined SSH errors
-        :raises: :mod:`pssh.exceptions.HostArgumentException` on number of host \
-        arguments not equal to number of hosts
+        :raises: :mod:`pssh.exceptions.AuthenticationException` on \
+        authentication error
+        :raises: :mod:`pssh.exceptions.UnknownHostException` on DNS resolution \
+        error
+        :raises: :mod:`pssh.exceptions.ConnectionErrorException` on error \
+        connecting
+        :raises: :mod:`pssh.exceptions.SSHException` on other undefined SSH \
+        errors
+        :raises: :mod:`pssh.exceptions.HostArgumentException` on number of \
+        host arguments not equal to number of hosts
         :raises: `TypeError` on not enough host arguments for cmd string format
+        :raises: `KeyError` on no host argument key in arguments dict for cmd \
+        string format
         
         **Example Usage**
         
