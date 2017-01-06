@@ -38,7 +38,7 @@ Server runs asynchronously in its own greenlet. Call `start_server` with a new `
 *Warning* - Note that commands, with or without a shell, are actually run on the system running this server. Destructive commands will affect the system as permissions of user running the server allow. **Use at your own risk**.
 """
 
-from gipc import start_process
+# from gipc import start_process
 from multiprocessing import Process
 import sys
 if 'threading' in sys.modules:
