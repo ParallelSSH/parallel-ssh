@@ -136,17 +136,17 @@ Frequently asked questions
    Why should I use this library and not, for example, `fabric <https://github.com/fabric/fabric>`_?
 
 :A:
-   In short, the tools are intended for different use cases. 
+   In short, the tools are intended for different use cases.
 
-   ``ParallelSSH`` satisfies uses cases for a parallel SSH client library that scales well over hundreds to hundreds of thousands of hosts - per `Design And Goals`_ - a use case that is very common on cloud platforms and virtual machine automation . It should be used where the use case is as such.
+   ``ParallelSSH`` satisfies uses cases for a parallel SSH client library that scales well over hundreds to hundreds of thousands of hosts - per `Design And Goals`_ - a use case that is very common on cloud platforms and virtual machine automation . It would be best used where it is a good fit for the use case.
 
    Fabric and tools like it on the other hand are not well suited to such use cases, for many reasons, performance and differing design goals in particular. The similarity is only that these tools also make use of SSH to run their commands.
 
    ``ParallelSSH`` is in other words well suited to be the SSH client tools like Fabric and Ansible and others use to run their commands rather than a direct replacement for.
 
-   By focusing on providing a well defined, lightweight - actual code is a few hundred lines - library, ``ParallelSSH`` is far better suited for *run this command on X number of hosts* for which frameworks like Fabric, Capistrano and others are overkill and unsuprisignly, as it is not what they are for, ill-suited to and do not perform particularly well with.
+   By focusing on providing a well defined, lightweight - actual code is a few hundred lines - library, ``ParallelSSH`` is far better suited for *run this command on X number of hosts* tasks for which frameworks like Fabric, Capistrano and others are overkill and unsuprisignly, as it is not what they are for, ill-suited to and do not perform particularly well with.
 
-   Fabric and tools like it are high level deployment frameworks - as opposed to general purpose libraries - for building tasks to perform on hosts matching a role with task chaining and a DSL like syntax and are primarily intended for command line use for which the framework is a good fit for - very far removed from an SSH client library and there is no intention to add any such framework, tasks/roles, task chaining or similar functionality to ``ParallelSSH``.
+   Fabric and tools like it are high level deployment frameworks - as opposed to general purpose libraries - for building deployment tasks to perform on hosts matching a role with task chaining and a DSL like syntax and are primarily intended for command line use for which the framework is a good fit for - very far removed from an SSH client library.
 
    Fabric in particular is a port of `Capistrano <https://github.com/capistrano/capistrano>`_ from Ruby to Python. Its design goals are to provide a faithful port of Capistrano with its `tasks` and `roles` framework to python with interactive command line being the intended usage.
 
