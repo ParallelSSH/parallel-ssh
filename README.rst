@@ -115,7 +115,7 @@ In general, long lived commands with little or no output *gathering* will scale 
 
 Conversely, many short lived commands with output gathering will not scale as well. In this use case, smaller pool sizes in the hundreds are likely to perform better with regards to CPU overhead in the (g)event loop. Multiple processes, each with its own event loop, may be used to scale this use case further as CPU overhead allows.
 
-Gathering is highlighted here as output generation does not affect scaling. Only when output is gathered is overhead increased.
+Gathering is highlighted here as output generation does not affect scaling. Only when output is gathered either over multiple still running commands, or while more commands are being triggered, is overhead increased.
 
 Technical Details
 ******************
