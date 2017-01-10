@@ -23,28 +23,44 @@ Embedded SSH server to test our SSH clients.
 Implements:
  * Execution of commands via exec_command
  * Public key and password auth
- * Direct TCP tunneling
+ * Direct TCP tunneling (port forwarding)
  * SSH agent forwarding
  * Stub SFTP server from Paramiko
  * Forced authentication failure
+ * Forced server timeout for connection timeout simulation
 
-Does _not_ support interactive shells, our clients do not use them.
+Does _not_ support interactive shells - it is intended for purely API driven use.
 
-Server private key is hardcoded. Server listen code inspired by demo_server.py in
-Paramiko repository.
+An embedded private key is provided as `embedded_server.host_key` and may be overriden
 
-Server runs asynchronously in its own greenlet. Call `start_server` with a new `multiprocessing.Process` to run it on a new process with its own event loop.
+Server runs asynchronously in its own greenlet.
 
 *Warning* - Note that commands, with or without a shell, are actually run on the system running this server. Destructive commands will affect the system as permissions of user running the server allow. **Use at your own risk**.
+
+Example Usage
+===============
+
+from embedded_server import start_server, start_server_from_ip, make_socket
+
+Make server from existing socket
+----------------------------------
+
+socket = make_socket('127.0.0.1')
+server = start_server(socket)
+
+Make server from IP and optionally port
+-----------------------------------------
+
+server, listen_port = start_server_from_ip('127.0.0.1')
+other_server, _ = start_server_from_ip('127.0.0.1', port=1234)
 """
 
-# from gipc import start_process
-from multiprocessing import Process
 import sys
 if 'threading' in sys.modules:
     del sys.modules['threading']
 from gevent import monkey
 monkey.patch_all()
+
 import os
 import gevent
 from gevent import socket
@@ -52,8 +68,8 @@ from gevent.event import Event
 import sys
 import traceback
 import logging
-import paramiko
 import time
+import paramiko
 import gevent.subprocess
 import gevent.hub
 
@@ -68,9 +84,10 @@ host_key = paramiko.RSAKey(filename=os.path.sep.join([
 
 class Server(paramiko.ServerInterface):
     """Implements :mod:`paramiko.ServerInterface` to provide an
-    embedded SSH server implementation.
+    embedded SSH2 server implementation.
 
-    Start a `Server` with at least a host private key.
+    Start a `Server` with at least a :mod:`paramiko.Transport` object
+    and a host private key.
 
     Any SSH2 client with public key or password authentication
     is allowed, only. Interactive shell requests are not accepted.
@@ -85,97 +102,17 @@ class Server(paramiko.ServerInterface):
     * Interactive shell requests
     """
 
-    def __init__(self, host_key, fail_auth=False,
-                 ssh_exception=False,
-                 socket=None,
-                 port=0,
-                 host='127.0.0.1',
-                 timeout=None):
-        if not socket:
-            self.socket = make_socket(host, port)
-        if not self.socket:
-            msg = "Could not establish listening connection on %s:%s"
-            logger.error(msg, host, port)
-            raise Exception(msg, host, port)
-        self.host = host
-        self.port = self.socket.getsockname()[1]
+    def __init__(self, transport, host_key, fail_auth=False,
+                 ssh_exception=False):
+        paramiko.ServerInterface.__init__(self)
+        transport.load_server_moduli()
+        transport.add_server_key(host_key)
+        transport.set_subsystem_handler('sftp', paramiko.SFTPServer, StubSFTPServer)
+        self.transport = transport
         self.event = Event()
         self.fail_auth = fail_auth
         self.ssh_exception = ssh_exception
         self.host_key = host_key
-        self.transport = None
-        self.timeout = timeout
-
-    def start_listening(self):
-        try:
-            gevent.sleep(0)
-            self.socket.listen(100)
-            logger.info('Listening for connection on %s:%s..', self.host,
-                        self.port)
-        except Exception as e:
-            logger.error('*** Listen failed: %s' % (str(e),))
-            traceback.print_exc()
-            raise
-        gevent.sleep()
-        conn, addr = self.socket.accept()
-        gevent.sleep(.2)
-        logger.info('Got connection..')
-        # import ipdb; ipdb.set_trace()
-        gevent.sleep(.2)
-        if self.timeout:
-            logger.debug("SSH server sleeping for %s then raising socket.timeout",
-                         self.timeout)
-            gevent.Timeout(self.timeout).start()
-        self.transport = paramiko.Transport(conn)
-        self.transport.load_server_moduli()
-        self.transport.add_server_key(self.host_key)
-        self.transport.set_subsystem_handler('sftp', paramiko.SFTPServer,
-                                             StubSFTPServer)
-        gevent.sleep()
-        try:
-            self.transport.start_server(server=self)
-        except paramiko.SSHException as e:
-            logger.exception('SSH negotiation failed')
-            raise
-        gevent.sleep(0)
-
-    def run(self):
-        while True:
-            try:
-                self.start_listening()
-                gevent.sleep(0)
-            except Exception:
-                logger.exception("Error occured starting server")
-                continue
-            gevent.sleep(0)
-            try:
-                self.accept_connections()
-                gevent.sleep(0)
-            except Exception as e:
-                logger.error('*** Caught exception: %s: %s' % (str(e.__class__), str(e),))
-                traceback.print_exc()
-                try:
-                    self.transport.close()
-                except Exception:
-                    pass
-                raise
-
-    def accept_connections(self):
-        while True:
-            gevent.sleep(0)
-            channel = self.transport.accept(20)
-            if not channel:
-                logger.error("Could not establish channel on %s:%s",
-                             self.host, self.port)
-                gevent.sleep(0)
-                continue
-            while self.transport.is_active():
-                logger.debug("Transport active, waiting..")
-                gevent.sleep(1)
-            while not channel.send_ready():
-                gevent.sleep(.2)
-            channel.close()
-            gevent.sleep(0)
 
     def check_channel_request(self, kind, chanid):
         return paramiko.OPEN_SUCCEEDED
@@ -205,28 +142,25 @@ class Server(paramiko.ServerInterface):
         return True
 
     def check_channel_direct_tcpip_request(self, chanid, origin, destination):
-        # import ipdb; ipdb.set_trace()
         logger.debug("Proxy connection %s -> %s requested", origin, destination,)
         extra = {'username' : self.transport.get_username()}
         logger.debug("Starting proxy connection %s -> %s",
                      origin, destination, extra=extra)
-        self.event.set()
         try:
-            gevent.sleep(.2)
-            tunnel = Process(target=Tunneler, args=(destination, self.transport, chanid,))
-            tunnel.daemon = True
+            tunnel = Tunneler(destination, self.transport, chanid)
             tunnel.start()
-            gevent.sleep(.2)
         except Exception as ex:
             logger.error("Error creating proxy connection to %s - %s",
                          destination, ex,)
             return paramiko.OPEN_FAILED_CONNECT_FAILED
-        gevent.sleep(2)
+        self.event.set()
+        gevent.sleep()
+        logger.debug("Proxy connection started")
         return paramiko.OPEN_SUCCEEDED
 
     def check_channel_forward_agent_request(self, channel):
         logger.debug("Forward agent key request for channel %s" % (channel,))
-        gevent.sleep(0)
+        gevent.sleep()
         return True
 
     def check_channel_exec_request(self, channel, cmd,
@@ -261,42 +195,87 @@ def make_socket(listen_ip, port=0):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind((listen_ip, port))
-    except Exception as e:
-        logger.error('Failed to bind to address - %s' % (str(e),))
+    except Exception as ex:
+        logger.error('Failed to bind to address - %s', ex)
         traceback.print_exc()
         return
     return sock
 
-def start_server(listen_ip, fail_auth=False, ssh_exception=False,
-                 timeout=None,
-                 listen_port=0):
-    # gevent.reinit()
-    gevent.hub.reinit()
-    # h.destroy(destroy_loop=True)
-    # h = gevent.hub.Hub()
-    # h.NOT_ERROR = (Exception,)
-    # gevent.hub.set_hub(h)
-    server = Server(host_key, host=listen_ip, port=listen_port,
-                    fail_auth=fail_auth, ssh_exception=ssh_exception,
-                    timeout=timeout)
+def listen(sock, fail_auth=False, ssh_exception=False,
+           timeout=None):
+    """Run server and given a cmd_to_run, send given
+    response to client connection. Returns (server, socket) tuple
+    where server is a joinable server thread and socket is listening
+    socket of server.
+    """
+    # sock = make_socket(ip, port=port)
     try:
-        server.run()
-    except KeyboardInterrupt:
-        sys.exit(0)
-    # listen_process = Process(target=server.run)
-    # listen_process.start()
-    # listen_process.join()
+        sock.listen(100)
+    except Exception as e:
+        logger.error('*** Listen failed: %s' % (str(e),))
+        traceback.print_exc()
+        return
+    host, port = sock.getsockname()
+    logger.info('Listening for connection on %s:%s..', host, port)
+    return handle_ssh_connection(sock, fail_auth=fail_auth,
+                          timeout=timeout, ssh_exception=ssh_exception)
 
-def start_server_process(listen_ip, fail_auth=False, ssh_exception=False,
-                         timeout=None, listen_port=0):
-    gevent.reinit()
-    server = Process(target=start_server, args=(listen_ip,),
-                     kwargs={
-                         'listen_port': listen_port,
-                         'fail_auth': fail_auth,
-                         'ssh_exception': ssh_exception,
-                         'timeout': timeout,
-                         })
-    server.start()
-    gevent.sleep(.2)
-    return server
+def _handle_ssh_connection(transport, fail_auth=False,
+                           ssh_exception=False):
+    server = Server(transport, host_key,
+                    fail_auth=fail_auth, ssh_exception=ssh_exception)
+    try:
+        transport.start_server(server=server)
+    except paramiko.SSHException as e:
+        logger.exception('SSH negotiation failed')
+        return
+    except Exception:
+        logger.exception("Error occured starting server")
+        return
+    # *Important* Allow other greenlets to execute before establishing connection
+    # which may be handled by said other greenlets
+    gevent.sleep(.5)
+    channel = transport.accept(20)
+    if not channel:
+        logger.error("Could not establish channel")
+        return
+    while transport.is_active():
+        logger.debug("Transport active, waiting..")
+        gevent.sleep(1)
+    while not channel.send_ready():
+        gevent.sleep(.2)
+    channel.close()
+
+def handle_ssh_connection(sock,
+                          fail_auth=False, ssh_exception=False,
+                          timeout=None):
+    conn, addr = sock.accept()
+    logger.info('Got connection..')
+    if timeout:
+        logger.debug("SSH server sleeping for %s then raising socket.timeout",
+                    timeout)
+        gevent.Timeout(timeout).start().get()
+    try:
+        transport = paramiko.Transport(conn)
+        return _handle_ssh_connection(transport, fail_auth=fail_auth,
+                                      ssh_exception=ssh_exception)
+    except Exception as e:
+        logger.error('*** Caught exception: %s: %s' % (str(e.__class__), str(e),))
+        traceback.print_exc()
+        try:
+            transport.close()
+        except Exception:
+            pass
+
+def start_server(sock, fail_auth=False, ssh_exception=False,
+                 timeout=None):
+    return gevent.spawn(listen, sock, fail_auth=fail_auth,
+                        timeout=timeout, ssh_exception=ssh_exception)
+
+def start_server_from_ip(ip, port=0,
+                         fail_auth=False, ssh_exception=False,
+                         timeout=None):
+    server_sock = make_socket(ip, port=port)
+    server = start_server(server_sock, fail_auth=fail_auth,
+                          ssh_exception=ssh_exception, timeout=timeout)
+    return server, server_sock.getsockname()[1]

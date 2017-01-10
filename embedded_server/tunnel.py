@@ -24,12 +24,14 @@ import gevent
 from gevent import socket, select
 import logging
 
-logger = logging.getLogger("fake_server")
+logger = logging.getLogger("embedded_server.tunnel")
 
-class Tunneler(gevent.Greenlet):    
+class Tunneler(gevent.Greenlet):
+    
     def __init__(self, address, transport, chanid):
         gevent.Greenlet.__init__(self)
         gevent.sleep(.2)
+        logger.info("Tunneller creating connection -> %s", address)
         self.socket = socket.create_connection(address)
         self.transport = transport
         self.chanid = chanid
@@ -59,9 +61,8 @@ class Tunneler(gevent.Greenlet):
         gevent.sleep(0)
 
     def run(self):
-        gevent.sleep(.2)
+        logger.info("Tunnel waiting for connection")
         channel = self.transport.accept(20)
-        gevent.sleep(0)
         if not channel:
             return
         if not channel.get_id() == self.chanid:
