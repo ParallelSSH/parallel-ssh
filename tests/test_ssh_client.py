@@ -30,7 +30,7 @@ from pssh import SSHClient, ParallelSSHClient, UnknownHostException, Authenticat
      logger, ConnectionErrorException, UnknownHostException, SSHException, utils
 from embedded_server.embedded_server import start_server, make_socket, logger as server_logger, \
      paramiko_logger
-from embedded_server.fake_agent import FakeAgent
+from pssh.agent import SSHAgent
 import paramiko
 import os
 from test_pssh_client import USER_KEY
@@ -250,7 +250,7 @@ not match source %s" % (copied_file_data, test_file_data))
         instead override the client's agent with our own fake SSH agent,
         add our to key to agent and try to login to server.
         Key should be automatically picked up from the overriden agent"""
-        agent = FakeAgent()
+        agent = SSHAgent()
         agent.add_key(USER_KEY)
         client = SSHClient(self.host, port=self.listen_port,
                            agent=agent)
@@ -261,6 +261,9 @@ not match source %s" % (copied_file_data, test_file_data))
         self.assertEqual(expected, output,
                          msg = "Got unexpected command output - %s" % (output,))
         del client
+        agent._connect(None)
+        agent._close()
+        del agent
 
     def test_ssh_client_conn_failure(self):
         """Test connection error failure case - ConnectionErrorException"""

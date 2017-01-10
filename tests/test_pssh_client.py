@@ -36,7 +36,7 @@ from pssh.exceptions import HostArgumentException
 from pssh.utils import load_private_key
 from embedded_server.embedded_server import start_server, make_socket, \
      logger as server_logger, paramiko_logger, start_server_from_ip
-from embedded_server.fake_agent import FakeAgent
+from pssh.agent import SSHAgent
 from paramiko import RSAKey
 
 PKEY_FILENAME = os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key'])
@@ -57,7 +57,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.server_sock = make_socket(self.host)
         self.listen_port = self.server_sock.getsockname()[1]
         self.server = start_server(self.server_sock)
-        self.agent = FakeAgent()
+        self.agent = SSHAgent()
         self.agent.add_key(USER_KEY)
         self.client = ParallelSSHClient([self.host], port=self.listen_port,
                                         pkey=self.user_key,
@@ -73,6 +73,7 @@ class ParallelSSHClientTest(unittest.TestCase):
     def tearDown(self):
         del self.client
         self.server.kill()
+        del self.agent
 
     def test_pssh_client_no_stdout_non_zero_exit_code_immediate_exit(self):
         output = self.client.run_command('exit 1')
@@ -533,7 +534,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.server.kill()
         server, _ = start_server_from_ip(self.host, port=self.listen_port)
         proxy_host = '127.0.0.2'
-        proxy_server_port = self.make_random_port(proxy_host)
         proxy_server, proxy_server_port = start_server_from_ip(proxy_host)
         client = ParallelSSHClient([self.host], port=self.listen_port,
                                    pkey=self.user_key,
