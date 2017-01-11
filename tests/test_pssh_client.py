@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # This file is part of parallel-ssh.
 
@@ -74,6 +75,28 @@ class ParallelSSHClientTest(unittest.TestCase):
         del self.client
         self.server.kill()
         del self.agent
+
+    def test_client_join_stdout(self):
+        output = self.client.run_command(self.fake_cmd)
+        expected_exit_code = 0
+        expected_stdout = [self.fake_resp]
+        expected_stderr = []
+        self.client.join(output)
+        exit_code = output[self.host]['exit_code']
+        stdout = list(output[self.host]['stdout'])
+        stderr = list(output[self.host]['stderr'])
+        self.assertEqual(expected_exit_code, exit_code,
+                         msg="Got unexpected exit code - %s, expected %s" %
+                         (exit_code,
+                          expected_exit_code,))
+        self.assertEqual(expected_stdout, stdout,
+                         msg="Got unexpected stdout - %s, expected %s" %
+                         (stdout,
+                          expected_stdout,))
+        self.assertEqual(expected_stderr, stderr,
+                         msg="Got unexpected stderr - %s, expected %s" %
+                         (stderr,
+                          expected_stderr,))
 
     def test_pssh_client_no_stdout_non_zero_exit_code_immediate_exit(self):
         output = self.client.run_command('exit 1')
@@ -896,6 +919,16 @@ class ParallelSSHClientTest(unittest.TestCase):
         # Invalid number of host args
         host_args = [{'host_arg1': 'arg1'}]
         self.assertRaises(KeyError, self.client.run_command, cmd, host_args=host_args)
+
+    def test_ssh_client_utf_encoding(self):
+        """Test that unicode output works"""
+        expected = [u'é']
+        cmd = u"echo 'é'"
+        output = self.client.run_command(cmd)
+        stdout = list(output[self.host]['stdout'])
+        self.assertEqual(expected, stdout,
+                         msg="Got unexpected unicode output %s - expected %s" % (
+                             stdout, expected,))
 
 if __name__ == '__main__':
     unittest.main()

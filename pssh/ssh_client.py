@@ -62,7 +62,7 @@ class SSHClient(object):
         to None which uses SSH default
         :type port: int
         :param pkey: (Optional) Client's private key to be used to connect with
-        :type pkey: :mod:`paramiko.PKey`
+        :type pkey: :py:class:`paramiko.pkey.PKey`
         :param num_retries: (Optional) Number of retries for connection attempts\
         before the client gives up. Defaults to 3.
         :type num_retries: int
@@ -77,7 +77,7 @@ class SSHClient(object):
         This allows for overriding of the default paramiko behaviour of \
         connecting to local SSH agent to lookup keys with our own SSH agent \
         object.
-        :type agent: :mod:`paramiko.agent.Agent`
+        :type agent: :py:class:`paramiko.agent.Agent`
         :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding - \
         equivalent to `ssh -A` from the `ssh` command line utility. \
         Defaults to True if not set.
@@ -132,7 +132,7 @@ class SSHClient(object):
         client (me) -> tunnel (ssh server to proxy through) -> \
         destination (ssh server to run command)
         
-        :rtype: `:mod:paramiko.SSHClient` Client to remote SSH destination
+        :rtype: :py:class:`paramiko.SSHClient` Client to remote SSH destination
         via intermediate SSH tunnel server.
         """
         self.proxy_client = paramiko.SSHClient()
@@ -157,10 +157,10 @@ class SSHClient(object):
                  user=None, password=None, pkey=None):
         """Connect to host
         
-        :raises: :mod:`pssh.exceptions.AuthenticationException` on authentication error
-        :raises: :mod:`pssh.exceptions.UnknownHostException` on DNS resolution error
-        :raises: :mod:`pssh.exceptions.ConnectionErrorException` on error connecting
-        :raises: :mod:`pssh.exceptions.SSHException` on other undefined SSH errors
+        :raises: :py:class:`pssh.exceptions.AuthenticationException` on authentication error
+        :raises: :py:class:`pssh.exceptions.UnknownHostException` on DNS resolution error
+        :raises: :py:class:`pssh.exceptions.ConnectionErrorException` on error connecting
+        :raises: :py:class:`pssh.exceptions.SSHException` on other undefined SSH errors
         """
         try:
             client.connect(host, username=user if user else self.user,
@@ -203,7 +203,7 @@ class SSHClient(object):
                      shell=None,
                      use_shell=True, use_pty=True,
                      **kwargs):
-        """Wrapper to :mod:`paramiko.SSHClient.exec_command`
+        """Wrapper to :py:func:`paramiko.SSHClient.exec_command`
         
         Opens a new SSH session with a new pty and runs command before yielding 
         the main gevent loop to allow other greenlets to execute.
@@ -222,7 +222,7 @@ class SSHClient(object):
         :type use_shell: bool
         :param use_pty: (Optional) Enable/Disable use of pseudo terminal \
         emulation. This is required in vast majority of cases, exception \
-        being where a shell is not used and stdout/stderr/stdin buffers \
+        being where a shell is not used and/or stdout/stderr/stdin buffers \
         are not required. Defaults to ``True``
         :type use_pty: bool
         :param kwargs: (Optional) Keyword arguments to be passed to remote \
@@ -240,12 +240,8 @@ class SSHClient(object):
             channel.get_pty()
         if self.channel_timeout:
             channel.settimeout(self.channel_timeout)
-        stdin = channel.makefile('wb')
-        _stdout, _stderr = channel.makefile('rb'), \
-                           channel.makefile_stderr('rb')
-        stdout, stderr = self._read_output_buffer(_stdout,), \
-                         self._read_output_buffer(_stderr,
-                                                  prefix='\t[err]')
+        stdout, stderr, stdin = channel.makefile('rb'), channel.makefile_stderr('rb'), \
+          channel.makefile('wb')
         for _char in ['\\', '"', '$', '`']:
             command = command.replace(_char, '\%s' % (_char,))
         shell = '$SHELL -c' if not shell else shell
@@ -264,12 +260,25 @@ class SSHClient(object):
         sleep(0)
         return channel, self.host, stdout, stderr, stdin
 
-    def _read_output_buffer(self, output_buffer, prefix=''):
-        """Read from output buffers and log to host_logger"""
+    def read_output_buffer(self, output_buffer, prefix='',
+                           callback=None,
+                           callback_args=None):
+        """Read from output buffers and log to host_logger
+
+        :param output_buffer: Iterator containing buffer
+        :type output_buffer: iterator
+        :param prefix: String to prefix log output to ``host_logger`` with
+        :type prefix: str
+        :param callback: Function to call back once buffer is depleted:
+        :type callback: function
+        :param callback_args: Arguments for call back function
+        :type callback_args: tuple"""
         for line in output_buffer:
             output = line.strip().decode('utf8')
             host_logger.info("[%s]%s\t%s", self.host, prefix, output,)
             yield output
+        if callback:
+            callback(*callback_args)
 
     def _make_sftp(self):
         """Make SFTP client from open transport"""
@@ -281,7 +290,7 @@ class SSHClient(object):
         """Make directory via SFTP channel
         
         :param sftp: SFTP client object
-        :type sftp: :mod:`paramiko.SFTPClient`
+        :type sftp: :py:class:`paramiko.sftp_client.SFTPClient`
         :param directory: Remote directory to create
         :type directory: str
         
@@ -302,7 +311,7 @@ class SSHClient(object):
         Parent paths in the directory are created if they do not exist.
 
         :param sftp: SFTP client object
-        :type sftp: :mod:`paramiko.SFTPClient`
+        :type sftp: :py:class:`paramiko.sftp_client.SFTPClient`
         :param directory: Remote directory to create
         :type directory: str
 
@@ -351,10 +360,10 @@ class SSHClient(object):
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
 
-        :raises: :mod:`ValueError` when a directory is supplied to ``local_file`` \
+        :raises: :py:class:`ValueError` when a directory is supplied to ``local_file`` \
         and ``recurse`` is not set
-        :raises: :mod:`IOError` on I/O errors writing files
-        :raises: :mod:`OSError` on OS errors like permission denied
+        :raises: :py:class:`IOError` on I/O errors writing files
+        :raises: :py:class:`OSError` on OS errors like permission denied
         """
         if os.path.isdir(local_file) and recurse:
             return self._copy_dir(local_file, remote_file, sftp)
@@ -391,10 +400,10 @@ class SSHClient(object):
         :param recurse: Whether or not to recursively copy directories
         :type recurse: bool
 
-        :raises: :mod:`ValueError` when a directory is supplied to remote_file \
+        :raises: :py:class:`ValueError` when a directory is supplied to remote_file \
         and recurse is not set
-        :raises: :mod:`IOError` on I/O errors creating directories or file
-        :raises: :mod:`OSError` on OS errors like permission denied
+        :raises: :py:class:`IOError` on I/O errors creating directories or file
+        :raises: :py:class:`OSError` on OS errors like permission denied
         """
         sftp = self._make_sftp() if not sftp else sftp
         try:

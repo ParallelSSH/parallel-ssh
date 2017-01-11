@@ -40,7 +40,7 @@ logger = logging.getLogger('pssh')
 
 
 class ParallelSSHClient(object):
-    """Uses :mod:`pssh.ssh_client.SSHClient`, performs tasks over SSH on multiple hosts in \
+    """Uses :py:class:`pssh.ssh_client.SSHClient`, performs tasks over SSH on multiple hosts in \
     parallel.
     
     Connections to hosts are established in parallel when ``run_command`` is called,
@@ -67,7 +67,7 @@ class ParallelSSHClient(object):
         to None which uses SSH default
         :type port: int
         :param pkey: (Optional) Client's private key to be used to connect with
-        :type pkey: :mod:`paramiko.PKey`
+        :type pkey: :py:class:`paramiko.pkey.PKey`
         :param num_retries: (Optional) Number of retries for connection attempts \
         before the client gives up. Defaults to 3.
         :type num_retries: int
@@ -99,10 +99,10 @@ class ParallelSSHClient(object):
         :param proxy_pkey: (Optional) Private key to be used for authentication \
         with ``proxy_host``. Defaults to available keys from SSHAgent and user's \
         home directory keys
-        :type proxy_pkey: :mod:`paramiko.PKey`
+        :type proxy_pkey: :py:class:`paramiko.pkey.PKey`
         :param agent: (Optional) SSH agent object to programmatically supply an \
         agent to override system SSH agent with
-        :type agent: :mod:`pssh.agent.SSHAgent`
+        :type agent: :py:class:`pssh.agent.SSHAgent`
         :param host_config: (Optional) Per-host configuration for cases where \
         not all hosts use the same configuration values.
         :type host_config: dict
@@ -262,10 +262,10 @@ class ParallelSSHClient(object):
         **Per-Host configuration**
         
         Per host configuration can be provided for any or all of user, password port
-        and private key. Private key value is a :mod:`paramiko.PKey` object as
-        returned by :mod:`pssh.utils.load_private_key`.
+        and private key. Private key value is a :py:class:`paramiko.pkey.PKey` object as
+        returned by :py:func:`pssh.utils.load_private_key`.
         
-        :mod:`pssh.utils.load_private_key` accepts both file names and file-like
+        :py:func:`pssh.utils.load_private_key` accepts both file names and file-like
         objects and will attempt to load all available key types, returning
         `None` if they all fail.
         
@@ -361,26 +361,31 @@ class ParallelSSHClient(object):
         :param use_shell: (Optional) Run command with or without shell. Defaults \
         to True - use shell defined in user login to run command string
         :type use_shell: bool
+        :param use_pty: (Optional) Enable/Disable use of pseudo terminal \
+        emulation. This is required in vast majority of cases, exception \
+        being where a shell is not used and/or stdout/stderr/stdin buffers \
+        are not required. Defaults to ``True``
+        :type use_pty: bool
         :param host_args: (Optional) Format command string with per-host \
         arguments in ``host_args``. ``host_args`` length must equal length of \
-        host list - :mod:`pssh.exceptions.HostArgumentException` is raised \
+        host list - :py:class:`pssh.exceptions.HostArgumentException` is raised \
         otherwise
         :type host_args: tuple or list
         :rtype: Dictionary with host as key as per \
-          :mod:`pssh.pssh_client.ParallelSSHClient.get_output`
+          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
         
-        :raises: :mod:`pssh.exceptions.AuthenticationException` on \
+        :raises: :py:class:`pssh.exceptions.AuthenticationException` on \
         authentication error
-        :raises: :mod:`pssh.exceptions.UnknownHostException` on DNS resolution \
+        :raises: :py:class:`pssh.exceptions.UnknownHostException` on DNS resolution \
         error
-        :raises: :mod:`pssh.exceptions.ConnectionErrorException` on error \
+        :raises: :py:class:`pssh.exceptions.ConnectionErrorException` on error \
         connecting
-        :raises: :mod:`pssh.exceptions.SSHException` on other undefined SSH \
+        :raises: :py:class:`pssh.exceptions.SSHException` on other undefined SSH \
         errors
-        :raises: :mod:`pssh.exceptions.HostArgumentException` on number of \
+        :raises: :py:class:`pssh.exceptions.HostArgumentException` on number of \
         host arguments not equal to number of hosts
-        :raises: `TypeError` on not enough host arguments for cmd string format
-        :raises: `KeyError` on no host argument key in arguments dict for cmd \
+        :raises: :py:class:`TypeError` on not enough host arguments for cmd string format
+        :raises: :py:class:`KeyError` on no host argument key in arguments dict for cmd \
         string format
         
         **Example Usage**
@@ -431,7 +436,7 @@ class ParallelSSHClient(object):
         large enough.
         
         Iterating over stdout/stderr by definition implies blocking until
-        command has finished. To only see output as it comes in without blocking
+        command has finished. To only log output as it comes in without blocking
         the host logger can be enabled - see `Enabling Host Logger` above.
 
         .. code-block:: python
@@ -589,6 +594,7 @@ class ParallelSSHClient(object):
         """
         stop_on_errors = kwargs.pop('stop_on_errors', True)
         host_args = kwargs.pop('host_args', None)
+        output = {}
         if host_args:
             try:
                 cmds = [self.pool.spawn(self._exec_command, host,
@@ -600,9 +606,9 @@ class ParallelSSHClient(object):
                     "Number of host arguments provided does not match "
                     "number of hosts ")
         else:
-            cmds = [self.pool.spawn(self._exec_command, host, *args, **kwargs)
-                    for host in self.hosts]
-        output = {}
+            cmds = [self.pool.spawn(
+                self._exec_command, host, *args, **kwargs)
+                for host in self.hosts]
         for cmd in cmds:
             try:
                 self.get_output(cmd, output)
@@ -610,7 +616,7 @@ class ParallelSSHClient(object):
                 if stop_on_errors:
                     raise
         return output
-    
+
     def _get_host_config_values(self, host):
         _user = self.host_config.get(host, {}).get('user', self.user)
         _port = self.host_config.get(host, {}).get('port', self.port)
@@ -637,12 +643,12 @@ class ParallelSSHClient(object):
                                                 agent=self.agent,
                                                 channel_timeout=self.channel_timeout)
         return self.host_clients[host].exec_command(*args, **kwargs)
-    
+
     def get_output(self, cmd, output):
         """Get output from command.
         
         :param cmd: Command to get output from
-        :type cmd: :mod:`gevent.Greenlet`
+        :type cmd: :py:class:`gevent.Greenlet`
         :param output: Dictionary containing output to be updated with output \
         from cmd
         :type output: dict
@@ -689,6 +695,12 @@ class ParallelSSHClient(object):
             self._update_host_output(output, host, None, None, None, None, None, cmd,
                                      exception=ex)
             raise
+        stdout = self.host_clients[host].read_output_buffer(
+            stdout, callback=self.get_exit_codes,
+            callback_args=(output,))
+        stderr = self.host_clients[host].read_output_buffer(
+            stderr, prefix='\t[err]', callback=self.get_exit_codes,
+            callback_args=(output,))
         self._update_host_output(output, host, self._get_exit_code(channel),
                                  channel, stdout, stderr, stdin, cmd)
 
@@ -704,20 +716,15 @@ class ParallelSSHClient(object):
                            "key for %s to %s", host, host, new_host)
             host = new_host
         output.setdefault(host, {})
-        output[host].update({'exit_code' : exit_code,
-                             'channel' : channel,
-                             'stdout' : self._read_buff_ex_code(stdout, output),
-                             'stderr' : self._read_buff_ex_code(stderr, output),
-                             'stdin' : stdin,
-                             'cmd' : cmd,
-                             'exception' : exception,})
-    
-    def _read_buff_ex_code(self, _buffer, output):
-        if _buffer:
-            for line in _buffer:
-                yield line
-        self.get_exit_codes(output)
-    
+        output[host].update({
+            'exit_code': exit_code,
+            'channel': channel,
+            'stdout': stdout,
+            'stderr': stderr,
+            'stdin': stdin,
+            'cmd': cmd,
+            'exception': exception,})
+
     def join(self, output):
         """Block until all remote commands in output have finished
         and retrieve exit codes"""
@@ -726,11 +733,11 @@ class ParallelSSHClient(object):
             if output[host]['channel']:
                 output[host]['channel'].recv_exit_status()
         self.get_exit_codes(output)
-    
+
     def finished(self, output):
         """Check if commands have finished without blocking
 
-        :param output: As returned by :mod:`pssh.pssh_client.ParallelSSHClient.get_output`
+        :param output: As returned by :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
         :rtype: bool
         """
         for host in output:
@@ -738,12 +745,12 @@ class ParallelSSHClient(object):
             if chan and not chan.closed:
                 return False
         return True
-    
+
     def get_exit_codes(self, output):
         """Get exit code for all hosts in output *if available*.
         Output parameter is modified in-place.
-        
-        :param output: As returned by :mod:`pssh.pssh_client.ParallelSSHClient.get_output`
+
+        :param output: As returned by :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
         :rtype: None
         """
         for host in output:
@@ -751,9 +758,9 @@ class ParallelSSHClient(object):
 
     def get_exit_code(self, host_output):
         """Get exit code from host output *if available*.
-        
+
         :param host_output: Per host output as returned by \
-          :mod:`pssh.pssh_client.ParallelSSHClient.get_output`
+          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
         :rtype: int or None if exit code not ready"""
         if not 'channel' in host_output:
             logger.error("%s does not look like host output..", host_output,)
@@ -774,7 +781,7 @@ class ParallelSSHClient(object):
         This function returns a list of greenlets which can be
         `join`-ed on to wait for completion.
 
-        :mod:`gevent.joinall` function may be used to join on all greenlets and
+        :py:func:`gevent.joinall` function may be used to join on all greenlets and
         will also raise exceptions if called with ``raise_error=True`` - default
         is `False`.
 
@@ -791,17 +798,17 @@ class ParallelSSHClient(object):
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
 
-        :raises: :mod:`ValueError` when a directory is supplied to local_file \
+        :raises: :py:class:`ValueError` when a directory is supplied to local_file \
         and recurse is not set
-        :raises: :mod:`IOError` on I/O errors writing files
-        :raises: :mod:`OSError` on OS errors like permission denied
+        :raises: :py:class:`IOError` on I/O errors writing files
+        :raises: :py:class:`OSError` on OS errors like permission denied
         
         .. note ::
         
           Remote directories in `remote_file` that do not exist will be
           created as long as permissions allow.
         
-        :rtype: List(:mod:`gevent.Greenlet`) of greenlets for remote copy \
+        :rtype: List(:py:class:`gevent.Greenlet`) of greenlets for remote copy \
         commands
         """
         return [self.pool.spawn(self._copy_file, host, local_file, remote_file,
@@ -823,10 +830,10 @@ class ParallelSSHClient(object):
         the resulting filename will be ``myfile_myhost`` for the file from host
         ``myhost``.
 
-        This function, like :mod:`ParallelSSHClient.copy_file`, returns a list
+        This function, like :py:func:`ParallelSSHClient.copy_file`, returns a list
         of greenlets which can be `join`-ed on to wait for completion.
 
-        :mod:`gevent.joinall` function may be used to join on all greenlets and
+        :py:func:`gevent.joinall` function may be used to join on all greenlets and
         will also raise exceptions if called with ``raise_error=True`` - default
         is `False`.
 
@@ -857,7 +864,7 @@ class ParallelSSHClient(object):
           File names will be de-duplicated by appending the hostname to the
           filepath separated by ``suffix_separator``.
 
-        :rtype: list(:mod:`gevent.Greenlet`) of greenlets for remote copy \
+        :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy \
         commands
         """
         return [self.pool.spawn(

@@ -255,11 +255,11 @@ not match source %s" % (copied_file_data, test_file_data))
         client = SSHClient(self.host, port=self.listen_port,
                            agent=agent)
         channel, host, stdout, stderr, stdin = client.exec_command(self.fake_cmd)
-        output = list(stdout)
-        stderr = list(stderr)
+        output = list(client.read_output_buffer(stdout))
+        stderr = list(client.read_output_buffer(stderr))
         expected = [self.fake_resp]
         self.assertEqual(expected, output,
-                         msg = "Got unexpected command output - %s" % (output,))
+                         msg="Got unexpected command output - %s" % (output,))
         del client
         agent._connect(None)
         agent._close()
@@ -307,7 +307,7 @@ not match source %s" % (copied_file_data, test_file_data))
         expected = [u'é']
         cmd = u"echo 'é'"
         channel, host, stdout, stderr, stdin = client.exec_command(cmd)
-        output = list(stdout)
+        output = list(client.read_output_buffer(stdout))
         self.assertEqual(expected, output,
                          msg="Got unexpected unicode output %s - expected %s" % (
                              output, expected,))
@@ -319,7 +319,7 @@ not match source %s" % (copied_file_data, test_file_data))
         client = SSHClient(self.host, port=self.listen_port,
                            pkey=self.user_key)
         channel, host, stdout, stderr, stdin = client.exec_command(self.fake_cmd, use_shell=False)
-        output = list(stdout)
+        output = list(client.read_output_buffer(stdout))
         stderr = list(stderr)
         expected = []
         exit_code = channel.recv_exit_status()
@@ -329,7 +329,7 @@ not match source %s" % (copied_file_data, test_file_data))
                         msg="Expected cmd not found error code 127, got %s instead" % (
                             exit_code,))
         channel, host, stdout, stderr, stdin = client.exec_command('id', use_shell=False)
-        output = list(stdout)
+        output = list(client.read_output_buffer(stdout))
         exit_code = channel.recv_exit_status()
         self.assertTrue(output,
                         msg="Got no output from cmd executed without shell")

@@ -36,8 +36,9 @@ extensions = [
     # 'sphinx.ext.viewcode',
 ]
 
-intersphinx_mapping = {'paramiko': ('http://paramiko-docs.readthedocs.org/en/stable/', None),
-                       'gevent' : ('http://www.gevent.org/', None),
+intersphinx_mapping = {'paramiko': ('http://paramiko-docs.readthedocs.io/en/stable/', None),
+                       'gevent': ('http://www.gevent.org', None),
+                       'python': ('https://docs.python.org/2', None),
                        }
 
 # Autodoc settings

@@ -234,7 +234,7 @@ def _handle_ssh_connection(transport, fail_auth=False,
         return
     # *Important* Allow other greenlets to execute before establishing connection
     # which may be handled by said other greenlets
-    gevent.sleep(.5)
+    gevent.sleep(1)
     channel = transport.accept(20)
     if not channel:
         logger.error("Could not establish channel")
