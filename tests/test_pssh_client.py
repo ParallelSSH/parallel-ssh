@@ -942,8 +942,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue(exit_code == 0)
 
     def test_channel_timeout(self):
+        del self.client
         cmd = "sleep 2; echo me"
-        self.client = ParallelSSHClient([self.host], channel_timeout=.1)
+        self.client = ParallelSSHClient([self.host], channel_timeout=1)
         output = self.client.run_command(cmd)
         self.assertRaises(socket_timeout, list, output[self.host]['stdout'])
 
