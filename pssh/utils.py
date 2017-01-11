@@ -20,8 +20,8 @@
 
 
 import logging
-import gevent
 import os
+
 from paramiko.rsakey import RSAKey
 from paramiko.dsskey import DSSKey
 from paramiko.ecdsakey import ECDSAKey

@@ -18,17 +18,18 @@
 
 """Package containing SSHClient class."""
 
-import sys
+import os
+import logging
+from socket import gaierror as sock_gaierror, error as sock_error
+
 from gevent import sleep
 import paramiko
 from paramiko.ssh_exception import ChannelException
-import os
-from socket import gaierror as sock_gaierror, error as sock_error
+
 from .exceptions import UnknownHostException, AuthenticationException, \
      ConnectionErrorException, SSHException
 from .constants import DEFAULT_RETRIES
 from .utils import read_openssh_config
-import logging
 
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
@@ -143,15 +144,15 @@ class SSHClient(object):
         logger.info("Connecting via SSH proxy %s:%s -> %s:%s", self.proxy_host,
                     self.proxy_port, self.host, self.port,)
         try:
-          proxy_channel = self.proxy_client.get_transport().open_channel(
-            'direct-tcpip', (self.host, self.port,), ('127.0.0.1', 0))
-          sleep(0)
-          return self._connect(self.client, self.host, self.port, sock=proxy_channel)
+            proxy_channel = self.proxy_client.get_transport().open_channel(
+                'direct-tcpip', (self.host, self.port,), ('127.0.0.1', 0))
+            sleep(0)
+            return self._connect(self.client, self.host, self.port, sock=proxy_channel)
         except ChannelException as ex:
-          error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
-          raise ConnectionErrorException("Error connecting to host '%s:%s' - %s",
-                                         self.host, self.port,
-                                         str(error_type))
+            error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
+            raise ConnectionErrorException("Error connecting to host '%s:%s' - %s",
+                                            self.host, self.port,
+                                            str(error_type))
     
     def _connect(self, client, host, port, sock=None, retries=1,
                  user=None, password=None, pkey=None):
@@ -243,7 +244,7 @@ class SSHClient(object):
         stdout, stderr, stdin = channel.makefile('rb'), channel.makefile_stderr('rb'), \
           channel.makefile('wb')
         for _char in ['\\', '"', '$', '`']:
-            command = command.replace(_char, '\%s' % (_char,))
+            command = command.replace(_char, r'\%s' % (_char,))
         shell = '$SHELL -c' if not shell else shell
         _command = ''
         if sudo and not user:

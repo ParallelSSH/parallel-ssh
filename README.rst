@@ -29,7 +29,7 @@ Installation
 
    pip install parallel-ssh
 
-As of version ``0.93.0`` pip version >= ``6.0.0`` is required for Python 2.6 compatibility with newer versions of gevent which have dropped 2.6 support. This limitation will be removed post ``1.0.0`` releases which will deprecate ``2.6`` support.
+As of version ``0.93.0`` pip version >= ``6.0.0`` is required for Python 2.6 compatibility with latest versions of gevent which have dropped 2.6 support. This limitation will be removed post ``1.0.0`` releases which will deprecate ``2.6`` support.
 
 To upgrade ``pip`` run the following - use of ``virtualenv`` is recommended so as not to override system provided packages::
 
@@ -77,17 +77,21 @@ Exit codes become available once stdout/stderr is iterated on or ``client.join(o
   0
   0
 
-The client's join function can be used to block and wait for all parallel commands to finish *if output is not needed*. ::
+The client's ``join`` function can be used to block and wait for all parallel commands to finish::
 
   client.join(output)
 
-Similarly, if only exit codes are needed but not output ::
+Similarly, exit codes are available after ``client.join`` is called::
 
   output = client.run_command('exit 0')
   # Block and gather exit codes. Output variable is updated in-place
   client.join(output)
   print(output[client.hosts[0]]['exit_code'])
   0
+
+.. note::
+
+  In versions prior to ``1.0.0`` only, ``client.join`` would consume standard output.
 
 There is also a built in host logger that can be enabled to log output from remote hosts. The helper function ``pssh.utils.enable_host_logger`` will enable host logging to stdout, for example ::
 
@@ -128,6 +132,30 @@ On the other end of the spectrum, long lived remote commands that generate *no* 
 
 Output *generation* is done remotely and has no effect on the event loop until output is gathered - output buffers are iterated on. Only at that point does the event loop need to be held.
 
+********
+SFTP/SCP
+********
+
+SFTP is supported (SCP version 2) natively, no ``scp`` command required.
+
+For example to copy a local file to remote hosts in parallel::
+
+  from pssh import ParallelSSHClient, utils
+  from gevent import joinall
+
+  utils.enable_logger(utils.logger)
+  hosts = ['myhost1', 'myhost2']
+  client = ParallelSSHClient(hosts)
+  greenlets = client.copy_file('../test', 'test_dir/test')
+  joinall(greenlets, raise_error=True)
+  
+  Copied local file ../test to remote destination myhost1:test_dir/test
+  Copied local file ../test to remote destination myhost2:test_dir/test
+
+There is similar capability to copy remote files to local ones suffixed with the host's name with the ``copy_remote_file`` function.
+
+Directory recursion is supported in both cases via the ``recurse`` parameter - defaults to off.
+
 **************************
 Frequently asked questions
 **************************
@@ -138,15 +166,15 @@ Frequently asked questions
 :A:
    In short, the tools are intended for different use cases.
 
-   ``ParallelSSH`` satisfies uses cases for a parallel SSH client library that scales well over hundreds to hundreds of thousands of hosts - per `Design And Goals`_ - a use case that is very common on cloud platforms and virtual machine automation . It would be best used where it is a good fit for the use case.
+   ``ParallelSSH`` satisfies uses cases for a parallel SSH client library that scales well over hundreds to hundreds of thousands of hosts - per `Design And Goals`_ - a use case that is very common on cloud platforms and virtual machine automation. It would be best used where it is a good fit for the use case at hand.
 
-   Fabric and tools like it on the other hand are not well suited to such use cases, for many reasons, performance and differing design goals in particular. The similarity is only that these tools also make use of SSH to run their commands.
+   Fabric and tools like it on the other hand are not well suited to such use cases, for many reasons, performance and differing design goals in particular. The similarity is only that these tools also make use of SSH to run commands.
 
    ``ParallelSSH`` is in other words well suited to be the SSH client tools like Fabric and Ansible and others use to run their commands rather than a direct replacement for.
 
    By focusing on providing a well defined, lightweight - actual code is a few hundred lines - library, ``ParallelSSH`` is far better suited for *run this command on X number of hosts* tasks for which frameworks like Fabric, Capistrano and others are overkill and unsuprisignly, as it is not what they are for, ill-suited to and do not perform particularly well with.
 
-   Fabric and tools like it are high level deployment frameworks - as opposed to general purpose libraries - for building deployment tasks to perform on hosts matching a role with task chaining and a DSL like syntax and are primarily intended for command line use for which the framework is a good fit for - very far removed from an SSH client library.
+   Fabric and tools like it are high level deployment frameworks - as opposed to general purpose libraries - for building deployment tasks to perform on hosts matching a role with task chaining, a DSL like syntax and are primarily intended for command line use for which the framework is a good fit for - very far removed from an SSH client *library*.
 
    Fabric in particular is a port of `Capistrano <https://github.com/capistrano/capistrano>`_ from Ruby to Python. Its design goals are to provide a faithful port of Capistrano with its `tasks` and `roles` framework to python with interactive command line being the intended usage.
 
@@ -205,28 +233,3 @@ Frequently asked questions
 
 :A:
    There is a public `ParallelSSH Google group <https://groups.google.com/forum/#!forum/parallelssh>`_ setup for this purpose - both posting and viewing are open to the public.
-
-
-********
-SFTP/SCP
-********
-
-SFTP is supported (SCP version 2) natively, no ``scp`` command required.
-
-For example to copy a local file to remote hosts in parallel::
-
-  from pssh import ParallelSSHClient, utils
-  from gevent import joinall
-
-  utils.enable_logger(utils.logger)
-  hosts = ['myhost1', 'myhost2']
-  client = ParallelSSHClient(hosts)
-  greenlets = client.copy_file('../test', 'test_dir/test')
-  joinall(greenlets, raise_error=True)
-  
-  Copied local file ../test to remote destination myhost1:test_dir/test
-  Copied local file ../test to remote destination myhost2:test_dir/test
-
-There is similar capability to copy remote files to local ones suffixed with the host's name with the ``copy_remote_file`` function.
-
-Directory recursion is supported in both cases - defaults to off.

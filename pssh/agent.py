@@ -22,6 +22,7 @@ class SSHAgent(paramiko.agent.AgentSSH):
     supplying an SSH agent"""
 
     def __init__(self):
+        paramiko.agent.AgentSSH.__init__(self)
         self._conn = None
         self.keys = []
     

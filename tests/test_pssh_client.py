@@ -28,6 +28,7 @@ import os
 import warnings
 import shutil
 import sys
+from socket import timeout as socket_timeout
 
 import gevent
 from pssh import ParallelSSHClient, UnknownHostException, \
@@ -929,6 +930,22 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(expected, stdout,
                          msg="Got unexpected unicode output %s - expected %s" % (
                              stdout, expected,))
+
+    def test_pty(self):
+        cmd = "exit 0"
+        output = self.client.run_command(cmd, use_pty=False)
+        self.client.join(output)
+        stdout = list(output[self.host]['stdout'])
+        exit_code = output[self.host]['exit_code']
+        expected = []
+        self.assertEqual(expected, stdout)
+        self.assertTrue(exit_code == 0)
+
+    def test_channel_timeout(self):
+        cmd = "sleep 2; echo me"
+        self.client = ParallelSSHClient([self.host], channel_timeout=.1)
+        output = self.client.run_command(cmd)
+        self.assertRaises(socket_timeout, list, output[self.host]['stdout'])
 
 if __name__ == '__main__':
     unittest.main()

@@ -23,13 +23,13 @@ if 'threading' in sys.modules:
     del sys.modules['threading']
 from gevent import monkey
 monkey.patch_all()
+import string
+import random
 import logging
+
 import gevent.pool
 import gevent.hub
 gevent.hub.Hub.NOT_ERROR = (Exception,)
-import warnings
-import string
-import random
 
 from .exceptions import HostArgumentException
 from .constants import DEFAULT_RETRIES
@@ -106,8 +106,10 @@ class ParallelSSHClient(object):
         :param host_config: (Optional) Per-host configuration for cases where \
         not all hosts use the same configuration values.
         :type host_config: dict
-        :param channel_timeout: (Optional) Time in seconds before an SSH operation \
-        times out.
+        :param channel_timeout: (Optional) Time in seconds before reading from \
+        an SSH channel times out. For example with channel timeout set to one, \
+        trying to immediately gather output from a command producing no output \
+        for more than one second will timeout.
         :type channel_timeout: int
         :param allow_agent: (Optional) set to False to disable connecting to \
         the SSH agent
@@ -156,7 +158,8 @@ class ParallelSSHClient(object):
         from remote commands on hosts as it comes in.
         
         This allows for stdout to be automatically logged without having to
-        print it serially per host.
+        print it serially per host. :mod:`pssh.utils.host_logger` is a standard
+        library logger and may be configured to log to anywhere else.
         
         .. code-block:: python
         
@@ -185,7 +188,7 @@ class ParallelSSHClient(object):
         * Iterating over stdout/stderr to completion
         * Calling ``client.join(output)``
         
-        is necessary to cause `parallel-ssh` to wait for commands to finish and
+        is necessary to cause ``parallel-ssh`` to wait for commands to finish and
         be able to gather exit codes.
 
         .. note ::
@@ -211,13 +214,13 @@ class ParallelSSHClient(object):
         
         which returns ``True`` if command has finished.
         
-        Either iterating over stdout/stderr or `client.join(output)` will cause exit
+        Either iterating over stdout/stderr or ``client.join(output)`` will cause exit
         codes to become available in output without explicitly calling `get_exit_codes`.
         
         Use ``client.join(output)`` to block until all commands have finished
         and gather exit codes at same time.
 
-        However, note that ``client.join(output)`` will consume stdout/stderr.
+        In versions prior to ``1.0.0`` only, ``client.join`` would consume output.
 
         **Exit code retrieval**
         
@@ -296,7 +299,7 @@ class ParallelSSHClient(object):
             output = client.run_command('ls -ltrh /tmp/aasdfasdf')
             client.join(output)
           
-          :netstat: ``tcp        0      0 127.0.0.1:53054         127.0.0.1:22            ESTABLISHED``
+          :netstat: ``tcp      0    0 127.0.0.1:53054       127.0.0.1:22          ESTABLISHED``
           
           Connection remains active after commands have finished executing. Any \
           additional commands will use the same connection.
@@ -362,9 +365,12 @@ class ParallelSSHClient(object):
         to True - use shell defined in user login to run command string
         :type use_shell: bool
         :param use_pty: (Optional) Enable/Disable use of pseudo terminal \
-        emulation. This is required in vast majority of cases, exception \
-        being where a shell is not used and/or stdout/stderr/stdin buffers \
-        are not required. Defaults to ``True``
+        emulation. Disabling it will prohibit capturing standard input/output. \
+        This is required in majority of cases, exception being where a shell is \
+        not used and/or input/output is not required. In particular \
+        when running a command which deliberately closes input/output pipes, \
+        such as a daemon process, you may want to disable ``use_pty``. \
+        Defaults to ``True``
         :type use_pty: bool
         :param host_args: (Optional) Format command string with per-host \
         arguments in ``host_args``. ``host_args`` length must equal length of \
@@ -414,7 +420,7 @@ class ParallelSSHClient(object):
           0
           0
         
-        *Wait for completion, update output with exit codes*
+        *Wait for completion, print exit codes*
 
         .. code-block:: python
         
@@ -435,9 +441,10 @@ class ParallelSSHClient(object):
         into memory and may exhaust available memory if command output is
         large enough.
         
-        Iterating over stdout/stderr by definition implies blocking until
-        command has finished. To only log output as it comes in without blocking
-        the host logger can be enabled - see `Enabling Host Logger` above.
+        Iterating over stdout/stderr to completion by definition implies
+        blocking until command has finished. To only log output as it comes in
+        without blocking the host logger can be enabled - see 
+        `Enabling Host Logger` above.
 
         .. code-block:: python
         
@@ -502,13 +509,13 @@ class ParallelSSHClient(object):
         
           Since generators by design only iterate over a sequence once then stop,
           `client.hosts` should be re-assigned after each call to `run_command`
-          when using iterators as target of `client.hosts`.
+          when using generators as target of `client.hosts`.
         
         **Overriding host list**
         
         Host list can be modified in place. Call to `run_command` will create
         new connections as necessary and output will only contain output for
-        hosts command ran on.
+        the hosts ``run_command`` executed on.
         
         .. code-block:: python
         
@@ -781,15 +788,16 @@ class ParallelSSHClient(object):
         This function returns a list of greenlets which can be
         `join`-ed on to wait for completion.
 
-        :py:func:`gevent.joinall` function may be used to join on all greenlets and
-        will also raise exceptions if called with ``raise_error=True`` - default
-        is `False`.
+        :py:func:`gevent.joinall` function may be used to join on all greenlets 
+        and will also raise exceptions from them if called with
+        ``raise_error=True`` - default is `False`.
 
         Alternatively call `.get` on each greenlet to raise any exceptions from
         it.
 
-        Exceptions listed here are raised when `.get` is called on each
-        greenlet, not this function itself.
+        Exceptions listed here are raised when
+        ``gevent.joinall(<greenlets>, raise_error=True)`` or ``.get`` is called on
+        each greenlet, not this function itself.
 
         :param local_file: Local filepath to copy to remote host
         :type local_file: str
@@ -802,7 +810,7 @@ class ParallelSSHClient(object):
         and recurse is not set
         :raises: :py:class:`IOError` on I/O errors writing files
         :raises: :py:class:`OSError` on OS errors like permission denied
-        
+
         .. note ::
         
           Remote directories in `remote_file` that do not exist will be
