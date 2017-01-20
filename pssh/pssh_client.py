@@ -34,6 +34,7 @@ gevent.hub.Hub.NOT_ERROR = (Exception,)
 from .exceptions import HostArgumentException
 from .constants import DEFAULT_RETRIES
 from .ssh_client import SSHClient
+from .output import HostOutput
 
 
 logger = logging.getLogger('pssh')
@@ -722,23 +723,16 @@ class ParallelSSHClient(object):
             logger.warning("Already have output for host %s - changing host "
                            "key for %s to %s", host, host, new_host)
             host = new_host
-        output.setdefault(host, {})
-        output[host].update({
-            'exit_code': exit_code,
-            'channel': channel,
-            'stdout': stdout,
-            'stderr': stderr,
-            'stdin': stdin,
-            'cmd': cmd,
-            'exception': exception,})
+        output[host] = HostOutput(host, cmd, channel, stdout, stderr, stdin,
+                                  exception=exception)
 
     def join(self, output):
         """Block until all remote commands in output have finished
         and retrieve exit codes"""
         for host in output:
-            output[host]['cmd'].join()
-            if output[host]['channel']:
-                output[host]['channel'].recv_exit_status()
+            output[host].cmd.join()
+            if output[host].channel:
+                output[host].channel.recv_exit_status()
         self.get_exit_codes(output)
 
     def finished(self, output):
@@ -761,7 +755,7 @@ class ParallelSSHClient(object):
         :rtype: None
         """
         for host in output:
-            output[host].update({'exit_code': self.get_exit_code(output[host])})
+            output[host].exit_code = self.get_exit_code(output[host])
 
     def get_exit_code(self, host_output):
         """Get exit code from host output *if available*.
