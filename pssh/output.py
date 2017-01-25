@@ -1,3 +1,5 @@
+from os import linesep
+
 class HostOutput(dict):
     __slots__ = ('host', 'cmd', 'channel', 'stdout', 'stderr', 'stdin', 'exit_code', 'exception')
 
@@ -25,6 +27,9 @@ class HostOutput(dict):
             object.__setattr__(self, key, update_dict[key])
 
     def __repr__(self):
-        return "host=%s, cmd=%s, channel=%s, stdout=%s, stderr=%s, stdin=%s, \
-exception=%s" % (self.host, self.cmd, self.channel, self.stdout, self.stdin,
-                 self.stderr, self.exception,)
+        return "{linesep}\thost={host}{linesep}" \
+"\tcmd={cmd}{linesep}\tchannel={channel}{linesep}" \
+"\tstdout={stdout}{linesep}\tstderr={stderr}{linesep}\tstdin={stdin}{linesep}\
+\texception={exception}{linesep}".format(
+    host=self.host, cmd=self.cmd, channel=self.channel, stdout=self.stdout,
+    stdin=self.stdin, stderr=self.stderr, exception=self.exception, linesep=linesep,)

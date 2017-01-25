@@ -46,23 +46,38 @@ Run ``ls`` on two remote hosts in parallel with ``sudo``.
 
 ::
 
-  from __future__ import print_function
-  
+  from pprint import pprint
   from pssh import ParallelSSHClient
+
   hosts = ['myhost1', 'myhost2']
   client = ParallelSSHClient(hosts)
   output = client.run_command('ls -ltrh /tmp/', sudo=True)
-  print(output)
-  {'myhost1': {'exit_code': None, 'stdout': <generator>, 'stderr': <generator>, 'channel': <channel>, 'cmd' : <greenlet>, 'exception' : None},
-   'myhost2': {'exit_code': None, 'stdout': <generator>, 'stderr': <generator>, 'channel': <channel>, 'cmd' : <greenlet>, 'exception' : None}}
+  pprint(output)
+  {'myhost1': 
+        host=myhost1
+	cmd=<Greenlet>
+	channel=<channel>
+	stdout=<generator>
+	stderr=<generator>
+	stdin=<channel>
+	exception=None
+    'myhost2': 
+        host=myhost2
+	cmd=<Greenlet>
+	channel=<channel>
+	stdout=<generator>
+	stderr=<generator>
+	stdin=<channel>
+	exception=None
+  }
 
 Stdout and stderr buffers are available in output. Iterating on them can be used to get output as it becomes available. Iteration ends *only when command has finished*, though it may be interrupted and resumed at any point.
 
 ::
 
   for host in output:
-     for line in output[host]['stdout']:
-         print("Host %s - output: %s" % (host, line))
+     for line in output[host].stdout:
+         pprint("Host %s - output: %s" % (host, line))
   Host myhost1 - output: drwxr-xr-x  6 xxx xxx 4.0K Jan  1 00:00 xxx
   Host myhost1 - output: <..>
   Host myhost2 - output: drwxr-xr-x  6 xxx xxx 4.0K Jan  1 00:00 xxx
@@ -73,7 +88,7 @@ Exit codes become available once stdout/stderr is iterated on or ``client.join(o
 ::
 
   for host in output:
-      print(output[host]['exit_code'])
+      print(output[host].exit_code)
   0
   0
 
@@ -84,9 +99,9 @@ The client's ``join`` function can be used to block and wait for all parallel co
 Similarly, exit codes are available after ``client.join`` is called::
 
   output = client.run_command('exit 0')
-  # Block and gather exit codes. Output variable is updated in-place
+  # Block and gather exit codes. Output is updated in-place
   client.join(output)
-  print(output[client.hosts[0]]['exit_code'])
+  pprint(output[client.hosts[0]].exit_code)
   0
 
 .. note::

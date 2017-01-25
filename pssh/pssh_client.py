@@ -210,7 +210,7 @@ class ParallelSSHClient(object):
         
         For individual commands the status of channel can be checked ::
         
-          output[host]['channel'].closed
+          output[host].channel.closed
           False
         
         which returns ``True`` if command has finished.
@@ -234,7 +234,7 @@ class ParallelSSHClient(object):
         
             client.get_exit_codes(output)
                 for host in output:
-                    print(output[host]['exit_code'])
+                    print(output[host].exit_code)
             0
             0
         
@@ -243,7 +243,7 @@ class ParallelSSHClient(object):
         .. code-block:: python
         
           for host in output:
-              for line in output[host]['stdout']:
+              for line in output[host].stdout:
                   print(line)
           [myhost1]     ls: cannot access /tmp/aasdfasdf: No such file or directory
           [myhost2]     ls: cannot access /tmp/aasdfasdf: No such file or directory
@@ -406,18 +406,22 @@ class ParallelSSHClient(object):
         **Print stdout for each command**
         
         .. code-block:: python
-        
+
+          from __future__ import print_function
+
           for host in output:
-              for line in output[host]['stdout']:
+              for line in output[host].stdout:
                   print(line)
         
         **Get exit codes after command has finished**
 
         .. code-block:: python
-        
+
+          from __future__ import print_function
+
           client.get_exit_codes(output)
           for host in output:
-              print(output[host]['exit_code'])
+              print(output[host].exit_code)
           0
           0
         
@@ -426,9 +430,9 @@ class ParallelSSHClient(object):
         .. code-block:: python
         
           client.join(output)
-          print(output[host]['exit_code'])
+          print(output[host].exit_code)
           0
-          for line in output[host]['stdout']:
+          for line in output[host].stdout:
               print(line)
         
         **Run with sudo**
@@ -448,9 +452,11 @@ class ParallelSSHClient(object):
         `Enabling Host Logger` above.
 
         .. code-block:: python
-        
+
+          from __future__ import print_function
+
           for host in output:
-              stdout = list(output[host]['stdout'])
+              stdout = list(output[host]stdout)
               print("Complete stdout for host %s is %s" % (host, stdout,))
 
         **Command with per-host arguments**
@@ -544,7 +550,7 @@ class ParallelSSHClient(object):
           print("Started %s commands in %s" % (len(cmds), end-start,))
           start = datetime.datetime.now()
           for _output in output:
-              for line in _output[host]['stdout']:
+              for line in _output[host].stdout:
                   print(line)
           end = datetime.datetime.now()
           print("All commands finished in %s" % (end-start,))
@@ -560,12 +566,15 @@ class ParallelSSHClient(object):
         
         ::
         
-          {'myhost1': {'exit_code': exit code if ready else None,
-                       'channel' : SSH channel of command,
-                       'stdout'  : <iterable>,
-                       'stderr'  : <iterable>,
-                       'cmd'     : <greenlet>},
-                       'exception' : None}
+          {'myhost1':
+                host=myhost1
+                exit_code=exit code if ready else None
+                channel=SSH channel of command
+                stdout=<iterable>
+                stderr=<iterable>
+                stdin=<file-like writable channel>
+                cmd=<greenlet>
+                exception=None}
         
         **Do not stop on errors, return per-host exceptions in output**
         
@@ -577,24 +586,26 @@ class ParallelSSHClient(object):
         
         .. code-block:: python
         
-          {'myhost1': {'exit_code': None,
-                       'channel' : None,
-                       'stdout'  : None,
-                       'stderr'  : None,
-                       'cmd'     : None,
-                       'exception' : ConnectionErrorException(
-                           "Error connecting to host '%s:%s' - %s - retry %s/%s",
-                           host, port, 'Connection refused', 3, 3)}}
+          {'myhost1':
+                host=myhost1
+                exit_code=None
+                channel=None
+                stdout=None
+                stderr=None
+                cmd=None
+                exception=ConnectionErrorException(
+                            "Error connecting to host '%s:%s' - %s - retry %s/%s",
+                             host, port, 'Connection refused', 3, 3)}
         
         **Using stdin**
         
         .. code-block:: python
         
           output = client.run_command('read')
-          stdin = output['localhost']['stdin']
+          stdin = output['localhost'].stdin
           stdin.write("writing to stdin\\n")
           stdin.flush()
-          for line in output['localhost']['stdout']:
+          for line in output['localhost'].stdout:
               print(line)
           
           writing to stdin
@@ -682,7 +693,7 @@ class ParallelSSHClient(object):
         
           output = client.get_output()
           for host in output:
-              for line in output[host]['stdout']:
+              for line in output[host].stdout:
                   print(line)
           <stdout>
           # Get exit code after command has finished
@@ -731,7 +742,7 @@ class ParallelSSHClient(object):
         and retrieve exit codes"""
         for host in output:
             output[host].cmd.join()
-            if output[host].channel:
+            if output[host].channel is not None:
                 output[host].channel.recv_exit_status()
         self.get_exit_codes(output)
 
@@ -743,7 +754,7 @@ class ParallelSSHClient(object):
         """
         for host in output:
             chan = output[host]['channel']
-            if chan and not chan.closed:
+            if chan is not None and not chan.closed:
                 return False
         return True
 
@@ -883,7 +894,7 @@ class ParallelSSHClient(object):
                 remote_file, file_w_suffix, recurse=recurse)
 
     def _make_ssh_client(self, host):
-        if not host in self.host_clients or not self.host_clients[host]:
+        if not host in self.host_clients or self.host_clients[host] is None:
             _user, _port, _password, _pkey = self._get_host_config_values(host)
             self.host_clients[host] = SSHClient(
                 host, user=_user, password=_password, port=_port, pkey=_pkey,
