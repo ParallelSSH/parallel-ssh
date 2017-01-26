@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-"""Package containing ParallelSSHClient class."""
+"""Package containing ParallelSSHClient class"""
 
 import sys
 if 'threading' in sys.modules:
@@ -139,19 +139,23 @@ class ParallelSSHClient(object):
         .. code-block:: python
         
           pprint(output)
-          
-            {'myhost1': {'exit_code': None,
-                         'stdout' : <generator>,
-                         'stderr' : <generator>,
-                         'cmd' : <greenlet>,
-                         'exception' : None,
-                         },
-             'myhost2': {'exit_code': None,
-                         'stdout' : <generator>,
-                         'stderr' : <generator>,
-                         'cmd' : <greenlet>,
-                         'exception' : None,
-            }}
+            {'myhost1': 
+                  host=myhost1
+                  cmd=<Greenlet>
+                  channel=<channel>
+                  stdout=<generator>
+                  stderr=<generator>
+                  stdin=<channel>
+                  exception=None
+             'myhost2': 
+                  host=myhost2
+                  cmd=<Greenlet>
+                  channel=<channel>
+                  stdout=<generator>
+                  stderr=<generator>
+                  stdin=<channel>
+                  exception=None
+            }
         
         **Enabling host logger**
         
@@ -378,8 +382,9 @@ class ParallelSSHClient(object):
         host list - :py:class:`pssh.exceptions.HostArgumentException` is raised \
         otherwise
         :type host_args: tuple or list
-        :rtype: Dictionary with host as key as per \
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
+        :rtype: Dictionary with host as key and \
+        :py:class:`pssh.output.HostOutput` as value as per \
+        :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
         
         :raises: :py:class:`pssh.exceptions.AuthenticationException` on \
         authentication error
@@ -528,13 +533,14 @@ class ParallelSSHClient(object):
         
           client.hosts = ['otherhost']
           print(client.run_command('exit 0'))
-          {'otherhost': {'exit_code': None}, <..>}
+          {'otherhost': exit_code=None, <..>}
         
         **Run multiple commands in parallel**
         
-        This short example demonstrates running long running commands in
-        parallel, how long it takes for all commands to start, blocking until
-        they complete and how long it takes for all commands to complete.
+        This short example demonstrates running multiple long running commands
+        in parallel on the same host, how long it takes for all commands to
+        start, blocking until they complete and how long it takes for all
+        commands to complete.
         
         See examples directory for complete script. ::
         
@@ -562,7 +568,7 @@ class ParallelSSHClient(object):
           Started 10 commands in 0:00:00.428629
           All commands finished in 0:00:05.014757
         
-        *Output dictionary*
+        *Output format*
         
         ::
         
@@ -668,7 +674,8 @@ class ParallelSSHClient(object):
         
         :param cmd: Command to get output from
         :type cmd: :py:class:`gevent.Greenlet`
-        :param output: Dictionary containing output to be updated with output \
+        :param output: Dictionary containing \
+        :py:class:`pssh.output.HostOutput` values to be updated with output \
         from cmd
         :type output: dict
         :rtype: None
@@ -677,12 +684,14 @@ class ParallelSSHClient(object):
         
         ::
         
-          {'myhost1': {'exit_code': exit code if ready else None,
-                       'channel' : SSH channel of command,
-                       'stdout'  : <iterable>,
-                       'stderr'  : <iterable>,
-                       'cmd'     : <greenlet>,
-                       'exception' : <exception object if applicable>}}
+          {'myhost1':
+                exit_code=exit code if ready else None
+                channel=SSH channel of command
+                stdout=<iterable>
+                stderr=<iterable>
+                cmd=<greenlet>
+                exception=<exception object if applicable>
+          }
         
         Stdout and stderr are also logged via the logger named ``host_logger``
         which can be enabled by calling ``enable_host_logger``
@@ -735,6 +744,7 @@ class ParallelSSHClient(object):
                            "key for %s to %s", host, host, new_host)
             host = new_host
         output[host] = HostOutput(host, cmd, channel, stdout, stderr, stdin,
+                                  exit_code=exit_code,
                                   exception=exception)
 
     def join(self, output):
@@ -782,7 +792,7 @@ class ParallelSSHClient(object):
 
     def _get_exit_code(self, channel):
         """Get exit code from channel if ready"""
-        if not channel or not channel.exit_status_ready():
+        if channel is None or not channel.exit_status_ready():
             return
         channel.close()
         return channel.recv_exit_status()

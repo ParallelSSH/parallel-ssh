@@ -15,6 +15,8 @@ Parallel-SSH's documentation
 
    pssh_client
    ssh_client
+   output
+   agent
    exceptions
 
 Welcome to ParallelSSH's API documentation.
