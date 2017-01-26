@@ -948,5 +948,33 @@ class ParallelSSHClientTest(unittest.TestCase):
         output = self.client.run_command(cmd)
         self.assertRaises(socket_timeout, list, output[self.host]['stdout'])
 
+    def test_output_attributes(self):
+        output = self.client.run_command(self.fake_cmd)
+        expected_exit_code = 0
+        expected_stdout = [self.fake_resp]
+        expected_stderr = []
+        self.client.join(output)
+        exit_code = output[self.host]['exit_code']
+        stdout = list(output[self.host]['stdout'])
+        stderr = list(output[self.host]['stderr'])
+        host_output = output[self.host]
+        self.assertEqual(expected_exit_code, host_output.exit_code)
+        self.assertEqual(expected_exit_code, host_output['exit_code'])
+        self.assertEqual(host_output['cmd'], host_output.cmd)
+        self.assertEqual(host_output['exception'], host_output.exception)
+        self.assertEqual(host_output['stdout'], host_output.stdout)
+        self.assertEqual(host_output['stderr'], host_output.stderr)
+        self.assertEqual(host_output['stdin'], host_output.stdin)
+        self.assertEqual(host_output['channel'], host_output.channel)
+        self.assertEqual(host_output['host'], host_output.host)
+        self.assertTrue(hasattr(output[self.host], 'host'))
+        self.assertTrue(hasattr(output[self.host], 'cmd'))
+        self.assertTrue(hasattr(output[self.host], 'channel'))
+        self.assertTrue(hasattr(output[self.host], 'stdout'))
+        self.assertTrue(hasattr(output[self.host], 'stderr'))
+        self.assertTrue(hasattr(output[self.host], 'stdin'))
+        self.assertTrue(hasattr(output[self.host], 'exception'))
+        self.assertTrue(hasattr(output[self.host], 'exit_code'))
+
 if __name__ == '__main__':
     unittest.main()

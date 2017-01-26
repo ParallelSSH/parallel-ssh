@@ -278,7 +278,7 @@ texinfo_documents = [
 epub_title = u'Parallel-SSH'
 epub_author = u'P Kittenis'
 epub_publisher = u'P Kittenis'
-epub_copyright = u'2015, P Kittenis'
+epub_copyright = u'2017, P Kittenis'
 
 # The basename for the epub file. It defaults to the project name.
 #epub_basename = u'Parallel-SSH'
