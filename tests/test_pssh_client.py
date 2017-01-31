@@ -976,5 +976,35 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue(hasattr(output[self.host], 'exception'))
         self.assertTrue(hasattr(output[self.host], 'exit_code'))
 
+    def test_run_command_user_sudo(self):
+        user = 'cmd_user'
+        output = self.client.run_command(self.fake_cmd, user=user)
+        self.client.join(output)
+        stderr = list(output[self.host].stderr)
+        self.assertTrue(len(stderr) > 0)
+        self.assertTrue(user in stderr[0])
+
+    def test_run_command_shell(self):
+        output = self.client.run_command(self.fake_cmd, shell="bash -c")
+        self.client.join(output)
+        stdout = list(output[self.host].stdout)
+        self.assertEqual(stdout, [self.fake_resp])
+
+    def test_run_command_no_shell(self):
+        output = self.client.run_command('id', use_shell=False)
+        self.client.join(output)
+        stdout = list(output[self.host].stdout)
+        self.assertTrue(len(stdout) > 0)
+        self.assertTrue(output[self.host].exit_code == 0)
+
+    def test_run_command_environment(self):
+        env = {'ENV_VARIABLE': 'env value'}
+        output = self.client.run_command('echo ${ENV_VARIABLE}',
+                                         environment=env)
+        self.client.join(output)
+        stdout = list(output[self.host].stdout)
+        expected = [env.values()[0]]
+        self.assertEqual(stdout, expected)
+
 if __name__ == '__main__':
     unittest.main()

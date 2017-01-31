@@ -203,7 +203,7 @@ class SSHClient(object):
     def exec_command(self, command, sudo=False, user=None,
                      shell=None,
                      use_shell=True, use_pty=True,
-                     **kwargs):
+                     environment=None):
         """Wrapper to :py:func:`paramiko.SSHClient.exec_command`
         
         Opens a new SSH session with a new pty and runs command before yielding 
@@ -241,6 +241,8 @@ class SSHClient(object):
             channel.get_pty()
         if self.channel_timeout:
             channel.settimeout(self.channel_timeout)
+        if environment:
+            channel.update_environment(environment)
         stdout, stderr, stdin = channel.makefile('rb'), channel.makefile_stderr('rb'), \
           channel.makefile('wb')
         for _char in ['\\', '"', '$', '`']:
@@ -256,7 +258,7 @@ class SSHClient(object):
         else:
             _command += '"%s"' % (command,)
         logger.debug("Running parsed command %s on %s", _command, self.host)
-        channel.exec_command(_command, **kwargs)
+        channel.exec_command(_command)
         logger.debug("Command started")
         sleep(0)
         return channel, self.host, stdout, stderr, stdin

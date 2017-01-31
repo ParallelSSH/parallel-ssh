@@ -335,7 +335,9 @@ class ParallelSSHClient(object):
         self.host_config = host_config if host_config else {}
         self.channel_timeout = channel_timeout
 
-    def run_command(self, *args, **kwargs):
+    def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
+                    shell=None, use_shell=True, use_pty=True, host_args=None,
+                    environment=None):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output buffers.
 
@@ -351,8 +353,8 @@ class ParallelSSHClient(object):
         ``stop_on_errors=False`` in which case exceptions are added to host
         output instead.
 
-        :param args: Positional arguments for command
-        :type args: tuple
+        :param command: Command to run
+        :type command: str
         :param sudo: (Optional) Run with sudo. Defaults to False
         :type sudo: bool
         :param user: (Optional) User to run command as. Requires sudo access \
@@ -382,6 +384,11 @@ class ParallelSSHClient(object):
         host list - :py:class:`pssh.exceptions.HostArgumentException` is raised \
         otherwise
         :type host_args: tuple or list
+        :param environment: (Optional) Environment variables to be exposed to \
+        command to be run. This requires that ``AcceptEnv`` server setting \
+        is enabled - variables will silently not be set otherwise
+        :type environment: dict
+
         :rtype: Dictionary with host as key and \
         :py:class:`pssh.output.HostOutput` as value as per \
         :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
@@ -617,14 +624,14 @@ class ParallelSSHClient(object):
           writing to stdin
         
         """
-        stop_on_errors = kwargs.pop('stop_on_errors', True)
-        host_args = kwargs.pop('host_args', None)
         output = {}
         if host_args:
             try:
                 cmds = [self.pool.spawn(self._exec_command, host,
-                                        args[0] % host_args[host_i],
-                                        *args[1:], **kwargs)
+                                        command % host_args[host_i],
+                                        sudo=sudo, user=user, shell=shell,
+                                        use_shell=use_shell, use_pty=use_pty,
+                                        environment=environment)
                         for host_i, host in enumerate(self.hosts)]
             except IndexError:
                 raise HostArgumentException(
@@ -632,7 +639,10 @@ class ParallelSSHClient(object):
                     "number of hosts ")
         else:
             cmds = [self.pool.spawn(
-                self._exec_command, host, *args, **kwargs)
+                self._exec_command, host, command,
+                sudo=sudo, user=user, shell=shell,
+                use_shell=use_shell, use_pty=use_pty,
+                environment=environment)
                 for host in self.hosts]
         for cmd in cmds:
             try:
@@ -648,11 +658,14 @@ class ParallelSSHClient(object):
         _password = self.host_config.get(host, {}).get('password', self.password)
         _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
         return _user, _port, _password, _pkey
-    
-    def _exec_command(self, host, *args, **kwargs):
+
+    def _exec_command(self, host, command, sudo=False, user=None,
+                      shell=None, use_shell=True, use_pty=True,
+                      environment=None):
         """Make SSHClient, run command on host"""
         if not host in self.host_clients or not self.host_clients[host]:
             _user, _port, _password, _pkey = self._get_host_config_values(host)
+            _user = user if user else _user
             self.host_clients[host] = SSHClient(host, user=_user,
                                                 password=_password,
                                                 port=_port, pkey=_pkey,
@@ -667,11 +680,13 @@ class ParallelSSHClient(object):
                                                 allow_agent=self.allow_agent,
                                                 agent=self.agent,
                                                 channel_timeout=self.channel_timeout)
-        return self.host_clients[host].exec_command(*args, **kwargs)
+        return self.host_clients[host].exec_command(
+            command, sudo=sudo, user=user, shell=shell,
+            use_shell=use_shell, use_pty=use_pty, environment=environment)
 
     def get_output(self, cmd, output):
         """Get output from command.
-        
+
         :param cmd: Command to get output from
         :type cmd: :py:class:`gevent.Greenlet`
         :param output: Dictionary containing \
@@ -679,9 +694,9 @@ class ParallelSSHClient(object):
         from cmd
         :type output: dict
         :rtype: None
-        
+
         `output` parameter is modified in-place and has the following structure
-        
+
         ::
         
           {'myhost1':
@@ -705,7 +720,8 @@ class ParallelSSHClient(object):
               for line in output[host].stdout:
                   print(line)
           <stdout>
-          # Get exit code after command has finished
+          # Get exit code for a particular host's output after command
+          # has finished
           self.get_exit_code(output[host])
           0
         
@@ -763,7 +779,7 @@ class ParallelSSHClient(object):
         :rtype: bool
         """
         for host in output:
-            chan = output[host]['channel']
+            chan = output[host].channel
             if chan is not None and not chan.closed:
                 return False
         return True
@@ -787,7 +803,7 @@ class ParallelSSHClient(object):
         if not 'channel' in host_output:
             logger.error("%s does not look like host output..", host_output,)
             return
-        channel = host_output['channel']
+        channel = host_output.channel
         return self._get_exit_code(channel)
 
     def _get_exit_code(self, channel):
