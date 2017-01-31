@@ -982,7 +982,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.client.join(output)
         stderr = list(output[self.host].stderr)
         self.assertTrue(len(stderr) > 0)
-        self.assertTrue(user in stderr[0])
+        self.assertTrue(output[self.host].exit_code == 1)
 
     def test_run_command_shell(self):
         output = self.client.run_command(self.fake_cmd, shell="bash -c")
