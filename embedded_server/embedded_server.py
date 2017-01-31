@@ -169,11 +169,20 @@ class Server(paramiko.ServerInterface):
         self.event.set()
         _env = os.environ
         _env['PYTHONIOENCODING'] = encoding
+        if hasattr(channel, 'environment'):
+            _env.update(channel.environment)
         process = gevent.subprocess.Popen(cmd, stdout=gevent.subprocess.PIPE,
                                           stdin=gevent.subprocess.PIPE,
+                                          stderr=gevent.subprocess.PIPE,
                                           shell=True, env=_env)
         gevent.spawn(self._read_response, channel, process)
         gevent.sleep(0)
+        return True
+
+    def check_channel_env_request(self, channel, name, value):
+        if not hasattr(channel, 'environment'):
+            channel.environment = {}
+        channel.environment.update({name: value})
         return True
 
     def _read_response(self, channel, process):
@@ -181,6 +190,8 @@ class Server(paramiko.ServerInterface):
         logger.debug("Waiting for output")
         for line in process.stdout:
             channel.send(line)
+        for line in process.stderr:
+            channel.send_stderr(line)
         process.communicate()
         channel.send_exit_status(process.returncode)
         logger.debug("Command finished with return code %s", process.returncode)
