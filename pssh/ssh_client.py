@@ -243,8 +243,8 @@ class SSHClient(object):
             channel.settimeout(self.channel_timeout)
         if environment:
             channel.update_environment(environment)
-        stdout, stderr, stdin = channel.makefile('rb'), channel.makefile_stderr('rb'), \
-          channel.makefile('wb')
+        stdout, stderr, stdin = channel.makefile('rb'), \
+          channel.makefile_stderr('rb'), channel.makefile('wb')
         for _char in ['\\', '"', '$', '`']:
             command = command.replace(_char, r'\%s' % (_char,))
         shell = '$SHELL -c' if not shell else shell
@@ -383,7 +383,8 @@ class SSHClient(object):
         try:
             sftp.put(local_file, remote_file)
         except Exception as error:
-            logger.error("Error occured copying file %s to remote destination %s:%s - %s",
+            logger.error("Error occured copying file %s to remote destination "
+                         "%s:%s - %s",
                          local_file, self.host, remote_file, error)
             raise error
         logger.info("Copied local file %s to remote destination %s:%s",

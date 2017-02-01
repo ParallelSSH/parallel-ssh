@@ -577,6 +577,23 @@ class ParallelSSHClientTest(unittest.TestCase):
             server.kill()
             proxy_server.kill()
 
+    def test_ssh_proxy_target_host_failure(self):
+        del self.client
+        self.client = None
+        self.server.kill()
+        proxy_host = '127.0.0.2'
+        proxy_server, proxy_server_port = start_server_from_ip(proxy_host)
+        client = ParallelSSHClient([self.host], port=self.listen_port,
+                                   pkey=self.user_key,
+                                   proxy_host=proxy_host,
+                                   proxy_port=proxy_server_port,
+                                   )
+        try:
+            self.assertRaises(ConnectionErrorException, client.run_command, self.fake_cmd)
+        finally:
+            del client
+            proxy_server.kill()
+
     def test_ssh_proxy_auth(self):
         """Test connecting to remote destination via SSH proxy
         client -> proxy -> destination
