@@ -153,7 +153,7 @@ class SSHClient(object):
             raise ConnectionErrorException("Error connecting to host '%s:%s' - %s",
                                             self.host, self.port,
                                             str(error_type))
-    
+
     def _connect(self, client, host, port, sock=None, retries=1,
                  user=None, password=None, pkey=None):
         """Connect to host

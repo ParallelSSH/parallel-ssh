@@ -19,4 +19,3 @@ exclude_lines =
     raise NotImplementedError
     if __name__ == .__main__.:
     logger.debug
-    return self.host_clients[host]
