@@ -1014,14 +1014,5 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue(len(stdout) > 0)
         self.assertTrue(output[self.host].exit_code == 0)
 
-    def test_run_command_environment(self):
-        env = {'ENV_VARIABLE': 'env value'}
-        output = self.client.run_command('echo ${ENV_VARIABLE}',
-                                         environment=env)
-        self.client.join(output)
-        stdout = list(output[self.host].stdout)
-        expected = [env.values()[0]]
-        self.assertEqual(stdout, expected)
-
 if __name__ == '__main__':
     unittest.main()

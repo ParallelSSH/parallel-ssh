@@ -202,14 +202,13 @@ class SSHClient(object):
 
     def exec_command(self, command, sudo=False, user=None,
                      shell=None,
-                     use_shell=True, use_pty=True,
-                     environment=None):
+                     use_shell=True, use_pty=True):
         """Wrapper to :py:func:`paramiko.SSHClient.exec_command`
         
         Opens a new SSH session with a new pty and runs command before yielding 
         the main gevent loop to allow other greenlets to execute.
         
-        :param command: Cxommand to execute
+        :param command: Command to execute
         :type command: str
         :param sudo: (Optional) Run with sudo. Defaults to False
         :type sudo: bool
@@ -241,8 +240,6 @@ class SSHClient(object):
             channel.get_pty()
         if self.channel_timeout:
             channel.settimeout(self.channel_timeout)
-        if environment:
-            channel.update_environment(environment)
         stdout, stderr, stdin = channel.makefile('rb'), \
           channel.makefile_stderr('rb'), channel.makefile('wb')
         for _char in ['\\', '"', '$', '`']:
