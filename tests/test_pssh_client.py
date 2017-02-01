@@ -217,7 +217,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertRaises(SSHException, client.run_command, self.fake_cmd)
         del client
         server.kill()
-    
+
     def test_pssh_client_timeout(self):
         server_timeout=0.2
         client_timeout=server_timeout-0.1
@@ -269,7 +269,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue(output[self.host]['exit_code'] == 0,
                         msg="Got non-zero exit code %s" % (
                             output[self.host]['exit_code'],))
-    
+
     def test_pssh_client_retries(self):
         """Test connection error retries"""
         listen_port = self.make_random_port()
@@ -287,7 +287,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                              "expected %s" % (num_tries, expected_num_tries,))
         else:
             raise Exception('No ConnectionErrorException')
-    
+
     def test_sftp_exceptions(self):
         # Port with no server listening on it on separate ip
         host = '127.0.0.3'
@@ -297,7 +297,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         client.pool.join()
         for cmd in cmds:
             self.assertRaises(ConnectionErrorException, cmd.get)
-    
+
     def test_pssh_copy_file(self):
         """Test parallel copy file"""
         test_file_data = 'test'
@@ -319,7 +319,7 @@ class ParallelSSHClientTest(unittest.TestCase):
             os.unlink(filepath)
         shutil.rmtree(remote_test_dir)
         del client
-    
+
     def test_pssh_client_directory(self):
         """Tests copying multiple directories with SSH client. Copy all the files from
         local directory to server, then make sure they are all present."""
@@ -405,7 +405,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         os.chmod(remote_test_path, mask)
         for path in [local_test_path, remote_test_path]:
             shutil.rmtree(path)
-    
+
     def test_pssh_copy_remote_file(self):
         """Test parallel copy file to local host"""
         test_file_data = 'test'
@@ -737,7 +737,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         else:
             raise Exception("Expected SSHException")
         server.kill()
-    
+
     def test_multiple_single_quotes_in_cmd(self):
         """Test that we can run a command with multiple single quotes"""
         output = self.client.run_command("echo 'me' 'and me'")
@@ -751,7 +751,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(expected, stdout[0],
                          msg="Got unexpected output. Expected %s, got %s" % (
                              expected, stdout[0],))
-    
+
     def test_backtics_in_cmd(self):
         """Test running command with backtics in it"""
         output = self.client.run_command("out=`ls` && echo $out")
@@ -759,7 +759,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue(output[self.host]['exit_code'] == 0,
                         msg="Error executing cmd with backtics - error code %s" % (
                             output[self.host]['exit_code'],))
-    
+
     def test_multiple_shell_commands(self):
         """Test running multiple shell commands in one go"""
         output = self.client.run_command("echo me; echo and; echo me")
@@ -771,7 +771,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(expected, stdout,
                          msg="Got unexpected output. Expected %s, got %s" % (
                              expected, stdout,))
-    
+
     def test_escaped_quotes(self):
         """Test escaped quotes in shell variable are handled correctly"""
         output = self.client.run_command('t="--flags=\\"this\\""; echo $t')

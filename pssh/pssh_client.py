@@ -663,7 +663,7 @@ class ParallelSSHClient(object):
                       shell=None, use_shell=True, use_pty=True,
                       environment=None):
         """Make SSHClient, run command on host"""
-        if not host in self.host_clients or not self.host_clients[host]:
+        if host not in self.host_clients or self.host_clients[host] is None:
             _user, _port, _password, _pkey = self._get_host_config_values(host)
             _user = user if user else _user
             self.host_clients[host] = SSHClient(host, user=_user,

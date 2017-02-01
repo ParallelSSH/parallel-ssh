@@ -182,7 +182,7 @@ class Server(paramiko.ServerInterface):
     def check_channel_env_request(self, channel, name, value):
         if not hasattr(channel, 'environment'):
             channel.environment = {}
-        channel.environment.update({name: value})
+        channel.environment.update({name.decode('utf8'): value.decode('utf8')})
         return True
 
     def _read_response(self, channel, process):
