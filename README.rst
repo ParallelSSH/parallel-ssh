@@ -29,7 +29,7 @@ Installation
 
    pip install parallel-ssh
 
-As of version ``0.93.0`` pip version >= ``6.0.0`` is required for Python 2.6 compatibility with latest versions of gevent which have dropped 2.6 support. This limitation will be removed post ``1.0.0`` releases which will deprecate ``2.6`` support.
+As of version ``0.93.0`` ``pip`` version >= ``6.0.0`` is required for Python 2.6 compatibility with latest versions of gevent which have dropped 2.6 support. This limitation will be removed post ``1.0.0`` releases which will deprecate ``2.6`` support.
 
 To upgrade ``pip`` run the following - use of ``virtualenv`` is recommended so as not to override system provided packages::
 
@@ -47,13 +47,13 @@ Run ``ls`` on two remote hosts in parallel with ``sudo``.
 ::
 
   from pprint import pprint
-  from pssh import ParallelSSHClient
+  from pssh.pssh_client import ParallelSSHClient
 
   hosts = ['myhost1', 'myhost2']
   client = ParallelSSHClient(hosts)
   output = client.run_command('ls -ltrh /tmp/', sudo=True)
   pprint(output)
-  {'myhost1': 
+  {'myhost1':
         host=myhost1
 	cmd=<Greenlet>
 	channel=<channel>
@@ -61,17 +61,13 @@ Run ``ls`` on two remote hosts in parallel with ``sudo``.
 	stderr=<generator>
 	stdin=<channel>
 	exception=None
-    'myhost2': 
-        host=myhost2
-	cmd=<Greenlet>
-	channel=<channel>
-	stdout=<generator>
-	stderr=<generator>
-	stdin=<channel>
-	exception=None
+   'myhost2':
+        <..>
   }
 
-Stdout and stderr buffers are available in output. Iterating on them can be used to get output as it becomes available. Iteration ends *only when command has finished*, though it may be interrupted and resumed at any point.
+Standard output buffers are available in output object. Iterating on them can be used to get output as it becomes available. Iteration ends *only when command has finished*, though it may be interrupted and resumed at any point.
+
+`Host output <http://parallel-ssh.readthedocs.io/en/latest/output.html>`_ attributes are available in per-host output dictionary, for example ``output['myhost1'].stdout``.
 
 ::
 
@@ -83,7 +79,7 @@ Stdout and stderr buffers are available in output. Iterating on them can be used
   Host myhost2 - output: drwxr-xr-x  6 xxx xxx 4.0K Jan  1 00:00 xxx
   Host myhost2 - output: <..>
 
-Exit codes become available once stdout/stderr is iterated on or ``client.join(output)`` is called.
+Exit codes become available once output is iterated on to completion *or* ``client.join(output)`` is called.
 
 ::
 
@@ -96,13 +92,17 @@ The client's ``join`` function can be used to block and wait for all parallel co
 
   client.join(output)
 
-Similarly, exit codes are available after ``client.join`` is called::
+Similarly, output and exit codes are available after ``client.join`` is called::
 
   output = client.run_command('exit 0')
   # Block and gather exit codes. Output is updated in-place
   client.join(output)
-  pprint(output[client.hosts[0]].exit_code)
+  pprint(output.values()[0].exit_code)
   0
+  # Output is available
+  for line in output.values()[0].stdout:
+      pprint(line)
+  <..stdout..>
 
 .. note::
 
@@ -171,6 +171,8 @@ There is similar capability to copy remote files to local ones suffixed with the
 
 Directory recursion is supported in both cases via the ``recurse`` parameter - defaults to off.
 
+See `copy_file <http://parallel-ssh.readthedocs.io/en/latest/pssh_client.html#pssh.pssh_client.ParallelSSHClient.copy_file>`_ and `copy_remote_file <http://parallel-ssh.readthedocs.io/en/latest/pssh_client.html#pssh.pssh_client.ParallelSSHClient.copy_remote_file>`_ documentation for more examples.
+
 **************************
 Frequently asked questions
 **************************
@@ -195,56 +197,60 @@ Frequently asked questions
 
    Furthermore, Fabric's use as a library is non-standard and in `many <https://github.com/fabric/fabric/issues/521>`_ `cases <https://github.com/fabric/fabric/pull/674>`_ `just <https://github.com/fabric/fabric/pull/1215>`_ `plain <https://github.com/fabric/fabric/issues/762>`_ `broken <https://github.com/fabric/fabric/issues/1068>`_ and currently stands at over 7,000 lines of code most of which is lacking code testing.
 
-   In addition, Fabric's parallel command implementation uses a combination of both threads and processes with extremely high CPU usage and system load while running with as little as tens of hosts.
+   In addition, Fabric's parallel command implementation uses a combination of both threads and processes with extremely high CPU usage and system load while running with as little as hosts in the single digits.
 
 :Q:
- Is Windows supported?
+   Is Windows supported?
 
 :A:
- The library installs and works on Windows though not formally supported as unit tests are currently Posix system based.
+   The library installs and works on Windows though not formally supported as unit tests are currently Posix system based.
  
- Pip versions >= 8.0 are required for binary package installation of ``gevent`` on Windows, a dependency of ``ParallelSSH``. 
+   Pip versions >= 8.0 are required for binary package installation of ``gevent`` on Windows, a dependency of ``ParallelSSH``. 
  
- Though ``ParallelSSH`` is pure python code and will run on any platform that has a working Python interpreter, its ``gevent`` dependency contains native code which either needs a binary package to be provided for the platform or to be built from source. Binary packages for ``gevent`` are provided for OSX, Linux and Windows platforms as of this time of writing.
+   Though ``ParallelSSH`` is pure python code and will run on any platform that has a working Python interpreter, its ``gevent`` dependency and certain dependencies of ``paramiko`` contain native code which either needs a binary package to be provided for the platform or to be built from source. Binary packages for ``gevent`` are provided for OSX, Linux and Windows platforms as of this time of writing.
 
 :Q:
- Are SSH agents used?
+   Are SSH agents used?
 
 :A:
- All available keys in a system configured SSH agent in addition to SSH keys in the user's home directory, `~/.ssh/id_dsa`, `~/.ssh/id_rsa` et al are automatically used by ParallelSSH. 
+   All available keys in a system configured SSH agent in addition to SSH keys in the user's home directory, `~/.ssh/id_dsa`, `~/.ssh/id_rsa` et al are automatically used by ParallelSSH. 
  
- Use of SSH agent can be disabled by creating a client as ``ParallelSSHClient(allow_agent=False)``. `See documentation <http://parallel-ssh.readthedocs.org/en/latest/>`_ for more information.
+   Use of SSH agent can be disabled by creating a client as ``ParallelSSHClient(allow_agent=False)``. `See documentation <http://parallel-ssh.readthedocs.org/en/latest/>`_ for more information.
 
 :Q:
-  Can ParallelSSH forward my SSH agent?
+   Can ParallelSSH forward my SSH agent?
 
 :A:
-  SSH agent forwarding, what ``ssh -A`` does on the command line, is supported and enabled by default. Creating an object as ``ParallelSSHClient(forward_ssh_agent=False)`` will disable this behaviour.
+   SSH agent forwarding, what ``ssh -A`` does on the command line, is supported and enabled by default. Creating an object as ``ParallelSSHClient(forward_ssh_agent=False)`` will disable this behaviour.
 
 :Q:
-  Is tunneling/proxying supported?
+   Is tunneling/proxying supported?
 
 :A:
-  Yes, `ParallelSSH` natively supports tunelling - also known as proxying - through an intermediate SSH server. Connecting to a remote host is accomplished via an SSH tunnel using the SSH's protocol direct TCP tunneling feature, using local port forwarding. This is done natively in python and tunnel connections are asynchronous like all other connections in the `ParallelSSH` library. For example, client -> proxy SSH server -> remote SSH destination.
+   Yes, `ParallelSSH` natively supports tunelling - also known as proxying - through an intermediate SSH server. Connecting to a remote host is accomplished via an SSH tunnel using the SSH's protocol direct TCP tunneling feature, using local port forwarding. This is done natively in python and tunnel connections are asynchronous like all other connections in the `ParallelSSH` library. For example, client -> proxy SSH server -> remote SSH destination.
 
-  Use the ``proxy_host`` and ``proxy_port`` parameters to configure your proxy::
+   Use the ``proxy_host`` and ``proxy_port`` parameters to configure your proxy::
 
-    client = ParallelSSHClient(hosts, proxy_host='my_ssh_proxy_host')
+     client = ParallelSSHClient(hosts, proxy_host='my_ssh_proxy_host')
 
-  Note that while connections from the ParallelSSH `client` to the tunnel host are asynchronous, connections from the tunnel host to the remote destination(s) may not be, depending on the SSH server implementation. If the SSH server uses threading to implement its tunelling and that server is used to tunnel to a large number of remote destinations system load on the tunnel server will increase linearly with number of threads used.
+   Note that while connections from the ParallelSSH `client` to the tunnel host are asynchronous, connections from the tunnel host to the remote destination(s) may not be, depending on the SSH server implementation. If the SSH server uses threading to implement its tunelling and that server is used to tunnel to a large number of remote destinations system load on the tunnel server will increase linearly with number of threads used.
 
 :Q:
-  Is there a way to programmatically provide an SSH key?
+   Is there a way to programmatically provide an SSH key?
 
 :A:
-  Yes, use the ``pkey`` parameter of the `ParallelSSHClient class <http://parallel-ssh.readthedocs.org/en/latest/#pssh.ParallelSSHClient>`_. There is a ``load_private_key`` helper function in ``pssh.utils`` that can be used to load any supported key type. For example::
+   Yes, use the ``pkey`` parameter of the `ParallelSSHClient class`_. There is also a ``load_private_key`` helper function in ``pssh.utils`` that can be used to load any supported key type. See `ParallelSSHClient class`_ documentation for examples.
 
-    from pssh import ParallelSSHClient, utils
-    client_key = utils.load_private_key('user.key')
-    client = ParallelSSHClient(['myhost1', 'myhost2'], pkey=client_key)
+:Q:
+   Is there a way to programmatically provide an SSH agent?
+
+:A:
+   Yes, with the ``SSHAgent`` class that can be provided via the ``agent`` class parameter of `ParallelSSHClient class`_. Supplying an agent object in this way overrides use of the system's SSH agent, if any. See `SSHAgent documentation <http://parallel-ssh.readthedocs.io/en/latest/agent.html>`_ for an example.
 
 :Q:
    Is there a user's group for feedback and discussion about ParallelSSH?
 
 :A:
    There is a public `ParallelSSH Google group <https://groups.google.com/forum/#!forum/parallelssh>`_ setup for this purpose - both posting and viewing are open to the public.
+
+.. _`ParallelSSHClient class`: http://parallel-ssh.readthedocs.io/en/latest/pssh_client.html#module-pssh.pssh_client

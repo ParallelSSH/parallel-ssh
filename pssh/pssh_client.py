@@ -463,7 +463,7 @@ class ParallelSSHClient(object):
           from __future__ import print_function
 
           for host in output:
-              stdout = list(output[host]stdout)
+              stdout = list(output[host].stdout)
               print("Complete stdout for host %s is %s" % (host, stdout,))
 
         **Command with per-host arguments**
@@ -886,6 +886,11 @@ class ParallelSSHClient(object):
         value of ``myfile`` and default separator the resulting filename will \
         be ``myfile_myhost`` for the file from host ``myhost``
         :type suffix_separator: str
+
+        :raises: :py:class:`ValueError` when a directory is supplied to local_file \
+        and recurse is not set
+        :raises: :py:class:`IOError` on I/O errors writing files
+        :raises: :py:class:`OSError` on OS errors like permission denied
 
         .. note ::
           Local directories in `local_file` that do not exist will be

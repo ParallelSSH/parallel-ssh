@@ -30,6 +30,24 @@ class HostOutput(dict):
 
     def __init__(self, host, cmd, channel, stdout, stderr, stdin,
                  exit_code=None, exception=None):
+        """
+        :param host: Host name output is for
+        :type host: str
+        :param cmd: Command execution object
+        :type cmd: :py:class:`gevent.Greenlet`
+        :param channel: SSH channel used for command execution
+        :type channel: :py:class:`paramiko.channel.Channel`
+        :param stdout: Standard output buffer
+        :type stdout: generator
+        :param stderr: Standard error buffer
+        :type stderr: generator
+        :param stdin: Standard input buffer
+        :type stdin: :py:func:`file`-like object
+        :param exit_code: Exit code of command
+        :type exit_code: int or None
+        :param exception: Exception from host if any
+        :type exception: Exception or None
+        """
         dict.__init__(self, (('host', host), ('cmd', cmd), ('channel', channel),
                              ('stdout', stdout), ('stderr', stderr),
                              ('stdin', stdin), ('exit_code', exit_code),
