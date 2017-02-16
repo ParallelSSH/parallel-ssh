@@ -336,7 +336,8 @@ class ParallelSSHClient(object):
         self.channel_timeout = channel_timeout
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
-                    shell=None, use_shell=True, use_pty=True, host_args=None):
+                    shell=None, use_shell=True, use_pty=True, host_args=None,
+                    encoding='utf-8'):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output buffers.
 
@@ -383,6 +384,9 @@ class ParallelSSHClient(object):
         host list - :py:class:`pssh.exceptions.HostArgumentException` is raised \
         otherwise
         :type host_args: tuple or list
+        :param encoding: Encoding to use for output. Must be valid
+            `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
+        :type encoding: str
 
         :rtype: Dictionary with host as key and \
         :py:class:`pssh.output.HostOutput` as value as per \
@@ -639,7 +643,7 @@ class ParallelSSHClient(object):
                 for host in self.hosts]
         for cmd in cmds:
             try:
-                self.get_output(cmd, output)
+                self.get_output(cmd, output, encoding=encoding)
             except Exception:
                 if stop_on_errors:
                     raise
@@ -676,7 +680,7 @@ class ParallelSSHClient(object):
             command, sudo=sudo, user=user, shell=shell,
             use_shell=use_shell, use_pty=use_pty)
 
-    def get_output(self, cmd, output):
+    def get_output(self, cmd, output, encoding='utf-8'):
         """Get output from command.
 
         :param cmd: Command to get output from
@@ -733,10 +737,12 @@ class ParallelSSHClient(object):
             raise
         stdout = self.host_clients[host].read_output_buffer(
             stdout, callback=self.get_exit_codes,
-            callback_args=(output,))
+            callback_args=(output,),
+            encoding=encoding)
         stderr = self.host_clients[host].read_output_buffer(
             stderr, prefix='\t[err]', callback=self.get_exit_codes,
-            callback_args=(output,))
+            callback_args=(output,),
+            encoding=encoding)
         self._update_host_output(output, host, self._get_exit_code(channel),
                                  channel, stdout, stderr, stdin, cmd)
 

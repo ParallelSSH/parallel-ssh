@@ -262,7 +262,8 @@ class SSHClient(object):
 
     def read_output_buffer(self, output_buffer, prefix='',
                            callback=None,
-                           callback_args=None):
+                           callback_args=None,
+                           encoding='utf-8'):
         """Read from output buffers and log to host_logger
 
         :param output_buffer: Iterator containing buffer
@@ -274,7 +275,7 @@ class SSHClient(object):
         :param callback_args: Arguments for call back function
         :type callback_args: tuple"""
         for line in output_buffer:
-            output = line.strip().decode('utf8')
+            output = line.strip().decode(encoding)
             host_logger.info("[%s]%s\t%s", self.host, prefix, output,)
             yield output
         if callback:

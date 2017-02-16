@@ -947,6 +947,16 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(expected, stdout,
                          msg="Got unexpected unicode output %s - expected %s" % (
                              stdout, expected,))
+        utf16_server, server_port = start_server_from_ip(
+            self.host, encoding='utf-16')
+        client = ParallelSSHClient([self.host], port=server_port,
+                                   pkey=self.user_key)
+        # File is already set to utf-8, cannot use utf-16 only representations
+        # Using ascii characters encoded as utf-16 instead
+        output = client.run_command(self.fake_cmd, encoding='utf-16')
+        stdout = list(output[self.host]['stdout'])
+        # import ipdb; ipdb.set_trace()
+        self.assertEqual([self.fake_resp.decode('utf-16')], stdout)
 
     def test_pty(self):
         cmd = "exit 0"

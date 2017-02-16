@@ -103,7 +103,8 @@ class Server(paramiko.ServerInterface):
     """
 
     def __init__(self, transport, host_key, fail_auth=False,
-                 ssh_exception=False):
+                 ssh_exception=False,
+                 encoding='utf-8'):
         paramiko.ServerInterface.__init__(self)
         transport.load_server_moduli()
         transport.add_server_key(host_key)
@@ -113,6 +114,7 @@ class Server(paramiko.ServerInterface):
         self.fail_auth = fail_auth
         self.ssh_exception = ssh_exception
         self.host_key = host_key
+        self.encoding = encoding
 
     def check_channel_request(self, kind, chanid):
         return paramiko.OPEN_SUCCEEDED
@@ -163,12 +165,11 @@ class Server(paramiko.ServerInterface):
         gevent.sleep()
         return True
 
-    def check_channel_exec_request(self, channel, cmd,
-                                   encoding='utf-8'):
+    def check_channel_exec_request(self, channel, cmd):
         logger.debug("Got exec request on channel %s for cmd %s" % (channel, cmd,))
         self.event.set()
         _env = os.environ
-        _env['PYTHONIOENCODING'] = encoding
+        _env['PYTHONIOENCODING'] = self.encoding
         if hasattr(channel, 'environment'):
             _env.update(channel.environment)
         process = gevent.subprocess.Popen(cmd, stdout=gevent.subprocess.PIPE,
@@ -182,7 +183,8 @@ class Server(paramiko.ServerInterface):
     def check_channel_env_request(self, channel, name, value):
         if not hasattr(channel, 'environment'):
             channel.environment = {}
-        channel.environment.update({name.decode('utf8'): value.decode('utf8')})
+        channel.environment.update({
+            name.decode(self.encoding): value.decode(self.encoding)})
         return True
 
     def _read_response(self, channel, process):
@@ -213,7 +215,8 @@ def make_socket(listen_ip, port=0):
     return sock
 
 def listen(sock, fail_auth=False, ssh_exception=False,
-           timeout=None):
+           timeout=None,
+           encoding='utf-8'):
     """Run server and given a cmd_to_run, send given
     response to client connection. Returns (server, socket) tuple
     where server is a joinable server thread and socket is listening
@@ -228,13 +231,16 @@ def listen(sock, fail_auth=False, ssh_exception=False,
         return
     host, port = sock.getsockname()
     logger.info('Listening for connection on %s:%s..', host, port)
-    return handle_ssh_connection(sock, fail_auth=fail_auth,
-                          timeout=timeout, ssh_exception=ssh_exception)
+    return handle_ssh_connection(
+        sock, fail_auth=fail_auth, timeout=timeout, ssh_exception=ssh_exception,
+        encoding=encoding)
 
 def _handle_ssh_connection(transport, fail_auth=False,
-                           ssh_exception=False):
+                           ssh_exception=False,
+                           encoding='utf-8'):
     server = Server(transport, host_key,
-                    fail_auth=fail_auth, ssh_exception=ssh_exception)
+                    fail_auth=fail_auth, ssh_exception=ssh_exception,
+                    encoding=encoding)
     try:
         transport.start_server(server=server)
     except paramiko.SSHException as e:
@@ -261,7 +267,8 @@ def _handle_ssh_connection(transport, fail_auth=False,
 
 def handle_ssh_connection(sock,
                           fail_auth=False, ssh_exception=False,
-                          timeout=None):
+                          timeout=None,
+                          encoding='utf-8'):
     conn, addr = sock.accept()
     logger.info('Got connection..')
     if timeout:
@@ -271,7 +278,8 @@ def handle_ssh_connection(sock,
     try:
         transport = paramiko.Transport(conn)
         return _handle_ssh_connection(transport, fail_auth=fail_auth,
-                                      ssh_exception=ssh_exception)
+                                      ssh_exception=ssh_exception,
+                                      encoding=encoding)
     except Exception as e:
         logger.error('*** Caught exception: %s: %s' % (str(e.__class__), str(e),))
         traceback.print_exc()
@@ -281,14 +289,18 @@ def handle_ssh_connection(sock,
             pass
 
 def start_server(sock, fail_auth=False, ssh_exception=False,
-                 timeout=None):
+                 timeout=None,
+                 encoding='utf-8'):
     return gevent.spawn(listen, sock, fail_auth=fail_auth,
-                        timeout=timeout, ssh_exception=ssh_exception)
+                        timeout=timeout, ssh_exception=ssh_exception,
+                        encoding=encoding)
 
 def start_server_from_ip(ip, port=0,
                          fail_auth=False, ssh_exception=False,
-                         timeout=None):
+                         timeout=None,
+                         encoding='utf-8'):
     server_sock = make_socket(ip, port=port)
     server = start_server(server_sock, fail_auth=fail_auth,
-                          ssh_exception=ssh_exception, timeout=timeout)
+                          ssh_exception=ssh_exception, timeout=timeout,
+                          encoding=encoding)
     return server, server_sock.getsockname()[1]
