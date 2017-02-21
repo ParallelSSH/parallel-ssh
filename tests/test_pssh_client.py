@@ -48,6 +48,13 @@ server_logger.setLevel(logging.DEBUG)
 pssh_logger.setLevel(logging.DEBUG)
 logging.basicConfig()
 
+
+try:
+    xrange
+except NameError:
+    xrange = range
+
+
 class ParallelSSHClientTest(unittest.TestCase):
 
     def setUp(self):
@@ -280,7 +287,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertRaises(ConnectionErrorException, client.run_command, 'blah')
         try:
             client.run_command('blah')
-        except ConnectionErrorException, ex:
+        except ConnectionErrorException as ex:
             num_tries = ex.args[-1:][0]
             self.assertEqual(expected_num_tries, num_tries,
                              msg="Got unexpected number of retries %s - "
@@ -377,7 +384,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         test_file.write('testing\n')
         test_file.close()
         # Permission errors on writing into dir
-        mask = 0111 if sys.version_info <= (2,) else 0o111
+        mask = int('0111') if sys.version_info <= (2,) else 0o111
         os.chmod(remote_test_path, mask)
         client = ParallelSSHClient([self.host], port=self.listen_port,
                                    pkey=self.user_key)
@@ -692,7 +699,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                             host,))
         try:
             raise output[host]['exception']
-        except ConnectionErrorException, ex:
+        except ConnectionErrorException as ex:
             self.assertEqual(ex.args[1], host,
                              msg="Exception host argument is %s, should be %s" % (
                                  ex.args[1], host,))
@@ -717,7 +724,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                             self.host,))
         try:
             raise output[self.host]['exception']
-        except AuthenticationException, ex:
+        except AuthenticationException as ex:
             self.assertEqual(ex.args[1], self.host,
                              msg="Exception host argument is %s, should be %s" % (
                                  ex.args[1], self.host,))
@@ -744,7 +751,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                             host,))
         try:
             raise output[host]['exception']
-        except SSHException, ex:
+        except SSHException as ex:
             self.assertEqual(ex.args[1], host,
                              msg="Exception host argument is %s, should be %s" % (
                                  ex.args[1], host,))
@@ -824,7 +831,7 @@ class ParallelSSHClientTest(unittest.TestCase):
             self.assertTrue(host in output)
         try:
             raise output[hosts[1]]['exception']
-        except AuthenticationException, ex:
+        except AuthenticationException as ex:
             pass
         else:
             raise AssertionError("Expected AutnenticationException on host %s",
@@ -952,11 +959,15 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient([self.host], port=server_port,
                                    pkey=self.user_key)
         # File is already set to utf-8, cannot use utf-16 only representations
-        # Using ascii characters encoded as utf-16 instead
+        # Using ascii characters decoded as utf-16 on py2
+        # and utf-8 encoded ascii decoded to utf-16 on py3
         output = client.run_command(self.fake_cmd, encoding='utf-16')
         stdout = list(output[self.host]['stdout'])
-        # import ipdb; ipdb.set_trace()
-        self.assertEqual([self.fake_resp.decode('utf-16')], stdout)
+        if type(self.fake_resp) == bytes:
+            self.assertEqual([self.fake_resp.decode('utf-16')], stdout)
+        else:
+            self.assertEqual([self.fake_resp.encode('utf-8').decode('utf-16')],
+                             stdout)
 
     def test_pty(self):
         cmd = "exit 0"

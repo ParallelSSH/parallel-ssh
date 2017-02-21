@@ -39,6 +39,11 @@ from .output import HostOutput
 
 logger = logging.getLogger('pssh')
 
+try:
+    xrange
+except NameError:
+    xrange = range
+
 
 class ParallelSSHClient(object):
     """Uses :py:class:`pssh.ssh_client.SSHClient`, performs tasks over SSH on multiple hosts in \
@@ -731,7 +736,7 @@ class ParallelSSHClient(object):
             except IndexError as _ex:
                 logger.error("Got exception with no host argument - "
                              "cannot update output data with %s", _ex)
-                raise exc[1], None, exc[2]
+                raise exc[1]
             self._update_host_output(output, host, None, None, None, None, None, cmd,
                                      exception=ex)
             raise
