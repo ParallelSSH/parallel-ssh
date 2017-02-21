@@ -118,11 +118,11 @@ class ParallelSSHClient(object):
         for more than one second will timeout.
         :type channel_timeout: int
         :param allow_agent: (Optional) set to False to disable connecting to \
-        the SSH agent
+        the system's SSH agent
         :type allow_agent: bool
-        
+
         **Example Usage**
-        
+
         .. code-block:: python
 
           from __future__ import print_function
@@ -131,18 +131,18 @@ class ParallelSSHClient(object):
           from pssh.pssh_client import ParallelSSHClient
           from pssh.exceptions import AuthenticationException, \\
             UnknownHostException, ConnectionErrorException
-        
+
           client = ParallelSSHClient(['myhost1', 'myhost2'])
           try:
               output = client.run_command('ls -ltrh /tmp/aasdfasdf', sudo=True)
           except (AuthenticationException, UnknownHostException, ConnectionErrorException):
               pass
-        
+
         Commands have started executing at this point.
         Exit code(s) will not be available immediately.
-        
+
         .. code-block:: python
-        
+
           pprint(output)
             {'myhost1': 
                   host=myhost1
@@ -161,130 +161,131 @@ class ParallelSSHClient(object):
                   stdin=<channel>
                   exception=None
             }
-        
+
         **Enabling host logger**
-        
+
         There is a host logger in parallel-ssh that can be enabled to show stdout
         from remote commands on hosts as it comes in.
-        
+
         This allows for stdout to be automatically logged without having to
         print it serially per host. :mod:`pssh.utils.host_logger` is a standard
         library logger and may be configured to log to anywhere else.
-        
+
         .. code-block:: python
-        
+
           import pssh.utils
           pssh.utils.enable_host_logger()
-          
+
           output = client.run_command('ls -ltrh')
           [myhost1]     drwxrwxr-x 6 user group 4.0K Jan 1 HH:MM x
           [myhost2]     drwxrwxr-x 6 user group 4.0K Jan 1 HH:MM x
-        
+
         Retrieve exit codes after commands have finished as below.
-        
+
         ``exit_code`` in ``output`` will be ``None`` immediately after call to
         ``run_command``.
-        
+
         `parallel-ssh` starts commands asynchronously to enable starting multiple
         commands in parallel without blocking.
-        
+
         Because of this, exit codes will not be immediately available even for
         commands that exit immediately.
 
         **Waiting for command completion**
-        
+
         At least one of
-        
+
         * Iterating over stdout/stderr to completion
         * Calling ``client.join(output)``
-        
+
         is necessary to cause ``parallel-ssh`` to wait for commands to finish and
         be able to gather exit codes.
 
         .. note ::
-        
+
           **Joining on client's gevent pool**
-          
+
           ``client.pool.join()`` only blocks *until greenlets have started*
           which will be immediately as long as pool is not full.
-        
+
         **Checking command completion**
-        
+
         To check if commands have finished *without blocking* use ::
-        
+
           client.finished(output)
           False
-        
+
         which returns ``True`` if and only if all commands in output have finished.
-        
+
         For individual commands the status of channel can be checked ::
-        
+
           output[host].channel.closed
           False
-        
+
         which returns ``True`` if command has finished.
-        
+
         Either iterating over stdout/stderr or ``client.join(output)`` will cause exit
         codes to become available in output without explicitly calling `get_exit_codes`.
-        
+
         Use ``client.join(output)`` to block until all commands have finished
         and gather exit codes at same time.
 
         In versions prior to ``1.0.0`` only, ``client.join`` would consume output.
 
         **Exit code retrieval**
-        
+
         ``get_exit_codes`` is not a blocking function and will not wait for commands
         to finish.
-        
+
         ``output`` parameter is modified in-place.
-        
+
         .. code-block:: python
-        
+
             client.get_exit_codes(output)
                 for host in output:
                     print(output[host].exit_code)
             0
             0
-        
-        **Stdout from each host as it becomes available**
+
+        **Stdout from each host**
 
         .. code-block:: python
-        
+
           for host in output:
               for line in output[host].stdout:
                   print(line)
-          [myhost1]     ls: cannot access /tmp/aasdfasdf: No such file or directory
-          [myhost2]     ls: cannot access /tmp/aasdfasdf: No such file or directory
-        
+          ls: cannot access /tmp/aasdfasdf: No such file or directory
+          ls: cannot access /tmp/aasdfasdf: No such file or directory
+
         **Example with specified private key**
 
         .. code-block:: python
-        
+
           import paramiko
           client_key = paramiko.RSAKey.from_private_key_file('user.key')
           client = ParallelSSHClient(['myhost1', 'myhost2'], pkey=client_key)
-        
+
         **Multiple commands**
 
         .. code-block:: python
-        
+
           for cmd in ['uname', 'whoami']:
               client.run_command(cmd)
-        
+
         **Per-Host configuration**
-        
+
         Per host configuration can be provided for any or all of user, password port
         and private key. Private key value is a :py:class:`paramiko.pkey.PKey` object as
         returned by :py:func:`pssh.utils.load_private_key`.
-        
+
         :py:func:`pssh.utils.load_private_key` accepts both file names and file-like
         objects and will attempt to load all available key types, returning
-        `None` if they all fail.
-        
+        ``None`` if they all fail.
+
         .. code-block:: python
-        
+
           from pssh.utils import load_private_key
+
           host_config = { 'host1' : {'user': 'user1', 'password': 'pass',
                                      'port': 2222,
                                      'private_key': load_private_key('my_key.pem')},
@@ -293,31 +294,32 @@ class ParallelSSHClient(object):
                                      'private_key': load_private_key(open('my_other_key.pem'))},
                           }
           hosts = host_config.keys()
+
           client = ParallelSSHClient(hosts, host_config=host_config)
           client.run_command('uname')
-        
+          <..>
+
         .. note ::
-        
+
           **Connection persistence**
-          
+
           Connections to hosts will remain established for the duration of the
           object's life. To close them, just `del` or reuse the object reference.
-          
+
           .. code-block:: python
-          
+
             client = ParallelSSHClient(['localhost'])
-            output = client.run_command('ls -ltrh /tmp/aasdfasdf')
-            client.join(output)
-          
+            output = client.run_command('ls')
+
           :netstat: ``tcp      0    0 127.0.0.1:53054       127.0.0.1:22          ESTABLISHED``
-          
+
           Connection remains active after commands have finished executing. Any \
-          additional commands will use the same connection.
-          
+          additional commands will reuse the same connection.
+
           .. code-block:: python
-          
+
             del client
-          
+
           Connection is terminated.
         """
         self.pool_size = pool_size
@@ -370,7 +372,7 @@ class ParallelSSHClient(object):
         added to output of `run_command`. See example usage below.
         :type stop_on_errors: bool
         :param shell: (Optional) Override shell to use to run command with. \
-        Defaults to logged in user's defined shell. Use the shell's command \
+        Defaults to login user's defined shell. Use the shell's command \
         syntax, eg `shell='bash -c'` or `shell='zsh -c'`.
         :type shell: str
         :param use_shell: (Optional) Run command with or without shell. Defaults \
@@ -396,7 +398,7 @@ class ParallelSSHClient(object):
         :rtype: Dictionary with host as key and \
         :py:class:`pssh.output.HostOutput` as value as per \
         :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
-        
+
         :raises: :py:class:`pssh.exceptions.AuthenticationException` on \
         authentication error
         :raises: :py:class:`pssh.exceptions.UnknownHostException` on DNS resolution \
@@ -410,17 +412,17 @@ class ParallelSSHClient(object):
         :raises: :py:class:`TypeError` on not enough host arguments for cmd string format
         :raises: :py:class:`KeyError` on no host argument key in arguments dict for cmd \
         string format
-        
+
         **Example Usage**
-        
+
         **Simple run command**
 
         .. code-block:: python
-        
+
           output = client.run_command('ls -ltrh')
-        
+
         **Print stdout for each command**
-        
+
         .. code-block:: python
 
           from __future__ import print_function
@@ -428,7 +430,7 @@ class ParallelSSHClient(object):
           for host in output:
               for line in output[host].stdout:
                   print(line)
-        
+
         **Get exit codes after command has finished**
 
         .. code-block:: python
@@ -440,28 +442,28 @@ class ParallelSSHClient(object):
               print(output[host].exit_code)
           0
           0
-        
+
         *Wait for completion, print exit codes*
 
         .. code-block:: python
-        
+
           client.join(output)
           print(output[host].exit_code)
           0
           for line in output[host].stdout:
               print(line)
-        
+
         **Run with sudo**
-        
+
 
         .. code-block:: python
-        
+
           output = client.run_command('ls -ltrh', sudo=True)
-        
+
         Capture stdout - **WARNING** - this will store the entirety of stdout
         into memory and may exhaust available memory if command output is
         large enough.
-        
+
         Iterating over stdout/stderr to completion by definition implies
         blocking until command has finished. To only log output as it comes in
         without blocking the host logger can be enabled - see 
@@ -485,7 +487,7 @@ class ParallelSSHClient(object):
         Any string format specification characters may be used in command string.
 
         *Examples*
-        
+
         .. code-block:: python
 
           # Tuple
@@ -495,14 +497,14 @@ class ParallelSSHClient(object):
           output = client.run_command('%s', host_args=('host1_cmd',
                                                        'host2_cmd',
                                                        'host3_cmd',))
-          
+
           # Multiple arguments
           #
           output = client.run_command('%s %s',
                                       host_args=(('host1_cmd1', 'host1_cmd2'),
                                                  ('host2_cmd1', 'host2_cmd2'),
                                                  ('host3_cmd1', 'host3_cmd2'),))
-          
+
           # List of dict
           # 
           # Fist host in host list will use cmd 'host-index-0',
@@ -510,15 +512,15 @@ class ParallelSSHClient(object):
           output = client.run_command(
             '%(cmd)s', host_args=[{'cmd': 'host-index-%s' % (i,))
                                   for i in range(len(client.hosts))]
-        
+
         **Expression as host list**
 
-        
+
         Any type of iterator may be used as host list, including generator and
         list comprehension expressions.
 
         .. code-block:: python
-        
+
           hosts = ['dc1.myhost1', 'dc2.myhost2']
           # List comprehension
           client = ParallelSSHClient([h for h in hosts if h.find('dc1')])
@@ -527,37 +529,37 @@ class ParallelSSHClient(object):
           # Filter
           client = ParallelSSHClient(filter(lambda h: h.find('dc1'), hosts))
           client.run_command(<..>)
-        
+
         .. note ::
-        
+
           Since generators by design only iterate over a sequence once then stop,
           `client.hosts` should be re-assigned after each call to `run_command`
           when using generators as target of `client.hosts`.
-        
+
         **Overriding host list**
-        
+
         Host list can be modified in place. Call to `run_command` will create
         new connections as necessary and output will only contain output for
         the hosts ``run_command`` executed on.
-        
+
         .. code-block:: python
-        
+
           client.hosts = ['otherhost']
           print(client.run_command('exit 0'))
           {'otherhost': exit_code=None, <..>}
-        
+
         **Run multiple commands in parallel**
-        
+
         This short example demonstrates running multiple long running commands
         in parallel on the same host, how long it takes for all commands to
         start, blocking until they complete and how long it takes for all
         commands to complete.
-        
+
         See examples directory for complete script. ::
-        
+
           output = []
           host = 'localhost'
-          
+
           # Run 10 five second sleeps
           cmds = ['sleep 5' for _ in xrange(10)]
           start = datetime.datetime.now()
@@ -571,18 +573,18 @@ class ParallelSSHClient(object):
                   print(line)
           end = datetime.datetime.now()
           print("All commands finished in %s" % (end-start,))
-        
+
         *Output*
-        
+
         ::
-        
+
           Started 10 commands in 0:00:00.428629
           All commands finished in 0:00:05.014757
-        
+
         *Output format*
-        
+
         ::
-        
+
           {'myhost1':
                 host=myhost1
                 exit_code=exit code if ready else None
@@ -592,17 +594,17 @@ class ParallelSSHClient(object):
                 stdin=<file-like writable channel>
                 cmd=<greenlet>
                 exception=None}
-        
+
         **Do not stop on errors, return per-host exceptions in output**
-        
+
         .. code-block:: python
-        
+
           output = client.run_command('ls -ltrh', stop_on_errors=False)
           client.join(output)
           print(output)
-        
+
         .. code-block:: python
-        
+
           {'myhost1':
                 host=myhost1
                 exit_code=None
@@ -613,20 +615,20 @@ class ParallelSSHClient(object):
                 exception=ConnectionErrorException(
                             "Error connecting to host '%s:%s' - %s - retry %s/%s",
                              host, port, 'Connection refused', 3, 3)}
-        
+
         **Using stdin**
-        
+
         .. code-block:: python
-        
+
           output = client.run_command('read')
           stdin = output['localhost'].stdin
           stdin.write("writing to stdin\\n")
           stdin.flush()
           for line in output['localhost'].stdout:
               print(line)
-          
+
           writing to stdin
-        
+
         """
         output = {}
         if host_args:
@@ -699,7 +701,7 @@ class ParallelSSHClient(object):
         `output` parameter is modified in-place and has the following structure
 
         ::
-        
+
           {'myhost1':
                 exit_code=exit code if ready else None
                 channel=SSH channel of command
@@ -708,14 +710,14 @@ class ParallelSSHClient(object):
                 cmd=<greenlet>
                 exception=<exception object if applicable>
           }
-        
+
         Stdout and stderr are also logged via the logger named ``host_logger``
         which can be enabled by calling ``enable_host_logger``
-        
+
         **Example usage**:
 
         .. code-block:: python
-        
+
           output = client.get_output()
           for host in output:
               for line in output[host].stdout:
@@ -725,7 +727,7 @@ class ParallelSSHClient(object):
           # has finished
           self.get_exit_code(output[host])
           0
-        
+
         """
         try:
             (channel, host, stdout, stderr, stdin) = cmd.get()
@@ -846,10 +848,10 @@ class ParallelSSHClient(object):
         :raises: :py:class:`OSError` on OS errors like permission denied
 
         .. note ::
-        
+
           Remote directories in `remote_file` that do not exist will be
           created as long as permissions allow.
-        
+
         :rtype: List(:py:class:`gevent.Greenlet`) of greenlets for remote copy \
         commands
         """

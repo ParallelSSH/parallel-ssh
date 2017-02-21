@@ -50,7 +50,7 @@ class SSHClient(object):
                  _openssh_config_file=None):
         """Connect to host honouring any user set configuration in ~/.ssh/config \
         or /etc/ssh/ssh_config
-        
+
         :param host: Hostname to connect to
         :type host: str
         :param user: (Optional) User to login as. Defaults to logged in user or \
@@ -132,7 +132,7 @@ class SSHClient(object):
         """Connects to SSH server via an intermediate SSH tunnel server.
         client (me) -> tunnel (ssh server to proxy through) -> \
         destination (ssh server to run command)
-        
+
         :rtype: :py:class:`paramiko.SSHClient` Client to remote SSH destination
         via intermediate SSH tunnel server.
         """
@@ -157,7 +157,7 @@ class SSHClient(object):
     def _connect(self, client, host, port, sock=None, retries=1,
                  user=None, password=None, pkey=None):
         """Connect to host
-        
+
         :raises: :py:class:`pssh.exceptions.AuthenticationException` on authentication error
         :raises: :py:class:`pssh.exceptions.UnknownHostException` on DNS resolution error
         :raises: :py:class:`pssh.exceptions.ConnectionErrorException` on error connecting
@@ -204,10 +204,10 @@ class SSHClient(object):
                      shell=None,
                      use_shell=True, use_pty=True):
         """Wrapper to :py:func:`paramiko.SSHClient.exec_command`
-        
+
         Opens a new SSH session with a new pty and runs command before yielding 
         the main gevent loop to allow other greenlets to execute.
-        
+
         :param command: Command to execute
         :type command: str
         :param sudo: (Optional) Run with sudo. Defaults to False
@@ -289,12 +289,12 @@ class SSHClient(object):
 
     def _mkdir(self, sftp, directory):
         """Make directory via SFTP channel
-        
+
         :param sftp: SFTP client object
         :type sftp: :py:class:`paramiko.sftp_client.SFTPClient`
         :param directory: Remote directory to create
         :type directory: str
-        
+
         Catches and logs at error level remote IOErrors on creating directory.
         """
         try:
