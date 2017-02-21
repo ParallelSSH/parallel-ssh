@@ -37,6 +37,12 @@ from test_pssh_client import USER_KEY
 import random, string
 import tempfile
 
+
+try:
+    xrange
+except NameError:
+    xrange = range
+
 USER_KEY_PATH = os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key'])
 USER_KEY = paramiko.RSAKey.from_private_key_file(USER_KEY_PATH)
 
