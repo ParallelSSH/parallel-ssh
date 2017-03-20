@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 
-# Copyright (C) 2014- Panos Kittenis
+# Copyright (C) 2014-2017 Panos Kittenis
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -48,77 +48,80 @@ except NameError:
 class ParallelSSHClient(object):
     """Uses :py:class:`pssh.ssh_client.SSHClient`, performs tasks over SSH on multiple hosts in \
     parallel.
-    
+
     Connections to hosts are established in parallel when ``run_command`` is called,
     therefor any connection and/or authentication exceptions will happen on the
     call to ``run_command`` and need to be caught.
     """
-    
-    def __init__(self, hosts,
-                 user=None, password=None, port=None, pkey=None,
-                 forward_ssh_agent=True, num_retries=DEFAULT_RETRIES, timeout=120,
-                 pool_size=10, proxy_host=None, proxy_port=22, proxy_user=None,
-                 proxy_password=None, proxy_pkey=None,
-                 agent=None, allow_agent=True, host_config=None, channel_timeout=None):
+
+    def __init__(self, hosts, user=None, password=None, port=None, pkey=None,
+                 forward_ssh_agent=True, num_retries=DEFAULT_RETRIES,
+                 timeout=120, pool_size=10, proxy_host=None, proxy_port=22,
+                 proxy_user=None, proxy_password=None, proxy_pkey=None,
+                 agent=None, allow_agent=True, host_config=None,
+                 channel_timeout=None):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
-        :param user: (Optional) User to login as. Defaults to logged in user or \
-        user from ~/.ssh/config or /etc/ssh/ssh_config if set
+        :param user: (Optional) User to login as. Defaults to logged in user or
+          user from ~/.ssh/config or /etc/ssh/ssh_config if set
         :type user: str
-        :param password: (Optional) Password to use for login. Defaults to \
-        no password
+        :param password: (Optional) Password to use for login. Defaults to
+          no password
         :type password: str
-        :param port: (Optional) Port number to use for SSH connection. Defaults \
-        to None which uses SSH default
+        :param port: (Optional) Port number to use for SSH connection. Defaults
+          to ``None`` which uses SSH default
         :type port: int
         :param pkey: (Optional) Client's private key to be used to connect with
         :type pkey: :py:class:`paramiko.pkey.PKey`
-        :param num_retries: (Optional) Number of retries for connection attempts \
-        before the client gives up. Defaults to 3.
+        :param num_retries: (Optional) Number of retries for connection attempts
+          before the client gives up. Defaults to 3.
         :type num_retries: int
-        :param timeout: (Optional) Number of seconds to timeout connection \
-        attempts before the client gives up. Defaults to 10.
+        :param timeout: (Optional) Number of seconds to wait before connection
+          and authentication attempt times out. Note that total time before
+          timeout will be
+          ``timeout`` * ``num_retries`` + (5 * (``num_retries``-1)) number of
+          seconds, where (5 * (``num_retries``-1)) refers to a five (5) second
+          delay between retries.
         :type timeout: int
-        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding - \
-        equivalent to `ssh -A` from the `ssh` command line utility. \
-        Defaults to True if not set.
+        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
+          equivalent to `ssh -A` from the `ssh` command line utility.
+          Defaults to ``True`` if not set.
         :type forward_ssh_agent: bool
-        :param pool_size: (Optional) Greenlet pool size. Controls on how many\
-        hosts to execute tasks in parallel. Defaults to 10. Values over 500 \
-        are not likely to increase performance due to overhead in the single \
-        thread running our event loop.
+        :param pool_size: (Optional) Greenlet pool size. Controls on how many
+          hosts to execute tasks in parallel. Defaults to 10. Overhead in event
+          loop will determine how high this can be set to, see scaling guide
+          lines in project's readme.
         :type pool_size: int
-        :param proxy_host: (Optional) SSH host to tunnel connection through \
-        so that SSH clients connect to self.host via client -> proxy_host -> \
-        host
+        :param proxy_host: (Optional) SSH host to tunnel connection through
+          so that SSH clients connect to host via client -> proxy_host -> host
         :type proxy_host: str
-        :param proxy_port: (Optional) SSH port to use to login to proxy host if \
-        set. Defaults to 22.
+        :param proxy_port: (Optional) SSH port to use to login to proxy host if
+          set. Defaults to 22.
         :type proxy_port: int
-        :param proxy_user: (Optional) User to login to ``proxy_host`` as. Defaults to \
-        logged in user.
+        :param proxy_user: (Optional) User to login to ``proxy_host`` as.
+          Defaults to logged in user.
         :type proxy_user: str
-        :param proxy_password: (Optional) Password to login to ``proxy_host`` with. \
-        Defaults to no password
+        :param proxy_password: (Optional) Password to login to ``proxy_host``
+          with. Defaults to no password
         :type proxy_password: str
-        :param proxy_pkey: (Optional) Private key to be used for authentication \
-        with ``proxy_host``. Defaults to available keys from SSHAgent and user's \
-        home directory keys
+        :param proxy_pkey: (Optional) Private key to be used for authentication
+          with ``proxy_host``. Defaults to available keys from SSHAgent and user's
+          home directory keys
         :type proxy_pkey: :py:class:`paramiko.pkey.PKey`
-        :param agent: (Optional) SSH agent object to programmatically supply an \
-        agent to override system SSH agent with
+        :param agent: (Optional) SSH agent object to programmatically supply an
+          agent to override system SSH agent with
         :type agent: :py:class:`pssh.agent.SSHAgent`
-        :param host_config: (Optional) Per-host configuration for cases where \
-        not all hosts use the same configuration values.
+        :param host_config: (Optional) Per-host configuration for cases where
+          not all hosts use the same configuration values.
         :type host_config: dict
-        :param channel_timeout: (Optional) Time in seconds before reading from \
-        an SSH channel times out. For example with channel timeout set to one, \
-        trying to immediately gather output from a command producing no output \
-        for more than one second will timeout.
+        :param channel_timeout: (Optional) Time in seconds before reading from
+          an SSH channel times out. For example with channel timeout set to one,
+          trying to immediately gather output from a command producing no output
+          for more than one second will timeout.
         :type channel_timeout: int
-        :param allow_agent: (Optional) set to False to disable connecting to \
-        the system's SSH agent
+        :param allow_agent: (Optional) set to False to disable connecting to
+          the system's SSH agent
         :type allow_agent: bool
 
         **Example Usage**
@@ -261,8 +264,8 @@ class ParallelSSHClient(object):
 
         .. code-block:: python
 
-          import paramiko
-          client_key = paramiko.RSAKey.from_private_key_file('user.key')
+          from pssh.utils import load_private_key
+          client_key = load_private_key('user.key')
           client = ParallelSSHClient(['myhost1', 'myhost2'], pkey=client_key)
 
         **Multiple commands**
@@ -274,13 +277,14 @@ class ParallelSSHClient(object):
 
         **Per-Host configuration**
 
-        Per host configuration can be provided for any or all of user, password port
-        and private key. Private key value is a :py:class:`paramiko.pkey.PKey` object as
-        returned by :py:func:`pssh.utils.load_private_key`.
+        Per host configuration can be provided for any or all of user, password
+        port and private key. Private key value is a
+        :py:class:`paramiko.pkey.PKey` object as returned by
+        :py:func:`pssh.utils.load_private_key`.
 
-        :py:func:`pssh.utils.load_private_key` accepts both file names and file-like
-        objects and will attempt to load all available key types, returning
-        ``None`` if they all fail.
+        :py:func:`pssh.utils.load_private_key` accepts both file names and
+        file-like objects and will attempt to load all available key types,
+        returning ``None`` if they all fail.
 
         .. code-block:: python
 
@@ -768,19 +772,30 @@ class ParallelSSHClient(object):
                                   exit_code=exit_code,
                                   exception=exception)
 
-    def join(self, output):
+    def join(self, output, consume_output=False):
         """Block until all remote commands in output have finished
-        and retrieve exit codes"""
+        and retrieve exit codes
+
+        :param output: Output of commands to join on
+        :type output: dict as returned by
+          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
+        """
         for host in output:
             output[host].cmd.join()
             if output[host].channel is not None:
                 output[host].channel.recv_exit_status()
+            if consume_output:
+                for line in output[host].stdout:
+                    pass
+                for line in output[host].stderr:
+                    pass
         self.get_exit_codes(output)
 
     def finished(self, output):
         """Check if commands have finished without blocking
 
-        :param output: As returned by :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
+        :param output: As returned by
+          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
         :rtype: bool
         """
         for host in output:
@@ -793,7 +808,8 @@ class ParallelSSHClient(object):
         """Get exit code for all hosts in output *if available*.
         Output parameter is modified in-place.
 
-        :param output: As returned by :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
+        :param output: As returned by
+          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
         :rtype: None
         """
         for host in output:

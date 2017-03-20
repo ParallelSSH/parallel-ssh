@@ -84,6 +84,17 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.server.kill()
         del self.agent
 
+    def test_client_join_consume_output(self):
+        output = self.client.run_command(self.fake_cmd)
+        expected_exit_code = 0
+        self.client.join(output, consume_output=True)
+        exit_code = output[self.host]['exit_code']
+        stdout = list(output[self.host]['stdout'])
+        stderr = list(output[self.host]['stderr'])
+        self.assertTrue(len(stdout) == 0)
+        self.assertTrue(len(stderr) == 0)
+        self.assertEqual(expected_exit_code, exit_code)
+
     def test_client_join_stdout(self):
         output = self.client.run_command(self.fake_cmd)
         expected_exit_code = 0

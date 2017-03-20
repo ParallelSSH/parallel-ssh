@@ -37,4 +37,6 @@ from .exceptions import UnknownHostException, \
      AuthenticationException, ConnectionErrorException, SSHException
 
 host_logger = logging.getLogger('pssh.host_logger')
+host_logger.addHandler(logging.NullHandler())
 logger = logging.getLogger('pssh')
+logger.addHandler(logging.NullHandler())
