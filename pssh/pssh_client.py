@@ -26,6 +26,7 @@ monkey.patch_all()
 import string
 import random
 import logging
+import collections
 
 import gevent.pool
 import gevent.hub
@@ -43,6 +44,14 @@ try:
     xrange
 except NameError:
     xrange = range
+
+
+class HostConfig(collections.defaultdict):
+    """Contains host-specific SSH configuration overrides."""
+    def __init__(self, global_config):
+        self.global_config = global_config
+    def __missing__(self, key):
+        return getattr(self.global_config, key)
 
 
 class ParallelSSHClient(object):
@@ -329,18 +338,24 @@ class ParallelSSHClient(object):
         self.password = password
         self.forward_ssh_agent = forward_ssh_agent
         self.port = port
-        self.pkey = pkey
+        self.private_key = pkey
         self.num_retries = num_retries
         self.timeout = timeout
         self.proxy_host, self.proxy_port, self.proxy_user, self.proxy_password, \
-          self.proxy_pkey = proxy_host, proxy_port, proxy_user, \
+          self.proxy_private_key = proxy_host, proxy_port, proxy_user, \
           proxy_password, proxy_pkey
         # To hold host clients
         self.host_clients = {}
         self.agent = agent
         self.allow_agent = allow_agent
-        self.host_config = host_config if host_config else {}
         self.channel_timeout = channel_timeout
+
+        # Host-specific configuration overrides.
+        self.host_config = {}
+        if host_config:
+            for host, config in host_config.items():
+                self.host_config[host] = HostConfig(self)
+                self.host_config[host].update(config)
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     shell=None, use_shell=True, use_pty=True, host_args=None,
@@ -656,30 +671,34 @@ class ParallelSSHClient(object):
                     raise
         return output
 
-    def _get_host_config_values(self, host):
-        _user = self.host_config.get(host, {}).get('user', self.user)
-        _port = self.host_config.get(host, {}).get('port', self.port)
-        _password = self.host_config.get(host, {}).get('password', self.password)
-        _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
-        return _user, _port, _password, _pkey
+    def _get_host_config_values(self, host, properties):
+        """Return SSH config for a given host, including any overrides."""
+        if host in self.host_config:
+            return {p: self.host_config[host][p] for p in properties}
+        else:
+            return {p: getattr(self, p) for p in properties}
 
     def _exec_command(self, host, command, sudo=False, user=None,
                       shell=None, use_shell=True, use_pty=True):
         """Make SSHClient, run command on host"""
         if host not in self.host_clients or self.host_clients[host] is None:
-            _user, _port, _password, _pkey = self._get_host_config_values(host)
-            _user = user if user else _user
-            self.host_clients[host] = SSHClient(host, user=_user,
-                                                password=_password,
-                                                port=_port, pkey=_pkey,
+            config_properties = ['user', 'port', 'password', 'private_key',
+                                'proxy_host', 'proxy_port', 'proxy_user',
+                                 'proxy_password', 'proxy_private_key']
+            host_config = self._get_host_config_values(host, config_properties)
+            self.host_clients[host] = SSHClient(host,
+                                                user=user or host_config['user'],
+                                                password=host_config['password'],
+                                                port=host_config['port'],
+                                                pkey=host_config['private_key'],
                                                 forward_ssh_agent=self.forward_ssh_agent,
                                                 num_retries=self.num_retries,
                                                 timeout=self.timeout,
-                                                proxy_host=self.proxy_host,
-                                                proxy_port=self.proxy_port,
-                                                proxy_user=self.proxy_user,
-                                                proxy_password=self.proxy_password,
-                                                proxy_pkey=self.proxy_pkey,
+                                                proxy_host=host_config['proxy_host'],
+                                                proxy_port=(host_config['proxy_port'] or 22),
+                                                proxy_user=host_config['proxy_user'],
+                                                proxy_password=host_config['proxy_password'],
+                                                proxy_pkey=host_config['proxy_private_key'],
                                                 allow_agent=self.allow_agent,
                                                 agent=self.agent,
                                                 channel_timeout=self.channel_timeout)
@@ -931,13 +950,20 @@ class ParallelSSHClient(object):
 
     def _make_ssh_client(self, host):
         if not host in self.host_clients or self.host_clients[host] is None:
-            _user, _port, _password, _pkey = self._get_host_config_values(host)
+            config_properties = ['user', 'port', 'password', 'private_key',
+                                'proxy_host', 'proxy_port', 'proxy_user',
+                                 'proxy_password', 'proxy_private_key']
+            host_config = self._get_host_config_values(host, config_properties)
             self.host_clients[host] = SSHClient(
-                host, user=_user, password=_password, port=_port, pkey=_pkey,
+                host, user=host_config['user'], password=host_config['user'],
+                port=host_config['port'], pkey=host_config['private_key'],
                 forward_ssh_agent=self.forward_ssh_agent,
                 num_retries=self.num_retries,
                 timeout=self.timeout,
-                proxy_host=self.proxy_host,
-                proxy_port=self.proxy_port,
+                proxy_host=host_config['proxy_host'],
+                proxy_port=host_config['proxy_port'],
+                proxy_user=host_config['proxy_user'],
+                proxy_password=host_config['proxy_password'],
+                proxy_pkey=host_config['proxy_private_key'],
                 agent=self.agent,
                 channel_timeout=self.channel_timeout)
