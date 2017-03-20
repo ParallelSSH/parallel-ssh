@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 
-# Copyright (C) 2014- Panos Kittenis
+# Copyright (C) 2014-2017 Panos Kittenis
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -45,7 +45,9 @@ def enable_logger(_logger, level=logging.INFO):
 
 def enable_host_logger():
     """Enable host logger for logging stdout from remote commands
-    as it becomes available"""
+    as it becomes available.
+
+    """
     enable_logger(host_logger)
 
 def load_private_key(_pkey):
@@ -93,7 +95,3 @@ def read_openssh_config(_host, config_file=None):
             if pkey:
                 break
     return host, user, port, pkey
-
-# def enable_pssh_logger():
-#     """Enable parallel-ssh's logger to stdout"""
-#     enable_logger(logger)
