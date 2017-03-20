@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 
-# Copyright (C) 2015- Panos Kittenis
+# Copyright (C) 2014-2017 Panos Kittenis
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -273,7 +273,8 @@ class SSHClient(object):
         :param callback: Function to call back once buffer is depleted:
         :type callback: function
         :param callback_args: Arguments for call back function
-        :type callback_args: tuple"""
+        :type callback_args: tuple
+        """
         for line in output_buffer:
             output = line.strip().decode(encoding)
             host_logger.info("[%s]%s\t%s", self.host, prefix, output,)
