@@ -674,9 +674,9 @@ class ParallelSSHClient(object):
     def _get_host_config_values(self, host, properties):
         """Return SSH config for a given host, including any overrides."""
         if host in self.host_config:
-            return {p: self.host_config[host][p] for p in properties}
+            return dict((p, self.host_config[host][p]) for p in properties)
         else:
-            return {p: getattr(self, p) for p in properties}
+            return dict((p, getattr(self, p)) for p in properties)
 
     def _exec_command(self, host, command, sudo=False, user=None,
                       shell=None, use_shell=True, use_pty=True):
