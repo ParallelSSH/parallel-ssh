@@ -149,6 +149,7 @@ class ParallelSSHClient(object):
           pprint(output)
             {'myhost1': 
                   host=myhost1
+                  exit_code=None
                   cmd=<Greenlet>
                   channel=<channel>
                   stdout=<generator>
@@ -157,6 +158,7 @@ class ParallelSSHClient(object):
                   exception=None
              'myhost2': 
                   host=myhost2
+                  exit_code=None
                   cmd=<Greenlet>
                   channel=<channel>
                   stdout=<generator>
@@ -165,14 +167,17 @@ class ParallelSSHClient(object):
                   exception=None
             }
 
-        **Enabling host logger**
+        :Enabling host logger:
 
-        There is a host logger in parallel-ssh that can be enabled to show stdout
-        from remote commands on hosts as it comes in.
+        There is a host logger in parallel-ssh that can be enabled to show
+        stdout from remote commands on hosts as it comes in.
 
         This allows for stdout to be automatically logged without having to
         print it serially per host. :mod:`pssh.utils.host_logger` is a standard
         library logger and may be configured to log to anywhere else.
+
+        For host logger to log output, ``join`` must be called with
+        ``consume_output=True``
 
         .. code-block:: python
 
@@ -180,6 +185,7 @@ class ParallelSSHClient(object):
           pssh.utils.enable_host_logger()
 
           output = client.run_command('ls -ltrh')
+          client.join(output, consume_output=True)
           [myhost1]     drwxrwxr-x 6 user group 4.0K Jan 1 HH:MM x
           [myhost2]     drwxrwxr-x 6 user group 4.0K Jan 1 HH:MM x
 
@@ -194,59 +200,71 @@ class ParallelSSHClient(object):
         Because of this, exit codes will not be immediately available even for
         commands that exit immediately.
 
-        **Waiting for command completion**
+        :Waiting for command completion:
 
         At least one of
 
         * Iterating over stdout/stderr to completion
         * Calling ``client.join(output)``
 
-        is necessary to cause ``parallel-ssh`` to wait for commands to finish and
-        be able to gather exit codes.
+        is necessary to cause ``parallel-ssh`` to wait for commands to finish
+        and be able to gather exit codes.
+
+        An individual command's exit code can be gathered by
+        ``get_exit_code(host_output)``
+
+        .. seealso:: :py:func:`get_exit_code`, :py:func:`get_output`
 
         .. note ::
 
           **Joining on client's gevent pool**
 
-          ``client.pool.join()`` only blocks *until greenlets have started*
+          ``client.pool.join()`` only blocks *until greenlets have been spawned*
           which will be immediately as long as pool is not full.
 
-        **Checking command completion**
+        :Checking command completion:
 
-        To check if commands have finished *without blocking* use ::
+        To check if commands have finished *without blocking* use
+
+        .. code-block:: python
 
           client.finished(output)
           False
 
-        which returns ``True`` if and only if all commands in output have finished.
+        which returns ``True`` if and only if all commands in output have
+        finished.
 
-        For individual commands the status of channel can be checked ::
+        For individual commands the status of channel can be checked
+
+        .. code-block:: python
 
           output[host].channel.closed
           False
 
         which returns ``True`` if command has finished.
 
-        Either iterating over stdout/stderr or ``client.join(output)`` will cause exit
-        codes to become available in output without explicitly calling `get_exit_codes`.
+        Either iterating over stdout/stderr or ``client.join(output)`` will
+        cause exit codes to become available in output without explicitly
+        calling ``get_exit_codes``.
 
         Use ``client.join(output)`` to block until all commands have finished
         and gather exit codes at same time.
 
-        In versions prior to ``1.0.0`` only, ``client.join`` would consume output.
+        In versions prior to ``1.0.0`` only, ``client.join`` would consume
+        output.
 
         **Exit code retrieval**
 
-        ``get_exit_codes`` is not a blocking function and will not wait for commands
-        to finish.
+        ``get_exit_codes`` is not a blocking function and will not wait for
+        commands to finish.
 
         ``output`` parameter is modified in-place.
 
         .. code-block:: python
 
             client.get_exit_codes(output)
-                for host in output:
-                    print(output[host].exit_code)
+            for host in output:
+                print(output[host].exit_code)
             0
             0
 
@@ -419,13 +437,13 @@ class ParallelSSHClient(object):
 
         **Example Usage**
 
-        **Simple run command**
+        :Simple run command:
 
         .. code-block:: python
 
           output = client.run_command('ls -ltrh')
 
-        **Print stdout for each command**
+        :Print stdout for each command:
 
         .. code-block:: python
 
@@ -435,7 +453,7 @@ class ParallelSSHClient(object):
               for line in output[host].stdout:
                   print(line)
 
-        **Get exit codes after command has finished**
+        :Get exit codes after command has finished:
 
         .. code-block:: python
 
@@ -447,7 +465,7 @@ class ParallelSSHClient(object):
           0
           0
 
-        *Wait for completion, print exit codes*
+        :Wait for completion, print exit codes:
 
         .. code-block:: python
 
@@ -457,20 +475,23 @@ class ParallelSSHClient(object):
           for line in output[host].stdout:
               print(line)
 
-        **Run with sudo**
-
+        :Run with sudo:
 
         .. code-block:: python
 
           output = client.run_command('ls -ltrh', sudo=True)
 
-        Capture stdout - **WARNING** - this will store the entirety of stdout
-        into memory and may exhaust available memory if command output is
-        large enough.
+        :Capture stdout:
+
+        .. warning::
+
+          This will store the entirety of stdout
+          into memory and may exhaust available memory if command output is
+          large enough.
 
         Iterating over stdout/stderr to completion by definition implies
         blocking until command has finished. To only log output as it comes in
-        without blocking the host logger can be enabled - see 
+        without blocking the host logger can be enabled - see
         `Enabling Host Logger` above.
 
         .. code-block:: python
@@ -481,7 +502,7 @@ class ParallelSSHClient(object):
               stdout = list(output[host].stdout)
               print("Complete stdout for host %s is %s" % (host, stdout,))
 
-        **Command with per-host arguments**
+        :Command with per-host arguments:
 
         ``host_args`` keyword parameter can be used to provide arguments to use
         to format the command string.
@@ -490,7 +511,7 @@ class ParallelSSHClient(object):
 
         Any string format specification characters may be used in command string.
 
-        *Examples*
+        :Examples:
 
         .. code-block:: python
 
@@ -517,8 +538,7 @@ class ParallelSSHClient(object):
             '%(cmd)s', host_args=[{'cmd': 'host-index-%s' % (i,))
                                   for i in range(len(client.hosts))]
 
-        **Expression as host list**
-
+        :Expression as host list:
 
         Any type of iterator may be used as host list, including generator and
         list comprehension expressions.
@@ -540,7 +560,7 @@ class ParallelSSHClient(object):
           `client.hosts` should be re-assigned after each call to `run_command`
           when using generators as target of `client.hosts`.
 
-        **Overriding host list**
+        :Overriding host list:
 
         Host list can be modified in place. Call to `run_command` will create
         new connections as necessary and output will only contain output for
@@ -552,7 +572,7 @@ class ParallelSSHClient(object):
           print(client.run_command('exit 0'))
           {'otherhost': exit_code=None, <..>}
 
-        **Run multiple commands in parallel**
+        :Run multiple commands in parallel:
 
         This short example demonstrates running multiple long running commands
         in parallel on the same host, how long it takes for all commands to
@@ -585,7 +605,7 @@ class ParallelSSHClient(object):
           Started 10 commands in 0:00:00.428629
           All commands finished in 0:00:05.014757
 
-        *Output format*
+        :Output format:
 
         ::
 
@@ -599,7 +619,7 @@ class ParallelSSHClient(object):
                 cmd=<greenlet>
                 exception=None}
 
-        **Do not stop on errors, return per-host exceptions in output**
+        :Do not stop on errors, return per-host exceptions in output:
 
         .. code-block:: python
 
@@ -620,7 +640,7 @@ class ParallelSSHClient(object):
                             "Error connecting to host '%s:%s' - %s - retry %s/%s",
                              host, port, 'Connection refused', 3, 3)}
 
-        **Using stdin**
+        :Using stdin:
 
         .. code-block:: python
 
@@ -779,6 +799,44 @@ class ParallelSSHClient(object):
         :param output: Output of commands to join on
         :type output: dict as returned by
           :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
+        :param consume_output: Whether or not join should consume output
+          buffers. Output buffers will be empty after ``join`` if set
+          to ``True``. Must be set to ``True`` to allow host logger to log
+          output on call to ``join``.
+        :type consume_output: bool
+
+        :Enabling host logger:
+
+        .. code-block:: python
+
+          from pssh.utils import enable_host_logger
+          enable_host_logger()
+          output = client.run_command(<..>)
+          client.join(output, consume_output=True)
+
+          # Output buffers now empty
+          len(list(output[client.hosts[0]].stdout)) == 0
+
+        With ``consume_output=True``, host logger logs output.
+
+        .. code-block:: python
+
+          [my_host1] <..>
+
+        With ``consume_output=False``, the default, iterating over output is
+        needed for host logger to log anything.
+
+        .. code-block:: python
+
+          output = client.run_command(<..>)
+          client.join(output, consume_output=False)
+          for host, host_out in output.items():
+              for line in host_out.stdout:
+                  pass
+
+        .. code-block:: python
+
+          [my_host1] <..>
         """
         for host in output:
             output[host].cmd.join()
@@ -840,7 +898,7 @@ class ParallelSSHClient(object):
         This function returns a list of greenlets which can be
         `join`-ed on to wait for completion.
 
-        :py:func:`gevent.joinall` function may be used to join on all greenlets 
+        :py:func:`gevent.joinall` function may be used to join on all greenlets
         and will also raise exceptions from them if called with
         ``raise_error=True`` - default is `False`.
 
@@ -848,8 +906,8 @@ class ParallelSSHClient(object):
         it.
 
         Exceptions listed here are raised when
-        ``gevent.joinall(<greenlets>, raise_error=True)`` or ``.get`` is called on
-        each greenlet, not this function itself.
+        either ``gevent.joinall(<greenlets>, raise_error=True)`` is called
+        or ``.get`` is called on each greenlet, not this function itself.
 
         :param local_file: Local filepath to copy to remote host
         :type local_file: str
@@ -857,9 +915,11 @@ class ParallelSSHClient(object):
         :type remote_file: str
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
+        :rtype: List(:py:class:`gevent.Greenlet`) of greenlets for remote copy
+          commands
 
-        :raises: :py:class:`ValueError` when a directory is supplied to local_file \
-        and recurse is not set
+        :raises: :py:class:`ValueError` when a directory is supplied to
+          local_file and recurse is not set
         :raises: :py:class:`IOError` on I/O errors writing files
         :raises: :py:class:`OSError` on OS errors like permission denied
 
@@ -868,8 +928,6 @@ class ParallelSSHClient(object):
           Remote directories in `remote_file` that do not exist will be
           created as long as permissions allow.
 
-        :rtype: List(:py:class:`gevent.Greenlet`) of greenlets for remote copy \
-        commands
         """
         return [self.pool.spawn(self._copy_file, host, local_file, remote_file,
                                 {'recurse' : recurse})
@@ -901,8 +959,8 @@ class ParallelSSHClient(object):
         it.
 
         Exceptions listed here are raised when
-        ``gevent.joinall(<greenlets>, raise_error=True)`` or ``.get`` is called on
-        each greenlet, not this function itself.
+        either ``gevent.joinall(<greenlets>, raise_error=True)`` is called
+        or ``.get`` is called on each greenlet, not this function itself.
 
         :param remote_file: remote filepath to copy to local host
         :type remote_file: str
@@ -910,14 +968,17 @@ class ParallelSSHClient(object):
         :type local_file: str
         :param recurse: whether or not to recurse
         :type recurse: bool
-        :param suffix_separator: (Optional) Separator string between \
-        filename and host, defaults to ``_``. For example, for a ``local_file`` \
-        value of ``myfile`` and default separator the resulting filename will \
-        be ``myfile_myhost`` for the file from host ``myhost``
+        :param suffix_separator: (Optional) Separator string between
+          filename and host, defaults to ``_``. For example, for a
+          ``local_file`` value of ``myfile`` and default separator the
+          resulting filename will be ``myfile_myhost`` for the file from
+          host ``myhost``
         :type suffix_separator: str
+        :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy
+          commands
 
-        :raises: :py:class:`ValueError` when a directory is supplied to local_file \
-        and recurse is not set
+        :raises: :py:class:`ValueError` when a directory is supplied to
+          local_file and recurse is not set
         :raises: :py:class:`IOError` on I/O errors writing files
         :raises: :py:class:`OSError` on OS errors like permission denied
 
@@ -929,8 +990,6 @@ class ParallelSSHClient(object):
           File names will be de-duplicated by appending the hostname to the
           filepath separated by ``suffix_separator``.
 
-        :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy \
-        commands
         """
         return [self.pool.spawn(
             self._copy_remote_file, host, remote_file,

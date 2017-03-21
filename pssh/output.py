@@ -46,7 +46,7 @@ class HostOutput(dict):
         :param exit_code: Exit code of command
         :type exit_code: int or None
         :param exception: Exception from host if any
-        :type exception: Exception or None
+        :type exception: :py:class:`Exception` or ``None``
         """
         dict.__init__(self, (('host', host), ('cmd', cmd), ('channel', channel),
                              ('stdout', stdout), ('stderr', stderr),
@@ -73,8 +73,10 @@ class HostOutput(dict):
 
     def __repr__(self):
         return "{linesep}\thost={host}{linesep}" \
+"\texit_code={exit_code}{linesep}" \
 "\tcmd={cmd}{linesep}\tchannel={channel}{linesep}" \
 "\tstdout={stdout}{linesep}\tstderr={stderr}{linesep}\tstdin={stdin}{linesep}\
 \texception={exception}{linesep}".format(
     host=self.host, cmd=self.cmd, channel=self.channel, stdout=self.stdout,
-    stdin=self.stdin, stderr=self.stderr, exception=self.exception, linesep=linesep,)
+    stdin=self.stdin, stderr=self.stderr, exception=self.exception,
+    linesep=linesep, exit_code=self.exit_code)

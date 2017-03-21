@@ -46,8 +46,9 @@ class SSHAgent(paramiko.agent.AgentSSH):
 
     def add_key(self, key):
         """Add key to agent.
+
         :param key: Key to add
-        :type key: :mod:`paramiko.pkey.PKey`
+        :type key: :py:class:`paramiko.pkey.PKey`
         """
         self.keys.append(key)
 
