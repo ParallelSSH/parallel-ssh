@@ -127,7 +127,7 @@ class SSHClient(object):
             self._connect_tunnel()
         else:
             self._connect(self.client, self.host, self.port)
-    
+
     def _connect_tunnel(self):
         """Connects to SSH server via an intermediate SSH tunnel server.
         client (me) -> tunnel (ssh server to proxy through) -> \
@@ -145,14 +145,15 @@ class SSHClient(object):
                     self.proxy_port, self.host, self.port,)
         try:
             proxy_channel = self.proxy_client.get_transport().open_channel(
-                'direct-tcpip', (self.host, self.port,), ('127.0.0.1', 0))
+                'direct-tcpip', (self.host, self.port,), ('127.0.0.1', 0),
+                timeout=self.timeout)
             sleep(0)
             return self._connect(self.client, self.host, self.port, sock=proxy_channel)
-        except ChannelException as ex:
+        except (ChannelException, paramiko.SSHException) as ex:
             error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
             raise ConnectionErrorException("Error connecting to host '%s:%s' - %s",
-                                            self.host, self.port,
-                                            str(error_type))
+                                           self.host, self.port,
+                                           str(error_type))
 
     def _connect(self, client, host, port, sock=None, retries=1,
                  user=None, password=None, pkey=None):
