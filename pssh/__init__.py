@@ -19,12 +19,17 @@
 
 """Asynchronous parallel SSH client library.
 
-Run SSH commands over many - hundreds/hundreds of thousands - number of servers asynchronously and with minimal system load on the client host.
+Run SSH commands over many - hundreds/hundreds of thousands - number of servers
+asynchronously and with minimal system load on the client host.
 
-New users should start with :py:func:`pssh.pssh_client.ParallelSSHClient.run_command`
+New users should start with
+:py:func:`pssh.pssh_client.ParallelSSHClient.run_command`
 
-See also :py:class:`pssh.ParallelSSHClient` and :py:class:mod:`pssh.SSHClient` for class documentation.
+See also :py:class:`pssh.ParallelSSHClient` and :py:class:mod:`pssh.SSHClient`
+for class documentation.
 """
+
+# flake8: noqa: E402, F401, F402
 
 import logging
 from ._version import get_versions

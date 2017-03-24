@@ -21,20 +21,20 @@
 import sys
 if 'threading' in sys.modules:
     del sys.modules['threading']
-from gevent import monkey
+from gevent import monkey  # noqa: E402
 monkey.patch_all()
-import string
-import random
-import logging
+import string  # noqa: E402
+import random  # noqa: E402
+import logging  # noqa: E402
 
-import gevent.pool
-import gevent.hub
+import gevent.pool  # noqa: E402
+import gevent.hub  # noqa: E402
 gevent.hub.Hub.NOT_ERROR = (Exception,)
 
-from .exceptions import HostArgumentException
-from .constants import DEFAULT_RETRIES
-from .ssh_client import SSHClient
-from .output import HostOutput
+from .exceptions import HostArgumentException  # noqa: E402
+from .constants import DEFAULT_RETRIES  # noqa: E402
+from .ssh_client import SSHClient  # noqa: E402
+from .output import HostOutput  # noqa: E402
 
 
 logger = logging.getLogger('pssh')
@@ -46,12 +46,12 @@ except NameError:
 
 
 class ParallelSSHClient(object):
-    """Uses :py:class:`pssh.ssh_client.SSHClient`, performs tasks over SSH on multiple hosts in \
-    parallel.
+    """Uses :py:class:`pssh.ssh_client.SSHClient`, performs tasks over SSH on
+    multiple hosts in parallel.
 
-    Connections to hosts are established in parallel when ``run_command`` is called,
-    therefor any connection and/or authentication exceptions will happen on the
-    call to ``run_command`` and need to be caught.
+    Connections to hosts are established in parallel when ``run_command`` is
+    called, therefor any connection and/or authentication exceptions will
+    happen on the call to ``run_command`` and need to be handled there.
     """
 
     def __init__(self, hosts, user=None, password=None, port=None, pkey=None,
@@ -106,8 +106,8 @@ class ParallelSSHClient(object):
           with. Defaults to no password
         :type proxy_password: str
         :param proxy_pkey: (Optional) Private key to be used for authentication
-          with ``proxy_host``. Defaults to available keys from SSHAgent and user's
-          home directory keys
+          with ``proxy_host``. Defaults to available keys from SSHAgent and
+          user's home directory keys
         :type proxy_pkey: :py:class:`paramiko.pkey.PKey`
         :param agent: (Optional) SSH agent object to programmatically supply an
           agent to override system SSH agent with
@@ -133,12 +133,13 @@ class ParallelSSHClient(object):
 
           from pssh.pssh_client import ParallelSSHClient
           from pssh.exceptions import AuthenticationException, \\
-            UnknownHostException, ConnectionErrorException
+              UnknownHostException, ConnectionErrorException
 
           client = ParallelSSHClient(['myhost1', 'myhost2'])
           try:
               output = client.run_command('ls -ltrh /tmp/aasdfasdf', sudo=True)
-          except (AuthenticationException, UnknownHostException, ConnectionErrorException):
+          except (AuthenticationException, UnknownHostException,
+                  ConnectionErrorException):
               pass
 
         Commands have started executing at this point.
@@ -147,7 +148,7 @@ class ParallelSSHClient(object):
         .. code-block:: python
 
           pprint(output)
-            {'myhost1': 
+            {'myhost1':
                   host=myhost1
                   exit_code=None
                   cmd=<Greenlet>
@@ -156,7 +157,7 @@ class ParallelSSHClient(object):
                   stderr=<generator>
                   stdin=<channel>
                   exception=None
-             'myhost2': 
+             'myhost2':
                   host=myhost2
                   exit_code=None
                   cmd=<Greenlet>
@@ -194,8 +195,8 @@ class ParallelSSHClient(object):
         ``exit_code`` in ``output`` will be ``None`` immediately after call to
         ``run_command``.
 
-        `parallel-ssh` starts commands asynchronously to enable starting multiple
-        commands in parallel without blocking.
+        `parallel-ssh` starts commands asynchronously to enable starting
+        multiple commands in parallel without blocking.
 
         Because of this, exit codes will not be immediately available even for
         commands that exit immediately.
@@ -310,10 +311,12 @@ class ParallelSSHClient(object):
 
           host_config = { 'host1' : {'user': 'user1', 'password': 'pass',
                                      'port': 2222,
-                                     'private_key': load_private_key('my_key.pem')},
+                                     'private_key': load_private_key(
+                                         'my_key.pem')},
                           'host2' : {'user': 'user2', 'password': 'pass',
                                      'port': 2223,
-                                     'private_key': load_private_key(open('my_other_key.pem'))},
+                                     'private_key': load_private_key(
+                                         open('my_other_key.pem'))},
                           }
           hosts = host_config.keys()
 
@@ -326,16 +329,16 @@ class ParallelSSHClient(object):
           **Connection persistence**
 
           Connections to hosts will remain established for the duration of the
-          object's life. To close them, just `del` or reuse the object reference.
+          object's life. To close them, just `del` or reuse the object reference
 
           .. code-block:: python
 
             client = ParallelSSHClient(['localhost'])
             output = client.run_command('ls')
 
-          :netstat: ``tcp      0    0 127.0.0.1:53054       127.0.0.1:22          ESTABLISHED``
+          :netstat: ``tcp  0  0 127.0.0.1:53054    127.0.0.1:22    ESTABLISHED``
 
-          Connection remains active after commands have finished executing. Any \
+          Connection remains active after commands have finished executing. Any
           additional commands will reuse the same connection.
 
           .. code-block:: python
@@ -354,9 +357,9 @@ class ParallelSSHClient(object):
         self.pkey = pkey
         self.num_retries = num_retries
         self.timeout = timeout
-        self.proxy_host, self.proxy_port, self.proxy_user, self.proxy_password, \
-          self.proxy_pkey = proxy_host, proxy_port, proxy_user, \
-          proxy_password, proxy_pkey
+        self.proxy_host, self.proxy_port, self.proxy_user, \
+            self.proxy_password, self.proxy_pkey = proxy_host, proxy_port, \
+            proxy_user, proxy_password, proxy_pkey
         # To hold host clients
         self.host_clients = {}
         self.agent = agent
@@ -373,7 +376,7 @@ class ParallelSSHClient(object):
         This function will block until all commands have been *sent* to remote
         servers and then return immediately
 
-        More explicitly, function will return after connection and 
+        More explicitly, function will return after connection and
         authentication establishment and after commands have been sent to
         successfully established SSH channels.
 
@@ -386,54 +389,56 @@ class ParallelSSHClient(object):
         :type command: str
         :param sudo: (Optional) Run with sudo. Defaults to False
         :type sudo: bool
-        :param user: (Optional) User to run command as. Requires sudo access \
-        for that user from the logged in user account.
+        :param user: (Optional) User to run command as. Requires sudo access
+          for that user from the logged in user account.
         :type user: str
-        :param stop_on_errors: (Optional) Raise exception on errors running command. \
-        Defaults to True. With stop_on_errors set to False, exceptions are instead \
-        added to output of `run_command`. See example usage below.
+        :param stop_on_errors: (Optional) Raise exception on errors running
+          command. Defaults to True. With stop_on_errors set to False,
+          exceptions are instead added to output of `run_command`. See example
+          usage below.
         :type stop_on_errors: bool
-        :param shell: (Optional) Override shell to use to run command with. \
-        Defaults to login user's defined shell. Use the shell's command \
-        syntax, eg `shell='bash -c'` or `shell='zsh -c'`.
+        :param shell: (Optional) Override shell to use to run command with.
+          Defaults to login user's defined shell. Use the shell's command
+          syntax, eg `shell='bash -c'` or `shell='zsh -c'`.
         :type shell: str
-        :param use_shell: (Optional) Run command with or without shell. Defaults \
-        to True - use shell defined in user login to run command string
+        :param use_shell: (Optional) Run command with or without shell. Defaults
+          to True - use shell defined in user login to run command string
         :type use_shell: bool
-        :param use_pty: (Optional) Enable/Disable use of pseudo terminal \
-        emulation. Disabling it will prohibit capturing standard input/output. \
-        This is required in majority of cases, exception being where a shell is \
-        not used and/or input/output is not required. In particular \
-        when running a command which deliberately closes input/output pipes, \
-        such as a daemon process, you may want to disable ``use_pty``. \
-        Defaults to ``True``
+        :param use_pty: (Optional) Enable/Disable use of pseudo terminal
+          emulation. Disabling it will prohibit capturing standard input/output.
+          This is required in majority of cases, exceptions being where a shell
+          is not used and/or input/output is not required. In particular
+          when running a command which deliberately closes input/output pipes,
+          such as a daemon process, you may want to disable ``use_pty``.
+          Defaults to ``True``
         :type use_pty: bool
-        :param host_args: (Optional) Format command string with per-host \
-        arguments in ``host_args``. ``host_args`` length must equal length of \
-        host list - :py:class:`pssh.exceptions.HostArgumentException` is raised \
-        otherwise
+        :param host_args: (Optional) Format command string with per-host
+          arguments in ``host_args``. ``host_args`` length must equal length of
+          host list - :py:class:`pssh.exceptions.HostArgumentException` is
+          raised otherwise
         :type host_args: tuple or list
         :param encoding: Encoding to use for output. Must be valid
             `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
         :type encoding: str
 
-        :rtype: Dictionary with host as key and \
-        :py:class:`pssh.output.HostOutput` as value as per \
-        :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
+        :rtype: Dictionary with host as key and
+          :py:class:`pssh.output.HostOutput` as value as per
+          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
 
-        :raises: :py:class:`pssh.exceptions.AuthenticationException` on \
-        authentication error
-        :raises: :py:class:`pssh.exceptions.UnknownHostException` on DNS resolution \
-        error
-        :raises: :py:class:`pssh.exceptions.ConnectionErrorException` on error \
-        connecting
-        :raises: :py:class:`pssh.exceptions.SSHException` on other undefined SSH \
-        errors
-        :raises: :py:class:`pssh.exceptions.HostArgumentException` on number of \
-        host arguments not equal to number of hosts
-        :raises: :py:class:`TypeError` on not enough host arguments for cmd string format
-        :raises: :py:class:`KeyError` on no host argument key in arguments dict for cmd \
-        string format
+        :raises: :py:class:`pssh.exceptions.AuthenticationException` on
+          authentication error
+        :raises: :py:class:`pssh.exceptions.UnknownHostException` on DNS
+          resolution error
+        :raises: :py:class:`pssh.exceptions.ConnectionErrorException` on error
+          connecting
+        :raises: :py:class:`pssh.exceptions.SSHException` on other undefined SSH
+          errors
+        :raises: :py:class:`pssh.exceptions.HostArgumentException` on number of
+          host arguments not equal to number of hosts
+        :raises: :py:class:`TypeError` on not enough host arguments for cmd
+          string format
+        :raises: :py:class:`KeyError` on no host argument key in arguments
+          dict for cmd string format
 
         **Example Usage**
 
@@ -509,14 +514,15 @@ class ParallelSSHClient(object):
 
         Number of ``host_args`` should be at least as many as number of hosts.
 
-        Any string format specification characters may be used in command string.
+        Any string format specification characters may be used in command
+        string.
 
         :Examples:
 
         .. code-block:: python
 
           # Tuple
-          # 
+          #
           # First host in hosts list will use cmd 'host1_cmd',
           # second host 'host2_cmd' and so on
           output = client.run_command('%s', host_args=('host1_cmd',
@@ -531,7 +537,7 @@ class ParallelSSHClient(object):
                                                  ('host3_cmd1', 'host3_cmd2'),))
 
           # List of dict
-          # 
+          #
           # Fist host in host list will use cmd 'host-index-0',
           # second host 'host-index-1' and so on
           output = client.run_command(
@@ -556,9 +562,9 @@ class ParallelSSHClient(object):
 
         .. note ::
 
-          Since generators by design only iterate over a sequence once then stop,
-          `client.hosts` should be re-assigned after each call to `run_command`
-          when using generators as target of `client.hosts`.
+          Since generators by design only iterate over a sequence once then
+          stop, ``client.hosts`` should be re-assigned after each call to
+          ``run_command`` when using generators as target of `client.hosts`.
 
         :Overriding host list:
 
@@ -637,7 +643,8 @@ class ParallelSSHClient(object):
                 stderr=None
                 cmd=None
                 exception=ConnectionErrorException(
-                            "Error connecting to host '%s:%s' - %s - retry %s/%s",
+                            "Error connecting to host '%s:%s' - %s - "
+                            "retry %s/%s",
                              host, port, 'Connection refused', 3, 3)}
 
         :Using stdin:
@@ -683,7 +690,8 @@ class ParallelSSHClient(object):
     def _get_host_config_values(self, host):
         _user = self.host_config.get(host, {}).get('user', self.user)
         _port = self.host_config.get(host, {}).get('port', self.port)
-        _password = self.host_config.get(host, {}).get('password', self.password)
+        _password = self.host_config.get(host, {}).get(
+            'password', self.password)
         _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
         return _user, _port, _password, _pkey
 
@@ -693,20 +701,14 @@ class ParallelSSHClient(object):
         if host not in self.host_clients or self.host_clients[host] is None:
             _user, _port, _password, _pkey = self._get_host_config_values(host)
             _user = user if user else _user
-            self.host_clients[host] = SSHClient(host, user=_user,
-                                                password=_password,
-                                                port=_port, pkey=_pkey,
-                                                forward_ssh_agent=self.forward_ssh_agent,
-                                                num_retries=self.num_retries,
-                                                timeout=self.timeout,
-                                                proxy_host=self.proxy_host,
-                                                proxy_port=self.proxy_port,
-                                                proxy_user=self.proxy_user,
-                                                proxy_password=self.proxy_password,
-                                                proxy_pkey=self.proxy_pkey,
-                                                allow_agent=self.allow_agent,
-                                                agent=self.agent,
-                                                channel_timeout=self.channel_timeout)
+            self.host_clients[host] = SSHClient(
+                host, user=_user, password=_password, port=_port, pkey=_pkey,
+                forward_ssh_agent=self.forward_ssh_agent,
+                num_retries=self.num_retries, timeout=self.timeout,
+                proxy_host=self.proxy_host, proxy_port=self.proxy_port,
+                proxy_user=self.proxy_user, proxy_password=self.proxy_password,
+                proxy_pkey=self.proxy_pkey, allow_agent=self.allow_agent,
+                agent=self.agent, channel_timeout=self.channel_timeout)
         return self.host_clients[host].exec_command(
             command, sudo=sudo, user=user, shell=shell,
             use_shell=use_shell, use_pty=use_pty)
@@ -716,9 +718,9 @@ class ParallelSSHClient(object):
 
         :param cmd: Command to get output from
         :type cmd: :py:class:`gevent.Greenlet`
-        :param output: Dictionary containing \
-        :py:class:`pssh.output.HostOutput` values to be updated with output \
-        from cmd
+        :param output: Dictionary containing
+          :py:class:`pssh.output.HostOutput` values to be updated with output
+          from cmd
         :type output: dict
         :rtype: None
 
@@ -763,8 +765,8 @@ class ParallelSSHClient(object):
                 logger.error("Got exception with no host argument - "
                              "cannot update output data with %s", _ex)
                 raise exc[1]
-            self._update_host_output(output, host, None, None, None, None, None, cmd,
-                                     exception=ex)
+            self._update_host_output(
+                output, host, None, None, None, None, None, cmd, exception=ex)
             raise
         stdout = self.host_clients[host].read_output_buffer(
             stdout, callback=self.get_exit_codes,
@@ -876,10 +878,10 @@ class ParallelSSHClient(object):
     def get_exit_code(self, host_output):
         """Get exit code from host output *if available*.
 
-        :param host_output: Per host output as returned by \
+        :param host_output: Per host output as returned by
           :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
         :rtype: int or None if exit code not ready"""
-        if not 'channel' in host_output:
+        if 'channel' not in host_output:
             logger.error("%s does not look like host output..", host_output,)
             return
         channel = host_output.channel
@@ -930,7 +932,7 @@ class ParallelSSHClient(object):
 
         """
         return [self.pool.spawn(self._copy_file, host, local_file, remote_file,
-                                {'recurse' : recurse})
+                                {'recurse': recurse})
                 for host in self.hosts]
 
     def _copy_file(self, host, local_file, remote_file, recurse=False):
@@ -948,12 +950,12 @@ class ParallelSSHClient(object):
         the resulting filename will be ``myfile_myhost`` for the file from host
         ``myhost``.
 
-        This function, like :py:func:`ParallelSSHClient.copy_file`, returns a list
-        of greenlets which can be `join`-ed on to wait for completion.
+        This function, like :py:func:`ParallelSSHClient.copy_file`, returns a
+        list of greenlets which can be `join`-ed on to wait for completion.
 
-        :py:func:`gevent.joinall` function may be used to join on all greenlets and
-        will also raise exceptions if called with ``raise_error=True`` - default
-        is `False`.
+        :py:func:`gevent.joinall` function may be used to join on all greenlets
+        and will also raise exceptions if called with ``raise_error=True`` -
+        default is `False`.
 
         Alternatively call `.get` on each greenlet to raise any exceptions from
         it.
@@ -1005,7 +1007,7 @@ class ParallelSSHClient(object):
                 remote_file, file_w_suffix, recurse=recurse)
 
     def _make_ssh_client(self, host):
-        if not host in self.host_clients or self.host_clients[host] is None:
+        if host not in self.host_clients or self.host_clients[host] is None:
             _user, _port, _password, _pkey = self._get_host_config_values(host)
             self.host_clients[host] = SSHClient(
                 host, user=_user, password=_password, port=_port, pkey=_pkey,

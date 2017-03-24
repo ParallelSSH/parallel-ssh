@@ -30,6 +30,7 @@ from paramiko import SSHException, SSHConfig
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger('pssh')
 
+
 def enable_logger(_logger, level=logging.INFO):
     """Enables logging to stdout for given logger"""
     stream_handlers = [h for h in _logger.handlers
@@ -43,6 +44,7 @@ def enable_logger(_logger, level=logging.INFO):
     _logger.addHandler(handler)
     _logger.setLevel(level)
 
+
 def enable_host_logger():
     """Enable host logger for logging stdout from remote commands
     as it becomes available.
@@ -50,9 +52,10 @@ def enable_host_logger():
     """
     enable_logger(host_logger)
 
+
 def load_private_key(_pkey):
     """Load private key from pkey file object or filename
-    
+
     :param pkey: File object or file name containing private key
     :type pkey: file/str"""
     if not hasattr(_pkey, 'read'):
@@ -65,16 +68,18 @@ def load_private_key(_pkey):
             continue
         else:
             return pkey
-    logger.error("Failed to load private key using all available key types - giving up..")
+    logger.error("Failed to load private key using all available key types "
+                 "- giving up..")
+
 
 def read_openssh_config(_host, config_file=None):
     """Parses user's OpenSSH config for per hostname configuration for
     hostname, user, port and private key values
 
-    :param _host: Hostname to lookup in config"""
+    :param _host: Hostname to lookup in config
+    """
     _ssh_config_file = config_file if config_file else \
-      os.path.sep.join([os.path.expanduser('~'),
-                        '.ssh', 'config'])
+        os.path.sep.join([os.path.expanduser('~'), '.ssh', 'config'])
     # Load ~/.ssh/config if it exists to pick up username
     # and host address if set
     if not os.path.isfile(_ssh_config_file):

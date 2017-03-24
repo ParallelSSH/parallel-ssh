@@ -19,6 +19,7 @@
 
 import paramiko.agent
 
+
 class SSHAgent(paramiko.agent.AgentSSH):
     """:py:class:`paramiko.agent.Agent` compatible class for programmatically
     supplying an SSH agent"""

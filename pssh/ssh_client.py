@@ -37,9 +37,10 @@ logger = logging.getLogger(__name__)
 
 class SSHClient(object):
     """Wrapper class over paramiko.SSHClient with sane defaults
-    Honours ~/.ssh/config and /etc/ssh/ssh_config entries for host username \
-    overrides"""
-    
+    Honours ``~/.ssh/config`` and ``/etc/ssh/ssh_config`` host entries
+    for host username overrides
+    """
+
     def __init__(self, host,
                  user=None, password=None, port=None,
                  pkey=None, forward_ssh_agent=True,
@@ -48,52 +49,51 @@ class SSHClient(object):
                  proxy_port=22, proxy_user=None, proxy_password=None,
                  proxy_pkey=None, channel_timeout=None,
                  _openssh_config_file=None):
-        """Connect to host honouring any user set configuration in ~/.ssh/config \
-        or /etc/ssh/ssh_config
-
+        """
         :param host: Hostname to connect to
         :type host: str
-        :param user: (Optional) User to login as. Defaults to logged in user or \
-        user from ~/.ssh/config if set
+        :param user: (Optional) User to login as. Defaults to logged in user or
+          user from ~/.ssh/config if set
         :type user: str
-        :param password: (Optional) Password to use for login. Defaults to\
-        no password
+        :param password: (Optional) Password to use for login. Defaults to
+          no password
         :type password: str
-        :param port: (Optional) Port number to use for SSH connection. Defaults\
-        to None which uses SSH default
+        :param port: (Optional) Port number to use for SSH connection. Defaults
+          to ``None`` which uses SSH default
         :type port: int
         :param pkey: (Optional) Client's private key to be used to connect with
         :type pkey: :py:class:`paramiko.pkey.PKey`
-        :param num_retries: (Optional) Number of retries for connection attempts\
-        before the client gives up. Defaults to 3.
+        :param num_retries: (Optional) Number of retries for connection attempts
+          before the client gives up. Defaults to 3.
         :type num_retries: int
-        :param timeout: (Optional) Number of seconds to timeout connection attempts\
-        before the client gives up. Defaults to 10.
+        :param timeout: (Optional) Number of seconds to timeout connection
+          attempts before the client gives up
         :type timeout: int
-        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding - \
-        equivalent to `ssh -A` from the `ssh` command line utility. \
-        Defaults to True if not set.
+        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
+          equivalent to `ssh -A` from the `ssh` command line utility.
+          Defaults to True if not set.
         :type forward_ssh_agent: bool
-        :param agent: (Optional) Override SSH agent object with the provided. \
-        This allows for overriding of the default paramiko behaviour of \
-        connecting to local SSH agent to lookup keys with our own SSH agent \
-        object.
+        :param agent: (Optional) Override SSH agent object with the provided.
+          This allows for overriding of the default paramiko behaviour of
+          connecting to local SSH agent to lookup keys with our own SSH agent
+          object.
         :type agent: :py:class:`paramiko.agent.Agent`
-        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding - \
-        equivalent to `ssh -A` from the `ssh` command line utility. \
-        Defaults to True if not set.
+        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
+          equivalent to `ssh -A` from the `ssh` command line utility.
+          Defaults to True if not set.
         :type forward_ssh_agent: bool
-        :param proxy_host: (Optional) SSH host to tunnel connection through \
-        so that SSH clients connects to self.host via client -> proxy_host -> host
+        :param proxy_host: (Optional) SSH host to tunnel connection through
+          so that SSH clients connects to self.host via
+          client -> proxy_host -> host
         :type proxy_host: str
-        :param proxy_port: (Optional) SSH port to use to login to proxy host if \
-        set. Defaults to 22.
+        :param proxy_port: (Optional) SSH port to use to login to proxy host if
+          set. Defaults to 22.
         :type proxy_port: int
-        :param channel_timeout: (Optional) Time in seconds before an SSH operation \
-        times out.
+        :param channel_timeout: (Optional) Time in seconds before an SSH
+          operation times out.
         :type channel_timeout: int
-        :param allow_agent: (Optional) set to False to disable connecting to \
-        the SSH agent
+        :param allow_agent: (Optional) set to False to disable connecting to
+          the SSH agent
         :type allow_agent: bool
         """
         try:
@@ -117,27 +117,29 @@ class SSHClient(object):
         self.num_retries = num_retries
         self.timeout = timeout
         self.channel_timeout = channel_timeout
-        self.proxy_host, self.proxy_port, self.proxy_user, self.proxy_password, \
-          self.proxy_pkey = proxy_host, proxy_port, proxy_user, \
-          proxy_password, proxy_pkey
+        self.proxy_host, self.proxy_port, self.proxy_user, \
+            self.proxy_password, self.proxy_pkey = proxy_host, proxy_port, \
+            proxy_user, proxy_password, proxy_pkey
         self.proxy_client = None
         if self.proxy_host and self.proxy_port:
-            logger.debug("Proxy configured for destination host %s - Proxy host: %s:%s",
-                         self.host, self.proxy_host, self.proxy_port,)
+            logger.debug(
+                "Proxy configured for destination host %s - Proxy host: %s:%s",
+                self.host, self.proxy_host, self.proxy_port,)
             self._connect_tunnel()
         else:
             self._connect(self.client, self.host, self.port)
 
     def _connect_tunnel(self):
         """Connects to SSH server via an intermediate SSH tunnel server.
-        client (me) -> tunnel (ssh server to proxy through) -> \
-        destination (ssh server to run command)
+        client (me) -> tunnel (ssh server to proxy through) ->
+        ``self.host`` (ssh server to run command)
 
         :rtype: :py:class:`paramiko.SSHClient` Client to remote SSH destination
         via intermediate SSH tunnel server.
         """
         self.proxy_client = paramiko.SSHClient()
-        self.proxy_client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
+        self.proxy_client.set_missing_host_key_policy(
+            paramiko.MissingHostKeyPolicy())
         self._connect(self.proxy_client, self.proxy_host, self.proxy_port,
                       user=self.proxy_user, password=self.proxy_password,
                       pkey=self.proxy_pkey)
@@ -148,21 +150,26 @@ class SSHClient(object):
                 'direct-tcpip', (self.host, self.port,), ('127.0.0.1', 0),
                 timeout=self.timeout)
             sleep(0)
-            return self._connect(self.client, self.host, self.port, sock=proxy_channel)
+            return self._connect(self.client, self.host, self.port,
+                                 sock=proxy_channel)
         except (ChannelException, paramiko.SSHException) as ex:
             error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
-            raise ConnectionErrorException("Error connecting to host '%s:%s' - %s",
-                                           self.host, self.port,
-                                           str(error_type))
+            raise ConnectionErrorException(
+                "Error connecting to host '%s:%s' - %s",
+                self.host, self.port, str(error_type))
 
     def _connect(self, client, host, port, sock=None, retries=1,
                  user=None, password=None, pkey=None):
         """Connect to host
 
-        :raises: :py:class:`pssh.exceptions.AuthenticationException` on authentication error
-        :raises: :py:class:`pssh.exceptions.UnknownHostException` on DNS resolution error
-        :raises: :py:class:`pssh.exceptions.ConnectionErrorException` on error connecting
-        :raises: :py:class:`pssh.exceptions.SSHException` on other undefined SSH errors
+        :raises: :py:class:`pssh.exceptions.AuthenticationException`
+          on authentication error
+        :raises: :py:class:`pssh.exceptions.UnknownHostException`
+          on DNS resolution error
+        :raises: :py:class:`pssh.exceptions.ConnectionErrorException`
+          on error connecting
+        :raises: :py:class:`pssh.exceptions.SSHException` on other undefined
+          SSH errors
         """
         try:
             client.connect(host, username=user if user else self.user,
@@ -188,9 +195,10 @@ class SSHClient(object):
                 return self._connect(client, host, port, sock=sock,
                                      retries=retries+1)
             error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
-            raise ConnectionErrorException("Error connecting to host '%s:%s' - %s - retry %s/%s",
-                                           self.host, self.port,
-                                           str(error_type), retries, self.num_retries,)
+            raise ConnectionErrorException(
+                "Error connecting to host '%s:%s' - %s - retry %s/%s",
+                self.host, self.port, str(error_type), retries,
+                self.num_retries,)
         except paramiko.AuthenticationException as ex:
             msg = "Authentication error while connecting to %s:%s."
             raise AuthenticationException(msg, host, port)
@@ -206,43 +214,45 @@ class SSHClient(object):
                      use_shell=True, use_pty=True):
         """Wrapper to :py:func:`paramiko.SSHClient.exec_command`
 
-        Opens a new SSH session with a new pty and runs command before yielding 
+        Opens a new SSH session with a new pty and runs command before yielding
         the main gevent loop to allow other greenlets to execute.
 
         :param command: Command to execute
         :type command: str
         :param sudo: (Optional) Run with sudo. Defaults to False
         :type sudo: bool
-        :param user: (Optional) User to switch to via sudo to run command as. \
-        Defaults to user running the python process
+        :param user: (Optional) User to switch to via sudo to run command as.
+          Defaults to user running the python process
         :type user: str
-        :param shell: (Optional) Shell override to use instead of user login \
-        configured shell. For example ``shell='bash -c'``
-        :param use_shell: (Optional) Force use of shell on/off. \
-        Defaults to `True` for on
+        :param shell: (Optional) Shell override to use instead of user login
+          configured shell. For example ``shell='bash -c'``
+        :param use_shell: (Optional) Force use of shell on/off.
+          Defaults to `True` for on
         :type use_shell: bool
-        :param use_pty: (Optional) Enable/Disable use of pseudo terminal \
-        emulation. This is required in vast majority of cases, exception \
-        being where a shell is not used and/or stdout/stderr/stdin buffers \
-        are not required. Defaults to ``True``
+        :param use_pty: (Optional) Enable/Disable use of pseudo terminal
+          emulation. This is required in vast majority of cases, exception
+          being where a shell is not used and/or stdout/stderr/stdin buffers
+          are not required. Defaults to ``True``
         :type use_pty: bool
-        :param kwargs: (Optional) Keyword arguments to be passed to remote \
-        command
+        :param kwargs: (Optional) Keyword arguments to be passed to remote
+          command
         :type kwargs: dict
-        :rtype: Tuple of `(channel, hostname, stdout, stderr, stdin)`. \
-        Channel is the remote SSH channel, needed to ensure all of stdout has \
-        been got, hostname is remote hostname the copy is to, stdout and \
-        stderr are buffers containing command output.
+        :rtype: Tuple of `(channel, hostname, stdout, stderr, stdin)`.
+          Channel is the remote SSH channel, needed to ensure all of stdout has
+          been got, hostname is remote hostname the copy is to, stdout and
+          stderr are buffers containing command output and stdin is standard
+          input channel
         """
         channel = self.client.get_transport().open_session()
         if self.forward_ssh_agent:
-            agent_handler = paramiko.agent.AgentRequestHandler(channel)
+            agent_handler = paramiko.agent.AgentRequestHandler(  # noqa: F841
+                channel)
         if use_pty:
             channel.get_pty()
         if self.channel_timeout:
             channel.settimeout(self.channel_timeout)
         stdout, stderr, stdin = channel.makefile('rb'), \
-          channel.makefile_stderr('rb'), channel.makefile('wb')
+            channel.makefile_stderr('rb'), channel.makefile('wb')
         for _char in ['\\', '"', '$', '`']:
             command = command.replace(_char, r'\%s' % (_char,))
         shell = '$SHELL -c' if not shell else shell
@@ -353,7 +363,7 @@ class SSHClient(object):
                   sftp=None):
         """Copy local file to host via SFTP/SCP
 
-        Copy is done natively using SFTP/SCP version 2 protocol, no scp command \
+        Copy is done natively using SFTP/SCP version 2 protocol, no scp command
         is used or required.
 
         :param local_file: Local filepath to copy to remote host
@@ -363,8 +373,8 @@ class SSHClient(object):
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
 
-        :raises: :py:class:`ValueError` when a directory is supplied to ``local_file`` \
-        and ``recurse`` is not set
+        :raises: :py:class:`ValueError` when a directory is supplied to
+          ``local_file`` and ``recurse`` is not set
         :raises: :py:class:`IOError` on I/O errors writing files
         :raises: :py:class:`OSError` on OS errors like permission denied
         """
@@ -394,7 +404,7 @@ class SSHClient(object):
                          sftp=None):
         """Copy remote file to local host via SFTP/SCP
 
-        Copy is done natively using SFTP/SCP version 2, no scp command \
+        Copy is done natively using SFTP/SCP version 2, no scp command
         is used or required.
 
         :param remote_file: Remote filepath to copy from
@@ -404,8 +414,8 @@ class SSHClient(object):
         :param recurse: Whether or not to recursively copy directories
         :type recurse: bool
 
-        :raises: :py:class:`ValueError` when a directory is supplied to remote_file \
-        and recurse is not set
+        :raises: :py:class:`ValueError` when a directory is supplied to
+          ``local_file`` and ``recurse`` is not set
         :raises: :py:class:`IOError` on I/O errors creating directories or file
         :raises: :py:class:`OSError` on OS errors like permission denied
         """

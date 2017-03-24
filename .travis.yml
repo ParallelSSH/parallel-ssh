@@ -14,9 +14,11 @@ before_install:
   - pip install -U pip setuptools
 install:
   - pip install -r requirements.txt
-  - pip install coveralls
+  - pip install coveralls flake8 sphinx
 script:
-  - python setup.py nosetests --with-coverage --cover-package=pssh
+  - nosetests --with-coverage --cover-package=pssh
+  - flake8 pssh
+  - cd doc; make html
 after_success:
   - coveralls
 deploy:

@@ -26,7 +26,8 @@ from os import linesep
 class HostOutput(dict):
     """Class to hold host output"""
 
-    __slots__ = ('host', 'cmd', 'channel', 'stdout', 'stderr', 'stdin', 'exit_code', 'exception')
+    __slots__ = ('host', 'cmd', 'channel', 'stdout', 'stderr', 'stdin',
+                 'exit_code', 'exception')
 
     def __init__(self, host, cmd, channel, stdout, stderr, stdin,
                  exit_code=None, exception=None):
@@ -73,10 +74,11 @@ class HostOutput(dict):
 
     def __repr__(self):
         return "{linesep}\thost={host}{linesep}" \
-"\texit_code={exit_code}{linesep}" \
-"\tcmd={cmd}{linesep}\tchannel={channel}{linesep}" \
-"\tstdout={stdout}{linesep}\tstderr={stderr}{linesep}\tstdin={stdin}{linesep}\
-\texception={exception}{linesep}".format(
-    host=self.host, cmd=self.cmd, channel=self.channel, stdout=self.stdout,
-    stdin=self.stdin, stderr=self.stderr, exception=self.exception,
-    linesep=linesep, exit_code=self.exit_code)
+            "\texit_code={exit_code}{linesep}" \
+            "\tcmd={cmd}{linesep}\tchannel={channel}{linesep}" \
+            "\tstdout={stdout}{linesep}\tstderr={stderr}{linesep}\tstdin={stdin}{linesep}\
+            \texception={exception}{linesep}".format(
+                host=self.host, cmd=self.cmd, channel=self.channel,
+                stdout=self.stdout, stdin=self.stdin, stderr=self.stderr,
+                exception=self.exception, linesep=linesep,
+                exit_code=self.exit_code)
