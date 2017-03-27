@@ -1,0 +1,6 @@
+coveralls
+flake8
+sphinx
+sphinx_rtd_theme
+nose
+-e .
