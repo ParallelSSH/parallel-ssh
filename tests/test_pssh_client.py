@@ -188,7 +188,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient([self.host], port=listen_port,
                                    pkey=self.user_key,
                                    agent=self.agent)
-        self.assertRaises(AuthenticationException, client.run_command, self.fake_cmd)
+        self.assertRaises(
+            AuthenticationException, client.run_command, self.fake_cmd)
         del client
         server.kill()
 
@@ -607,7 +608,8 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    proxy_port=proxy_server_port,
                                    )
         try:
-            self.assertRaises(ConnectionErrorException, client.run_command, self.fake_cmd)
+            self.assertRaises(
+                ConnectionErrorException, client.run_command, self.fake_cmd)
         finally:
             del client
             proxy_server.kill()
@@ -663,7 +665,8 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    num_retries=1,
                                    )
         try:
-            self.assertRaises(AuthenticationException, client.run_command, self.fake_cmd)
+            self.assertRaises(
+                AuthenticationException, client.run_command, self.fake_cmd)
         finally:
             del client
             server.kill()
@@ -912,7 +915,8 @@ class ParallelSSHClientTest(unittest.TestCase):
                           cmd, host_args=[host_args[0]])
         # Invalid number of args
         host_args = (('arg1', ),)
-        self.assertRaises(TypeError, client.run_command, cmd, host_args=host_args)
+        self.assertRaises(
+            TypeError, client.run_command, cmd, host_args=host_args)
         for server in [server2, server3]:
             server.kill()
 
@@ -954,7 +958,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         cmd = 'echo %(host_arg1)s %(host_arg2)s'
         # Invalid number of host args
         host_args = [{'host_arg1': 'arg1'}]
-        self.assertRaises(KeyError, self.client.run_command, cmd, host_args=host_args)
+        self.assertRaises(
+            KeyError, self.client.run_command, cmd, host_args=host_args)
 
     def test_ssh_client_utf_encoding(self):
         """Test that unicode output works"""
@@ -1045,6 +1050,38 @@ class ParallelSSHClientTest(unittest.TestCase):
         stdout = list(output[self.host].stdout)
         self.assertTrue(len(stdout) > 0)
         self.assertTrue(output[self.host].exit_code == 0)
+
+    def test_proxy_remote_host_failure_timeout(self):
+        """Test that timeout setting is passed on to proxy to be used for the
+        proxy->remote host connection timeout
+        """
+        self.server.kill()
+        server_timeout=0.2
+        client_timeout=server_timeout-0.1
+        server, listen_port = start_server_from_ip(self.host,
+                                                   timeout=server_timeout)
+        proxy_host = '127.0.0.2'
+        proxy_server, proxy_server_port = start_server_from_ip(proxy_host)
+        proxy_user = 'proxy_user'
+        proxy_password = 'fake'
+        client = ParallelSSHClient([self.host], port=listen_port,
+                                   pkey=self.user_key,
+                                   proxy_host='127.0.0.2',
+                                   proxy_port=proxy_server_port,
+                                   proxy_user=proxy_user,
+                                   proxy_password='fake',
+                                   proxy_pkey=self.user_key,
+                                   num_retries=1,
+                                   timeout=client_timeout,
+                                   )
+        try:
+            self.assertRaises(
+                ConnectionErrorException, client.run_command, self.fake_cmd)
+        finally:
+            del client
+            server.kill()
+            proxy_server.kill()
+
 
 if __name__ == '__main__':
     unittest.main()
