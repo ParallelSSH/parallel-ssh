@@ -76,8 +76,9 @@ class HostOutput(dict):
         return "{linesep}\thost={host}{linesep}" \
             "\texit_code={exit_code}{linesep}" \
             "\tcmd={cmd}{linesep}\tchannel={channel}{linesep}" \
-            "\tstdout={stdout}{linesep}\tstderr={stderr}{linesep}\tstdin={stdin}{linesep}\
-            \texception={exception}{linesep}".format(
+            "\tstdout={stdout}{linesep}\tstderr={stderr}{linesep}" \
+            "\tstdin={stdin}{linesep}" \
+            "\texception={exception}{linesep}".format(
                 host=self.host, cmd=self.cmd, channel=self.channel,
                 stdout=self.stdout, stdin=self.stdin, stderr=self.stderr,
                 exception=self.exception, linesep=linesep,
