@@ -84,7 +84,7 @@ class ParallelSSHClient(object):
           seconds, where (5 * (``num_retries``-1)) refers to a five (5) second
           delay between retries.
         :type timeout: int
-        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
+        :param forward_ssh_agent: (Optional) Turn on/off SSH agent forwarding -
           equivalent to `ssh -A` from the `ssh` command line utility.
           Defaults to ``True`` if not set.
         :type forward_ssh_agent: bool

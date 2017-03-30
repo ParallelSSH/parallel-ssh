@@ -37,7 +37,7 @@ class HostOutput(dict):
         :param cmd: Command execution object
         :type cmd: :py:class:`gevent.Greenlet`
         :param channel: SSH channel used for command execution
-        :type channel: :py:class:`paramiko.channel.Channel`
+        :type channel: :py:class:`socket.socket` compatible object
         :param stdout: Standard output buffer
         :type stdout: generator
         :param stderr: Standard error buffer
