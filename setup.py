@@ -24,7 +24,7 @@ setup(name='parallel-ssh',
       long_description=open('README.rst').read(),
       author='Panos Kittenis',
       author_email='22e889d8@opayq.com',
-      url="https://github.com/pkittenis/parallel-ssh",
+      url="https://github.com/ParallelSSH/parallel-ssh",
       packages=find_packages('.', exclude=(
           'embedded_server', 'embedded_server.*')),
       install_requires=['paramiko', 'gevent'],
