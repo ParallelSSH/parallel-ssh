@@ -6,6 +6,9 @@ Asynchronous parallel SSH client library.
 
 Run SSH commands over many - hundreds/hundreds of thousands - number of servers asynchronously and with minimal system load on the client host.
 
+.. image:: https://img.shields.io/badge/License-LGPL%20v2-blue.svg
+  :target: https://pypi.python.org/pypi/parallel-ssh
+  :alt: License
 .. image:: https://img.shields.io/pypi/v/parallel-ssh.svg
   :target: https://pypi.python.org/pypi/parallel-ssh
   :alt: Latest Version

@@ -9,20 +9,18 @@ Parallel-SSH's documentation
 .. toctree::
    :hidden:
    
-   self
+   front_page
 
-.. toctree::
+In a nutshell::
 
-   pssh_client
-   ssh_client
-   output
-   agent
-   exceptions
+  client = ParallelSSHClient(['localhost'])
+  output = client.run_command('whoami')
+  for line in output['localhost'].stdout:
+      print(line)
 
-Welcome to ParallelSSH's API documentation.
+Output::
 
-New users should start with :mod:`pssh.pssh_client.ParallelSSHClient` and in particular :mod:`pssh.pssh_client.ParallelSSHClient.run_command`.
-
+  <your username here>
 
 Indices and tables
 ==================
