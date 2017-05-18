@@ -3,4 +3,4 @@ flake8
 sphinx
 sphinx_rtd_theme
 nose
--r requirements.txt
+-e .
