@@ -1,6 +1,8 @@
 language: python
 cache: pip
 sudo: false
+notifications:
+  email: false
 python:
   - 2.6
   - 2.7
@@ -13,7 +15,7 @@ matrix:
 before_install:
   - pip install -U pip setuptools
 install:
-  - pip install -r requirements-dev.txt
+  - pip install -r requirements_dev.txt
 script:
   - nosetests --with-coverage --cover-package=pssh
   - flake8 pssh
