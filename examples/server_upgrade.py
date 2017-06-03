@@ -5,13 +5,22 @@ from pprint import pprint
 from pssh.pssh_client import ParallelSSHClient
 from pssh.utils import enable_host_logger
 
-class upgrade:
+""" Connect to the servers listed in the file server_list.txt and execute the commands on commands.txt
+sequentially on each host """
 
+class upgrade:
+     
+  # Generate two lists using the text files provided, server_list.txt and commands.txt. Each line in 
+  # the files will be added as an element in the respective list. 
+  # -- Servers IPs/hostnames should be listed in server_list.txt file as one IP/hostname per each line. 
+  # -- Commands to be executed should be added in the same manner to the file commands.txt, one per line. 
+  
   def __init__(self):
 
-     self.hosts = open("hypervisors_kvm.txt").readlines()
+     self.hosts = open("server_list.txt").readlines()
      self.commands = open("commands.txt").readlines()
-
+  
+  #Generate connections and execute command on all hosts
   def run_command(self, hosts, command):
 
     client = ParallelSSHClient(hosts,user='root')
