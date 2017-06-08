@@ -1,3 +1,5 @@
+.. contents::
+
 ***********
 Quickstart
 ***********
@@ -11,7 +13,7 @@ The most basic usage of `parallel-ssh` is, unsurprisingly, to run a command on m
 
 Examples here will be using `print` as a function, for which a future import is needed for Python `2.7`.
 
-Make a list of the hosts to run on::
+Make a list or other iterable of the hosts to run on::
 
     from __future__ import print_function
 
@@ -29,9 +31,9 @@ Now one or more commands can be run via the client::
 
     output = client.run_command('whoami')
 
-At this point the remote command has started executing in parallel.
+Once the call to `run_command` returns, the command has started executing in parallel.
 
-Output is keyed by host and contains a host output object. From that, SSH output is available
+Output is keyed by host and contains a host output object. From that, SSH output is available.
 
 Authentication
 ----------------
@@ -96,7 +98,7 @@ Of course, iterating over all hosts can also be done the same way::
 Exit codes
 -------------
 
-Exit codes are available on the host output object.
+Exit codes are available on the host output object - see :pyclass:`pssh.output.HostOutput`.
 
 First, ensure that all commands have finished and exit codes gathered by joining on the output object, then iterate over all hosts::
 
@@ -107,11 +109,13 @@ First, ensure that all commands have finished and exit codes gathered by joining
 Host Logger
 ------------
 
-There is a built in host logger that can be enabled to log output from remote hosts. The helper function ``pssh.utils.enable_host_logger`` will enable host logging to standard output, for example ::
+There is a built in host logger that can be enabled to automatically log output from remote hosts. This requires the `consume_output` flag to be enabled on `run_command`.
+
+The helper function ``pssh.utils.enable_host_logger`` will enable host logging to standard output, for example ::
 
   from pssh.utils import enable_host_logger
   enable_host_logger()
-  client.join(client.run_command('uname'))
+  client.join(client.run_command('uname'), consume_output=True)
   
   [localhost]	Linux
 

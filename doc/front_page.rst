@@ -28,3 +28,4 @@ User Guide
   introduction
   installation
   quickstart
+  advanced

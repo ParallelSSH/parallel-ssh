@@ -538,11 +538,11 @@ class ParallelSSHClient(object):
 
           # List of dict
           #
-          # Fist host in host list will use cmd 'host-index-0',
+          # First host in host list will use cmd 'host-index-0',
           # second host 'host-index-1' and so on
           output = client.run_command(
             '%(cmd)s', host_args=[{'cmd': 'host-index-%s' % (i,))
-                                  for i in range(len(client.hosts))]
+                                  for i in range(len(client.hosts))])
 
         :Expression as host list:
 

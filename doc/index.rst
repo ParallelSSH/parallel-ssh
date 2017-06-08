@@ -7,7 +7,6 @@ Parallel-SSH's documentation
 ============================
 
 .. toctree::
-   :hidden:
    
    front_page
 
