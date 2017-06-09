@@ -14,8 +14,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from setuptools import setup, find_packages
+from platform import python_version
 
 import versioneer
+
+gevent_req = 'gevent<=1.1' if python_version() < '2.7' else 'gevent>=1.1'
 
 setup(name='parallel-ssh',
       version=versioneer.get_version(),
@@ -27,7 +30,7 @@ setup(name='parallel-ssh',
       url="https://github.com/ParallelSSH/parallel-ssh",
       packages=find_packages('.', exclude=(
           'embedded_server', 'embedded_server.*')),
-      install_requires=['paramiko', 'gevent'],
+      install_requires=['paramiko<2', gevent_req],
       classifiers=[
         'License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)',
         'Intended Audience :: Developers',
