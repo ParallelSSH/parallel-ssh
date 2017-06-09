@@ -16,16 +16,13 @@ Parallel-SSH Documentation
   :alt: Latest documentation
 
 
-`Parallel-SSH` is a parallel SSH client library. It makes use of gevent to make asynchronous SSH connections for its client and is, to date, the only publicly available asynchronous SSH client library for Python, as well as the only asynchronous *parallel* SSH client library available for Python.
-
-
-***********
-User Guide
-***********
+`Parallel-SSH` is a parallel SSH client library. It uses asynchronous SSH connections and is, to date, the only publicly available asynchronous SSH client library for Python, as well as the only asynchronous *parallel* SSH client library available for Python.
 
 .. toctree::
+   :maxdepth: 1
 
-  introduction
-  installation
-  quickstart
-  advanced
+   introduction
+   installation
+   quickstart
+   advanced
+   api

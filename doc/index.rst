@@ -3,23 +3,31 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+============================
 Parallel-SSH's documentation
 ============================
 
 .. toctree::
+   :maxdepth: 3
    
    front_page
 
-In a nutshell::
+In a nutshell
+**************
 
-  client = ParallelSSHClient(['localhost'])
-  output = client.run_command('whoami')
-  for line in output['localhost'].stdout:
-      print(line)
+.. code-block:: python
+      
+   from pssh.pssh_client import ParallelSSHClient
+   
+   client = ParallelSSHClient(['localhost'])
+   output = client.run_command('whoami')
+   for line in output['localhost'].stdout:
+       print(line)
 
-Output::
+:Output:
+   .. code-block:: python
 
-  <your username here>
+      <your username here>
 
 Indices and tables
 ==================

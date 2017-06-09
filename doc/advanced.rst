@@ -1,21 +1,23 @@
 .. contents::
 
 
-***************
 Advanced Usage
-***************
+=================
 
 There are several more advanced use cases of `ParallelSSH`, such as tunneling (aka proxying) via an intermediate SSH server and per-host configuration and command substitution among others.
 
+Agents and Private Keys
+*************************
+
 SSH Agent forwarding
-*********************
+-----------------------
 
 SSH agent forwarding, what ``ssh -A`` does on the command line, is supported and enabled by default. Creating an object as ``ParallelSSHClient(hosts, forward_ssh_agent=False)`` will disable this behaviour.
 
 Programmatic Private Keys
-**************************
+--------------------------
 
-By default, `ParallelSSH` will use all keys in an available SSH agent and all available keys under the user's SSH directory (`~/.ssh`).
+By default, ``ParallelSSH`` will use all keys in an available SSH agent and identity keys under the user's SSH directory - ``id_rsa`` and ``id_dsa`` in ``~/.ssh``.
 
 A private key can also be provided programmatically.
 
@@ -26,21 +28,32 @@ A private key can also be provided programmatically.
 
   client = ParallelSSHClient(hosts, pkey=load_private_key('my_key'))
 
-Where `my_key` is a private key file in current working directory.
+Where ``my_key`` is a private key file in current working directory.
 
-The helper function :py:func:`pssh.utils.load_private_key` will attempt to load all available key types and raises :mod:`pssh.exceptions.SSHException` if it cannot load the key file.
+The helper function :py:func:`load_private_key <pssh.utils.load_private_key>` will attempt to load all available key types and raises :mod:`SSHException <pssh.exceptions.SSHException>` if it cannot load the key file.
 
-Using an available SSH agent can also be disabled programmatically.
+Disabling use of system SSH Agent
+----------------------------------
+
+Use of an available SSH agent can also be disabled.
 
 .. code-block:: python
 
   client = ParallelSSHClient(hosts, pkey=load_private_key('my_key'), 
                              allow_agent=False)
 
-Programmatic SSH Agent
-***********************
+.. warning::
 
-It is also possible to programmatically provide an SSH agent for the client to use, instead of a system provided one. This is useful in cases where different hosts in the host list need different private keys and a system SSH agent is not available.
+   For large number of hosts, it is recommended that private keys are provided programmatically and use of SSH agent is disabled via ``allow_agent=False`` as above. 
+
+   If the number of hosts is large enough, available connections to the system SSH may be exhausted which will stop the client from working on a subset of hosts.
+
+   This is a limitation of the underlying SSH client used by ``ParallelSSH``.
+
+Programmatic SSH Agent
+-----------------------
+
+It is also possible to programmatically provide an SSH agent for the client to use, instead of a system provided one. This is useful in cases where hosts need different private keys and a system SSH agent is not available.
 
 .. code-block:: python
    
@@ -56,7 +69,9 @@ It is also possible to programmatically provide an SSH agent for the client to u
    client = ParallelSSHClient(hosts, agent=agent)
    client.run_command(<..>)
 
-Supplying an agent object programmatically implies that a system SSH agent will *not* be used if available.
+.. note::
+
+   Supplying an agent programmatically implies that a system SSH agent will *not* be used even if available.
 
 
 Tunneling
@@ -64,14 +79,16 @@ Tunneling
 
 This is used in cases where the client does not have direct access to the target host and has to authenticate via an intermediary, also called a bastion host, commonly used for additional security as only the bastion host needs to have access to the target host.
 
-ParallelSSHClient       ------>        SSH Proxy server         -------->         SSH target host
+ParallelSSHClient       ------>        Proxy host         -------->         Target host
 
-Proxy server can be configured as follows in the simplest case::
+Proxy host can be configured as follows in the simplest case:
+
+.. code-block:: python
 
   hosts = [<..>]
   client = ParallelSSHClient(hosts, proxy_host=bastion)
   
-Configuration for the proxy host's user name, port, password and private key can also be provided, separete from target host user name.
+Configuration for the proxy host's user name, port, password and private key can also be provided, separate from target host user name.
 
 .. code-block:: python
    
@@ -83,7 +100,15 @@ Configuration for the proxy host's user name, port, password and private key can
  			      proxy_port=2222, 
  			      proxy_pkey=load_private_key('proxy.key'))
 
-Where `proxy.key` is a filename containing private key to use for proxy host authentication.
+Where ``proxy.key`` is a filename containing private key to use for proxy host authentication.
+
+In the above example, connection to the target host is made via ``my_proxy_user@bastion`` -> ``target_host_user@<host>``.
+
+.. note::
+
+   Proxy host connections are asynchronous and use the SSH protocol's native TCP tunneling - aka local port forward. No external commands are used for the proxy connection, unlike the `ProxyCommand` directive in OpenSSH and other utilities.
+
+   While the connections initiated by ``ParallelSSH`` are asynchronous, the connections from proxy host -> target hosts may not be, depending on SSH server implementation. If only one proxy host is used to connect to a large number of target hosts and proxy SSH server connections are *not* asynchronous, this may adversely impact performance on the proxy host.
 
 Per-Host Configuration
 ***********************
@@ -109,21 +134,25 @@ Sometimes, different hosts require different configuration like user names and p
    client.run_command('uname')
    <..>
 
-In the above example, `host1` will use user name `user1` and private key from `my_key.pem` and `host2` will use user name `user2` and private key from `my_other_key.pem`.
+In the above example, ``host1`` will use user name ``user1`` and private key from ``my_key.pem`` and ``host2`` will use user name ``user2`` and private key from ``my_other_key.pem``.
+
+.. note::
+
+   Proxy host cannot be provided via per-host configuration at this time.
 
 Per-Host Command substitution
 ******************************
 
 For cases where different commands should be run each host, or the same command with different arguments, functionality exists to provide per-host command arguments for substitution.
 
-The `host_args` keyword parameter to `run_command` can be used to provide arguments to use to format the command string.
+The ``host_args`` keyword parameter to :py:func:`run_command <pssh.pssh_client.ParallelSSHClient.run_command>` can be used to provide arguments to use to format the command string.
 
-Number of `host_args` items should be at least as many as number of hosts.
+Number of ``host_args`` items should be at least as many as number of hosts.
 
 Any Python string format specification characters may be used in command string.
 
 
-In the following example, first host in hosts list will use cmd `host1_cmd` second host `host2_cmd` and so on
+In the following example, first host in hosts list will use cmd ``host1_cmd`` second host ``host2_cmd`` and so on
 
 .. code-block:: python
    
@@ -140,12 +169,55 @@ Command can also have multiple arguments to be substituted.
               ('host2_cmd1', 'host2_cmd2'),
 	      ('host3_cmd1', 'host3_cmd2'),))
 
-A list of dictionaries can also be used as `host_args` for named argument substitution.
+A list of dictionaries can also be used as ``host_args`` for named argument substitution.
 
-In the following example, first host in host list will use cmd `host-index-0`, second host `host-index-1` and so on.
+In the following example, first host in host list will use cmd ``host-index-0``, second host ``host-index-1`` and so on.
 
 .. code-block:: python
 
    host_args=[{'cmd': 'host-index-%s' % (i,))
               for i in range(len(client.hosts))]
    output = client.run_command('%(cmd)s', host_args=host_args)
+
+
+Hosts filtering and overriding
+*******************************
+
+Iterators and filtering
+------------------------
+
+Any type of iterator may be used as hosts list, including generator and list comprehension expressions.
+
+:List comprehension:
+   .. code-block:: python
+
+      hosts = ['dc1.myhost1', 'dc2.myhost2']
+      client = ParallelSSHClient([h for h in hosts if h.find('dc1')])
+
+:Generator:
+   .. code-block:: python
+
+      hosts = ['dc1.myhost1', 'dc2.myhost2']
+      client = ParallelSSHClient((h for h in hosts if h.find('dc1')))
+    
+:Filter:
+   .. code-block:: python
+
+      hosts = ['dc1.myhost1', 'dc2.myhost2']
+      client = ParallelSSHClient(filter(lambda h: h.find('dc1'), hosts))
+      client.run_command(<..>)
+
+.. note ::
+
+    Since generators by design only iterate over a sequence once then stop, ``client.hosts`` should be re-assigned after each call to ``run_command`` when using generators as target of `client.hosts`.
+
+Overriding hosts list
+----------------------
+
+Hosts list can be modified in place. A call to ``run_command`` will create new connections as necessary and output will only contain output for the hosts ``run_command`` executed on.
+
+.. code-block:: python
+
+    client.hosts = ['otherhost']
+    print(client.run_command('exit 0'))
+    {'otherhost': exit_code=None, <..>}

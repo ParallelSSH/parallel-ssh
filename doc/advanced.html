@@ -1,0 +1,531 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="Docutils 0.12: http://docutils.sourceforge.net/" />
+<title></title>
+<style type="text/css">
+
+/*
+:Author: David Goodger (goodger@python.org)
+:Id: $Id: html4css1.css 7614 2013-02-21 15:55:51Z milde $
+:Copyright: This stylesheet has been placed in the public domain.
+
+Default cascading style sheet for the HTML output of Docutils.
+
+See http://docutils.sf.net/docs/howto/html-stylesheets.html for how to
+customize this style sheet.
+*/
+
+/* used to remove borders from tables and images */
+.borderless, table.borderless td, table.borderless th {
+  border: 0 }
+
+table.borderless td, table.borderless th {
+  /* Override padding for "table.docutils td" with "! important".
+     The right padding separates the table cells. */
+  padding: 0 0.5em 0 0 ! important }
+
+.first {
+  /* Override more specific margin styles with "! important". */
+  margin-top: 0 ! important }
+
+.last, .with-subtitle {
+  margin-bottom: 0 ! important }
+
+.hidden {
+  display: none }
+
+a.toc-backref {
+  text-decoration: none ;
+  color: black }
+
+blockquote.epigraph {
+  margin: 2em 5em ; }
+
+dl.docutils dd {
+  margin-bottom: 0.5em }
+
+object[type="image/svg+xml"], object[type="application/x-shockwave-flash"] {
+  overflow: hidden;
+}
+
+/* Uncomment (and remove this text!) to get bold-faced definition list terms
+dl.docutils dt {
+  font-weight: bold }
+*/
+
+div.abstract {
+  margin: 2em 5em }
+
+div.abstract p.topic-title {
+  font-weight: bold ;
+  text-align: center }
+
+div.admonition, div.attention, div.caution, div.danger, div.error,
+div.hint, div.important, div.note, div.tip, div.warning {
+  margin: 2em ;
+  border: medium outset ;
+  padding: 1em }
+
+div.admonition p.admonition-title, div.hint p.admonition-title,
+div.important p.admonition-title, div.note p.admonition-title,
+div.tip p.admonition-title {
+  font-weight: bold ;
+  font-family: sans-serif }
+
+div.attention p.admonition-title, div.caution p.admonition-title,
+div.danger p.admonition-title, div.error p.admonition-title,
+div.warning p.admonition-title, .code .error {
+  color: red ;
+  font-weight: bold ;
+  font-family: sans-serif }
+
+/* Uncomment (and remove this text!) to get reduced vertical space in
+   compound paragraphs.
+div.compound .compound-first, div.compound .compound-middle {
+  margin-bottom: 0.5em }
+
+div.compound .compound-last, div.compound .compound-middle {
+  margin-top: 0.5em }
+*/
+
+div.dedication {
+  margin: 2em 5em ;
+  text-align: center ;
+  font-style: italic }
+
+div.dedication p.topic-title {
+  font-weight: bold ;
+  font-style: normal }
+
+div.figure {
+  margin-left: 2em ;
+  margin-right: 2em }
+
+div.footer, div.header {
+  clear: both;
+  font-size: smaller }
+
+div.line-block {
+  display: block ;
+  margin-top: 1em ;
+  margin-bottom: 1em }
+
+div.line-block div.line-block {
+  margin-top: 0 ;
+  margin-bottom: 0 ;
+  margin-left: 1.5em }
+
+div.sidebar {
+  margin: 0 0 0.5em 1em ;
+  border: medium outset ;
+  padding: 1em ;
+  background-color: #ffffee ;
+  width: 40% ;
+  float: right ;
+  clear: right }
+
+div.sidebar p.rubric {
+  font-family: sans-serif ;
+  font-size: medium }
+
+div.system-messages {
+  margin: 5em }
+
+div.system-messages h1 {
+  color: red }
+
+div.system-message {
+  border: medium outset ;
+  padding: 1em }
+
+div.system-message p.system-message-title {
+  color: red ;
+  font-weight: bold }
+
+div.topic {
+  margin: 2em }
+
+h1.section-subtitle, h2.section-subtitle, h3.section-subtitle,
+h4.section-subtitle, h5.section-subtitle, h6.section-subtitle {
+  margin-top: 0.4em }
+
+h1.title {
+  text-align: center }
+
+h2.subtitle {
+  text-align: center }
+
+hr.docutils {
+  width: 75% }
+
+img.align-left, .figure.align-left, object.align-left {
+  clear: left ;
+  float: left ;
+  margin-right: 1em }
+
+img.align-right, .figure.align-right, object.align-right {
+  clear: right ;
+  float: right ;
+  margin-left: 1em }
+
+img.align-center, .figure.align-center, object.align-center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.align-left {
+  text-align: left }
+
+.align-center {
+  clear: both ;
+  text-align: center }
+
+.align-right {
+  text-align: right }
+
+/* reset inner alignment in figures */
+div.align-right {
+  text-align: inherit }
+
+/* div.align-center * { */
+/*   text-align: left } */
+
+ol.simple, ul.simple {
+  margin-bottom: 1em }
+
+ol.arabic {
+  list-style: decimal }
+
+ol.loweralpha {
+  list-style: lower-alpha }
+
+ol.upperalpha {
+  list-style: upper-alpha }
+
+ol.lowerroman {
+  list-style: lower-roman }
+
+ol.upperroman {
+  list-style: upper-roman }
+
+p.attribution {
+  text-align: right ;
+  margin-left: 50% }
+
+p.caption {
+  font-style: italic }
+
+p.credits {
+  font-style: italic ;
+  font-size: smaller }
+
+p.label {
+  white-space: nowrap }
+
+p.rubric {
+  font-weight: bold ;
+  font-size: larger ;
+  color: maroon ;
+  text-align: center }
+
+p.sidebar-title {
+  font-family: sans-serif ;
+  font-weight: bold ;
+  font-size: larger }
+
+p.sidebar-subtitle {
+  font-family: sans-serif ;
+  font-weight: bold }
+
+p.topic-title {
+  font-weight: bold }
+
+pre.address {
+  margin-bottom: 0 ;
+  margin-top: 0 ;
+  font: inherit }
+
+pre.literal-block, pre.doctest-block, pre.math, pre.code {
+  margin-left: 2em ;
+  margin-right: 2em }
+
+pre.code .ln { color: grey; } /* line numbers */
+pre.code, code { background-color: #eeeeee }
+pre.code .comment, code .comment { color: #5C6576 }
+pre.code .keyword, code .keyword { color: #3B0D06; font-weight: bold }
+pre.code .literal.string, code .literal.string { color: #0C5404 }
+pre.code .name.builtin, code .name.builtin { color: #352B84 }
+pre.code .deleted, code .deleted { background-color: #DEB0A1}
+pre.code .inserted, code .inserted { background-color: #A3D289}
+
+span.classifier {
+  font-family: sans-serif ;
+  font-style: oblique }
+
+span.classifier-delimiter {
+  font-family: sans-serif ;
+  font-weight: bold }
+
+span.interpreted {
+  font-family: sans-serif }
+
+span.option {
+  white-space: nowrap }
+
+span.pre {
+  white-space: pre }
+
+span.problematic {
+  color: red }
+
+span.section-subtitle {
+  /* font-size relative to parent (h1..h6 element) */
+  font-size: 80% }
+
+table.citation {
+  border-left: solid 1px gray;
+  margin-left: 1px }
+
+table.docinfo {
+  margin: 2em 4em }
+
+table.docutils {
+  margin-top: 0.5em ;
+  margin-bottom: 0.5em }
+
+table.footnote {
+  border-left: solid 1px black;
+  margin-left: 1px }
+
+table.docutils td, table.docutils th,
+table.docinfo td, table.docinfo th {
+  padding-left: 0.5em ;
+  padding-right: 0.5em ;
+  vertical-align: top }
+
+table.docutils th.field-name, table.docinfo th.docinfo-name {
+  font-weight: bold ;
+  text-align: left ;
+  white-space: nowrap ;
+  padding-left: 0 }
+
+/* "booktabs" style (no vertical lines) */
+table.docutils.booktabs {
+  border: 0px;
+  border-top: 2px solid;
+  border-bottom: 2px solid;
+  border-collapse: collapse;
+}
+table.docutils.booktabs * {
+  border: 0px;
+}
+table.docutils.booktabs th {
+  border-bottom: thin solid;
+  text-align: left;
+}
+
+h1 tt.docutils, h2 tt.docutils, h3 tt.docutils,
+h4 tt.docutils, h5 tt.docutils, h6 tt.docutils {
+  font-size: 100% }
+
+ul.auto-toc {
+  list-style-type: none }
+
+</style>
+</head>
+<body>
+<div class="document">
+
+
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#advanced-usage" id="id7">Advanced Usage</a><ul>
+<li><a class="reference internal" href="#ssh-agent-forwarding" id="id8">SSH Agent forwarding</a></li>
+<li><a class="reference internal" href="#programmatic-private-keys" id="id9">Programmatic Private Keys</a></li>
+<li><a class="reference internal" href="#programmatic-ssh-agent" id="id10">Programmatic SSH Agent</a></li>
+<li><a class="reference internal" href="#tunneling" id="id11">Tunneling</a></li>
+<li><a class="reference internal" href="#per-host-configuration" id="id12">Per-Host Configuration</a></li>
+<li><a class="reference internal" href="#per-host-command-substitution" id="id13">Per-Host Command substitution</a></li>
+<li><a class="reference internal" href="#host-list-filtering-and-dynamic-host-list" id="id14">Host list filtering and dynamic host list</a><ul>
+<li><a class="reference internal" href="#overriding-host-list" id="id15">Overriding host list</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="advanced-usage">
+<h1><a class="toc-backref" href="#id7">Advanced Usage</a></h1>
+<p>There are several more advanced use cases of <cite>ParallelSSH</cite>, such as tunneling (aka proxying) via an intermediate SSH server and per-host configuration and command substitution among others.</p>
+<div class="section" id="ssh-agent-forwarding">
+<h2><a class="toc-backref" href="#id8">SSH Agent forwarding</a></h2>
+<p>SSH agent forwarding, what <tt class="docutils literal">ssh <span class="pre">-A</span></tt> does on the command line, is supported and enabled by default. Creating an object as <tt class="docutils literal">ParallelSSHClient(hosts, forward_ssh_agent=False)</tt> will disable this behaviour.</p>
+</div>
+<div class="section" id="programmatic-private-keys">
+<h2><a class="toc-backref" href="#id9">Programmatic Private Keys</a></h2>
+<p>By default, <cite>ParallelSSH</cite> will use all keys in an available SSH agent and all available keys under the user's SSH directory (<cite>~/.ssh</cite>).</p>
+<p>A private key can also be provided programmatically.</p>
+<pre class="code python literal-block">
+<span class="keyword namespace">from</span> <span class="name namespace">pssh.utils</span> <span class="keyword namespace">import</span> <span class="name">load_private_key</span>
+<span class="keyword namespace">from</span> <span class="name namespace">pssh</span> <span class="keyword namespace">import</span> <span class="name">ParallelSSHClient</span>
+
+<span class="name">client</span> <span class="operator">=</span> <span class="name">ParallelSSHClient</span><span class="punctuation">(</span><span class="name">hosts</span><span class="punctuation">,</span> <span class="name">pkey</span><span class="operator">=</span><span class="name">load_private_key</span><span class="punctuation">(</span><span class="literal string">'my_key'</span><span class="punctuation">))</span>
+</pre>
+<p>Where <cite>my_key</cite> is a private key file in current working directory.</p>
+<p>The helper function <a href="#id1"><span class="problematic" id="id2">:py:func:`pssh.utils.load_private_key`</span></a> will attempt to load all available key types and raises <a href="#id3"><span class="problematic" id="id4">:mod:`pssh.exceptions.SSHException`</span></a> if it cannot load the key file.</p>
+<div class="system-message" id="id1">
+<p class="system-message-title">System Message: ERROR/3 (<tt class="docutils">advanced.rst</tt>, line 32); <em><a href="#id2">backlink</a></em></p>
+Unknown interpreted text role &quot;py:func&quot;.</div>
+<div class="system-message" id="id3">
+<p class="system-message-title">System Message: ERROR/3 (<tt class="docutils">advanced.rst</tt>, line 32); <em><a href="#id4">backlink</a></em></p>
+Unknown interpreted text role &quot;mod&quot;.</div>
+<p>Using an available SSH agent can also be disabled programmatically.</p>
+<pre class="code python literal-block">
+<span class="name">client</span> <span class="operator">=</span> <span class="name">ParallelSSHClient</span><span class="punctuation">(</span><span class="name">hosts</span><span class="punctuation">,</span> <span class="name">pkey</span><span class="operator">=</span><span class="name">load_private_key</span><span class="punctuation">(</span><span class="literal string">'my_key'</span><span class="punctuation">),</span>
+                           <span class="name">allow_agent</span><span class="operator">=</span><span class="name builtin pseudo">False</span><span class="punctuation">)</span>
+</pre>
+</div>
+<div class="section" id="programmatic-ssh-agent">
+<h2><a class="toc-backref" href="#id10">Programmatic SSH Agent</a></h2>
+<p>It is also possible to programmatically provide an SSH agent for the client to use, instead of a system provided one. This is useful in cases where different hosts in the host list need different private keys and a system SSH agent is not available.</p>
+<pre class="code python literal-block">
+<span class="keyword namespace">from</span> <span class="name namespace">pssh.agent</span> <span class="keyword namespace">import</span> <span class="name">SSHAgent</span>
+<span class="keyword namespace">from</span> <span class="name namespace">pssh.utils</span> <span class="keyword namespace">import</span> <span class="name">load_private_key</span>
+<span class="keyword namespace">from</span> <span class="name namespace">pssh</span> <span class="keyword namespace">import</span> <span class="name">ParallelSSHClient</span>
+
+<span class="name">agent</span> <span class="operator">=</span> <span class="name">SSHAgent</span><span class="punctuation">()</span>
+<span class="name">agent</span><span class="operator">.</span><span class="name">add_key</span><span class="punctuation">(</span><span class="name">load_private_key</span><span class="punctuation">(</span><span class="literal string">'my_private_key_filename'</span><span class="punctuation">))</span>
+<span class="name">agent</span><span class="operator">.</span><span class="name">add_key</span><span class="punctuation">(</span><span class="name">load_private_key</span><span class="punctuation">(</span><span class="literal string">'my_other_private_key_filename'</span><span class="punctuation">))</span>
+<span class="name">hosts</span> <span class="operator">=</span> <span class="punctuation">[</span><span class="literal string">'my_host'</span><span class="punctuation">,</span> <span class="literal string">'my_other_host'</span><span class="punctuation">]</span>
+
+<span class="name">client</span> <span class="operator">=</span> <span class="name">ParallelSSHClient</span><span class="punctuation">(</span><span class="name">hosts</span><span class="punctuation">,</span> <span class="name">agent</span><span class="operator">=</span><span class="name">agent</span><span class="punctuation">)</span>
+<span class="name">client</span><span class="operator">.</span><span class="name">run_command</span><span class="punctuation">(</span><span class="operator">&lt;..&gt;</span><span class="punctuation">)</span>
+</pre>
+<p>Supplying an agent object programmatically implies that a system SSH agent will <em>not</em> be used if available.</p>
+</div>
+<div class="section" id="tunneling">
+<h2><a class="toc-backref" href="#id11">Tunneling</a></h2>
+<p>This is used in cases where the client does not have direct access to the target host and has to authenticate via an intermediary, also called a bastion host, commonly used for additional security as only the bastion host needs to have access to the target host.</p>
+<p>ParallelSSHClient       ------&gt;        SSH Proxy server         --------&gt;         SSH target host</p>
+<p>Proxy server can be configured as follows in the simplest case:</p>
+<pre class="literal-block">
+hosts = [&lt;..&gt;]
+client = ParallelSSHClient(hosts, proxy_host=bastion)
+</pre>
+<p>Configuration for the proxy host's user name, port, password and private key can also be provided, separete from target host user name.</p>
+<pre class="code python literal-block">
+<span class="keyword namespace">from</span> <span class="name namespace">pssh.utils</span> <span class="keyword namespace">import</span> <span class="name">load_private_key</span>
+
+<span class="name">hosts</span> <span class="operator">=</span> <span class="punctuation">[</span><span class="operator">&lt;..&gt;</span><span class="punctuation">]</span>
+<span class="name">client</span> <span class="operator">=</span> <span class="name">ParallelSSHClient</span><span class="punctuation">(</span><span class="name">hosts</span><span class="punctuation">,</span> <span class="name">user</span><span class="operator">=</span><span class="literal string">'target_host_user'</span><span class="punctuation">,</span>
+                           <span class="name">proxy_host</span><span class="operator">=</span><span class="name">bastion</span><span class="punctuation">,</span> <span class="name">proxy_user</span><span class="operator">=</span><span class="literal string">'my_proxy_user'</span><span class="punctuation">,</span>
+                           <span class="name">proxy_port</span><span class="operator">=</span><span class="literal number integer">2222</span><span class="punctuation">,</span>
+                           <span class="name">proxy_pkey</span><span class="operator">=</span><span class="name">load_private_key</span><span class="punctuation">(</span><span class="literal string">'proxy.key'</span><span class="punctuation">))</span>
+</pre>
+<p>Where <cite>proxy.key</cite> is a filename containing private key to use for proxy host authentication.</p>
+</div>
+<div class="section" id="per-host-configuration">
+<h2><a class="toc-backref" href="#id12">Per-Host Configuration</a></h2>
+<p>Sometimes, different hosts require different configuration like user names and passwords, ports and private keys. Capability is provided to supply per host configuration for such cases.</p>
+<pre class="code python literal-block">
+<span class="keyword namespace">from</span> <span class="name namespace">pssh.utils</span> <span class="keyword namespace">import</span> <span class="name">load_private_key</span>
+
+<span class="name">host_config</span> <span class="operator">=</span> <span class="punctuation">{</span><span class="literal string">'host1'</span> <span class="punctuation">:</span> <span class="punctuation">{</span><span class="literal string">'user'</span><span class="punctuation">:</span> <span class="literal string">'user1'</span><span class="punctuation">,</span> <span class="literal string">'password'</span><span class="punctuation">:</span> <span class="literal string">'pass'</span><span class="punctuation">,</span>
+                          <span class="literal string">'port'</span><span class="punctuation">:</span> <span class="literal number integer">2222</span><span class="punctuation">,</span>
+                          <span class="literal string">'private_key'</span><span class="punctuation">:</span> <span class="name">load_private_key</span><span class="punctuation">(</span>
+                              <span class="literal string">'my_key.pem'</span><span class="punctuation">)},</span>
+               <span class="literal string">'host2'</span> <span class="punctuation">:</span> <span class="punctuation">{</span><span class="literal string">'user'</span><span class="punctuation">:</span> <span class="literal string">'user2'</span><span class="punctuation">,</span> <span class="literal string">'password'</span><span class="punctuation">:</span> <span class="literal string">'pass'</span><span class="punctuation">,</span>
+                          <span class="literal string">'port'</span><span class="punctuation">:</span> <span class="literal number integer">2223</span><span class="punctuation">,</span>
+                          <span class="literal string">'private_key'</span><span class="punctuation">:</span> <span class="name">load_private_key</span><span class="punctuation">(</span>
+                              <span class="name builtin">open</span><span class="punctuation">(</span><span class="literal string">'my_other_key.pem'</span><span class="punctuation">))},</span>
+              <span class="punctuation">}</span>
+<span class="name">hosts</span> <span class="operator">=</span> <span class="name">host_config</span><span class="operator">.</span><span class="name">keys</span><span class="punctuation">()</span>
+
+<span class="name">client</span> <span class="operator">=</span> <span class="name">ParallelSSHClient</span><span class="punctuation">(</span><span class="name">hosts</span><span class="punctuation">,</span> <span class="name">host_config</span><span class="operator">=</span><span class="name">host_config</span><span class="punctuation">)</span>
+<span class="name">client</span><span class="operator">.</span><span class="name">run_command</span><span class="punctuation">(</span><span class="literal string">'uname'</span><span class="punctuation">)</span>
+<span class="operator">&lt;..&gt;</span>
+</pre>
+<p>In the above example, <cite>host1</cite> will use user name <cite>user1</cite> and private key from <cite>my_key.pem</cite> and <cite>host2</cite> will use user name <cite>user2</cite> and private key from <cite>my_other_key.pem</cite>.</p>
+</div>
+<div class="section" id="per-host-command-substitution">
+<h2><a class="toc-backref" href="#id13">Per-Host Command substitution</a></h2>
+<p>For cases where different commands should be run each host, or the same command with different arguments, functionality exists to provide per-host command arguments for substitution.</p>
+<p>The <tt class="docutils literal">host_args</tt> keyword parameter to <a href="#id5"><span class="problematic" id="id6">:py:func:`pssh.pssh_client.ParallelSSHClient.run_command`</span></a> can be used to provide arguments to use to format the command string.</p>
+<div class="system-message" id="id5">
+<p class="system-message-title">System Message: ERROR/3 (<tt class="docutils">advanced.rst</tt>, line 120); <em><a href="#id6">backlink</a></em></p>
+Unknown interpreted text role &quot;py:func&quot;.</div>
+<p>Number of <tt class="docutils literal">host_args</tt> items should be at least as many as number of hosts.</p>
+<p>Any Python string format specification characters may be used in command string.</p>
+<p>In the following example, first host in hosts list will use cmd <tt class="docutils literal">host1_cmd</tt> second host <tt class="docutils literal">host2_cmd</tt> and so on</p>
+<pre class="code python literal-block">
+<span class="name">output</span> <span class="operator">=</span> <span class="name">client</span><span class="operator">.</span><span class="name">run_command</span><span class="punctuation">(</span><span class="literal string">'</span><span class="literal string interpol">%s</span><span class="literal string">'</span><span class="punctuation">,</span> <span class="name">host_args</span><span class="operator">=</span><span class="punctuation">(</span><span class="literal string">'host1_cmd'</span><span class="punctuation">,</span>
+                                             <span class="literal string">'host2_cmd'</span><span class="punctuation">,</span>
+                                             <span class="literal string">'host3_cmd'</span><span class="punctuation">,))</span>
+</pre>
+<p>Command can also have multiple arguments to be substituted.</p>
+<pre class="code python literal-block">
+<span class="name">output</span> <span class="operator">=</span> <span class="name">client</span><span class="operator">.</span><span class="name">run_command</span><span class="punctuation">(</span><span class="literal string">'</span><span class="literal string interpol">%s</span><span class="literal string"> </span><span class="literal string interpol">%s</span><span class="literal string">'</span><span class="punctuation">,</span>
+<span class="name">host_args</span><span class="operator">=</span><span class="punctuation">((</span><span class="literal string">'host1_cmd1'</span><span class="punctuation">,</span> <span class="literal string">'host1_cmd2'</span><span class="punctuation">),</span>
+           <span class="punctuation">(</span><span class="literal string">'host2_cmd1'</span><span class="punctuation">,</span> <span class="literal string">'host2_cmd2'</span><span class="punctuation">),</span>
+           <span class="punctuation">(</span><span class="literal string">'host3_cmd1'</span><span class="punctuation">,</span> <span class="literal string">'host3_cmd2'</span><span class="punctuation">),))</span>
+</pre>
+<p>A list of dictionaries can also be used as <cite>host_args</cite> for named argument substitution.</p>
+<p>In the following example, first host in host list will use cmd <cite>host-index-0</cite>, second host <cite>host-index-1</cite> and so on.</p>
+<pre class="code python literal-block">
+<span class="name">host_args</span><span class="operator">=</span><span class="punctuation">[{</span><span class="literal string">'cmd'</span><span class="punctuation">:</span> <span class="literal string">'host-index-</span><span class="literal string interpol">%s</span><span class="literal string">'</span> <span class="operator">%</span> <span class="punctuation">(</span><span class="name">i</span><span class="punctuation">,))</span>
+           <span class="keyword">for</span> <span class="name">i</span> <span class="operator word">in</span> <span class="name builtin">range</span><span class="punctuation">(</span><span class="name builtin">len</span><span class="punctuation">(</span><span class="name">client</span><span class="operator">.</span><span class="name">hosts</span><span class="punctuation">))]</span>
+<span class="name">output</span> <span class="operator">=</span> <span class="name">client</span><span class="operator">.</span><span class="name">run_command</span><span class="punctuation">(</span><span class="literal string">'</span><span class="literal string interpol">%(cmd)s</span><span class="literal string">'</span><span class="punctuation">,</span> <span class="name">host_args</span><span class="operator">=</span><span class="name">host_args</span><span class="punctuation">)</span>
+</pre>
+</div>
+<div class="section" id="host-list-filtering-and-dynamic-host-list">
+<h2><a class="toc-backref" href="#id14">Host list filtering and dynamic host list</a></h2>
+<p>Any type of iterator may be used as host list, including generator and list comprehension expressions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name" colspan="2">List comprehension:</th></tr>
+<tr class="field"><td>&nbsp;</td><td class="field-body"><pre class="code python first literal-block">
+<span class="name">hosts</span> <span class="operator">=</span> <span class="punctuation">[</span><span class="literal string">'dc1.myhost1'</span><span class="punctuation">,</span> <span class="literal string">'dc2.myhost2'</span><span class="punctuation">]</span>
+<span class="name">client</span> <span class="operator">=</span> <span class="name">ParallelSSHClient</span><span class="punctuation">([</span><span class="name">h</span> <span class="keyword">for</span> <span class="name">h</span> <span class="operator word">in</span> <span class="name">hosts</span> <span class="keyword">if</span> <span class="name">h</span><span class="operator">.</span><span class="name">find</span><span class="punctuation">(</span><span class="literal string">'dc1'</span><span class="punctuation">)])</span>
+</pre>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Generator:</th><td class="field-body"><pre class="code python first literal-block">
+<span class="name">hosts</span> <span class="operator">=</span> <span class="punctuation">[</span><span class="literal string">'dc1.myhost1'</span><span class="punctuation">,</span> <span class="literal string">'dc2.myhost2'</span><span class="punctuation">]</span>
+<span class="name">client</span> <span class="operator">=</span> <span class="name">ParallelSSHClient</span><span class="punctuation">((</span><span class="name">h</span> <span class="keyword">for</span> <span class="name">h</span> <span class="operator word">in</span> <span class="name">hosts</span> <span class="keyword">if</span> <span class="name">h</span><span class="operator">.</span><span class="name">find</span><span class="punctuation">(</span><span class="literal string">'dc1'</span><span class="punctuation">)))</span>
+</pre>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Filter:</th><td class="field-body"><pre class="code python first last literal-block">
+<span class="name">hosts</span> <span class="operator">=</span> <span class="punctuation">[</span><span class="literal string">'dc1.myhost1'</span><span class="punctuation">,</span> <span class="literal string">'dc2.myhost2'</span><span class="punctuation">]</span>
+<span class="name">client</span> <span class="operator">=</span> <span class="name">ParallelSSHClient</span><span class="punctuation">(</span><span class="name builtin">filter</span><span class="punctuation">(</span><span class="keyword">lambda</span> <span class="name">h</span><span class="punctuation">:</span> <span class="name">h</span><span class="operator">.</span><span class="name">find</span><span class="punctuation">(</span><span class="literal string">'dc1'</span><span class="punctuation">),</span> <span class="name">hosts</span><span class="punctuation">))</span>
+<span class="name">client</span><span class="operator">.</span><span class="name">run_command</span><span class="punctuation">(</span><span class="operator">&lt;..&gt;</span><span class="punctuation">)</span>
+</pre>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="note">
+<p class="first admonition-title">Note</p>
+<p class="last">Since generators by design only iterate over a sequence once then stop, <tt class="docutils literal">client.hosts</tt> should be re-assigned after each call to <tt class="docutils literal">run_command</tt> when using generators as target of <cite>client.hosts</cite>.</p>
+</div>
+<div class="section" id="overriding-host-list">
+<h3><a class="toc-backref" href="#id15">Overriding host list</a></h3>
+<p>Host list can be modified in place. Call to <tt class="docutils literal">run_command</tt> will create new connections as necessary and output will only contain output for the hosts <tt class="docutils literal">run_command</tt> executed on.</p>
+<pre class="code python literal-block">
+<span class="name">client</span><span class="operator">.</span><span class="name">hosts</span> <span class="operator">=</span> <span class="punctuation">[</span><span class="literal string">'otherhost'</span><span class="punctuation">]</span>
+<span class="keyword">print</span><span class="punctuation">(</span><span class="name">client</span><span class="operator">.</span><span class="name">run_command</span><span class="punctuation">(</span><span class="literal string">'exit 0'</span><span class="punctuation">))</span>
+<span class="punctuation">{</span><span class="literal string">'otherhost'</span><span class="punctuation">:</span> <span class="name">exit_code</span><span class="operator">=</span><span class="name builtin pseudo">None</span><span class="punctuation">,</span> <span class="operator">&lt;..&gt;</span><span class="punctuation">}</span>
+</pre>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>
