@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 class SSHClient(object):
     """Wrapper class over paramiko.SSHClient with sane defaults
     Honours ``~/.ssh/config`` and ``/etc/ssh/ssh_config`` host entries
-    for host username overrides
+    for host user name, port and key overrides
     """
 
     def __init__(self, host,

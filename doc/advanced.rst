@@ -12,7 +12,13 @@ Agents and Private Keys
 SSH Agent forwarding
 -----------------------
 
-SSH agent forwarding, what ``ssh -A`` does on the command line, is supported and enabled by default. Creating an object as ``ParallelSSHClient(hosts, forward_ssh_agent=False)`` will disable this behaviour.
+SSH agent forwarding, what ``ssh -A`` does on the command line, is supported and enabled by default. Creating a client object as:
+
+.. code-block:: python
+
+   ParallelSSHClient(hosts, forward_ssh_agent=False)
+
+will disable this behaviour.
 
 Programmatic Private Keys
 --------------------------
@@ -31,6 +37,10 @@ A private key can also be provided programmatically.
 Where ``my_key`` is a private key file in current working directory.
 
 The helper function :py:func:`load_private_key <pssh.utils.load_private_key>` will attempt to load all available key types and raises :mod:`SSHException <pssh.exceptions.SSHException>` if it cannot load the key file.
+
+.. seealso::
+
+   :py:func:`load_private_key <pssh.utils.load_private_key>`
 
 Disabling use of system SSH Agent
 ----------------------------------
@@ -73,6 +83,10 @@ It is also possible to programmatically provide an SSH agent for the client to u
 
    Supplying an agent programmatically implies that a system SSH agent will *not* be used even if available.
 
+.. seealso::
+
+   :py:class:`pssh.agent.SSHAgent`
+
 
 Tunneling
 **********
@@ -106,7 +120,7 @@ In the above example, connection to the target host is made via ``my_proxy_user@
 
 .. note::
 
-   Proxy host connections are asynchronous and use the SSH protocol's native TCP tunneling - aka local port forward. No external commands are used for the proxy connection, unlike the `ProxyCommand` directive in OpenSSH and other utilities.
+   Proxy host connections are asynchronous and use the SSH protocol's native TCP tunneling - aka local port forward. No external commands or processes are used for the proxy connection, unlike the `ProxyCommand` directive in OpenSSH and other utilities.
 
    While the connections initiated by ``ParallelSSH`` are asynchronous, the connections from proxy host -> target hosts may not be, depending on SSH server implementation. If only one proxy host is used to connect to a large number of target hosts and proxy SSH server connections are *not* asynchronous, this may adversely impact performance on the proxy host.
 
@@ -180,6 +194,193 @@ In the following example, first host in host list will use cmd ``host-index-0``,
    output = client.run_command('%(cmd)s', host_args=host_args)
 
 
+Run command features and options
+*********************************
+
+See :py:func:`run_command API documentation <pssh.pssh_client.ParallelSSHClient.run_command>` for a complete list of features and options.
+
+.. note::
+
+   With a PTY, stdout and stderr output is combined into stdout.
+
+   Without a PTY, separate output is given for stdout and stderr, although some programs and server configurations require a PTY.
+
+Run with sudo
+---------------
+
+``ParallelSSH`` can be instructed to run its commands under ``sudo``:
+
+.. code-block:: python
+
+   client = <..>
+   
+   output = client.run_command(<..>, sudo=True)
+   client.join(output)
+
+While not best practice and password-less `sudo` is best configured for a limited set of commands, a sudo password may be provided via the stdin channel:
+
+.. code-block:: python
+
+   client = <..>
+   
+   output = client.run_command(<..>, sudo=True)
+   for host in output:
+       stdin = output[host].stdin
+       stdin.write('my_password\n')
+       stdin.flush()
+   client.join(output)
+
+Output encoding
+-----------------
+
+By default, output is encoded as ``UTF-8``. This can be configured with the ``encoding`` keyword argument.
+
+.. code-block:: python
+
+   client = <..>
+
+   client.run_command(<..>, encoding='utf-16')
+   stdout = list(output[client.hosts[0]].stdout)
+
+Contents of ``stdout`` will be `UTF-16` encoded.
+
+.. note::
+   
+   Encoding must be valid `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
+
+Disabling use of pseudo terminal emulation
+--------------------------------------------
+
+By default, ``ParallelSSH`` uses the user's configured shell to run commands with. As a shell is used by default, a pseudo terminal (`PTY`) is also requested by default.
+
+For cases where use of a `PTY` is not wanted, such as having separate stdout and stderr outputs, or the remote command is a daemon that needs to fork and detach itself or when use of a shell is explicitly disabled, use of PTY can also be disabled.
+
+The following example prints to stderr with PTY disabled.
+
+.. code-block:: python
+
+   from __future__ import print_function
+
+   client = <..>
+
+   client.run_command("echo 'asdf' >&2", use_pty=False)
+   for line in output[client.hosts[0]].stderr: 
+       print(line)
+
+:Output:
+   .. code-block:: shell
+
+      asdf
+
+Combined stdout/stderr
+-----------------------
+
+With a PTY, stdout and stderr output is combined.
+
+The same example as above with a PTY:
+
+.. code-block:: python
+
+   from __future__ import print_function
+
+   client = <..>
+
+   client.run_command("echo 'asdf' >&2")
+   for line in output[client.hosts[0]].stdout: 
+       print(line)
+
+Note output is now from the ``stdout`` channel.
+
+:Output:
+   .. code-block:: shell
+
+      asdf
+
+Stderr is empty:
+
+.. code-block:: python
+   
+   for line in output[client.hosts[0]].stderr:
+       print(line)
+
+No output from ``stderr``.
+
+SFTP
+*****
+
+SFTP - `SCP version 2` - is supported by ``Parallel-SSH`` and two functions are provided by the client for copying files with SFTP.
+
+SFTP does not have a shell interface and no output is provided for any SFTP commands.
+
+As such, SFTP functions in ``ParallelSSHClient`` return greenlets that will need to be joined to raise any exceptions from them. :py:func:`gevent.joinall` may be used for that.
+
+
+Copying files to remote hosts in parallel
+----------------------------------------------
+
+To copy the local file with relative path ``../test`` to the remote relative path ``test_dir/test`` - remote directory will be created if it does not exist, permissions allowing. ``raise_error=True`` instructs ``joinall`` to raise any exceptions thrown by the greenlets.
+
+.. code-block:: python
+
+   from pssh.pssh_client import ParallelSSHClient
+   from gevent import joinall
+   
+   client = ParallelSSHClient(hosts)
+   
+   greenlets = client.copy_file('../test', 'test_dir/test')
+   joinall(greenlets, raise_error=True)
+
+To recursively copy directory structures, enable the ``recurse`` flag:
+
+.. code-block:: python
+
+   greenlets = client.copy_file('my_dir', 'my_dir', recurse=True)
+   joinall(greenlets, raise_error=True)
+
+.. seealso::
+
+   :py:func:`copy_file <pssh.pssh_client.ParallelSSHClient.copy_file>` API documentation and exceptions raised.
+
+   :py:func:`gevent.joinall` Gevent's ``joinall`` API documentation.
+
+Copying files from remote hosts in parallel
+----------------------------------------------
+
+Copying remote files in parallel requires that file names are de-duplicated otherwise they will overwrite each other. ``copy_remote_file`` names local files as ``<local_file><suffix_separator><host>``, suffixing each file with the host name it came from, separated by a configurable character or string.
+
+.. code-block:: python
+
+   from pssh.pssh_client import ParallelSSHClient
+   from gevent import joinall
+   
+   client = ParallelSSHClient(hosts)
+   
+   greenlets = client.copy_remote_file('remote.file', 'local.file')
+   joinall(greenlets, raise_error=True)
+
+The above will create files ``local.file_host1`` where ``host1`` is the host name the file was copied from.
+
+.. seealso::
+
+   :py:func:`copy_remote_file <pssh.pssh_client.ParallelSSHClient.copy_remote_file>`  API documentation and exceptions raised.
+
+Single host copy
+-----------------
+
+If wanting to copy a file from a single remote host and retain the original filename, can use the single host :py:class:`SSHClient <pssh.ssh_client.SSHClient>` and its :py:func:`copy_file <pssh.ssh_client.SSHClient.copy_remote_file>` directly.
+
+.. code-block:: python
+
+   from pssh.ssh_client import SSHClient
+   
+   client = SSHClient('localhost')
+   client.copy_remote_file('remote_filename', 'local_filename')
+
+.. seealso::
+
+   :py:func:`SSHClient.copy_remote_file <pssh.ssh_client.SSHClient.copy_remote_file>`  API documentation and exceptions raised.
+
+
 Hosts filtering and overriding
 *******************************
 
@@ -209,7 +410,7 @@ Any type of iterator may be used as hosts list, including generator and list com
 
 .. note ::
 
-    Since generators by design only iterate over a sequence once then stop, ``client.hosts`` should be re-assigned after each call to ``run_command`` when using generators as target of `client.hosts`.
+    Since generators by design only iterate over a sequence once then stop, ``client.hosts`` should be re-assigned after each call to ``run_command`` when using generators as target of ``client.hosts``.
 
 Overriding hosts list
 ----------------------
@@ -218,6 +419,8 @@ Hosts list can be modified in place. A call to ``run_command`` will create new c
 
 .. code-block:: python
 
-    client.hosts = ['otherhost']
-    print(client.run_command('exit 0'))
-    {'otherhost': exit_code=None, <..>}
+   client = <..>
+
+   client.hosts = ['otherhost']
+   print(client.run_command('exit 0'))
+   {'otherhost': exit_code=None, <..>}

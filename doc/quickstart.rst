@@ -71,7 +71,7 @@ Please note that retrieving all of a command's standard output by definition req
 
 Iterating over ``stdout`` for any host *to completion* will therefor *block* until that host's command has completed unless interrupted.
 
-``stdout`` is a generator. Iterating over it will consume the remote standard output stream via the network as it becomes available. To store all of stdout can wrap it with list, per below.
+``stdout`` is a generator. Iterating over it will consume the remote standard output stream via the network as it becomes available. To retrieve all of stdout can wrap it with list, per below.
 
 .. code-block:: python
 
@@ -143,7 +143,7 @@ The helper function :py:func:`load_private_key <pssh.utils.load_private_key>` is
 Host Logger
 ------------
 
-There is a built in host logger that can be enabled to automatically log output from remote hosts. This requires the ``consume_output`` flag to be enabled on ``run_command``.
+There is a built in host logger that can be enabled to automatically log output from remote hosts. This requires the ``consume_output`` flag to be enabled on :py:func:`join <pssh.pssh_client.join`.
 
 The helper function ``pssh.utils.enable_host_logger`` will enable host logging to standard output, for example:
 
@@ -151,7 +151,9 @@ The helper function ``pssh.utils.enable_host_logger`` will enable host logging t
 
   from pssh.utils import enable_host_logger
   enable_host_logger()
-  client.join(client.run_command('uname'), consume_output=True)
+
+  output = client.run_command('uname')
+  client.join(output, consume_output=True)
 
 :Output:
    .. code-block:: python
@@ -205,4 +207,6 @@ With this flag, the ``exception`` attribute will contain the exception on any fa
       host1: 0, None
       host2: None, AuthenticationException <..>
 
-Possible exceptions can be found in :mod:`pssh.exceptions` module.
+.. seealso::
+
+   Possible exceptions can be found in :mod:`pssh.exceptions` module.
