@@ -143,7 +143,7 @@ The helper function :py:func:`load_private_key <pssh.utils.load_private_key>` is
 Host Logger
 ------------
 
-There is a built in host logger that can be enabled to automatically log output from remote hosts. This requires the ``consume_output`` flag to be enabled on :py:func:`join <pssh.pssh_client.join`.
+There is a built in host logger that can be enabled to automatically log output from remote hosts. This requires the ``consume_output`` flag to be enabled on :py:func:`join <pssh.pssh_client.ParallelSSHClient.join>`.
 
 The helper function ``pssh.utils.enable_host_logger`` will enable host logging to standard output, for example:
 

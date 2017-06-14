@@ -56,7 +56,7 @@ Use of an available SSH agent can also be disabled.
 
    For large number of hosts, it is recommended that private keys are provided programmatically and use of SSH agent is disabled via ``allow_agent=False`` as above. 
 
-   If the number of hosts is large enough, available connections to the system SSH may be exhausted which will stop the client from working on a subset of hosts.
+   If the number of hosts is large enough, available connections to the system SSH agent may be exhausted which will stop the client from working on a subset of hosts.
 
    This is a limitation of the underlying SSH client used by ``ParallelSSH``.
 
@@ -100,7 +100,7 @@ Proxy host can be configured as follows in the simplest case:
 .. code-block:: python
 
   hosts = [<..>]
-  client = ParallelSSHClient(hosts, proxy_host=bastion)
+  client = ParallelSSHClient(hosts, proxy_host='bastion')
   
 Configuration for the proxy host's user name, port, password and private key can also be provided, separate from target host user name.
 
@@ -110,19 +110,19 @@ Configuration for the proxy host's user name, port, password and private key can
    
    hosts = [<..>]
    client = ParallelSSHClient(hosts, user='target_host_user', 
-                              proxy_host=bastion, proxy_user='my_proxy_user',
+                              proxy_host='bastion', proxy_user='my_proxy_user',
  			      proxy_port=2222, 
  			      proxy_pkey=load_private_key('proxy.key'))
 
 Where ``proxy.key`` is a filename containing private key to use for proxy host authentication.
 
-In the above example, connection to the target host is made via ``my_proxy_user@bastion`` -> ``target_host_user@<host>``.
+In the above example, connections to the target hosts are made via ``my_proxy_user@bastion:2222`` -> ``target_host_user@<host>``.
 
 .. note::
 
    Proxy host connections are asynchronous and use the SSH protocol's native TCP tunneling - aka local port forward. No external commands or processes are used for the proxy connection, unlike the `ProxyCommand` directive in OpenSSH and other utilities.
 
-   While the connections initiated by ``ParallelSSH`` are asynchronous, the connections from proxy host -> target hosts may not be, depending on SSH server implementation. If only one proxy host is used to connect to a large number of target hosts and proxy SSH server connections are *not* asynchronous, this may adversely impact performance on the proxy host.
+   While connections initiated by ``ParallelSSH`` are asynchronous, connections from proxy host -> target hosts may not be, depending on SSH server implementation. If only one proxy host is used to connect to a large number of target hosts and proxy SSH server connections are *not* asynchronous, this may adversely impact performance on the proxy host.
 
 Per-Host Configuration
 ***********************
@@ -157,7 +157,7 @@ In the above example, ``host1`` will use user name ``user1`` and private key fro
 Per-Host Command substitution
 ******************************
 
-For cases where different commands should be run each host, or the same command with different arguments, functionality exists to provide per-host command arguments for substitution.
+For cases where different commands should be run on each host, or the same command with different arguments, functionality exists to provide per-host command arguments for substitution.
 
 The ``host_args`` keyword parameter to :py:func:`run_command <pssh.pssh_client.ParallelSSHClient.run_command>` can be used to provide arguments to use to format the command string.
 
@@ -201,7 +201,7 @@ See :py:func:`run_command API documentation <pssh.pssh_client.ParallelSSHClient.
 
 .. note::
 
-   With a PTY, stdout and stderr output is combined into stdout.
+   With a PTY, the default, stdout and stderr output is combined into stdout.
 
    Without a PTY, separate output is given for stdout and stderr, although some programs and server configurations require a PTY.
 
@@ -253,7 +253,7 @@ Disabling use of pseudo terminal emulation
 
 By default, ``ParallelSSH`` uses the user's configured shell to run commands with. As a shell is used by default, a pseudo terminal (`PTY`) is also requested by default.
 
-For cases where use of a `PTY` is not wanted, such as having separate stdout and stderr outputs, or the remote command is a daemon that needs to fork and detach itself or when use of a shell is explicitly disabled, use of PTY can also be disabled.
+For cases where use of a `PTY` is not wanted, such as having separate stdout and stderr outputs, the remote command is a daemon that needs to fork and detach itself or when use of a shell is explicitly disabled, use of PTY can also be disabled.
 
 The following example prints to stderr with PTY disabled.
 
