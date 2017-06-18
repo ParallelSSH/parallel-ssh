@@ -979,7 +979,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         # and utf-8 encoded ascii decoded to utf-16 on py3
         output = client.run_command(self.fake_cmd, encoding='utf-16')
         stdout = list(output[self.host]['stdout'])
-        if type(self.fake_resp) == bytes:
+        if isinstance(self.fake_resp, bytes):
             self.assertEqual([self.fake_resp.decode('utf-16')], stdout)
         else:
             self.assertEqual([self.fake_resp.encode('utf-8').decode('utf-16')],
