@@ -37,7 +37,7 @@ from .ssh_client import SSHClient  # noqa: E402
 from .output import HostOutput  # noqa: E402
 
 
-logger = logging.getLogger('pssh')
+logger = logging.getLogger(__name__)
 
 try:
     xrange
@@ -867,7 +867,7 @@ class ParallelSSHClient(object):
         """
         for host in output:
             chan = output[host].channel
-            if chan is not None and not chan.closed:
+            if chan is not None and not chan.exit_status_ready():
                 return False
         return True
 
@@ -888,11 +888,10 @@ class ParallelSSHClient(object):
         :param host_output: Per host output as returned by
           :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
         :rtype: int or None if exit code not ready"""
-        if 'channel' not in host_output:
+        if not hasattr(host_output, 'channel'):
             logger.error("%s does not look like host output..", host_output,)
             return
-        channel = host_output.channel
-        return self._get_exit_code(channel)
+        return self._get_exit_code(host_output.channel)
 
     def _get_exit_code(self, channel):
         """Get exit code from channel if ready"""
