@@ -48,7 +48,8 @@ class SSHClient(object):
                  allow_agent=True, timeout=10, proxy_host=None,
                  proxy_port=22, proxy_user=None, proxy_password=None,
                  proxy_pkey=None, channel_timeout=None,
-                 _openssh_config_file=None):
+                 _openssh_config_file=None,
+                 **paramiko_kwargs):
         """
         :param host: Hostname to connect to
         :type host: str
@@ -95,6 +96,9 @@ class SSHClient(object):
         :param allow_agent: (Optional) set to False to disable connecting to
           the SSH agent
         :type allow_agent: bool
+        :param paramiko_kwargs: (Optional) Extra keyword arguments to be
+          passed on to :py:func:`paramiko.client.SSHClient.connect`
+        :type paramiko_kwargs: dict
         """
         try:
             host, _user, _port, _pkey = read_openssh_config(
@@ -125,11 +129,11 @@ class SSHClient(object):
             logger.debug(
                 "Proxy configured for destination host %s - Proxy host: %s:%s",
                 self.host, self.proxy_host, self.proxy_port,)
-            self._connect_tunnel()
+            self._connect_tunnel(**paramiko_kwargs)
         else:
-            self._connect(self.client, self.host, self.port)
+            self._connect(self.client, self.host, self.port, **paramiko_kwargs)
 
-    def _connect_tunnel(self):
+    def _connect_tunnel(self, **paramiko_kwargs):
         """Connects to SSH server via an intermediate SSH tunnel server.
         client (me) -> tunnel (ssh server to proxy through) ->
         ``self.host`` (ssh server to run command)
@@ -142,7 +146,7 @@ class SSHClient(object):
             paramiko.MissingHostKeyPolicy())
         self._connect(self.proxy_client, self.proxy_host, self.proxy_port,
                       user=self.proxy_user, password=self.proxy_password,
-                      pkey=self.proxy_pkey)
+                      pkey=self.proxy_pkey, **paramiko_kwargs)
         logger.info("Connecting via SSH proxy %s:%s -> %s:%s", self.proxy_host,
                     self.proxy_port, self.host, self.port,)
         try:
@@ -151,7 +155,8 @@ class SSHClient(object):
                 timeout=self.timeout)
             sleep(0)
             return self._connect(self.client, self.host, self.port,
-                                 sock=proxy_channel)
+                                 sock=proxy_channel,
+                                 **paramiko_kwargs)
         except (ChannelException, paramiko.SSHException) as ex:
             error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
             raise ConnectionErrorException(
@@ -159,7 +164,8 @@ class SSHClient(object):
                 self.host, self.port, str(error_type))
 
     def _connect(self, client, host, port, sock=None, retries=1,
-                 user=None, password=None, pkey=None):
+                 user=None, password=None, pkey=None,
+                 **paramiko_kwargs):
         """Connect to host
 
         :raises: :py:class:`pssh.exceptions.AuthenticationException`
@@ -172,18 +178,22 @@ class SSHClient(object):
           SSH errors
         """
         try:
-            client.connect(host, username=user if user else self.user,
+            client.connect(host,
+                           username=user if user else self.user,
                            password=password if password else self.password,
                            port=port, pkey=pkey if pkey else self.pkey,
                            sock=sock, timeout=self.timeout,
-                           allow_agent=self.allow_agent)
+                           allow_agent=self.allow_agent,
+                           **paramiko_kwargs)
         except sock_gaierror as ex:
             logger.error("Could not resolve host '%s' - retry %s/%s",
                          host, retries, self.num_retries)
             while retries < self.num_retries:
                 sleep(5)
-                return self._connect(client, host, port, sock=sock,
-                                     retries=retries+1)
+                return self._connect(client, host, port,
+                                     sock=sock,
+                                     retries=retries+1,
+                                     **paramiko_kwargs)
             raise UnknownHostException("Unknown host %s - %s - retry %s/%s",
                                        host, str(ex.args[1]), retries,
                                        self.num_retries)
@@ -192,8 +202,10 @@ class SSHClient(object):
                          self.host, self.port, retries, self.num_retries)
             while retries < self.num_retries:
                 sleep(5)
-                return self._connect(client, host, port, sock=sock,
-                                     retries=retries+1)
+                return self._connect(client, host, port,
+                                     sock=sock,
+                                     retries=retries+1,
+                                     **paramiko_kwargs)
             error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
             raise ConnectionErrorException(
                 "Error connecting to host '%s:%s' - %s - retry %s/%s",
@@ -234,9 +246,6 @@ class SSHClient(object):
           being where a shell is not used and/or stdout/stderr/stdin buffers
           are not required. Defaults to ``True``
         :type use_pty: bool
-        :param kwargs: (Optional) Keyword arguments to be passed to remote
-          command
-        :type kwargs: dict
         :rtype: Tuple of `(channel, hostname, stdout, stderr, stdin)`.
           Channel is the remote SSH channel, needed to ensure all of stdout has
           been got, hostname is remote hostname the copy is to, stdout and

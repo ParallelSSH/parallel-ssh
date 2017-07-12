@@ -369,7 +369,7 @@ class ParallelSSHClient(object):
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     shell=None, use_shell=True, use_pty=True, host_args=None,
-                    encoding='utf-8'):
+                    encoding='utf-8', **paramiko_kwargs):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output buffers.
 
@@ -420,6 +420,9 @@ class ParallelSSHClient(object):
         :param encoding: Encoding to use for output. Must be valid
             `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
         :type encoding: str
+        :param paramiko_kwargs: (Optional) Extra keyword arguments to be
+          passed on to :py:func:`paramiko.client.SSHClient.connect`
+        :type paramiko_kwargs: dict
 
         :rtype: Dictionary with host as key and
           :py:class:`pssh.output.HostOutput` as value as per
@@ -667,7 +670,8 @@ class ParallelSSHClient(object):
                 cmds = [self.pool.spawn(self._exec_command, host,
                                         command % host_args[host_i],
                                         sudo=sudo, user=user, shell=shell,
-                                        use_shell=use_shell, use_pty=use_pty)
+                                        use_shell=use_shell, use_pty=use_pty,
+                                        **paramiko_kwargs)
                         for host_i, host in enumerate(self.hosts)]
             except IndexError:
                 raise HostArgumentException(
@@ -677,7 +681,8 @@ class ParallelSSHClient(object):
             cmds = [self.pool.spawn(
                 self._exec_command, host, command,
                 sudo=sudo, user=user, shell=shell,
-                use_shell=use_shell, use_pty=use_pty)
+                use_shell=use_shell, use_pty=use_pty,
+                **paramiko_kwargs)
                 for host in self.hosts]
         for cmd in cmds:
             try:
@@ -696,7 +701,8 @@ class ParallelSSHClient(object):
         return _user, _port, _password, _pkey
 
     def _exec_command(self, host, command, sudo=False, user=None,
-                      shell=None, use_shell=True, use_pty=True):
+                      shell=None, use_shell=True, use_pty=True,
+                      **paramiko_kwargs):
         """Make SSHClient, run command on host"""
         if host not in self.host_clients or self.host_clients[host] is None:
             _user, _port, _password, _pkey = self._get_host_config_values(host)
@@ -708,7 +714,8 @@ class ParallelSSHClient(object):
                 proxy_host=self.proxy_host, proxy_port=self.proxy_port,
                 proxy_user=self.proxy_user, proxy_password=self.proxy_password,
                 proxy_pkey=self.proxy_pkey, allow_agent=self.allow_agent,
-                agent=self.agent, channel_timeout=self.channel_timeout)
+                agent=self.agent, channel_timeout=self.channel_timeout,
+                **paramiko_kwargs)
         return self.host_clients[host].exec_command(
             command, sudo=sudo, user=user, shell=shell,
             use_shell=use_shell, use_pty=use_pty)

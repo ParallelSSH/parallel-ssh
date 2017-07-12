@@ -1051,6 +1051,12 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue(len(stdout) > 0)
         self.assertTrue(output[self.host].exit_code == 0)
 
+    def test_extra_paramiko_args(self):
+        output = self.client.run_command('id', gss_auth=True, gss_kex=True,
+                                         gss_host='gss_host')
+        trans = self.client.host_clients[self.host].client.get_transport()
+        self.assertEqual(trans.gss_host, 'gss_host')
+
     def test_proxy_remote_host_failure_timeout(self):
         """Test that timeout setting is passed on to proxy to be used for the
         proxy->remote host connection timeout
