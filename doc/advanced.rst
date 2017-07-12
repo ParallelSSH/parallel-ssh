@@ -245,7 +245,7 @@ By default, output is encoded as ``UTF-8``. This can be configured with the ``en
 Contents of ``stdout`` will be `UTF-16` encoded.
 
 .. note::
-   
+
    Encoding must be valid `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
 
 Disabling use of pseudo terminal emulation
@@ -372,7 +372,7 @@ If wanting to copy a file from a single remote host and retain the original file
 .. code-block:: python
 
    from pssh.ssh_client import SSHClient
-   
+
    client = SSHClient('localhost')
    client.copy_remote_file('remote_filename', 'local_filename')
 
@@ -400,7 +400,7 @@ Any type of iterator may be used as hosts list, including generator and list com
 
       hosts = ['dc1.myhost1', 'dc2.myhost2']
       client = ParallelSSHClient((h for h in hosts if h.find('dc1')))
-    
+
 :Filter:
    .. code-block:: python
 
@@ -424,3 +424,45 @@ Hosts list can be modified in place. A call to ``run_command`` will create new c
    client.hosts = ['otherhost']
    print(client.run_command('exit 0'))
    {'otherhost': exit_code=None, <..>}
+
+Additional options for underlying SSH libraries
+************************************************
+
+Not all SSH library configuration options are used directly by ``Parallel-SSH``.
+
+Additional options can be passed on to the underlying SSH libraries used via an optional keyword argument.
+
+Please note that the underlying SSH libraries used are subject to change and not all features are present in all SSH libraries used. Future releases will have more than one option on which SSH library to use, depending on user requirements and preference.
+
+*New in version 1.1.*
+
+Paramiko (current default SSH library)
+---------------------------------------
+
+GSS-API Authentication - aka Kerberos
++++++++++++++++++++++++++++++++++++++++
+
+.. code-block:: python
+
+   client = ParallelSSHClient(hosts)
+
+   client.run_command('id', gss_auth=True, gss_kex=True, gss_host='my_gss_host')
+
+In this example, ``gss_auth``, ``gss_kex`` and ``gss_host`` are keyword arguments passed on to `paramiko.client.SSHClient.connect <http://paramiko-docs.readthedocs.io/en/stable/api/client.html#paramiko.client.SSHClient.connect>`_ to instruct the client to enable GSS-API authentication and key exchange with the provided GSS host.
+
+.. note::
+
+   The GSS-API features of Paramiko require that the ``python-gssapi`` package be installed manually - it is optional and not installed by any *extras* option of Paramiko.
+
+   ``pip install python-gssapi``
+
+Compression
+++++++++++++
+
+Any other options not directly referenced by ``run_command`` can be passed on to `paramiko.client.SSHClient.connect <http://paramiko-docs.readthedocs.io/en/stable/api/client.html#paramiko.client.SSHClient.connect>`_, for example the ``compress`` option.
+
+.. code-block:: python
+
+   client = ParallelSSHClient(hosts)
+
+   client.run_command('id', compress=True)
