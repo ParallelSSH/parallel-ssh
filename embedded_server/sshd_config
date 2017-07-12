@@ -1,0 +1,14 @@
+Protocol 2
+UsePrivilegeSeparation no
+UsePAM no
+RhostsRSAAuthentication no
+HostbasedAuthentication no
+IgnoreUserKnownHosts yes
+GSSAPIAuthentication no
+
+KeyRegenerationInterval 3600
+ServerKeyBits 1024
+
+AcceptEnv LANG LC_*
+Subsystem sftp /usr/lib/openssh/sftp-server
+AuthorizedKeysFile parallel-ssh/embedded_server/authorized_keys

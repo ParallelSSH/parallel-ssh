@@ -19,10 +19,10 @@
 """Package containing ParallelSSHClient class"""
 
 import sys
-if 'threading' in sys.modules:
-    del sys.modules['threading']
-from gevent import monkey  # noqa: E402
-monkey.patch_all()
+# if 'threading' in sys.modules:
+#     del sys.modules['threading']
+# from gevent import monkey  # noqa: E402
+# monkey.patch_all()
 import string  # noqa: E402
 import random  # noqa: E402
 import logging  # noqa: E402
@@ -33,7 +33,8 @@ gevent.hub.Hub.NOT_ERROR = (Exception,)
 
 from .exceptions import HostArgumentException  # noqa: E402
 from .constants import DEFAULT_RETRIES  # noqa: E402
-from .ssh_client import SSHClient  # noqa: E402
+# from .ssh_client import SSHClient  # noqa: E402
+from .libssh2_client import SSHClient
 from .output import HostOutput  # noqa: E402
 
 
@@ -775,16 +776,16 @@ class ParallelSSHClient(object):
             self._update_host_output(
                 output, host, None, None, None, None, None, cmd, exception=ex)
             raise
-        stdout = self.host_clients[host].read_output_buffer(
+        _stdout = self.host_clients[host].read_output_buffer(
             stdout, callback=self.get_exit_codes,
             callback_args=(output,),
             encoding=encoding)
-        stderr = self.host_clients[host].read_output_buffer(
+        _stderr = self.host_clients[host].read_output_buffer(
             stderr, prefix='\t[err]', callback=self.get_exit_codes,
             callback_args=(output,),
             encoding=encoding)
         self._update_host_output(output, host, self._get_exit_code(channel),
-                                 channel, stdout, stderr, stdin, cmd)
+                                 channel, _stdout, _stderr, stdin, cmd)
 
     def _update_host_output(self, output, host, exit_code, channel, stdout,
                             stderr, stdin, cmd, exception=None):
@@ -848,9 +849,7 @@ class ParallelSSHClient(object):
           [my_host1] <..>
         """
         for host in output:
-            output[host].cmd.join()
-            if output[host].channel is not None:
-                output[host].channel.recv_exit_status()
+            self.host_clients[host].join()
             if consume_output:
                 for line in output[host].stdout:
                     pass
@@ -867,7 +866,7 @@ class ParallelSSHClient(object):
         """
         for host in output:
             chan = output[host].channel
-            if chan is not None and not chan.exit_status_ready():
+            if chan is not None and not chan.eof():
                 return False
         return True
 
@@ -895,10 +894,9 @@ class ParallelSSHClient(object):
 
     def _get_exit_code(self, channel):
         """Get exit code from channel if ready"""
-        if channel is None or not channel.exit_status_ready():
+        if channel is None or not (channel.eof() or channel.closed):
             return
-        channel.close()
-        return channel.recv_exit_status()
+        return channel.exit_status()
 
     def copy_file(self, local_file, remote_file, recurse=False):
         """Copy local file to remote file in parallel
