@@ -136,7 +136,7 @@ There is also a built in host logger that can be enabled to log output from remo
 
   import pssh.utils
   pssh.utils.enable_host_logger()
-  client.join(client.run_command('uname'))
+  client.join(client.run_command('uname'), consume_output=True)
 
 :Output:
    .. code-block:: shell
