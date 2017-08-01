@@ -717,7 +717,7 @@ class ParallelSSHClient(object):
                 proxy_pkey=self.proxy_pkey, allow_agent=self.allow_agent,
                 agent=self.agent, channel_timeout=self.channel_timeout,
                 **paramiko_kwargs)
-        return self.host_clients[host].exec_command(
+        return self.host_clients[host].execute(
             command, sudo=sudo, user=user, shell=shell,
             use_shell=use_shell, use_pty=use_pty)
 
@@ -849,7 +849,8 @@ class ParallelSSHClient(object):
           [my_host1] <..>
         """
         for host in output:
-            self.host_clients[host].join()
+            # import ipdb; ipdb.set_trace()
+            self.host_clients[host].wait_finished(output[host].channel)
             if consume_output:
                 for line in output[host].stdout:
                     pass
@@ -894,9 +895,11 @@ class ParallelSSHClient(object):
 
     def _get_exit_code(self, channel):
         """Get exit code from channel if ready"""
-        if channel is None or not (channel.eof() or channel.closed):
+        if channel is None: # or not channel.eof():
+            # logger.debug("Channel eof not reached, cannot get exit status. "
+            #              "eof status: %s", channel.eof())
             return
-        return channel.exit_status()
+        return channel.get_exit_status()
 
     def copy_file(self, local_file, remote_file, recurse=False):
         """Copy local file to remote file in parallel
@@ -1011,6 +1014,7 @@ class ParallelSSHClient(object):
                 remote_file, file_w_suffix, recurse=recurse)
 
     def _make_ssh_client(self, host):
+        # TODO - use this for all client object creation
         if host not in self.host_clients or self.host_clients[host] is None:
             _user, _port, _password, _pkey = self._get_host_config_values(host)
             self.host_clients[host] = SSHClient(

@@ -1,3 +1,0 @@
-[submodule "pylibssh2"]
-	path = pylibssh2
-	url = git@github.com:ParallelSSH/pylibssh2.git

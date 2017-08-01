@@ -33,9 +33,9 @@ import logging
 from ._version import get_versions
 __version__ = get_versions()['version']
 del get_versions
-from .pssh_client import ParallelSSHClient
-from .ssh_client import SSHClient
-from .utils import enable_host_logger
+# from .pssh_client import ParallelSSHClient
+# from .ssh_client import SSHClient
+# from .utils import enable_host_logger
 from .exceptions import UnknownHostException, \
      AuthenticationException, ConnectionErrorException, SSHException
 
