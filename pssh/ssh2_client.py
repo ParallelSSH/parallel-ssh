@@ -22,6 +22,7 @@ import logging
 import os
 import pwd
 from socket import gaierror as sock_gaierror, error as sock_error
+from sys import version_info
 
 from gevent import sleep
 from gevent.select import select
@@ -37,6 +38,7 @@ from .constants import DEFAULT_RETRIES
 
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
+LINESEP = os.linesep.encode('utf-8') if version_info > (2,) else os.linesep
 
 
 class SSHClient(object):
@@ -161,9 +163,6 @@ class SSHClient(object):
             chan = self.session.open_session()
         return chan
 
-    # def __del__(self):
-    #     self._eagain(self.session.close)
-
     def _run_with_retries(self, func, count=1, *args, **kwargs):
         while func(*args, **kwargs) == LIBSSH2_ERROR_EAGAIN:
             if count > self.num_retries:
@@ -196,7 +195,7 @@ class SSHClient(object):
         while _size > 0:
             logger.debug("Got data size %s", _size)
             while _pos < _size:
-                linesep = _data[:_size].find(os.linesep, _pos)
+                linesep = _data[:_size].find(LINESEP, _pos)
                 if linesep > 0:
                     if len(remainder) > 0:
                         yield remainder + _data[_pos:linesep].strip()
@@ -273,6 +272,6 @@ class SSHClient(object):
                     use_pty=False, use_shell=True, shell=None):
         channel = self.execute(command, use_pty=use_pty)
         return channel, self.host, \
-            self.read_output(channel), \
-            self.read_stderr(channel), \
+            self.read_output_buffer(self.read_output(channel)), \
+            self.read_output_buffer(self.read_stderr(channel)), \
             iter([])
