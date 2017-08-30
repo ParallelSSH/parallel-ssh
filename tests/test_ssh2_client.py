@@ -39,7 +39,6 @@ class SSH2ClientTest(SSH2TestCase):
     def test_long_running_cmd(self):
         channel, host, stdout, stderr, stdin = self.client.run_command(
             'sleep 2; exit 2')
-        self.client._eagain(channel.wait_eof)
-        self.client._wait_select()
+        self.client.wait_finished(channel)
         exit_code = channel.get_exit_status()
         self.assertEqual(exit_code, 2)

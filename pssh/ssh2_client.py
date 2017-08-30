@@ -68,7 +68,7 @@ class SSHClient(object):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.session = Session()
         self._connect()
-        self.handshake()
+        self.session.handshake(self.sock)
         self.auth()
         self.session.set_blocking(0)
 
@@ -86,9 +86,6 @@ class SSHClient(object):
                 "Error connecting to host '%s:%s' - %s - retry %s/%s",
                 self.host, self.port, str(error_type), retries,
                 self.num_retries,)
-
-    def handshake(self):
-        return self._eagain(self.session.handshake, self.sock)
 
     def _pkey_auth(self):
         pub_file = "{}.pub".format(self.pkey)

@@ -31,6 +31,11 @@ class SSH2TestCase(unittest.TestCase):
         cls.server.stop()
         del cls.server
 
+    # def tearDown(self):
+    #     del self.client.session
+    #     del self.client
+    #     del self.sock
+
     def setUp(self):
         self.host = '127.0.0.1'
         self.port = 2222
