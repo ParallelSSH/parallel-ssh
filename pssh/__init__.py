@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # This file is part of parallel-ssh.
 
 # Copyright (C) 2014-2017 Panos Kittenis

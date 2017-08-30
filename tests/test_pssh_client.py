@@ -30,7 +30,7 @@ import shutil
 import sys
 from socket import timeout as socket_timeout
 
-import gevent
+from gevent import sleep
 from pssh import ParallelSSHClient, UnknownHostException, \
      AuthenticationException, ConnectionErrorException, SSHException, \
      logger as pssh_logger
@@ -249,7 +249,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         output = client.run_command(self.fake_cmd, stop_on_errors=False)
         # Handle exception
         try:
-            gevent.sleep(server_timeout+0.2)
+            sleep(server_timeout+0.2)
             client.join(output)
             if not server.exception:
                 raise Exception(
@@ -282,7 +282,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertFalse(self.client.finished(output))
         # Embedded server is also asynchronous and in the same thread
         # as our client so need to sleep for duration of server connection
-        gevent.sleep(expected_lines)
+        sleep(expected_lines)
         self.client.join(output)
         self.assertTrue(self.client.finished(output))
         self.assertTrue(output[self.host]['exit_code'] == 0,
@@ -1032,7 +1032,8 @@ class ParallelSSHClientTest(unittest.TestCase):
 
     def test_run_command_user_sudo(self):
         user = 'cmd_user'
-        output = self.client.run_command(self.fake_cmd, user=user)
+        output = self.client.run_command(self.fake_cmd, user=user,
+                                         use_pty=False)
         self.client.join(output)
         stderr = list(output[self.host].stderr)
         self.assertTrue(len(stderr) > 0)
