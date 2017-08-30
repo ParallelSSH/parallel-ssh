@@ -1,2 +1,3 @@
 include versioneer.py
 include pssh/_version.py
+recursive-exclude tests *
