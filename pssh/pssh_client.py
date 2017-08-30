@@ -34,7 +34,7 @@ gevent.hub.Hub.NOT_ERROR = (Exception,)
 from .exceptions import HostArgumentException  # noqa: E402
 from .constants import DEFAULT_RETRIES  # noqa: E402
 # from .ssh_client import SSHClient  # noqa: E402
-from .libssh2_client import SSHClient
+from .ssh2_client import SSHClient
 from .output import HostOutput  # noqa: E402
 
 
