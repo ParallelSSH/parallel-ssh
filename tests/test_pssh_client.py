@@ -1032,7 +1032,7 @@ class ParallelSSHClientTest(unittest.TestCase):
 
     def test_run_command_user_sudo(self):
         user = 'cmd_user'
-        output = self.client.run_command(self.fake_cmd, user=user,
+        output = self.client.run_command('some cmd', user=user,
                                          use_pty=False)
         self.client.join(output)
         stderr = list(output[self.host].stderr)
