@@ -19,8 +19,8 @@ install:
 script:
   - nosetests --with-coverage --cover-package=pssh.ssh2_client tests/test_ssh2_client.py
   # - nosetests --with-coverage --cover-package=pssh
-  - flake8 pssh
-  - cd doc; make html; cd ..
+  # - flake8 pssh
+  - cd doc; make html
 before_deploy:
   - cd $TRAVIS_BUILD_DIR
 after_success:
