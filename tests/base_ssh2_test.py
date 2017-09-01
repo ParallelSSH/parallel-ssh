@@ -25,25 +25,18 @@ class SSH2TestCase(unittest.TestCase):
         os.chmod(PKEY_FILENAME, _mask)
         cls.server = OpenSSHServer()
         cls.server.start_server()
+        cls.host = '127.0.0.1'
+        cls.port = 2222
+        cls.cmd = 'echo me'
+        cls.resp = u'me'
+        cls.user_key = PKEY_FILENAME
+        cls.user_pub_key = PUB_FILE
+        cls.user = pwd.getpwuid(os.geteuid()).pw_name
+        cls.client = SSHClient(cls.host, port=cls.port,
+                               pkey=PKEY_FILENAME,
+                               num_retries=1)
 
     @classmethod
     def tearDownClass(cls):
         cls.server.stop()
         del cls.server
-
-    # def tearDown(self):
-    #     del self.client.session
-    #     del self.client
-    #     del self.sock
-
-    def setUp(self):
-        self.host = '127.0.0.1'
-        self.port = 2222
-        self.cmd = 'echo me'
-        self.resp = u'me'
-        self.user_key = PKEY_FILENAME
-        self.user_pub_key = PUB_FILE
-        self.user = pwd.getpwuid(os.geteuid()).pw_name
-        self.client = SSHClient(self.host, port=self.port,
-                                pkey=PKEY_FILENAME,
-                                num_retries=1)
