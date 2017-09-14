@@ -23,8 +23,9 @@ import os
 import pwd
 from socket import gaierror as sock_gaierror, error as sock_error
 from sys import version_info
+from multiprocessing import cpu_count
 
-from gevent import sleep
+from gevent import sleep, get_hub
 from gevent.select import select
 from gevent import socket
 from ssh2.session import Session, LIBSSH2_SESSION_BLOCK_INBOUND, \
@@ -35,10 +36,12 @@ from ssh2.exceptions import AuthenticationError, AgentError, ChannelError
 from .exceptions import UnknownHostException, AuthenticationException, \
      ConnectionErrorException, SSHException
 from .constants import DEFAULT_RETRIES
+from .native.ssh2 import open_session, wait_select
 
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
 LINESEP = os.linesep.encode('utf-8') if version_info > (2,) else os.linesep
+THREAD_POOL = get_hub().threadpool
 
 
 class SSHClient(object):
@@ -57,7 +60,8 @@ class SSHClient(object):
                  allow_agent=True, timeout=10,
                  proxy_host=None, proxy_port=22, proxy_user=None, 
                  proxy_password=None, proxy_pkey=None, channel_timeout=None,
-                 _openssh_config_file=None):
+                 _openssh_config_file=None,
+                 thread_pool=None):
         self.host = host
         self.user = user if user else pwd.getpwuid(os.geteuid()).pw_name
         self.password = password
@@ -66,8 +70,11 @@ class SSHClient(object):
         self.num_retries = num_retries
         # self.forward_ssh_agent = forward_ssh_agent
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.session = Session()
         self._connect()
+        THREAD_POOL.apply(self._init)
+
+    def _init(self):
+        self.session = Session()
         self.session.handshake(self.sock)
         self.auth()
         self.session.set_blocking(0)
@@ -149,16 +156,19 @@ class SSHClient(object):
             raise AuthenticationException(
                 "No password provided - cannot authenticate via password")
         if self._eagain(self.session.userauth_password,
-                     self.user, self.password) != 0:
+                        self.user, self.password) != 0:
             raise AuthenticationException(
                 "Password authentication failed")
 
-    def open_channel(self):
-        chan = self.session.open_session()
-        while chan is None:
-            self._wait_select()
-            chan = self.session.open_session()
-        return chan
+    def open_session(self):
+        return open_session(self.sock, self.session)
+
+    # def open_session(self):
+    #     chan = self.session.open_session()
+    #     while chan is None:
+    #         wait_select(self.sock, self.session)
+    #         chan = self.session.open_session()
+    #     return chan
 
     def _run_with_retries(self, func, count=1, *args, **kwargs):
         while func(*args, **kwargs) == LIBSSH2_ERROR_EAGAIN:
@@ -167,9 +177,9 @@ class SSHClient(object):
                     "Error authenticating %s@%s", self.user, self.host,)
             count += 1
 
-    def execute(self, cmd, use_pty=False):
+    def execute(self, cmd, use_pty=False, channel=None):
         logger.debug("Opening new channel for execute")
-        channel = self.open_channel()
+        channel = self.open_session() if not channel else channel
         if use_pty:
             self._eagain(channel.pty)
         self._eagain(channel.execute, cmd)
@@ -187,7 +197,7 @@ class SSHClient(object):
         _size, _data = read_func()
         while _size == LIBSSH2_ERROR_EAGAIN:
             logger.debug("Waiting on socket read")
-            self._wait_select()
+            wait_select(self.sock, self.session)
             _size, _data = read_func()
         while _size > 0:
             logger.debug("Got data size %s", _size)
@@ -223,7 +233,7 @@ class SSHClient(object):
     def _eagain(self, func, *args, **kwargs):
         ret = func(*args, **kwargs)
         while ret == LIBSSH2_ERROR_EAGAIN:
-            self._wait_select()
+            wait_select(self.sock, self.session)
             ret = func(*args, **kwargs)
         return ret
 

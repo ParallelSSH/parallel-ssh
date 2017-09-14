@@ -30,12 +30,16 @@ import logging  # noqa: E402
 import gevent.pool  # noqa: E402
 import gevent.hub  # noqa: E402
 gevent.hub.Hub.NOT_ERROR = (Exception,)
+from gevent.threadpool import ThreadPool
 
 from .exceptions import HostArgumentException  # noqa: E402
 from .constants import DEFAULT_RETRIES  # noqa: E402
 # from .ssh_client import SSHClient  # noqa: E402
 from .ssh2_client import SSHClient
 from .output import HostOutput  # noqa: E402
+
+
+THREAD_POOL = ThreadPool(cpu_count())
 
 
 logger = logging.getLogger(__name__)
@@ -716,6 +720,7 @@ class ParallelSSHClient(object):
                 proxy_user=self.proxy_user, proxy_password=self.proxy_password,
                 proxy_pkey=self.proxy_pkey, allow_agent=self.allow_agent,
                 agent=self.agent, channel_timeout=self.channel_timeout,
+                thread_pool=THREAD_POOL,
                 **paramiko_kwargs)
         return self.host_clients[host].execute(
             command, sudo=sudo, user=user, shell=shell,
@@ -1025,4 +1030,5 @@ class ParallelSSHClient(object):
                 proxy_host=self.proxy_host,
                 proxy_port=self.proxy_port,
                 agent=self.agent,
-                channel_timeout=self.channel_timeout)
+                channel_timeout=self.channel_timeout,
+                thread_pool=THREAD_POOL,)
