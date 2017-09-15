@@ -50,7 +50,8 @@ extensions = [
     Extension('pssh.native.ssh2',
               sources=['pssh/native/ssh2.pyx'],
               libraries=_libs,
-              extra_compile_args=["-O3"],
+              extra_compile_args=['-O3', '-fopenmp'],
+              extra_link_args=['-fopenmp'],
               **cython_args
     )]
 

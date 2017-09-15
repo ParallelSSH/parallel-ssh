@@ -15,8 +15,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-"""LibSSH2 based SSH client package"""
-
+"""ssh2-python (libssh2) based SSH client package"""
 
 import logging
 import os
@@ -45,7 +44,7 @@ THREAD_POOL = get_hub().threadpool
 
 
 class SSHClient(object):
-    """Libssh2 based SSH client"""
+    """ssh2-python based SSH client"""
 
     IDENTITIES = [
         os.path.expanduser('~/.ssh/id_rsa'),
@@ -162,6 +161,7 @@ class SSHClient(object):
 
     def open_session(self):
         return open_session(self.sock, self.session)
+        # return THREAD_POOL.apply(open_session, args=(self.sock, self.session))
 
     # def open_session(self):
     #     chan = self.session.open_session()
@@ -179,7 +179,7 @@ class SSHClient(object):
 
     def execute(self, cmd, use_pty=False, channel=None):
         logger.debug("Opening new channel for execute")
-        channel = self.open_session() if not channel else channel
+        channel = self.open_session() if channel is None else channel
         if use_pty:
             self._eagain(channel.pty)
         self._eagain(channel.execute, cmd)
