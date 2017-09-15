@@ -59,8 +59,7 @@ class SSHClient(object):
                  allow_agent=True, timeout=10,
                  proxy_host=None, proxy_port=22, proxy_user=None, 
                  proxy_password=None, proxy_pkey=None, channel_timeout=None,
-                 _openssh_config_file=None,
-                 thread_pool=None):
+                 _openssh_config_file=None):
         self.host = host
         self.user = user if user else pwd.getpwuid(os.geteuid()).pw_name
         self.password = password
