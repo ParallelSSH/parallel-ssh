@@ -33,9 +33,10 @@ from embedded_server.embedded_server import start_server, make_socket, logger as
 from pssh.agent import SSHAgent
 import paramiko
 import os
-from test_pssh_client import USER_KEY
 import random, string
 import tempfile
+
+from .test_pssh_client import USER_KEY
 
 
 try:
