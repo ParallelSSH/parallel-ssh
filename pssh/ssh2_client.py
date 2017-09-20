@@ -191,7 +191,7 @@ class SSHClient(object):
         return self._read_output(channel, channel.read)
 
     def _read_output(self, channel, read_func):
-        remainder = ""
+        remainder = b""
         _pos = 0
         _size, _data = read_func()
         while _size == LIBSSH2_ERROR_EAGAIN:
@@ -205,7 +205,7 @@ class SSHClient(object):
                 if linesep > 0:
                     if len(remainder) > 0:
                         yield remainder + _data[_pos:linesep].strip()
-                        remainder = ""
+                        remainder = b""
                     else:
                         yield _data[_pos:linesep].strip()
                         _pos = linesep + 1

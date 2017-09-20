@@ -1373,7 +1373,7 @@ static PyObject *__pyx_pf_4pssh_6native_4ssh2_p_open_session(CYTHON_UNUSED PyObj
 static PyObject *__pyx_pf_4pssh_6native_4ssh2_2open_session(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v__socket, struct __pyx_obj_4ssh2_7session_Session *__pyx_v_session); /* proto */
 static PyObject *__pyx_pf_4pssh_6native_4ssh2_4wait_select(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v__socket, struct __pyx_obj_4ssh2_7session_Session *__pyx_v_session); /* proto */
 static PyObject *__pyx_pf_4pssh_6native_4ssh2_6p_init(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_sessions, PyObject *__pyx_v_usernames, PyObject *__pyx_v_sockets); /* proto */
-static PyObject *__pyx_int_1;
+static PyObject *__pyx_float__1;
 static PyObject *__pyx_tuple_;
 static PyObject *__pyx_tuple__2;
 static PyObject *__pyx_tuple__4;
@@ -2248,7 +2248,7 @@ static void __pyx_f_4pssh_6native_4ssh2__wait_select(int __pyx_v__socket, LIBSSH
  *         if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()
  *     writefds = (_socket,) \
  *         if (directions & LIBSSH2_SESSION_BLOCK_OUTBOUND) else ()             # <<<<<<<<<<<<<<
- *     select(readfds, writefds, (), 1)
+ *     select(readfds, writefds, (), .1)
  * 
  */
   if (((__pyx_v_directions & LIBSSH2_SESSION_BLOCK_OUTBOUND) != 0)) {
@@ -2258,7 +2258,7 @@ static void __pyx_f_4pssh_6native_4ssh2__wait_select(int __pyx_v__socket, LIBSSH
  *         if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()
  *     writefds = (_socket,) \             # <<<<<<<<<<<<<<
  *         if (directions & LIBSSH2_SESSION_BLOCK_OUTBOUND) else ()
- *     select(readfds, writefds, (), 1)
+ *     select(readfds, writefds, (), .1)
  */
     __pyx_t_4 = __Pyx_PyInt_From_int(__pyx_v__socket); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 112, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
@@ -2275,7 +2275,7 @@ static void __pyx_f_4pssh_6native_4ssh2__wait_select(int __pyx_v__socket, LIBSSH
  *         if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()
  *     writefds = (_socket,) \
  *         if (directions & LIBSSH2_SESSION_BLOCK_OUTBOUND) else ()             # <<<<<<<<<<<<<<
- *     select(readfds, writefds, (), 1)
+ *     select(readfds, writefds, (), .1)
  * 
  */
     __Pyx_INCREF(__pyx_empty_tuple);
@@ -2287,7 +2287,7 @@ static void __pyx_f_4pssh_6native_4ssh2__wait_select(int __pyx_v__socket, LIBSSH
   /* "pssh/native/ssh2.pyx":114
  *     writefds = (_socket,) \
  *         if (directions & LIBSSH2_SESSION_BLOCK_OUTBOUND) else ()
- *     select(readfds, writefds, (), 1)             # <<<<<<<<<<<<<<
+ *     select(readfds, writefds, (), .1)             # <<<<<<<<<<<<<<
  * 
  * 
  */
@@ -2307,7 +2307,7 @@ static void __pyx_f_4pssh_6native_4ssh2__wait_select(int __pyx_v__socket, LIBSSH
   }
   #if CYTHON_FAST_PYCALL
   if (PyFunction_Check(__pyx_t_3)) {
-    PyObject *__pyx_temp[5] = {__pyx_t_4, __pyx_v_readfds, __pyx_v_writefds, __pyx_empty_tuple, __pyx_int_1};
+    PyObject *__pyx_temp[5] = {__pyx_t_4, __pyx_v_readfds, __pyx_v_writefds, __pyx_empty_tuple, __pyx_float__1};
     __pyx_t_2 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-__pyx_t_5, 4+__pyx_t_5); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 114, __pyx_L1_error)
     __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_GOTREF(__pyx_t_2);
@@ -2315,7 +2315,7 @@ static void __pyx_f_4pssh_6native_4ssh2__wait_select(int __pyx_v__socket, LIBSSH
   #endif
   #if CYTHON_FAST_PYCCALL
   if (__Pyx_PyFastCFunction_Check(__pyx_t_3)) {
-    PyObject *__pyx_temp[5] = {__pyx_t_4, __pyx_v_readfds, __pyx_v_writefds, __pyx_empty_tuple, __pyx_int_1};
+    PyObject *__pyx_temp[5] = {__pyx_t_4, __pyx_v_readfds, __pyx_v_writefds, __pyx_empty_tuple, __pyx_float__1};
     __pyx_t_2 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-__pyx_t_5, 4+__pyx_t_5); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 114, __pyx_L1_error)
     __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_GOTREF(__pyx_t_2);
@@ -2336,9 +2336,9 @@ static void __pyx_f_4pssh_6native_4ssh2__wait_select(int __pyx_v__socket, LIBSSH
     __Pyx_INCREF(__pyx_empty_tuple);
     __Pyx_GIVEREF(__pyx_empty_tuple);
     PyTuple_SET_ITEM(__pyx_t_6, 2+__pyx_t_5, __pyx_empty_tuple);
-    __Pyx_INCREF(__pyx_int_1);
-    __Pyx_GIVEREF(__pyx_int_1);
-    PyTuple_SET_ITEM(__pyx_t_6, 3+__pyx_t_5, __pyx_int_1);
+    __Pyx_INCREF(__pyx_float__1);
+    __Pyx_GIVEREF(__pyx_float__1);
+    PyTuple_SET_ITEM(__pyx_t_6, 3+__pyx_t_5, __pyx_float__1);
     __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_6, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 114, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
@@ -3536,7 +3536,7 @@ PyEval_InitThreads();
 if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 1, __pyx_L1_error)
 
   if (__Pyx_InitStrings(__pyx_string_tab) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
-  __pyx_int_1 = PyInt_FromLong(1); if (unlikely(!__pyx_int_1)) __PYX_ERR(0, 1, __pyx_L1_error)
+  __pyx_float__1 = PyFloat_FromDouble(.1); if (unlikely(!__pyx_float__1)) __PYX_ERR(0, 1, __pyx_L1_error)
   return 0;
   __pyx_L1_error:;
   return -1;

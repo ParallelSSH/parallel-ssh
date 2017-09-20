@@ -30,16 +30,12 @@ import logging  # noqa: E402
 import gevent.pool  # noqa: E402
 import gevent.hub  # noqa: E402
 gevent.hub.Hub.NOT_ERROR = (Exception,)
-from gevent.threadpool import ThreadPool
 
 from .exceptions import HostArgumentException  # noqa: E402
 from .constants import DEFAULT_RETRIES  # noqa: E402
 # from .ssh_client import SSHClient  # noqa: E402
 from .ssh2_client import SSHClient
 from .output import HostOutput  # noqa: E402
-
-
-THREAD_POOL = ThreadPool(cpu_count())
 
 
 logger = logging.getLogger(__name__)
@@ -720,9 +716,8 @@ class ParallelSSHClient(object):
                 proxy_user=self.proxy_user, proxy_password=self.proxy_password,
                 proxy_pkey=self.proxy_pkey, allow_agent=self.allow_agent,
                 agent=self.agent, channel_timeout=self.channel_timeout,
-                thread_pool=THREAD_POOL,
                 **paramiko_kwargs)
-        return self.host_clients[host].execute(
+        return self.host_clients[host].run_command(
             command, sudo=sudo, user=user, shell=shell,
             use_shell=use_shell, use_pty=use_pty)
 
@@ -781,16 +776,8 @@ class ParallelSSHClient(object):
             self._update_host_output(
                 output, host, None, None, None, None, None, cmd, exception=ex)
             raise
-        _stdout = self.host_clients[host].read_output_buffer(
-            stdout, callback=self.get_exit_codes,
-            callback_args=(output,),
-            encoding=encoding)
-        _stderr = self.host_clients[host].read_output_buffer(
-            stderr, prefix='\t[err]', callback=self.get_exit_codes,
-            callback_args=(output,),
-            encoding=encoding)
         self._update_host_output(output, host, self._get_exit_code(channel),
-                                 channel, _stdout, _stderr, stdin, cmd)
+                                 channel, stdout, stderr, stdin, cmd)
 
     def _update_host_output(self, output, host, exit_code, channel, stdout,
                             stderr, stdin, cmd, exception=None):
@@ -1030,5 +1017,4 @@ class ParallelSSHClient(object):
                 proxy_host=self.proxy_host,
                 proxy_port=self.proxy_port,
                 agent=self.agent,
-                channel_timeout=self.channel_timeout,
-                thread_pool=THREAD_POOL,)
+                channel_timeout=self.channel_timeout)
