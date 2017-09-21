@@ -8,8 +8,6 @@ from .embedded_server.openssh import OpenSSHServer
 from pssh.ssh2_client import SSHClient, logger as ssh_logger
 
 
-PKEY_FILENAME = os.path.sep.join([os.path.dirname(__file__), 'client_pkey'])
-
 ssh_logger.setLevel(logging.DEBUG)
 logging.basicConfig()
 

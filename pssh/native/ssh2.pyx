@@ -33,9 +33,10 @@ from ssh2.c_ssh2 cimport LIBSSH2_CHANNEL, LIBSSH2_SESSION_BLOCK_INBOUND, \
     libssh2_session_block_directions, libssh2_channel_open_session, \
     libssh2_agent_userauth, libssh2_agent_list_identities, \
     libssh2_agent_publickey
-from ssh2.session cimport Session, init_connect_agent
+from ssh2.session cimport Session
 from ssh2.channel cimport Channel, PyChannel
-from ssh2.agent cimport auth_identity, clear_agent
+from ssh2.agent cimport auth_identity, clear_agent, agent_auth, \
+    init_connect_agent
 from ssh2.utils cimport to_bytes
 
 
@@ -131,17 +132,24 @@ def p_init(list sessions not None, list usernames not None, list sockets not Non
     cdef int _sock
 
     cdef Py_ssize_t num_sessions = len(sessions)
-    cdef list p_usernames = [_ for _ in range(num_sessions)]
-    cdef LIBSSH2_SESSION **c_sessions = <LIBSSH2_SESSION **>malloc((
-        num_sessions) * sizeof(LIBSSH2_SESSION *))
-    cdef LIBSSH2_AGENT **agents = <LIBSSH2_AGENT **>malloc((
-        num_sessions) * sizeof(LIBSSH2_AGENT *))
-    cdef char **c_usernames = <char **>malloc((num_sessions) * sizeof(char *))
-    cdef int *c_sockets = <int *>malloc((num_sessions) * sizeof(int))
+    cdef list session_range = [i for i in range(num_sessions)]
+    cdef list p_usernames = [_ for _ in session_range]
+    cdef LIBSSH2_SESSION **c_sessions
+    cdef LIBSSH2_AGENT **agents
+    cdef char **c_usernames
+    cdef int *c_sockets
+
+    with nogil:
+        c_sessions = <LIBSSH2_SESSION **>malloc((
+            num_sessions) * sizeof(LIBSSH2_SESSION *))
+        agents = <LIBSSH2_AGENT **>malloc((
+            num_sessions) * sizeof(LIBSSH2_AGENT *))
+        c_usernames = <char **>malloc((num_sessions) * sizeof(char *))
+        c_sockets = <int *>malloc((num_sessions) * sizeof(int))
 
     if c_sessions is NULL or c_usernames is NULL or c_sockets is NULL:
         raise MemoryError
-    for i in range(num_sessions):
+    for i in session_range:
         sock = sockets[i]
         session = sessions[i]
         username = usernames[i]
@@ -164,20 +172,3 @@ def p_init(list sessions not None, list usernames not None, list sockets not Non
     free(c_usernames)
     free(agents)
     free(c_sockets)
-
-
-cdef void agent_auth(char * _username, LIBSSH2_AGENT * agent) nogil:
-    cdef libssh2_agent_publickey *identity = NULL
-    cdef libssh2_agent_publickey *prev = NULL
-    if libssh2_agent_list_identities(agent) != 0:
-        clear_agent(agent)
-        with gil:
-            raise AgentListIdentitiesError(
-                "Failure requesting identities from agent")
-    while 1:
-        auth_identity(_username, agent, &identity, prev)
-        if libssh2_agent_userauth(
-                agent, _username, identity) == 0:
-            clear_agent(agent)
-            break
-        prev = identity

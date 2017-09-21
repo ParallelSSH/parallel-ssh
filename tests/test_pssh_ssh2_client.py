@@ -20,61 +20,56 @@
 
 """Unittests for :mod:`pssh.ParallelSSHClient` class"""
 
-
 import unittest
-import random
+import pwd
 import logging
 import os
-import warnings
 import shutil
 import sys
 from socket import timeout as socket_timeout
+from sys import version_info
 
 import gevent
-from pssh import ParallelSSHClient, UnknownHostException, \
-     AuthenticationException, ConnectionErrorException, SSHException, \
-     logger as pssh_logger
+from pssh.pssh_client import ParallelSSHClient, logger as pssh_logger
+from pssh.exceptions import UnknownHostException, \
+    AuthenticationException, ConnectionErrorException, SSHException
 from pssh.exceptions import HostArgumentException
-from pssh.utils import load_private_key
-from embedded_server.embedded_server import start_server, make_socket, \
-     logger as server_logger, paramiko_logger, start_server_from_ip
-from embedded_server.openssh import OpenSSHServer
-from pssh.agent import SSHAgent
+
+from .embedded_server.embedded_server import make_socket
+from .embedded_server.openssh import OpenSSHServer
+from .base_ssh2_test import SSH2TestCase, PKEY_FILENAME, PUB_FILE
+# from pssh.utils import load_private_key
+# from pssh.agent import SSHAgent
 
 
-PKEY_FILENAME = os.path.sep.join([os.path.dirname(__file__), 'client_pkey'])
-USER_KEY = load_private_key(PKEY_FILENAME)
-
-# server_logger.setLevel(logging.DEBUG)
 pssh_logger.setLevel(logging.DEBUG)
 logging.basicConfig()
 
 
-try:
-    xrange
-except NameError:
-    xrange = range
-
-
 class ParallelSSHClientTest(unittest.TestCase):
 
-    def __init__(self, methodname):
-        unittest.TestCase.__init__(self, methodname)
-        self.fake_cmd = 'echo "me"'
-        self.fake_resp = 'me'
-        self.long_cmd = lambda lines: 'for (( i=0; i<%s; i+=1 )) do echo $i; sleep 1; done' % (lines,)
-        self.user_key = USER_KEY
-        self.host = '127.0.0.1'
-        self.server_sock = make_socket(self.host)
-        self.listen_port = self.server_sock.getsockname()[1]
-        del self.server_sock
-        self.server = OpenSSHServer(port=self.listen_port)
-        self.server.start_server()
-        self.agent = SSHAgent()
-        self.agent.add_key(USER_KEY)
-        self.client = ParallelSSHClient([self.host], port=self.listen_port,
-                                        pkey=PKEY_FILENAME,
-                                        agent=self.agent)
+    @classmethod
+    def setUpClass(cls):
+        _mask = int('0600') if version_info <= (2,) else 0o600
+        os.chmod(PKEY_FILENAME, _mask)
+        cls.server = OpenSSHServer()
+        cls.server.start_server()
+        cls.host = '127.0.0.1'
+        cls.port = 2222
+        cls.cmd = 'echo me'
+        cls.resp = u'me'
+        cls.user_key = PKEY_FILENAME
+        cls.user_pub_key = PUB_FILE
+        cls.user = pwd.getpwuid(os.geteuid()).pw_name
+        cls.client = ParallelSSHClient([cls.host],
+                                       pkey=PKEY_FILENAME,
+                                       port=cls.port,
+                                       num_retries=1)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.stop()
+        del cls.server
 
     def make_random_port(self, host=None):
         host = self.host if not host else host
@@ -84,7 +79,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         return listen_port
 
     def test_client_join_consume_output(self):
-        output = self.client.run_command(self.fake_cmd)
+        # import ipdb; ipdb.set_trace()
+        output = self.client.run_command(self.cmd)
         expected_exit_code = 0
         self.client.join(output, consume_output=True)
         exit_code = output[self.host].exit_code
@@ -95,9 +91,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(expected_exit_code, exit_code)
 
     def test_client_join_stdout(self):
-        output = self.client.run_command(self.fake_cmd)
+        output = self.client.run_command(self.cmd)
         expected_exit_code = 0
-        expected_stdout = [self.fake_resp]
+        expected_stdout = [self.resp]
         expected_stderr = []
         self.client.join(output)
         exit_code = output[self.host]['exit_code']
@@ -115,7 +111,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                          msg="Got unexpected stderr - %s, expected %s" %
                          (stderr,
                           expected_stderr,))
-        output = self.client.run_command(";".join([self.fake_cmd, 'exit 1']))
+        output = self.client.run_command(";".join([self.cmd, 'exit 1']))
         self.client.join(output)
         exit_code = output[self.host].exit_code
         self.assertTrue(exit_code == 1)

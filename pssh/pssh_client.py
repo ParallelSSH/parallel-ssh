@@ -369,7 +369,7 @@ class ParallelSSHClient(object):
         self.channel_timeout = channel_timeout
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
-                    shell=None, use_shell=True, use_pty=True, host_args=None,
+                    shell=None, use_shell=True, use_pty=False, host_args=None,
                     encoding='utf-8', **paramiko_kwargs):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output buffers.
@@ -668,7 +668,7 @@ class ParallelSSHClient(object):
         output = {}
         if host_args:
             try:
-                cmds = [self.pool.spawn(self._exec_command, host,
+                cmds = [self.pool.spawn(self._run_command, host,
                                         command % host_args[host_i],
                                         sudo=sudo, user=user, shell=shell,
                                         use_shell=use_shell, use_pty=use_pty,
@@ -680,7 +680,7 @@ class ParallelSSHClient(object):
                     "number of hosts ")
         else:
             cmds = [self.pool.spawn(
-                self._exec_command, host, command,
+                self._run_command, host, command,
                 sudo=sudo, user=user, shell=shell,
                 use_shell=use_shell, use_pty=use_pty,
                 **paramiko_kwargs)
@@ -701,9 +701,9 @@ class ParallelSSHClient(object):
         _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
         return _user, _port, _password, _pkey
 
-    def _exec_command(self, host, command, sudo=False, user=None,
-                      shell=None, use_shell=True, use_pty=True,
-                      **paramiko_kwargs):
+    def _run_command(self, host, command, sudo=False, user=None,
+                     shell=None, use_shell=True, use_pty=False,
+                     **paramiko_kwargs):
         """Make SSHClient, run command on host"""
         if host not in self.host_clients or self.host_clients[host] is None:
             _user, _port, _password, _pkey = self._get_host_config_values(host)
@@ -841,7 +841,6 @@ class ParallelSSHClient(object):
           [my_host1] <..>
         """
         for host in output:
-            # import ipdb; ipdb.set_trace()
             self.host_clients[host].wait_finished(output[host].channel)
             if consume_output:
                 for line in output[host].stdout:
