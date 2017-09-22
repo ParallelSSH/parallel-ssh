@@ -19,23 +19,17 @@
 """Package containing ParallelSSHClient class"""
 
 import sys
-# if 'threading' in sys.modules:
-#     del sys.modules['threading']
-# from gevent import monkey  # noqa: E402
-# monkey.patch_all()
 import string  # noqa: E402
-import random  # noqa: E402
 import logging  # noqa: E402
 
 import gevent.pool  # noqa: E402
 import gevent.hub  # noqa: E402
 gevent.hub.Hub.NOT_ERROR = (Exception,)
 
+from .base_pssh import BaseParallelSSHClient
 from .exceptions import HostArgumentException  # noqa: E402
 from .constants import DEFAULT_RETRIES  # noqa: E402
-# from .ssh_client import SSHClient  # noqa: E402
 from .ssh2_client import SSHClient
-from .output import HostOutput  # noqa: E402
 
 
 logger = logging.getLogger(__name__)
@@ -46,21 +40,10 @@ except NameError:
     xrange = range
 
 
-class ParallelSSHClient(object):
-    """Uses :py:class:`pssh.ssh_client.SSHClient`, performs tasks over SSH on
-    multiple hosts in parallel.
-
-    Connections to hosts are established in parallel when ``run_command`` is
-    called, therefor any connection and/or authentication exceptions will
-    happen on the call to ``run_command`` and need to be handled there.
-    """
-
+class ParallelSSHClient(BaseParallelSSHClient):
     def __init__(self, hosts, user=None, password=None, port=None, pkey=None,
-                 forward_ssh_agent=True, num_retries=DEFAULT_RETRIES,
-                 timeout=120, pool_size=10, proxy_host=None, proxy_port=22,
-                 proxy_user=None, proxy_password=None, proxy_pkey=None,
-                 agent=None, allow_agent=True, host_config=None,
-                 channel_timeout=None):
+                 num_retries=DEFAULT_RETRIES,
+                 timeout=None, pool_size=10, allow_agent=True, host_config=None):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -348,29 +331,15 @@ class ParallelSSHClient(object):
 
           Connection is terminated.
         """
-        self.pool_size = pool_size
-        self.pool = gevent.pool.Pool(size=self.pool_size)
-        self.hosts = hosts
-        self.user = user
-        self.password = password
-        self.forward_ssh_agent = forward_ssh_agent
-        self.port = port
-        self.pkey = pkey
-        self.num_retries = num_retries
-        self.timeout = timeout
-        self.proxy_host, self.proxy_port, self.proxy_user, \
-            self.proxy_password, self.proxy_pkey = proxy_host, proxy_port, \
-            proxy_user, proxy_password, proxy_pkey
-        # To hold host clients
-        self.host_clients = {}
-        self.agent = agent
-        self.allow_agent = allow_agent
-        self.host_config = host_config if host_config else {}
-        self.channel_timeout = channel_timeout
+        BaseParallelSSHClient.__init__(
+            self, hosts, user=user, password=password, port=port, pkey=pkey,
+            allow_agent=allow_agent, num_retries=num_retries,
+            timeout=timeout, pool_size=pool_size,
+            host_config=host_config)
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
-                    shell=None, use_shell=True, use_pty=False, host_args=None,
-                    encoding='utf-8', **paramiko_kwargs):
+                    use_pty=False, host_args=None, shell=None,
+                    encoding='utf-8'):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output buffers.
 
@@ -665,61 +634,20 @@ class ParallelSSHClient(object):
           writing to stdin
 
         """
-        output = {}
-        if host_args:
-            try:
-                cmds = [self.pool.spawn(self._run_command, host,
-                                        command % host_args[host_i],
-                                        sudo=sudo, user=user, shell=shell,
-                                        use_shell=use_shell, use_pty=use_pty,
-                                        **paramiko_kwargs)
-                        for host_i, host in enumerate(self.hosts)]
-            except IndexError:
-                raise HostArgumentException(
-                    "Number of host arguments provided does not match "
-                    "number of hosts ")
-        else:
-            cmds = [self.pool.spawn(
-                self._run_command, host, command,
-                sudo=sudo, user=user, shell=shell,
-                use_shell=use_shell, use_pty=use_pty,
-                **paramiko_kwargs)
-                for host in self.hosts]
-        for cmd in cmds:
-            try:
-                self.get_output(cmd, output, encoding=encoding)
-            except Exception:
-                if stop_on_errors:
-                    raise
-        return output
-
-    def _get_host_config_values(self, host):
-        _user = self.host_config.get(host, {}).get('user', self.user)
-        _port = self.host_config.get(host, {}).get('port', self.port)
-        _password = self.host_config.get(host, {}).get(
-            'password', self.password)
-        _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
-        return _user, _port, _password, _pkey
+        return BaseParallelSSHClient.run_command(
+            self, command, stop_on_errors=stop_on_errors, host_args=host_args,
+            user=user, shell=shell, sudo=sudo,
+            encoding=encoding, use_pty=use_pty)
 
     def _run_command(self, host, command, sudo=False, user=None,
-                     shell=None, use_shell=True, use_pty=False,
+                     shell=None, use_pty=False,
+                     encoding='utf-8',
                      **paramiko_kwargs):
-        """Make SSHClient, run command on host"""
-        if host not in self.host_clients or self.host_clients[host] is None:
-            _user, _port, _password, _pkey = self._get_host_config_values(host)
-            _user = user if user else _user
-            self.host_clients[host] = SSHClient(
-                host, user=_user, password=_password, port=_port, pkey=_pkey,
-                forward_ssh_agent=self.forward_ssh_agent,
-                num_retries=self.num_retries, timeout=self.timeout,
-                proxy_host=self.proxy_host, proxy_port=self.proxy_port,
-                proxy_user=self.proxy_user, proxy_password=self.proxy_password,
-                proxy_pkey=self.proxy_pkey, allow_agent=self.allow_agent,
-                agent=self.agent, channel_timeout=self.channel_timeout,
-                **paramiko_kwargs)
+        """Make SSHClient if needed, run command on host"""
+        self._make_ssh_client(host)
         return self.host_clients[host].run_command(
             command, sudo=sudo, user=user, shell=shell,
-            use_shell=use_shell, use_pty=use_pty)
+            use_pty=use_pty, encoding=encoding)
 
     def get_output(self, cmd, output, encoding='utf-8'):
         """Get output from command.
@@ -771,28 +699,13 @@ class ParallelSSHClient(object):
                 host = ex.args[1]
             except IndexError as _ex:
                 logger.error("Got exception with no host argument - "
-                             "cannot update output data with %s", _ex)
-                raise exc[1]
+                             "cannot update output data with %s", ex)
+                raise ex
             self._update_host_output(
                 output, host, None, None, None, None, None, cmd, exception=ex)
             raise
         self._update_host_output(output, host, self._get_exit_code(channel),
                                  channel, stdout, stderr, stdin, cmd)
-
-    def _update_host_output(self, output, host, exit_code, channel, stdout,
-                            stderr, stdin, cmd, exception=None):
-        """Update host output with given data"""
-        if host in output:
-            new_host = "_".join([host,
-                                 ''.join(random.choice(
-                                     string.ascii_lowercase + string.digits)
-                                     for _ in xrange(8))])
-            logger.warning("Already have output for host %s - changing host "
-                           "key for %s to %s", host, host, new_host)
-            host = new_host
-        output[host] = HostOutput(host, cmd, channel, stdout, stderr, stdin,
-                                  exit_code=exit_code,
-                                  exception=exception)
 
     def join(self, output, consume_output=False):
         """Block until all remote commands in output have finished
@@ -841,6 +754,8 @@ class ParallelSSHClient(object):
           [my_host1] <..>
         """
         for host in output:
+            if host not in self.host_clients or self.host_clients[host] is None:
+                continue
             self.host_clients[host].wait_finished(output[host].channel)
             if consume_output:
                 for line in output[host].stdout:
@@ -849,171 +764,19 @@ class ParallelSSHClient(object):
                     pass
         self.get_exit_codes(output)
 
-    def finished(self, output):
-        """Check if commands have finished without blocking
-
-        :param output: As returned by
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
-        :rtype: bool
-        """
-        for host in output:
-            chan = output[host].channel
-            if chan is not None and not chan.eof():
-                return False
-        return True
-
-    def get_exit_codes(self, output):
-        """Get exit code for all hosts in output *if available*.
-        Output parameter is modified in-place.
-
-        :param output: As returned by
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
-        :rtype: None
-        """
-        for host in output:
-            output[host].exit_code = self.get_exit_code(output[host])
-
-    def get_exit_code(self, host_output):
-        """Get exit code from host output *if available*.
-
-        :param host_output: Per host output as returned by
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
-        :rtype: int or None if exit code not ready"""
-        if not hasattr(host_output, 'channel'):
-            logger.error("%s does not look like host output..", host_output,)
-            return
-        return self._get_exit_code(host_output.channel)
-
-    def _get_exit_code(self, channel):
-        """Get exit code from channel if ready"""
-        if channel is None: # or not channel.eof():
-            # logger.debug("Channel eof not reached, cannot get exit status. "
-            #              "eof status: %s", channel.eof())
-            return
-        return channel.get_exit_status()
-
-    def copy_file(self, local_file, remote_file, recurse=False):
-        """Copy local file to remote file in parallel
-
-        This function returns a list of greenlets which can be
-        `join`-ed on to wait for completion.
-
-        :py:func:`gevent.joinall` function may be used to join on all greenlets
-        and will also raise exceptions from them if called with
-        ``raise_error=True`` - default is `False`.
-
-        Alternatively call `.get` on each greenlet to raise any exceptions from
-        it.
-
-        Exceptions listed here are raised when
-        either ``gevent.joinall(<greenlets>, raise_error=True)`` is called
-        or ``.get`` is called on each greenlet, not this function itself.
-
-        :param local_file: Local filepath to copy to remote host
-        :type local_file: str
-        :param remote_file: Remote filepath on remote host to copy file to
-        :type remote_file: str
-        :param recurse: Whether or not to descend into directories recursively.
-        :type recurse: bool
-        :rtype: List(:py:class:`gevent.Greenlet`) of greenlets for remote copy
-          commands
-
-        :raises: :py:class:`ValueError` when a directory is supplied to
-          local_file and recurse is not set
-        :raises: :py:class:`IOError` on I/O errors writing files
-        :raises: :py:class:`OSError` on OS errors like permission denied
-
-        .. note ::
-
-          Remote directories in `remote_file` that do not exist will be
-          created as long as permissions allow.
-
-        """
-        return [self.pool.spawn(self._copy_file, host, local_file, remote_file,
-                                {'recurse': recurse})
-                for host in self.hosts]
-
-    def _copy_file(self, host, local_file, remote_file, recurse=False):
-        """Make sftp client, copy file"""
-        self._make_ssh_client(host)
-        return self.host_clients[host].copy_file(local_file, remote_file,
-                                                 recurse=recurse)
-
-    def copy_remote_file(self, remote_file, local_file, recurse=False,
-                         suffix_separator='_'):
-        """Copy remote file(s) in parallel as
-        <local_file><suffix_separator><host>
-
-        With a ``local_file`` value of ``myfile`` and default separator ``_``
-        the resulting filename will be ``myfile_myhost`` for the file from host
-        ``myhost``.
-
-        This function, like :py:func:`ParallelSSHClient.copy_file`, returns a
-        list of greenlets which can be `join`-ed on to wait for completion.
-
-        :py:func:`gevent.joinall` function may be used to join on all greenlets
-        and will also raise exceptions if called with ``raise_error=True`` -
-        default is `False`.
-
-        Alternatively call `.get` on each greenlet to raise any exceptions from
-        it.
-
-        Exceptions listed here are raised when
-        either ``gevent.joinall(<greenlets>, raise_error=True)`` is called
-        or ``.get`` is called on each greenlet, not this function itself.
-
-        :param remote_file: remote filepath to copy to local host
-        :type remote_file: str
-        :param local_file: local filepath on local host to copy file to
-        :type local_file: str
-        :param recurse: whether or not to recurse
-        :type recurse: bool
-        :param suffix_separator: (Optional) Separator string between
-          filename and host, defaults to ``_``. For example, for a
-          ``local_file`` value of ``myfile`` and default separator the
-          resulting filename will be ``myfile_myhost`` for the file from
-          host ``myhost``
-        :type suffix_separator: str
-        :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy
-          commands
-
-        :raises: :py:class:`ValueError` when a directory is supplied to
-          local_file and recurse is not set
-        :raises: :py:class:`IOError` on I/O errors writing files
-        :raises: :py:class:`OSError` on OS errors like permission denied
-
-        .. note ::
-          Local directories in `local_file` that do not exist will be
-          created as long as permissions allow.
-
-        .. note ::
-          File names will be de-duplicated by appending the hostname to the
-          filepath separated by ``suffix_separator``.
-
-        """
-        return [self.pool.spawn(
-            self._copy_remote_file, host, remote_file,
-            local_file, recurse, suffix_separator=suffix_separator)
-            for host in self.hosts]
-
-    def _copy_remote_file(self, host, remote_file, local_file, recurse,
-                          suffix_separator='_'):
-        """Make sftp client, copy file to local"""
-        file_w_suffix = suffix_separator.join([local_file, host])
-        self._make_ssh_client(host)
-        return self.host_clients[host].copy_remote_file(
-                remote_file, file_w_suffix, recurse=recurse)
+    # def _get_exit_code(self, channel):
+    #     """Get exit code from channel if ready"""
+    #     if channel is None: # or not channel.eof():
+    #         # logger.debug("Channel eof not reached, cannot get exit status. "
+    #         #              "eof status: %s", channel.eof())
+    #         return
+    #     return channel.get_exit_status()
 
     def _make_ssh_client(self, host):
-        # TODO - use this for all client object creation
         if host not in self.host_clients or self.host_clients[host] is None:
             _user, _port, _password, _pkey = self._get_host_config_values(host)
             self.host_clients[host] = SSHClient(
                 host, user=_user, password=_password, port=_port, pkey=_pkey,
-                forward_ssh_agent=self.forward_ssh_agent,
                 num_retries=self.num_retries,
                 timeout=self.timeout,
-                proxy_host=self.proxy_host,
-                proxy_port=self.proxy_port,
-                agent=self.agent,
-                channel_timeout=self.channel_timeout)
+                allow_agent=self.allow_agent)

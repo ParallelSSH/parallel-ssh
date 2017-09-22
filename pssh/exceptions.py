@@ -42,3 +42,8 @@ class SSHException(Exception):
 class HostArgumentException(Exception):
     """Raised on errors with per-host command arguments"""
     pass
+
+
+class SessionError(Exception):
+    """Raised on errors establishing SSH session"""
+    pass

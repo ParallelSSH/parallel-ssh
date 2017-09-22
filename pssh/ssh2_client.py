@@ -30,10 +30,11 @@ from gevent import socket
 from ssh2.session import Session, LIBSSH2_SESSION_BLOCK_INBOUND, \
     LIBSSH2_SESSION_BLOCK_OUTBOUND
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
-from ssh2.exceptions import AuthenticationError, AgentError, ChannelError
+from ssh2.exceptions import AuthenticationError, AgentError, ChannelError, \
+    SessionHandshakeError
 
 from .exceptions import UnknownHostException, AuthenticationException, \
-     ConnectionErrorException, SSHException
+     ConnectionErrorException, SessionError
 from .constants import DEFAULT_RETRIES
 from .native.ssh2 import open_session, wait_select
 
@@ -54,11 +55,11 @@ class SSHClient(object):
 
     def __init__(self, host,
                  user=None, password=None, port=None,
-                 pkey=None, forward_ssh_agent=None,
-                 num_retries=DEFAULT_RETRIES, agent=None,
-                 allow_agent=True, timeout=10,
-                 proxy_host=None, proxy_port=22, proxy_user=None, 
-                 proxy_password=None, proxy_pkey=None, channel_timeout=None,
+                 pkey=None,
+                 num_retries=DEFAULT_RETRIES,
+                 allow_agent=True, timeout=None,
+                 # proxy_host=None, proxy_port=22, proxy_user=None,
+                 # proxy_password=None, proxy_pkey=None,
                  _openssh_config_file=None):
         self.host = host
         self.user = user if user else pwd.getpwuid(os.geteuid()).pw_name
@@ -66,15 +67,26 @@ class SSHClient(object):
         self.port = port if port else 22
         self.pkey = pkey
         self.num_retries = num_retries
-        # self.forward_ssh_agent = forward_ssh_agent
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.timeout = timeout * 1000 if timeout else None
+        self.allow_agent = allow_agent
         self._connect()
         THREAD_POOL.apply(self._init)
 
     def _init(self):
         self.session = Session()
-        self.session.handshake(self.sock)
-        self.auth()
+        if self.timeout:
+            self.session.set_timeout(self.timeout)
+        try:
+            self.session.handshake(self.sock)
+        except SessionHandshakeError, ex:
+            msg = "Error connecting to host %s:%s - %s"
+            raise SessionError(msg, self.host, self.port, ex)
+        try:
+            self.auth()
+        except AuthenticationError, ex:
+            msg = "Authentication error while connecting to %s:%s - %s"
+            raise AuthenticationException(msg, self.host, self.port, ex)
         self.session.set_blocking(0)
 
     def _connect(self, retries=1):
@@ -134,15 +146,16 @@ class SSHClient(object):
             logger.debug(
                 "Proceeding with public key file authentication")
             return self._pkey_auth()
-        try:
-            self.session.agent_auth(self.user)
-        except AuthenticationError as ex:
-            logger.debug("Agent auth failed with %s, "
-                         "continuing with other authentication methods",
-                         ex)
-        else:
-            logger.debug("Authentication with SSH Agent succeeded")
-            return
+        if allow_agent:
+            try:
+                self.session.agent_auth(self.user)
+            except AuthenticationError as ex:
+                logger.debug("Agent auth failed with %s, "
+                             "continuing with other authentication methods",
+                             ex)
+            else:
+                logger.debug("Authentication with SSH Agent succeeded")
+                return
         try:
             self._identity_auth()
         except AuthenticationException:
@@ -181,6 +194,7 @@ class SSHClient(object):
         channel = self.open_session() if channel is None else channel
         if use_pty:
             self._eagain(channel.pty)
+        logger.debug("Executing command '%s'" % cmd)
         self._eagain(channel.execute, cmd)
         return channel
 
@@ -214,7 +228,6 @@ class SSHClient(object):
                     break
             _size, _data = read_func()
             _pos = 0
-        self._eagain(channel.close)
 
     def wait_finished(self, channel):
         """Wait for EOF from channel, close channel and wait for
@@ -275,9 +288,26 @@ class SSHClient(object):
             callback(*callback_args)
 
     def run_command(self, command, sudo=False, user=None,
-                    use_pty=False, use_shell=True, shell=None):
-        channel = self.execute(command, use_pty=use_pty)
+                    use_pty=False, shell=None,
+                    encoding='utf-8'):
+        # Fast path for no command substitution needed
+        if not sudo and not user and not shell:
+            _command = command
+        else:
+            _command = ''
+            if sudo and not user:
+                _command = 'sudo -S '
+            elif user:
+                _command = 'sudo -u %s -S ' % (user,)
+            if shell:
+                _command += '%s "%s"' % (shell, command,)
+            else:
+                _command += '$SHELL -c "%s"' % (command,)
+        channel = self.execute(_command, use_pty=use_pty)
         return channel, self.host, \
-            self.read_output_buffer(self.read_output(channel)), \
-            self.read_output_buffer(self.read_stderr(channel)), \
+            self.read_output_buffer(self.read_output(channel),
+                                    encoding=encoding), \
+            self.read_output_buffer(self.read_stderr(channel),
+                                    encoding=encoding,
+                                    prefix='[stderr]'), \
             iter([])

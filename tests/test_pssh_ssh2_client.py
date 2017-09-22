@@ -30,10 +30,10 @@ from socket import timeout as socket_timeout
 from sys import version_info
 
 import gevent
-from pssh.pssh_client import ParallelSSHClient, logger as pssh_logger
+from pssh.pssh2_client import ParallelSSHClient, logger as pssh_logger
 from pssh.exceptions import UnknownHostException, \
-    AuthenticationException, ConnectionErrorException, SSHException
-from pssh.exceptions import HostArgumentException
+    AuthenticationException, ConnectionErrorException, SessionError, \
+    HostArgumentException
 
 from .embedded_server.embedded_server import make_socket
 from .embedded_server.openssh import OpenSSHServer
@@ -70,6 +70,9 @@ class ParallelSSHClientTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.server.stop()
         del cls.server
+
+    def setUp(self):
+        self.long_cmd = lambda lines: 'for (( i=0; i<%s; i+=1 )) do echo $i; sleep 1; done' % (lines,)
 
     def make_random_port(self, host=None):
         host = self.host if not host else host
@@ -126,136 +129,105 @@ class ParallelSSHClientTest(unittest.TestCase):
                          (exit_code,
                           expected_exit_code,))
 
-#     def test_pssh_client_run_command_get_output(self):
-#         output = self.client.run_command(self.fake_cmd)
-#         expected_exit_code = 0
-#         expected_stdout = [self.fake_resp]
-#         expected_stderr = []
-#         stdout = list(output[self.host]['stdout'])
-#         stderr = list(output[self.host]['stderr'])
-#         exit_code = output[self.host]['exit_code']
-#         self.assertEqual(expected_exit_code, exit_code,
-#                          msg="Got unexpected exit code - %s, expected %s" %
-#                          (exit_code,
-#                           expected_exit_code,))
-#         self.assertEqual(expected_stdout, stdout,
-#                          msg="Got unexpected stdout - %s, expected %s" %
-#                          (stdout,
-#                           expected_stdout,))
-#         self.assertEqual(expected_stderr, stderr,
-#                          msg="Got unexpected stderr - %s, expected %s" %
-#                          (stderr,
-#                           expected_stderr,))
+    def test_pssh_client_run_command_get_output(self):
+        output = self.client.run_command(self.cmd)
+        expected_exit_code = 0
+        expected_stdout = [self.resp]
+        expected_stderr = []
+        stdout = list(output[self.host]['stdout'])
+        stderr = list(output[self.host]['stderr'])
+        exit_code = output[self.host]['exit_code']
+        self.assertEqual(expected_exit_code, exit_code,
+                         msg="Got unexpected exit code - %s, expected %s" %
+                         (exit_code,
+                          expected_exit_code,))
+        self.assertEqual(expected_stdout, stdout,
+                         msg="Got unexpected stdout - %s, expected %s" %
+                         (stdout,
+                          expected_stdout,))
+        self.assertEqual(expected_stderr, stderr,
+                         msg="Got unexpected stderr - %s, expected %s" %
+                         (stderr,
+                          expected_stderr,))
 
-#     def test_pssh_client_run_command_get_output_explicit(self):
-#         out = self.client.run_command(self.fake_cmd)
-#         cmds = [cmd for host in out for cmd in [out[host]['cmd']]]
-#         output = {}
-#         for cmd in cmds:
-#             self.client.get_output(cmd, output)
-#         expected_exit_code = 0
-#         expected_stdout = [self.fake_resp]
-#         expected_stderr = []
-#         stdout = list(output[self.host]['stdout'])
-#         stderr = list(output[self.host]['stderr'])
-#         exit_code = output[self.host]['exit_code']
-#         self.assertEqual(expected_exit_code, exit_code,
-#                          msg="Got unexpected exit code - %s, expected %s" %
-#                          (exit_code,
-#                           expected_exit_code,))
-#         self.assertEqual(expected_stdout, stdout,
-#                          msg="Got unexpected stdout - %s, expected %s" % 
-#                          (stdout,
-#                           expected_stdout,))
-#         self.assertEqual(expected_stderr, stderr,
-#                          msg="Got unexpected stderr - %s, expected %s" % 
-#                          (stderr,
-#                           expected_stderr,))
+    def test_pssh_client_run_command_get_output_explicit(self):
+        out = self.client.run_command(self.cmd)
+        cmds = [cmd for host in out for cmd in [out[host]['cmd']]]
+        output = {}
+        for cmd in cmds:
+            self.client.get_output(cmd, output)
+        expected_exit_code = 0
+        expected_stdout = [self.resp]
+        expected_stderr = []
+        stdout = list(output[self.host]['stdout'])
+        stderr = list(output[self.host]['stderr'])
+        exit_code = output[self.host]['exit_code']
+        self.assertEqual(expected_exit_code, exit_code,
+                         msg="Got unexpected exit code - %s, expected %s" %
+                         (exit_code,
+                          expected_exit_code,))
+        self.assertEqual(expected_stdout, stdout,
+                         msg="Got unexpected stdout - %s, expected %s" % 
+                         (stdout,
+                          expected_stdout,))
+        self.assertEqual(expected_stderr, stderr,
+                         msg="Got unexpected stderr - %s, expected %s" % 
+                         (stderr,
+                          expected_stderr,))
 
-#     def test_pssh_client_run_long_command(self):
-#         expected_lines = 5
-#         output = self.client.run_command(self.long_cmd(expected_lines))
-#         self.assertTrue(self.host in output, msg="Got no output for command")
-#         stdout = list(output[self.host]['stdout'])
-#         self.assertTrue(len(stdout) == expected_lines,
-#                         msg="Expected %s lines of response, got %s" % (
-#                             expected_lines, len(stdout)))
+    def test_pssh_client_run_long_command(self):
+        expected_lines = 5
+        output = self.client.run_command(self.long_cmd(expected_lines))
+        self.client.join(output)
+        self.assertTrue(self.host in output, msg="Got no output for command")
+        stdout = list(output[self.host]['stdout'])
+        self.assertTrue(len(stdout) == expected_lines,
+                        msg="Expected %s lines of response, got %s" % (
+                            expected_lines, len(stdout)))
 
-#     def test_pssh_client_auth_failure(self):
-#         server, listen_port = start_server_from_ip(self.host,
-#                                                    fail_auth=True)
-#         client = ParallelSSHClient([self.host], port=listen_port,
-#                                    pkey=self.user_key,
-#                                    agent=self.agent)
-#         self.assertRaises(
-#             AuthenticationException, client.run_command, self.fake_cmd)
-#         del client
-#         server.kill()
+    def test_pssh_client_auth_failure(self):
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   user='FAKE USER',
+                                   pkey=self.user_key)
+        self.assertRaises(
+            AuthenticationException, client.run_command, self.cmd)
 
-#     def test_pssh_client_hosts_list_part_failure(self):
-#         """Test getting output for remainder of host list in the case where one
-#         host in the host list has a failure"""
-#         server2, _ = start_server_from_ip('127.0.0.2', port=self.listen_port,
-#                                           fail_auth=True)
-#         hosts = [self.host, '127.0.0.2']
-#         client = ParallelSSHClient(hosts,
-#                                    port=self.listen_port,
-#                                    pkey=self.user_key,
-#                                    agent=self.agent)
-#         output = client.run_command(self.fake_cmd,
-#                                     stop_on_errors=False)
-#         self.assertFalse(client.finished(output))
-#         client.join(output)
-#         self.assertTrue(client.finished(output))
-#         self.assertTrue(hosts[0] in output,
-#                         msg="Successful host does not exist in output - output is %s" % (output,))
-#         self.assertTrue(hosts[1] in output,
-#                         msg="Failed host does not exist in output - output is %s" % (output,))
-#         self.assertTrue('exception' in output[hosts[1]],
-#                         msg="Failed host %s has no exception in output - %s" % (hosts[1], output,))
-#         try:
-#             raise output[hosts[1]]['exception']
-#         except AuthenticationException:
-#             pass
-#         else:
-#             raise Exception("Expected AuthenticationException, got %s instead" % (
-#                 output[hosts[1]]['exception'],))
-#         del client
-#         server2.kill()
+    def test_pssh_client_hosts_list_part_failure(self):
+        """Test getting output for remainder of host list in the case where one
+        host in the host list has a failure"""
+        hosts = [self.host, '127.0.0.2']
+        client = ParallelSSHClient(hosts,
+                                   port=self.port,
+                                   pkey=self.user_key,
+                                   num_retries=1)
+        output = client.run_command(self.cmd, stop_on_errors=False)
+        self.assertFalse(client.finished(output))
+        client.join(output, consume_output=True)
+        self.assertTrue(client.finished(output))
+        self.assertTrue(hosts[0] in output,
+                        msg="Successful host does not exist in output - output is %s" % (output,))
+        self.assertTrue(hosts[1] in output,
+                        msg="Failed host does not exist in output - output is %s" % (output,))
+        self.assertTrue('exception' in output[hosts[1]],
+                        msg="Failed host %s has no exception in output - %s" % (hosts[1], output,))
+        try:
+            raise output[hosts[1]]['exception']
+        except ConnectionErrorException:
+            pass
+        else:
+            raise Exception("Expected ConnectionError, got %s instead" % (
+                output[hosts[1]]['exception'],))
 
-#     def test_pssh_client_ssh_exception(self):
-#         server, listen_port = start_server_from_ip(self.host,
-#                                                    ssh_exception=True)
-#         client = ParallelSSHClient([self.host],
-#                                    user='fakey', password='fakey',
-#                                    port=listen_port,
-#                                    pkey=RSAKey.generate(1024),
-#                                    num_retries=1,
-#                                    )
-#         self.assertRaises(SSHException, client.run_command, self.fake_cmd)
-#         del client
-#         server.kill()
-
-#     def test_pssh_client_timeout(self):
-#         server_timeout=0.2
-#         client_timeout=server_timeout-0.1
-#         server, listen_port = start_server_from_ip(self.host,
-#                                                    timeout=server_timeout)
-#         client = ParallelSSHClient([self.host], port=listen_port,
-#                                    pkey=self.user_key,
-#                                    timeout=client_timeout,
-#                                    num_retries=1)
-#         output = client.run_command(self.fake_cmd, stop_on_errors=False)
-#         # Handle exception
-#         try:
-#             gevent.sleep(server_timeout+0.2)
-#             client.join(output)
-#             if not server.exception:
-#                 raise Exception(
-#                     "Expected gevent.Timeout from socket timeout, got none")
-#         finally:
-#             del client
-#             server.kill()
+    def test_pssh_client_timeout(self):
+        # 1ms timeout
+        client_timeout = 0.001
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.user_key,
+                                   timeout=client_timeout,
+                                   num_retries=1)
+        output = client.run_command('sleep 1', stop_on_errors=False)
+        self.assertTrue(isinstance(output[self.host].exception,
+                                   SessionError))
 
 #     def test_pssh_client_run_command_password(self):
 #         """Test password authentication. Embedded server accepts any password
@@ -271,40 +243,38 @@ class ParallelSSHClientTest(unittest.TestCase):
 #                             output[self.host]['exit_code'],))
 #         self.assertEqual(stdout, [self.fake_resp])
 
-#     def test_pssh_client_long_running_command_exit_codes(self):
-#         expected_lines = 5
-#         output = self.client.run_command(self.long_cmd(expected_lines))
-#         self.assertTrue(self.host in output, msg="Got no output for command")
-#         self.assertTrue(not output[self.host]['exit_code'],
-#                         msg="Got exit code %s for still running cmd.." % (
-#                             output[self.host]['exit_code'],))
-#         self.assertFalse(self.client.finished(output))
-#         # Embedded server is also asynchronous and in the same thread
-#         # as our client so need to sleep for duration of server connection
-#         gevent.sleep(expected_lines)
-#         self.client.join(output)
-#         self.assertTrue(self.client.finished(output))
-#         self.assertTrue(output[self.host]['exit_code'] == 0,
-#                         msg="Got non-zero exit code %s" % (
-#                             output[self.host]['exit_code'],))
+    def test_pssh_client_long_running_command_exit_codes(self):
+        expected_lines = 2
+        output = self.client.run_command(self.long_cmd(expected_lines))
+        self.client.join(output)
+        self.assertTrue(self.host in output, msg="Got no output for command")
+        self.assertTrue(not output[self.host]['exit_code'],
+                        msg="Got exit code %s for still running cmd.." % (
+                            output[self.host]['exit_code'],))
+        self.assertFalse(self.client.finished(output))
+        self.client.join(output, consume_output=True)
+        self.assertTrue(self.client.finished(output))
+        self.assertTrue(output[self.host]['exit_code'] == 0,
+                        msg="Got non-zero exit code %s" % (
+                            output[self.host]['exit_code'],))
 
-#     def test_pssh_client_retries(self):
-#         """Test connection error retries"""
-#         listen_port = self.make_random_port()
-#         expected_num_tries = 2
-#         client = ParallelSSHClient([self.host], port=listen_port,
-#                                    pkey=self.user_key,
-#                                    num_retries=expected_num_tries)
-#         self.assertRaises(ConnectionErrorException, client.run_command, 'blah')
-#         try:
-#             client.run_command('blah')
-#         except ConnectionErrorException as ex:
-#             num_tries = ex.args[-1:][0]
-#             self.assertEqual(expected_num_tries, num_tries,
-#                              msg="Got unexpected number of retries %s - "
-#                              "expected %s" % (num_tries, expected_num_tries,))
-#         else:
-#             raise Exception('No ConnectionErrorException')
+    def test_pssh_client_retries(self):
+        """Test connection error retries"""
+        listen_port = self.make_random_port()
+        expected_num_tries = 2
+        client = ParallelSSHClient([self.host], port=listen_port,
+                                   pkey=self.user_key,
+                                   num_retries=expected_num_tries)
+        self.assertRaises(ConnectionErrorException, client.run_command, 'blah')
+        try:
+            client.run_command('blah')
+        except ConnectionErrorException as ex:
+            num_tries = ex.args[-1:][0]
+            self.assertEqual(expected_num_tries, num_tries,
+                             msg="Got unexpected number of retries %s - "
+                             "expected %s" % (num_tries, expected_num_tries,))
+        else:
+            raise Exception('No ConnectionErrorException')
 
 #     def test_sftp_exceptions(self):
 #         # Port with no server listening on it on separate ip
@@ -506,65 +476,67 @@ class ParallelSSHClientTest(unittest.TestCase):
 #                          msg="Expected pool size to be %s, got %s" % (
 #                              expected, actual,))
 
-#     def test_pssh_hosts_more_than_pool_size(self):
-#         """Test we can successfully run on more hosts than our pool size and
-#         get logs for all hosts"""
-#         # Make a second server on the same port as the first one
-#         host2 = '127.0.0.2'
-#         server2, _ = start_server_from_ip(host2, port=self.listen_port)
-#         hosts = [self.host, host2]
-#         client = ParallelSSHClient(hosts,
-#                                    port=self.listen_port,
-#                                    pkey=self.user_key,
-#                                    pool_size=1,
-#                                    )
-#         output = client.run_command(self.fake_cmd)
-#         stdout = [list(output[k]['stdout']) for k in output]
-#         expected_stdout = [[self.fake_resp], [self.fake_resp]]
-#         self.assertEqual(len(hosts), len(output),
-#                          msg="Did not get output from all hosts. Got output for " \
-#                          "%s/%s hosts" % (len(output), len(hosts),))
-#         self.assertEqual(expected_stdout, stdout,
-#                          msg="Did not get expected output from all hosts. \
-#                          Got %s - expected %s" % (stdout, expected_stdout,))
-#         del client
-#         server2.kill()
+    def test_pssh_hosts_more_than_pool_size(self):
+        """Test we can successfully run on more hosts than our pool size and
+        get logs for all hosts"""
+        # Make a second server on the same port as the first one
+        host2 = '127.0.0.2'
+        server2 = OpenSSHServer(listen_ip=host2)
+        server2.start_server()
+        hosts = [self.host, host2]
+        client = ParallelSSHClient(hosts,
+                                   port=self.port,
+                                   pkey=self.user_key,
+                                   pool_size=1,
+                                   )
+        output = client.run_command(self.cmd)
+        stdout = [list(output[k].stdout) for k in output]
+        expected_stdout = [[self.resp] for _ in hosts]
+        self.assertEqual(len(hosts), len(output),
+                         msg="Did not get output from all hosts. Got output for " \
+                         "%s/%s hosts" % (len(output), len(hosts),))
+        self.assertEqual(expected_stdout, stdout,
+                         msg="Did not get expected output from all hosts. \
+                         Got %s - expected %s" % (stdout, expected_stdout,))
+        del client
+        server2.stop()
 
-#     def test_pssh_hosts_iterator_hosts_modification(self):
-#         """Test using iterator as host list and modifying host list in place"""
-#         host2, host3 = '127.0.0.2', '127.0.0.3'
-#         server2, _ = start_server_from_ip(host2, port=self.listen_port)
-#         server3, _ = start_server_from_ip(host3, port=self.listen_port)
-#         hosts = [self.host, '127.0.0.2']
-#         client = ParallelSSHClient(iter(hosts),
-#                                    port=self.listen_port,
-#                                    pkey=self.user_key,
-#                                    pool_size=1,
-#                                    )
-#         output = client.run_command(self.fake_cmd)
-#         stdout = [list(output[k]['stdout']) for k in output]
-#         expected_stdout = [[self.fake_resp], [self.fake_resp]]
-#         self.assertEqual(len(hosts), len(output),
-#                          msg="Did not get output from all hosts. Got output for " \
-#                          "%s/%s hosts" % (len(output), len(hosts),))
-#         # Run again without re-assigning host list, should do nothing
-#         output = client.run_command(self.fake_cmd)
-#         self.assertFalse(hosts[0] in output,
-#                          msg="Expected no host output, got %s" % (output,))
-#         self.assertFalse(output,
-#                          msg="Expected empty output, got %s" % (output,))
-#         # Re-assigning host list with new hosts should work
-#         hosts = ['127.0.0.2', '127.0.0.3']
-#         client.hosts = iter(hosts)
-#         output = client.run_command(self.fake_cmd)
-#         self.assertEqual(len(hosts), len(output),
-#                          msg="Did not get output from all hosts. Got output for " \
-#                          "%s/%s hosts" % (len(output), len(hosts),))
-#         self.assertTrue(hosts[1] in output,
-#                         msg="Did not get output for new host %s" % (hosts[1],))
-#         del client
-#         server2.kill()
-#         server3.kill()
+    def test_pssh_hosts_iterator_hosts_modification(self):
+        """Test using iterator as host list and modifying host list in place"""
+        host2, host3 = '127.0.0.2', '127.0.0.3'
+        server2 = OpenSSHServer(listen_ip=host2) 
+        server3 = OpenSSHServer(listen_ip=host3)
+        server2.start_server()
+        server3.start_server()
+        hosts = [self.host, '127.0.0.2']
+        client = ParallelSSHClient(iter(hosts),
+                                   port=self.port,
+                                   pkey=self.user_key,
+                                   pool_size=1,
+                                   )
+        output = client.run_command(self.cmd)
+        stdout = [list(output[k]['stdout']) for k in output]
+        expected_stdout = [[self.resp], [self.resp]]
+        self.assertEqual(len(hosts), len(output),
+                         msg="Did not get output from all hosts. Got output for " \
+                         "%s/%s hosts" % (len(output), len(hosts),))
+        # Run again without re-assigning host list, should do nothing
+        output = client.run_command(self.cmd)
+        self.assertFalse(hosts[0] in output,
+                         msg="Expected no host output, got %s" % (output,))
+        self.assertFalse(output,
+                         msg="Expected empty output, got %s" % (output,))
+        # Re-assigning host list with new hosts should work
+        hosts = ['127.0.0.2', '127.0.0.3']
+        client.hosts = iter(hosts)
+        output = client.run_command(self.cmd)
+        self.assertEqual(len(hosts), len(output),
+                         msg="Did not get output from all hosts. Got output for " \
+                         "%s/%s hosts" % (len(output), len(hosts),))
+        self.assertTrue(hosts[1] in output,
+                        msg="Did not get output for new host %s" % (hosts[1],))
+        server2.stop()
+        server3.stop()
 
 #     def test_ssh_proxy(self):
 #         """Test connecting to remote destination via SSH proxy
@@ -671,384 +643,366 @@ class ParallelSSHClientTest(unittest.TestCase):
 #             server.kill()
 #             proxy_server.kill()
 
-#     def test_bash_variable_substitution(self):
-#         """Test bash variables work correctly"""
-#         client = ParallelSSHClient([self.host], port=self.listen_port,
-#                                    pkey=self.user_key)
-#         command = """for i in 1 2 3; do echo $i; done"""
-#         output = list(client.run_command(command)[self.host]['stdout'])
-#         expected = ['1','2','3']
-#         self.assertEqual(output, expected,
-#                          msg="Unexpected output from bash variable substitution %s - should be %s" % (
-#                              output, expected,))
+    def test_bash_variable_substitution(self):
+        """Test bash variables work correctly"""
+        command = """for i in 1 2 3; do echo $i; done"""
+        output = list(self.client.run_command(command)[self.host]['stdout'])
+        expected = ['1','2','3']
+        self.assertEqual(output, expected,
+                         msg="Unexpected output from bash variable substitution %s - should be %s" % (
+                             output, expected,))
 
-#     def test_identical_host_output(self):
-#         """Test that we get output when running with duplicated hosts"""
-#         # Make port with no server listening on it just for testing output
-#         port = self.make_random_port()
-#         hosts = [self.host, self.host, self.host]
-#         client = ParallelSSHClient(hosts, port=port,
-#                                    pkey=self.user_key,
-#                                    num_retries=1)
-#         output = client.run_command(self.fake_cmd, stop_on_errors=False)
-#         client.pool.join()
-#         self.assertEqual(len(hosts), len(output.keys()),
-#                          msg="Host list contains %s identical hosts, only got output for %s" % (
-#                              len(hosts), len(output.keys())))
+    def test_identical_host_output(self):
+        """Test that we get output when running with duplicated hosts"""
+        # Make port with no server listening on it just for testing output
+        port = self.make_random_port()
+        hosts = [self.host, self.host, self.host]
+        client = ParallelSSHClient(hosts, port=port,
+                                   pkey=self.user_key,
+                                   num_retries=1)
+        output = client.run_command(self.cmd, stop_on_errors=False)
+        client.join(output)
+        self.assertEqual(len(hosts), len(output.keys()),
+                         msg="Host list contains %s identical hosts, only got output for %s" % (
+                             len(hosts), len(output.keys())))
 
-#     def test_connection_error_exception(self):
-#         """Test that we get connection error exception in output with correct arguments"""
-#         # Make port with no server listening on it on separate ip
-#         host = '127.0.0.3'
-#         port = self.make_random_port(host=host)
-#         hosts = [host]
-#         client = ParallelSSHClient(hosts, port=port,
-#                                    pkey=self.user_key,
-#                                    num_retries=1)
-#         output = client.run_command(self.fake_cmd, stop_on_errors=False)
-#         client.pool.join()
-#         self.assertTrue('exception' in output[host],
-#                         msg="Got no exception for host %s - expected connection error" % (
-#                             host,))
-#         try:
-#             raise output[host]['exception']
-#         except ConnectionErrorException as ex:
-#             self.assertEqual(ex.args[1], host,
-#                              msg="Exception host argument is %s, should be %s" % (
-#                                  ex.args[1], host,))
-#             self.assertEqual(ex.args[2], port,
-#                              msg="Exception port argument is %s, should be %s" % (
-#                                  ex.args[2], port,))
-#         else:
-#             raise Exception("Expected ConnectionErrorException")
+    def test_connection_error_exception(self):
+        """Test that we get connection error exception in output with correct arguments"""
+        # Make port with no server listening on it on separate ip
+        host = '127.0.0.3'
+        port = self.make_random_port(host=host)
+        hosts = [host]
+        client = ParallelSSHClient(hosts, port=port,
+                                   pkey=self.user_key,
+                                   num_retries=1)
+        output = client.run_command(self.cmd, stop_on_errors=False)
+        client.join(output)
+        self.assertTrue('exception' in output[host],
+                        msg="Got no exception for host %s - expected connection error" % (
+                            host,))
+        try:
+            raise output[host]['exception']
+        except ConnectionErrorException as ex:
+            self.assertEqual(ex.args[1], host,
+                             msg="Exception host argument is %s, should be %s" % (
+                                 ex.args[1], host,))
+            self.assertEqual(ex.args[2], port,
+                             msg="Exception port argument is %s, should be %s" % (
+                                 ex.args[2], port,))
+        else:
+            raise Exception("Expected ConnectionErrorException")
 
-#     def test_authentication_exception(self):
-#         """Test that we get authentication exception in output with correct arguments"""
-#         server, port = start_server_from_ip(self.host, fail_auth=True)
-#         hosts = [self.host]
-#         client = ParallelSSHClient(hosts, port=port,
-#                                    pkey=self.user_key,
-#                                    agent=self.agent,
-#                                    num_retries=1)
-#         output = client.run_command(self.fake_cmd, stop_on_errors=False)
-#         client.pool.join()
-#         self.assertTrue('exception' in output[self.host],
-#                         msg="Got no exception for host %s - expected connection error" % (
-#                             self.host,))
-#         try:
-#             raise output[self.host]['exception']
-#         except AuthenticationException as ex:
-#             self.assertEqual(ex.args[1], self.host,
-#                              msg="Exception host argument is %s, should be %s" % (
-#                                  ex.args[1], self.host,))
-#             self.assertEqual(ex.args[2], port,
-#                              msg="Exception port argument is %s, should be %s" % (
-#                                  ex.args[2], port,))
-#         else:
-#             raise Exception("Expected AuthenticationException")
-#         server.kill()
+    def test_authentication_exception(self):
+        """Test that we get authentication exception in output with correct arguments"""
+        # server, port = start_server_from_ip(self.host, fail_auth=True)
+        hosts = [self.host]
+        client = ParallelSSHClient(hosts, port=self.port,
+                                   pkey='A REALLY FAKE KEY',
+                                   num_retries=1)
+        output = client.run_command(self.cmd, stop_on_errors=False)
+        self.assertTrue('exception' in output[self.host],
+                        msg="Got no exception for host %s - expected connection error" % (
+                            self.host,))
+        try:
+            raise output[self.host]['exception']
+        except AuthenticationException as ex:
+            self.assertEqual(ex.args[1], self.host,
+                             msg="Exception host argument is %s, should be %s" % (
+                                 ex.args[1], self.host,))
+            self.assertEqual(ex.args[2], self.port,
+                             msg="Exception port argument is %s, should be %s" % (
+                                 ex.args[2], self.port,))
+        else:
+            raise Exception("Expected AuthenticationException")
 
-#     def test_ssh_exception(self):
-#         """Test that we get ssh exception in output with correct arguments"""
-#         host = '127.0.0.10'
-#         server, port = start_server_from_ip(host, ssh_exception=True)
-#         hosts = [host]
-#         client = ParallelSSHClient(hosts, port=port,
-#                                    user='fakey', password='fakey',
-#                                    pkey=RSAKey.generate(1024),
-#                                    num_retries=1)
-#         output = client.run_command(self.fake_cmd, stop_on_errors=False)
-#         client.pool.join()
-#         self.assertTrue('exception' in output[host],
-#                         msg="Got no exception for host %s - expected connection error" % (
-#                             host,))
-#         try:
-#             raise output[host]['exception']
-#         except SSHException as ex:
-#             self.assertEqual(ex.args[1], host,
-#                              msg="Exception host argument is %s, should be %s" % (
-#                                  ex.args[1], host,))
-#             self.assertEqual(ex.args[2], port,
-#                              msg="Exception port argument is %s, should be %s" % (
-#                                  ex.args[2], port,))
-#         else:
-#             raise Exception("Expected SSHException")
-#         server.kill()
+    def test_multiple_single_quotes_in_cmd(self):
+        """Test that we can run a command with multiple single quotes"""
+        output = self.client.run_command("echo 'me' 'and me'")
+        stdout = list(output[self.host].stdout)
+        expected = 'me and me'
+        self.assertTrue(len(stdout)==1,
+                        msg="Got incorrect number of lines in output - %s" % (stdout,))
+        self.assertTrue(output[self.host]['exit_code'] == 0,
+                        msg="Error executing cmd with multiple single quotes - %s" % (
+                            stdout,))
+        self.assertEqual(expected, stdout[0],
+                         msg="Got unexpected output. Expected %s, got %s" % (
+                             expected, stdout[0],))
 
-#     def test_multiple_single_quotes_in_cmd(self):
-#         """Test that we can run a command with multiple single quotes"""
-#         output = self.client.run_command("echo 'me' 'and me'")
-#         stdout = list(output[self.host]['stdout'])
-#         expected = 'me and me'
-#         self.assertTrue(len(stdout)==1,
-#                         msg="Got incorrect number of lines in output - %s" % (stdout,))
-#         self.assertTrue(output[self.host]['exit_code'] == 0,
-#                         msg="Error executing cmd with multiple single quotes - %s" % (
-#                             stdout,))
-#         self.assertEqual(expected, stdout[0],
-#                          msg="Got unexpected output. Expected %s, got %s" % (
-#                              expected, stdout[0],))
+    def test_backtics_in_cmd(self):
+        """Test running command with backtics in it"""
+        output = self.client.run_command("out=`ls` && echo $out")
+        self.client.join(output)
+        self.assertTrue(output[self.host]['exit_code'] == 0,
+                        msg="Error executing cmd with backtics - error code %s" % (
+                            output[self.host]['exit_code'],))
 
-#     def test_backtics_in_cmd(self):
-#         """Test running command with backtics in it"""
-#         output = self.client.run_command("out=`ls` && echo $out")
-#         self.client.join(output)
-#         self.assertTrue(output[self.host]['exit_code'] == 0,
-#                         msg="Error executing cmd with backtics - error code %s" % (
-#                             output[self.host]['exit_code'],))
+    def test_multiple_shell_commands(self):
+        """Test running multiple shell commands in one go"""
+        output = self.client.run_command("echo me; echo and; echo me")
+        stdout = list(output[self.host]['stdout'])
+        expected = ["me", "and", "me"]
+        self.assertTrue(output[self.host]['exit_code'] == 0,
+                        msg="Error executing multiple shell cmds - error code %s" % (
+                            output[self.host]['exit_code'],))
+        self.assertEqual(expected, stdout,
+                         msg="Got unexpected output. Expected %s, got %s" % (
+                             expected, stdout,))
 
-#     def test_multiple_shell_commands(self):
-#         """Test running multiple shell commands in one go"""
-#         output = self.client.run_command("echo me; echo and; echo me")
-#         stdout = list(output[self.host]['stdout'])
-#         expected = ["me", "and", "me"]
-#         self.assertTrue(output[self.host]['exit_code'] == 0,
-#                         msg="Error executing multiple shell cmds - error code %s" % (
-#                             output[self.host]['exit_code'],))
-#         self.assertEqual(expected, stdout,
-#                          msg="Got unexpected output. Expected %s, got %s" % (
-#                              expected, stdout,))
+    def test_escaped_quotes(self):
+        """Test escaped quotes in shell variable are handled correctly"""
+        output = self.client.run_command('t="--flags=\\"this\\""; echo $t')
+        stdout = list(output[self.host]['stdout'])
+        expected = ['--flags="this"']
+        self.assertTrue(output[self.host]['exit_code'] == 0,
+                        msg="Error executing multiple shell cmds - error code %s" % (
+                            output[self.host]['exit_code'],))
+        self.assertEqual(expected, stdout,
+                         msg="Got unexpected output. Expected %s, got %s" % (
+                             expected, stdout,))
 
-#     def test_escaped_quotes(self):
-#         """Test escaped quotes in shell variable are handled correctly"""
-#         output = self.client.run_command('t="--flags=\\"this\\""; echo $t')
-#         stdout = list(output[self.host]['stdout'])
-#         expected = ['--flags="this"']
-#         self.assertTrue(output[self.host]['exit_code'] == 0,
-#                         msg="Error executing multiple shell cmds - error code %s" % (
-#                             output[self.host]['exit_code'],))
-#         self.assertEqual(expected, stdout,
-#                          msg="Got unexpected output. Expected %s, got %s" % (
-#                              expected, stdout,))
+    def test_host_config(self):
+        """Test per-host configuration functionality of ParallelSSHClient"""
+        hosts = [('127.0.0.%01d' % n, self.make_random_port())
+                 for n in xrange(1,3)]
+        host_config = dict.fromkeys([h for h,_ in hosts])
+        servers = []
+        password = 'overriden_pass'
+        fake_key = 'FAKE KEY'
+        for host, port in hosts:
+            server = OpenSSHServer(listen_ip=host, port=port)
+            server.start_server()
+            host_config[host] = {}
+            host_config[host]['port'] = port
+            host_config[host]['user'] = self.user
+            host_config[host]['password'] = password
+            host_config[host]['private_key'] = self.user_key
+            servers.append(server)
+        host_config[hosts[1][0]]['private_key'] = fake_key
+        client = ParallelSSHClient([h for h, _ in hosts], host_config=host_config)
+        output = client.run_command(self.cmd, stop_on_errors=False)
+        client.join(output)
+        for host, _ in hosts:
+            self.assertTrue(host in output)
+        try:
+            raise output[hosts[1][0]]['exception']
+        except AuthenticationException as ex:
+            pass
+        else:
+            raise AssertionError("Expected AutnenticationException on host %s",
+                                 hosts[0][0])
+        self.assertTrue(output[hosts[1][0]].exit_code is None,
+                        msg="Execution failed on host %s" % (hosts[1][0],))
+        self.assertTrue(client.host_clients[hosts[0][0]].user == self.user,
+                        msg="Host config user override failed")
+        self.assertTrue(client.host_clients[hosts[0][0]].password == password,
+                        msg="Host config password override failed")
+        self.assertTrue(client.host_clients[hosts[0][0]].pkey == self.user_key,
+                        msg="Host config pkey override failed")
+        for server in servers:
+            server.stop()
 
-#     def test_host_config(self):
-#         """Test per-host configuration functionality of ParallelSSHClient"""
-#         hosts = ['127.0.0.%01d' % n for n in xrange(1,3)]
-#         host_config = dict.fromkeys(hosts)
-#         servers = []
-#         user = 'overriden_user'
-#         password = 'overriden_pass'
-#         for host in hosts:
-#             server, port = start_server_from_ip(host, fail_auth=hosts.index(host))
-#             host_config[host] = {}
-#             host_config[host]['port'] = port
-#             host_config[host]['user'] = user
-#             host_config[host]['password'] = password
-#             servers.append(server)
-#         pkey_data = load_private_key(PKEY_FILENAME)
-#         host_config[hosts[0]]['private_key'] = pkey_data
-#         client = ParallelSSHClient(hosts, host_config=host_config)
-#         output = client.run_command(self.fake_cmd, stop_on_errors=False)
-#         client.join(output)
-#         for host in hosts:
-#             self.assertTrue(host in output)
-#         try:
-#             raise output[hosts[1]]['exception']
-#         except AuthenticationException as ex:
-#             pass
-#         else:
-#             raise AssertionError("Expected AutnenticationException on host %s",
-#                                  hosts[0])
-#         self.assertFalse(output[hosts[1]]['exit_code'],
-#                          msg="Execution failed on host %s" % (hosts[1],))
-#         self.assertTrue(client.host_clients[hosts[0]].user == user,
-#                         msg="Host config user override failed")
-#         self.assertTrue(client.host_clients[hosts[0]].password == password,
-#                         msg="Host config password override failed")
-#         self.assertTrue(client.host_clients[hosts[0]].pkey == pkey_data,
-#                         msg="Host config pkey override failed")
-#         for server in servers:
-#             server.kill()
+    def test_pssh_client_override_allow_agent_authentication(self):
+        """Test running command with allow_agent set to False"""
+        client = ParallelSSHClient([self.host],
+                                   port=self.port,
+                                   allow_agent=False,
+                                   pkey=self.user_key)
+        output = client.run_command(self.cmd)
+        expected_exit_code = 0
+        expected_stdout = [self.resp]
+        expected_stderr = []
+        stdout = list(output[self.host]['stdout'])
+        stderr = list(output[self.host]['stderr'])
+        exit_code = output[self.host]['exit_code']
+        self.assertEqual(expected_exit_code, exit_code,
+                         msg="Got unexpected exit code - %s, expected %s" %
+                             (exit_code,
+                              expected_exit_code,))
+        self.assertEqual(expected_stdout, stdout,
+                         msg="Got unexpected stdout - %s, expected %s" %
+                             (stdout,
+                              expected_stdout,))
+        self.assertEqual(expected_stderr, stderr,
+                         msg="Got unexpected stderr - %s, expected %s" %
+                             (stderr,
+                              expected_stderr,))
 
-#     def test_pssh_client_override_allow_agent_authentication(self):
-#         """Test running command with allow_agent set to False"""
-#         output = self.client.run_command(self.fake_cmd)
-#         expected_exit_code = 0
-#         expected_stdout = [self.fake_resp]
-#         expected_stderr = []
-#         stdout = list(output[self.host]['stdout'])
-#         stderr = list(output[self.host]['stderr'])
-#         exit_code = output[self.host]['exit_code']
-#         self.assertEqual(expected_exit_code, exit_code,
-#                          msg="Got unexpected exit code - %s, expected %s" %
-#                              (exit_code,
-#                               expected_exit_code,))
-#         self.assertEqual(expected_stdout, stdout,
-#                          msg="Got unexpected stdout - %s, expected %s" %
-#                              (stdout,
-#                               expected_stdout,))
-#         self.assertEqual(expected_stderr, stderr,
-#                          msg="Got unexpected stderr - %s, expected %s" %
-#                              (stderr,
-#                               expected_stderr,))
+    def test_get_exit_codes_bad_output(self):
+        self.assertFalse(self.client.get_exit_codes({}))
+        self.assertFalse(self.client.get_exit_code({}))
 
-#     def test_get_exit_codes_bad_output(self):
-#         self.assertFalse(self.client.get_exit_codes({}))
-#         self.assertFalse(self.client.get_exit_code({}))
+    def test_per_host_tuple_args(self):
+        host2, host3 = '127.0.0.2', '127.0.0.3'
+        server2 = OpenSSHServer(host2)
+        server3 = OpenSSHServer(host3)
+        servers = [server2, server3]
+        for server in servers:
+            server.start_server()
+        hosts = [self.host, host2, host3]
+        host_args = ('arg1', 'arg2', 'arg3')
+        cmd = 'echo %s'
+        client = ParallelSSHClient(hosts, port=self.port,
+                                   pkey=self.user_key,
+                                   num_retries=1)
+        output = client.run_command(cmd, host_args=host_args)
+        for i, host in enumerate(hosts):
+            expected = [host_args[i]]
+            stdout = list(output[host]['stdout'])
+            self.assertEqual(expected, stdout)
+            self.assertTrue(output[host]['exit_code'] == 0)
+        host_args = (('arg1', 'arg2'), ('arg3', 'arg4'), ('arg5', 'arg6'),)
+        cmd = 'echo %s %s'
+        output = client.run_command(cmd, host_args=host_args)
+        for i, host in enumerate(hosts):
+            expected = ["%s %s" % host_args[i]]
+            stdout = list(output[host]['stdout'])
+            self.assertEqual(expected, stdout)
+            self.assertTrue(output[host]['exit_code'] == 0)
+        self.assertRaises(HostArgumentException, client.run_command,
+                          cmd, host_args=[host_args[0]])
+        # Invalid number of args
+        host_args = (('arg1', ),)
+        self.assertRaises(
+            TypeError, client.run_command, cmd, host_args=host_args)
+        for server in servers:
+            server.stop()
 
-#     def test_per_host_tuple_args(self):
-#         host2, host3 = '127.0.0.2', '127.0.0.3'
-#         server2, _ = start_server_from_ip(host2, port=self.listen_port)
-#         server3, _ = start_server_from_ip(host3, port=self.listen_port)
-#         hosts = [self.host, host2, host3]
-#         host_args = ('arg1', 'arg2', 'arg3')
-#         cmd = 'echo %s'
-#         client = ParallelSSHClient(hosts, port=self.listen_port,
-#                                    pkey=self.user_key,
-#                                    num_retries=1)
-#         output = client.run_command(cmd, host_args=host_args)
-#         for i, host in enumerate(hosts):
-#             expected = [host_args[i]]
-#             stdout = list(output[host]['stdout'])
-#             self.assertEqual(expected, stdout)
-#             self.assertTrue(output[host]['exit_code'] == 0)
-#         host_args = (('arg1', 'arg2'), ('arg3', 'arg4'), ('arg5', 'arg6'),)
-#         cmd = 'echo %s %s'
-#         output = client.run_command(cmd, host_args=host_args)
-#         for i, host in enumerate(hosts):
-#             expected = ["%s %s" % host_args[i]]
-#             stdout = list(output[host]['stdout'])
-#             self.assertEqual(expected, stdout)
-#             self.assertTrue(output[host]['exit_code'] == 0)
-#         self.assertRaises(HostArgumentException, client.run_command,
-#                           cmd, host_args=[host_args[0]])
-#         # Invalid number of args
-#         host_args = (('arg1', ),)
-#         self.assertRaises(
-#             TypeError, client.run_command, cmd, host_args=host_args)
-#         for server in [server2, server3]:
-#             server.kill()
+    def test_per_host_dict_args(self):
+        host2, host3 = '127.0.0.2', '127.0.0.3'
+        server2 = OpenSSHServer(host2)
+        server3 = OpenSSHServer(host3)
+        servers = [server2, server3]
+        for server in servers:
+            server.start_server()
+        hosts = [self.host, host2, host3]
+        hosts_gen = (h for h in hosts)
+        host_args = [dict(zip(('host_arg1', 'host_arg2',),
+                              ('arg1-%s' % (i,), 'arg2-%s' % (i,),)))
+                     for i, _ in enumerate(hosts)]
+        cmd = 'echo %(host_arg1)s %(host_arg2)s'
+        client = ParallelSSHClient(hosts, port=self.port,
+                                   pkey=self.user_key,
+                                   num_retries=1)
+        output = client.run_command(cmd, host_args=host_args)
+        for i, host in enumerate(hosts):
+            expected = ["%(host_arg1)s %(host_arg2)s" % host_args[i]]
+            stdout = list(output[host]['stdout'])
+            self.assertEqual(expected, stdout)
+            self.assertTrue(output[host]['exit_code'] == 0)
+        self.assertRaises(HostArgumentException, client.run_command,
+                          cmd, host_args=[host_args[0]])
+        # Host list generator should work also
+        client.hosts = hosts_gen
+        output = client.run_command(cmd, host_args=host_args)
+        for i, host in enumerate(hosts):
+            expected = ["%(host_arg1)s %(host_arg2)s" % host_args[i]]
+            stdout = list(output[host]['stdout'])
+            self.assertEqual(expected, stdout)
+            self.assertTrue(output[host]['exit_code'] == 0)
+        client.hosts = (h for h in hosts)
+        self.assertRaises(HostArgumentException, client.run_command,
+                          cmd, host_args=[host_args[0]])
+        client.hosts = hosts
 
-#     def test_per_host_dict_args(self):
-#         host2, host3 = '127.0.0.2', '127.0.0.3'
-#         server2, _ = start_server_from_ip(host2, port=self.listen_port)
-#         server3, _ = start_server_from_ip(host3, port=self.listen_port)
-#         hosts = [self.host, host2, host3]
-#         hosts_gen = (h for h in hosts)
-#         host_args = [dict(zip(('host_arg1', 'host_arg2',),
-#                               ('arg1-%s' % (i,), 'arg2-%s' % (i,),)))
-#                      for i, _ in enumerate(hosts)]
-#         cmd = 'echo %(host_arg1)s %(host_arg2)s'
-#         client = ParallelSSHClient(hosts, port=self.listen_port,
-#                                    pkey=self.user_key,
-#                                    num_retries=1)
-#         output = client.run_command(cmd, host_args=host_args)
-#         for i, host in enumerate(hosts):
-#             expected = ["%(host_arg1)s %(host_arg2)s" % host_args[i]]
-#             stdout = list(output[host]['stdout'])
-#             self.assertEqual(expected, stdout)
-#             self.assertTrue(output[host]['exit_code'] == 0)
-#         self.assertRaises(HostArgumentException, client.run_command,
-#                           cmd, host_args=[host_args[0]])
-#         # Host list generator should work also
-#         client.hosts = hosts_gen
-#         output = client.run_command(cmd, host_args=host_args)
-#         for i, host in enumerate(hosts):
-#             expected = ["%(host_arg1)s %(host_arg2)s" % host_args[i]]
-#             stdout = list(output[host]['stdout'])
-#             self.assertEqual(expected, stdout)
-#             self.assertTrue(output[host]['exit_code'] == 0)
-#         client.hosts = (h for h in hosts)
-#         self.assertRaises(HostArgumentException, client.run_command,
-#                           cmd, host_args=[host_args[0]])
-#         client.hosts = hosts
+    def test_per_host_dict_args_invalid(self):
+        cmd = 'echo %(host_arg1)s %(host_arg2)s'
+        # Invalid number of host args
+        host_args = [{'host_arg1': 'arg1'}]
+        self.assertRaises(
+            KeyError, self.client.run_command, cmd, host_args=host_args)
 
-#     def test_per_host_dict_args_invalid(self):
-#         cmd = 'echo %(host_arg1)s %(host_arg2)s'
-#         # Invalid number of host args
-#         host_args = [{'host_arg1': 'arg1'}]
-#         self.assertRaises(
-#             KeyError, self.client.run_command, cmd, host_args=host_args)
+    def test_ssh_client_utf_encoding(self):
+        """Test that unicode output works"""
+        expected = [u'é']
+        _utf16 = 'é'.decode('utf-16')
+        cmd = u"echo 'é'"
+        output = self.client.run_command(cmd)
+        stdout = list(output[self.host].stdout)
+        self.assertEqual(expected, stdout,
+                         msg="Got unexpected unicode output %s - expected %s" % (
+                             stdout, expected,))
+        output = self.client.run_command(cmd, encoding='utf-16')
+        _stdout = list(output[self.host].stdout)
+        self.assertEqual([_utf16], _stdout)
 
-#     def test_ssh_client_utf_encoding(self):
-#         """Test that unicode output works"""
-#         expected = [u'é']
-#         cmd = u"echo 'é'"
-#         output = self.client.run_command(cmd)
-#         stdout = list(output[self.host]['stdout'])
-#         self.assertEqual(expected, stdout,
-#                          msg="Got unexpected unicode output %s - expected %s" % (
-#                              stdout, expected,))
-#         utf16_server, server_port = start_server_from_ip(
-#             self.host, encoding='utf-16')
-#         client = ParallelSSHClient([self.host], port=server_port,
-#                                    pkey=self.user_key)
-#         # File is already set to utf-8, cannot use utf-16 only representations
-#         # Using ascii characters decoded as utf-16 on py2
-#         # and utf-8 encoded ascii decoded to utf-16 on py3
-#         output = client.run_command(self.fake_cmd, encoding='utf-16')
-#         stdout = list(output[self.host]['stdout'])
-#         if isinstance(self.fake_resp, bytes):
-#             self.assertEqual([self.fake_resp.decode('utf-16')], stdout)
-#         else:
-#             self.assertEqual([self.fake_resp.encode('utf-8').decode('utf-16')],
-#                              stdout)
+    def test_pty(self):
+        cmd = "echo 'asdf' >&2"
+        expected_stderr = ['asdf']
+        output = self.client.run_command(cmd)
+        self.client.join(output)
+        stdout = list(output[self.host].stdout)
+        stderr = list(output[self.host].stderr)
+        exit_code = output[self.host].exit_code
+        self.assertEqual([], stdout)
+        self.assertEqual(expected_stderr, stderr)
+        self.assertTrue(exit_code == 0)
+        output = self.client.run_command(cmd, use_pty=True)
+        stdout = list(output[self.host].stdout)
+        stderr = list(output[self.host].stderr)
+        exit_code = output[self.host].exit_code
+        expected_stdout = []
+        # import ipdb; ipdb.set_trace()
+        # With a PTY, stdout and stderr are combined into stdout
+        self.assertEqual(expected_stderr, stdout)
+        self.assertEqual([], stderr)
+        self.assertTrue(exit_code == 0)
 
-#     def test_pty(self):
-#         cmd = "exit 0"
-#         output = self.client.run_command(cmd, use_pty=False)
-#         self.client.join(output)
-#         stdout = list(output[self.host]['stdout'])
-#         exit_code = output[self.host]['exit_code']
-#         expected = []
-#         self.assertEqual(expected, stdout)
-#         self.assertTrue(exit_code == 0)
+    def test_output_attributes(self):
+        output = self.client.run_command(self.cmd)
+        expected_exit_code = 0
+        expected_stdout = [self.resp]
+        expected_stderr = []
+        self.client.join(output)
+        exit_code = output[self.host]['exit_code']
+        stdout = list(output[self.host]['stdout'])
+        stderr = list(output[self.host]['stderr'])
+        host_output = output[self.host]
+        self.assertEqual(expected_exit_code, host_output.exit_code)
+        self.assertEqual(expected_exit_code, host_output['exit_code'])
+        self.assertEqual(host_output['cmd'], host_output.cmd)
+        self.assertEqual(host_output['exception'], host_output.exception)
+        self.assertEqual(host_output['stdout'], host_output.stdout)
+        self.assertEqual(host_output['stderr'], host_output.stderr)
+        self.assertEqual(host_output['stdin'], host_output.stdin)
+        self.assertEqual(host_output['channel'], host_output.channel)
+        self.assertEqual(host_output['host'], host_output.host)
+        self.assertTrue(hasattr(output[self.host], 'host'))
+        self.assertTrue(hasattr(output[self.host], 'cmd'))
+        self.assertTrue(hasattr(output[self.host], 'channel'))
+        self.assertTrue(hasattr(output[self.host], 'stdout'))
+        self.assertTrue(hasattr(output[self.host], 'stderr'))
+        self.assertTrue(hasattr(output[self.host], 'stdin'))
+        self.assertTrue(hasattr(output[self.host], 'exception'))
+        self.assertTrue(hasattr(output[self.host], 'exit_code'))
 
-#     def test_channel_timeout(self):
-#         cmd = "sleep 2; echo me"
-#         self.client = ParallelSSHClient([self.host], port=self.listen_port,
-#                                         pkey=self.user_key, channel_timeout=.1)
-#         output = self.client.run_command(cmd)
-#         self.assertRaises(socket_timeout, list, output[self.host]['stdout'])
+    def test_run_command_user_sudo(self):
+        user = 'cmd_user'
+        output = self.client.run_command(self.cmd, user=user)
+        self.client.join(output)
+        stderr = list(output[self.host].stderr)
+        self.assertTrue(len(stderr) > 0)
+        self.assertTrue(output[self.host].exit_code == 1)
 
-#     def test_output_attributes(self):
-#         output = self.client.run_command(self.fake_cmd)
-#         expected_exit_code = 0
-#         expected_stdout = [self.fake_resp]
-#         expected_stderr = []
-#         self.client.join(output)
-#         exit_code = output[self.host]['exit_code']
-#         stdout = list(output[self.host]['stdout'])
-#         stderr = list(output[self.host]['stderr'])
-#         host_output = output[self.host]
-#         self.assertEqual(expected_exit_code, host_output.exit_code)
-#         self.assertEqual(expected_exit_code, host_output['exit_code'])
-#         self.assertEqual(host_output['cmd'], host_output.cmd)
-#         self.assertEqual(host_output['exception'], host_output.exception)
-#         self.assertEqual(host_output['stdout'], host_output.stdout)
-#         self.assertEqual(host_output['stderr'], host_output.stderr)
-#         self.assertEqual(host_output['stdin'], host_output.stdin)
-#         self.assertEqual(host_output['channel'], host_output.channel)
-#         self.assertEqual(host_output['host'], host_output.host)
-#         self.assertTrue(hasattr(output[self.host], 'host'))
-#         self.assertTrue(hasattr(output[self.host], 'cmd'))
-#         self.assertTrue(hasattr(output[self.host], 'channel'))
-#         self.assertTrue(hasattr(output[self.host], 'stdout'))
-#         self.assertTrue(hasattr(output[self.host], 'stderr'))
-#         self.assertTrue(hasattr(output[self.host], 'stdin'))
-#         self.assertTrue(hasattr(output[self.host], 'exception'))
-#         self.assertTrue(hasattr(output[self.host], 'exit_code'))
+    def test_run_command_shell(self):
+        output = self.client.run_command(self.cmd, shell="bash -c")
+        self.client.join(output)
+        stdout = list(output[self.host].stdout)
+        self.assertEqual(stdout, [self.resp])
 
-#     def test_run_command_user_sudo(self):
-#         user = 'cmd_user'
-#         output = self.client.run_command(self.fake_cmd, user=user)
-#         self.client.join(output)
-#         stderr = list(output[self.host].stderr)
-#         self.assertTrue(len(stderr) > 0)
-#         self.assertTrue(output[self.host].exit_code == 1)
+    def test_run_command_shell_sudo(self):
+        output = self.client.run_command(self.cmd,
+                                         shell="bash -c",
+                                         sudo=True)
+        self.client.join(output)
+        stdout = list(output[self.host].stdout)
+        self.assertEqual(stdout, [self.resp])
 
-#     def test_run_command_shell(self):
-#         output = self.client.run_command(self.fake_cmd, shell="bash -c")
-#         self.client.join(output)
-#         stdout = list(output[self.host].stdout)
-#         self.assertEqual(stdout, [self.fake_resp])
-
-#     def test_run_command_no_shell(self):
-#         output = self.client.run_command('id', use_shell=False)
-#         self.client.join(output)
-#         stdout = list(output[self.host].stdout)
-#         self.assertTrue(len(stdout) > 0)
-#         self.assertTrue(output[self.host].exit_code == 0)
+    def test_run_command_sudo(self):
+        output = self.client.run_command(self.cmd, sudo=True)
+        self.client.join(output)
+        stdout = list(output[self.host].stdout)
+        self.assertEqual(stdout, [self.resp])
 
 #     def test_proxy_remote_host_failure_timeout(self):
 #         """Test that timeout setting is passed on to proxy to be used for the
@@ -1080,7 +1034,3 @@ class ParallelSSHClientTest(unittest.TestCase):
 #             del client
 #             server.kill()
 #             proxy_server.kill()
-
-
-# if __name__ == '__main__':
-#     unittest.main()

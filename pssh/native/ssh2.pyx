@@ -112,7 +112,7 @@ cdef void _wait_select(int _socket, LIBSSH2_SESSION *_session):
         if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()
     writefds = (_socket,) \
         if (directions & LIBSSH2_SESSION_BLOCK_OUTBOUND) else ()
-    select(readfds, writefds, (), .1)
+    select(readfds, writefds, ())
 
 
 def wait_select(_socket not None, Session session):
