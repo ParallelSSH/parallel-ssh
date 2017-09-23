@@ -20,9 +20,9 @@
 import logging
 import os
 import pwd
-from socket import gaierror as sock_gaierror, error as sock_error
+# from socket import gaierror as sock_gaierror, error as sock_error
+from socket import error as sock_error
 from sys import version_info
-from multiprocessing import cpu_count
 
 from gevent import sleep, get_hub
 from gevent.select import select
@@ -30,7 +30,7 @@ from gevent import socket
 from ssh2.session import Session, LIBSSH2_SESSION_BLOCK_INBOUND, \
     LIBSSH2_SESSION_BLOCK_OUTBOUND
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
-from ssh2.exceptions import AuthenticationError, AgentError, ChannelError, \
+from ssh2.exceptions import AuthenticationError, AgentError, \
     SessionHandshakeError
 
 from .exceptions import UnknownHostException, AuthenticationException, \
@@ -79,12 +79,12 @@ class SSHClient(object):
             self.session.set_timeout(self.timeout)
         try:
             self.session.handshake(self.sock)
-        except SessionHandshakeError, ex:
+        except SessionHandshakeError as ex:
             msg = "Error connecting to host %s:%s - %s"
             raise SessionError(msg, self.host, self.port, ex)
         try:
             self.auth()
-        except AuthenticationError, ex:
+        except AuthenticationError as ex:
             msg = "Authentication error while connecting to %s:%s - %s"
             raise AuthenticationException(msg, self.host, self.port, ex)
         self.session.set_blocking(0)
@@ -146,10 +146,10 @@ class SSHClient(object):
             logger.debug(
                 "Proceeding with public key file authentication")
             return self._pkey_auth()
-        if allow_agent:
+        if self.allow_agent:
             try:
                 self.session.agent_auth(self.user)
-            except AuthenticationError as ex:
+            except (AuthenticationError, AgentError) as ex:
                 logger.debug("Agent auth failed with %s, "
                              "continuing with other authentication methods",
                              ex)

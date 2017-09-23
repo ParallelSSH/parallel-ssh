@@ -18,17 +18,25 @@
 
 """Package containing ParallelSSHClient class"""
 
-from .base_pssh import BaseParallelSSHClient
-from .constants import DEFAULT_RETRIES
-from .ssh2_client import SSHClient
-
+import sys
+if 'threading' in sys.modules:
+    del sys.modules['threading']
+from gevent import monkey  # noqa: E402
+monkey.patch_all()
 import logging  # noqa: E402
 
 import gevent.pool  # noqa: E402
 import gevent.hub  # noqa: E402
-
 gevent.hub.Hub.NOT_ERROR = (Exception,)
-logger = logging.getLogger(__name__)
+
+from .base_pssh import BaseParallelSSHClient  # noqa: E402
+from .exceptions import HostArgumentException  # noqa: E402
+from .constants import DEFAULT_RETRIES  # noqa: E402
+from .ssh_client import SSHClient  # noqa: E402
+# from .output import HostOutput  # noqa: E402
+
+
+logger = logging.getLogger('pssh')
 
 try:
     xrange
@@ -38,8 +46,11 @@ except NameError:
 
 class ParallelSSHClient(BaseParallelSSHClient):
     def __init__(self, hosts, user=None, password=None, port=None, pkey=None,
-                 num_retries=DEFAULT_RETRIES, timeout=None, pool_size=10,
-                 allow_agent=True, host_config=None):
+                 forward_ssh_agent=True, num_retries=DEFAULT_RETRIES,
+                 timeout=120, pool_size=10, proxy_host=None, proxy_port=22,
+                 proxy_user=None, proxy_password=None, proxy_pkey=None,
+                 agent=None, allow_agent=True, host_config=None,
+                 channel_timeout=None):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -332,10 +343,16 @@ class ParallelSSHClient(BaseParallelSSHClient):
             allow_agent=allow_agent, num_retries=num_retries,
             timeout=timeout, pool_size=pool_size,
             host_config=host_config)
+        self.forward_ssh_agent = forward_ssh_agent
+        self.proxy_host, self.proxy_port, self.proxy_user, \
+            self.proxy_password, self.proxy_pkey = proxy_host, proxy_port, \
+            proxy_user, proxy_password, proxy_pkey
+        self.agent = agent
+        self.channel_timeout = channel_timeout
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
-                    use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8'):
+                    shell=None, use_shell=True, use_pty=True, host_args=None,
+                    encoding='utf-8', **paramiko_kwargs):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output buffers.
 
@@ -386,6 +403,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param encoding: Encoding to use for output. Must be valid
             `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
         :type encoding: str
+        :param paramiko_kwargs: (Optional) Extra keyword arguments to be
+          passed on to :py:func:`paramiko.client.SSHClient.connect`
+        :type paramiko_kwargs: dict
 
         :rtype: Dictionary with host as key and
           :py:class:`pssh.output.HostOutput` as value as per
@@ -627,19 +647,107 @@ class ParallelSSHClient(BaseParallelSSHClient):
           writing to stdin
 
         """
-        return BaseParallelSSHClient.run_command(
-            self, command, stop_on_errors=stop_on_errors, host_args=host_args,
-            user=user, shell=shell, sudo=sudo,
-            encoding=encoding, use_pty=use_pty)
+        output = {}
+        if host_args:
+            try:
+                cmds = [self.pool.spawn(self._run_command, host,
+                                        command % host_args[host_i],
+                                        sudo=sudo, user=user, shell=shell,
+                                        use_shell=use_shell, use_pty=use_pty,
+                                        **paramiko_kwargs)
+                        for host_i, host in enumerate(self.hosts)]
+            except IndexError:
+                raise HostArgumentException(
+                    "Number of host arguments provided does not match "
+                    "number of hosts ")
+        else:
+            cmds = [self.pool.spawn(
+                self._run_command, host, command,
+                sudo=sudo, user=user, shell=shell,
+                use_shell=use_shell, use_pty=use_pty,
+                **paramiko_kwargs)
+                for host in self.hosts]
+        for cmd in cmds:
+            try:
+                self.get_output(cmd, output, encoding=encoding)
+            except Exception:
+                if stop_on_errors:
+                    raise
+        return output
 
     def _run_command(self, host, command, sudo=False, user=None,
-                     shell=None, use_pty=False,
-                     encoding='utf-8'):
-        """Make SSHClient if needed, run command on host"""
-        self._make_ssh_client(host)
-        return self.host_clients[host].run_command(
+                     shell=None, use_shell=True, use_pty=True,
+                     **paramiko_kwargs):
+        """Make SSHClient, run command on host"""
+        self._make_ssh_client(host, **paramiko_kwargs)
+        return self.host_clients[host].exec_command(
             command, sudo=sudo, user=user, shell=shell,
-            use_pty=use_pty, encoding=encoding)
+            use_shell=use_shell, use_pty=use_pty)
+
+    def get_output(self, cmd, output, encoding='utf-8'):
+        """Get output from command.
+
+        :param cmd: Command to get output from
+        :type cmd: :py:class:`gevent.Greenlet`
+        :param output: Dictionary containing
+          :py:class:`pssh.output.HostOutput` values to be updated with output
+          from cmd
+        :type output: dict
+        :rtype: None
+
+        `output` parameter is modified in-place and has the following structure
+
+        ::
+
+          {'myhost1':
+                exit_code=exit code if ready else None
+                channel=SSH channel of command
+                stdout=<iterable>
+                stderr=<iterable>
+                cmd=<greenlet>
+                exception=<exception object if applicable>
+          }
+
+        Stdout and stderr are also logged via the logger named ``host_logger``
+        which can be enabled by calling ``enable_host_logger``
+
+        **Example usage**:
+
+        .. code-block:: python
+
+          output = client.get_output()
+          for host in output:
+              for line in output[host].stdout:
+                  print(line)
+          <stdout>
+          # Get exit code for a particular host's output after command
+          # has finished
+          self.get_exit_code(output[host])
+          0
+
+        """
+        try:
+            (channel, host, stdout, stderr, stdin) = cmd.get()
+        except Exception as ex:
+            try:
+                host = ex.args[1]
+            except IndexError:
+                logger.error("Got exception with no host argument - "
+                             "cannot update output data with %s", ex)
+                raise ex
+            self._update_host_output(
+                output, host, None, None, None, None, None, cmd, exception=ex)
+            raise
+        stdout = self.host_clients[host].read_output_buffer(
+            stdout, callback=self.get_exit_codes,
+            callback_args=(output,),
+            encoding=encoding)
+        stderr = self.host_clients[host].read_output_buffer(
+            stderr, prefix='\t[err]', callback=self.get_exit_codes,
+            callback_args=(output,),
+            encoding=encoding)
+        self._update_host_output(output, host, self._get_exit_code(channel),
+                                 channel, stdout, stderr, stdin, cmd)
 
     def join(self, output, consume_output=False):
         """Block until all remote commands in output have finished
@@ -688,9 +796,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
           [my_host1] <..>
         """
         for host in output:
-            if host not in self.host_clients or self.host_clients[host] is None:
-                continue
-            self.host_clients[host].wait_finished(output[host].channel)
+            output[host].cmd.join()
+            if output[host].channel is not None:
+                output[host].channel.recv_exit_status()
             if consume_output:
                 for line in output[host].stdout:
                     pass
@@ -698,17 +806,35 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     pass
         self.get_exit_codes(output)
 
+    def finished(self, output):
+        """Check if commands have finished without blocking
+
+        :param output: As returned by
+          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
+        :rtype: bool
+        """
+        for host in output:
+            chan = output[host].channel
+            if chan is not None and not chan.closed:
+                return False
+        return True
+
     def _get_exit_code(self, channel):
         """Get exit code from channel if ready"""
-        if channel is None:
+        if channel is None or not channel.exit_status_ready():
             return
-        return channel.get_exit_status()
+        channel.close()
+        return channel.recv_exit_status()
 
-    def _make_ssh_client(self, host):
+    def _make_ssh_client(self, host, **paramiko_kwargs):
         if host not in self.host_clients or self.host_clients[host] is None:
             _user, _port, _password, _pkey = self._get_host_config_values(host)
             self.host_clients[host] = SSHClient(
                 host, user=_user, password=_password, port=_port, pkey=_pkey,
-                num_retries=self.num_retries,
-                timeout=self.timeout,
-                allow_agent=self.allow_agent)
+                forward_ssh_agent=self.forward_ssh_agent,
+                num_retries=self.num_retries, timeout=self.timeout,
+                proxy_host=self.proxy_host, proxy_port=self.proxy_port,
+                proxy_user=self.proxy_user, proxy_password=self.proxy_password,
+                proxy_pkey=self.proxy_pkey, allow_agent=self.allow_agent,
+                agent=self.agent, channel_timeout=self.channel_timeout,
+                **paramiko_kwargs)

@@ -18,7 +18,6 @@
 
 """Package containing ParallelSSHClient class"""
 
-import sys
 import string  # noqa: E402
 import random  # noqa: E402
 import logging  # noqa: E402
@@ -147,13 +146,12 @@ class BaseParallelSSHClient(object):
         try:
             (channel, host, stdout, stderr, stdin) = cmd.get()
         except Exception as ex:
-            exc = sys.exc_info()
             try:
                 host = ex.args[1]
-            except IndexError as _ex:
+            except IndexError:
                 logger.error("Got exception with no host argument - "
-                             "cannot update output data with %s", _ex)
-                raise exc[1]
+                             "cannot update output data with %s", ex)
+                raise ex
             self._update_host_output(
                 output, host, None, None, None, None, None, cmd, exception=ex)
             raise
@@ -214,12 +212,7 @@ class BaseParallelSSHClient(object):
         return self._get_exit_code(host_output.channel)
 
     def _get_exit_code(self, channel):
-        """Get exit code from channel if ready"""
-        if channel is None: # or not channel.eof():
-            # logger.debug("Channel eof not reached, cannot get exit status. "
-            #              "eof status: %s", channel.eof())
-            return
-        return channel.get_exit_status()
+        raise NotImplementedError
 
     def copy_file(self, local_file, remote_file, recurse=False):
         """Copy local file to remote file in parallel
