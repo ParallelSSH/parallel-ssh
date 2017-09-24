@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2017 Panos Kittenis
+# Copyright (C) 2014-2017 Panos Kittenis and contributors
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -45,13 +45,12 @@ _libs = ['ssh2'] if platform.system() != 'Windows' else [
     # 'libeay32', 'ssleay32',
     'Ws2_32', 'libssh2', 'user32']
 
-
 extensions = [
     Extension('pssh.native.ssh2',
               sources=['pssh/native/ssh2.pyx'],
               libraries=_libs,
-              extra_compile_args=['-O3', '-fopenmp'],
-              extra_link_args=['-fopenmp'],
+              # extra_compile_args=['-O3', '-fopenmp'],
+              # extra_link_args=['-fopenmp'],
               **cython_args
     )]
 
