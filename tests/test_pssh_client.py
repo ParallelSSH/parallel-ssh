@@ -157,8 +157,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         expected_exit_code = 0
         expected_stdout = [self.fake_resp]
         expected_stderr = []
-        stdout = list(output[self.host]['stdout'])
-        stderr = list(output[self.host]['stderr'])
+        stdout = list(output[self.host].stdout)
+        stderr = list(output[self.host].stderr)
         exit_code = output[self.host]['exit_code']
         self.assertEqual(expected_exit_code, exit_code,
                          msg="Got unexpected exit code - %s, expected %s" %

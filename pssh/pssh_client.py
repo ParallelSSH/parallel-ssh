@@ -45,6 +45,7 @@ except NameError:
 
 
 class ParallelSSHClient(BaseParallelSSHClient):
+
     def __init__(self, hosts, user=None, password=None, port=None, pkey=None,
                  forward_ssh_agent=True, num_retries=DEFAULT_RETRIES,
                  timeout=120, pool_size=10, proxy_host=None, proxy_port=22,
@@ -818,6 +819,118 @@ class ParallelSSHClient(BaseParallelSSHClient):
             if chan is not None and not chan.closed:
                 return False
         return True
+
+    def copy_file(self, local_file, remote_file, recurse=False):
+        """Copy local file to remote file in parallel
+
+        This function returns a list of greenlets which can be
+        `join`-ed on to wait for completion.
+
+        :py:func:`gevent.joinall` function may be used to join on all greenlets
+        and will also raise exceptions from them if called with
+        ``raise_error=True`` - default is `False`.
+
+        Alternatively call `.get` on each greenlet to raise any exceptions from
+        it.
+
+        Exceptions listed here are raised when
+        either ``gevent.joinall(<greenlets>, raise_error=True)`` is called
+        or ``.get`` is called on each greenlet, not this function itself.
+
+        :param local_file: Local filepath to copy to remote host
+        :type local_file: str
+        :param remote_file: Remote filepath on remote host to copy file to
+        :type remote_file: str
+        :param recurse: Whether or not to descend into directories recursively.
+        :type recurse: bool
+        :rtype: List(:py:class:`gevent.Greenlet`) of greenlets for remote copy
+          commands
+
+        :raises: :py:class:`ValueError` when a directory is supplied to
+          local_file and recurse is not set
+        :raises: :py:class:`IOError` on I/O errors writing files
+        :raises: :py:class:`OSError` on OS errors like permission denied
+
+        .. note ::
+
+          Remote directories in `remote_file` that do not exist will be
+          created as long as permissions allow.
+
+        """
+        return [self.pool.spawn(self._copy_file, host, local_file, remote_file,
+                                {'recurse': recurse})
+                for host in self.hosts]
+
+    def _copy_file(self, host, local_file, remote_file, recurse=False):
+        """Make sftp client, copy file"""
+        self._make_ssh_client(host)
+        return self.host_clients[host].copy_file(local_file, remote_file,
+                                                 recurse=recurse)
+
+    def copy_remote_file(self, remote_file, local_file, recurse=False,
+                         suffix_separator='_'):
+        """Copy remote file(s) in parallel as
+        <local_file><suffix_separator><host>
+
+        With a ``local_file`` value of ``myfile`` and default separator ``_``
+        the resulting filename will be ``myfile_myhost`` for the file from host
+        ``myhost``.
+
+        This function, like :py:func:`ParallelSSHClient.copy_file`, returns a
+        list of greenlets which can be `join`-ed on to wait for completion.
+
+        :py:func:`gevent.joinall` function may be used to join on all greenlets
+        and will also raise exceptions if called with ``raise_error=True`` -
+        default is `False`.
+
+        Alternatively call `.get` on each greenlet to raise any exceptions from
+        it.
+
+        Exceptions listed here are raised when
+        either ``gevent.joinall(<greenlets>, raise_error=True)`` is called
+        or ``.get`` is called on each greenlet, not this function itself.
+
+        :param remote_file: remote filepath to copy to local host
+        :type remote_file: str
+        :param local_file: local filepath on local host to copy file to
+        :type local_file: str
+        :param recurse: whether or not to recurse
+        :type recurse: bool
+        :param suffix_separator: (Optional) Separator string between
+          filename and host, defaults to ``_``. For example, for a
+          ``local_file`` value of ``myfile`` and default separator the
+          resulting filename will be ``myfile_myhost`` for the file from
+          host ``myhost``
+        :type suffix_separator: str
+        :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy
+          commands
+
+        :raises: :py:class:`ValueError` when a directory is supplied to
+          local_file and recurse is not set
+        :raises: :py:class:`IOError` on I/O errors writing files
+        :raises: :py:class:`OSError` on OS errors like permission denied
+
+        .. note ::
+          Local directories in `local_file` that do not exist will be
+          created as long as permissions allow.
+
+        .. note ::
+          File names will be de-duplicated by appending the hostname to the
+          filepath separated by ``suffix_separator``.
+
+        """
+        return [self.pool.spawn(
+            self._copy_remote_file, host, remote_file,
+            local_file, recurse, suffix_separator=suffix_separator)
+            for host in self.hosts]
+
+    def _copy_remote_file(self, host, remote_file, local_file, recurse,
+                          suffix_separator='_'):
+        """Make sftp client, copy file to local"""
+        file_w_suffix = suffix_separator.join([local_file, host])
+        self._make_ssh_client(host)
+        return self.host_clients[host].copy_remote_file(
+                remote_file, file_w_suffix, recurse=recurse)
 
     def _get_exit_code(self, channel):
         """Get exit code from channel if ready"""

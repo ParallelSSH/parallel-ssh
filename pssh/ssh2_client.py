@@ -57,10 +57,10 @@ class SSHClient(object):
                  user=None, password=None, port=None,
                  pkey=None,
                  num_retries=DEFAULT_RETRIES,
-                 allow_agent=True, timeout=None,
-                 # proxy_host=None, proxy_port=22, proxy_user=None,
-                 # proxy_password=None, proxy_pkey=None,
-                 _openssh_config_file=None):
+                 allow_agent=True, timeout=None):
+        # proxy_host=None, proxy_port=22, proxy_user=None,
+        # proxy_password=None, proxy_pkey=None,
+        # _openssh_config_file=None):
         self.host = host
         self.user = user if user else pwd.getpwuid(os.geteuid()).pw_name
         self.password = password
@@ -159,28 +159,18 @@ class SSHClient(object):
         try:
             self._identity_auth()
         except AuthenticationException:
+            if self.password is None:
+                raise
             logger.debug("Public key auth failed, trying password")
             self._password_auth()
 
     def _password_auth(self):
-        if not self.password:
-            raise AuthenticationException(
-                "No password provided - cannot authenticate via password")
         if self._eagain(self.session.userauth_password,
                         self.user, self.password) != 0:
-            raise AuthenticationException(
-                "Password authentication failed")
+            raise AuthenticationException("Password authentication failed")
 
     def open_session(self):
         return open_session(self.sock, self.session)
-        # return THREAD_POOL.apply(open_session, args=(self.sock, self.session))
-
-    # def open_session(self):
-    #     chan = self.session.open_session()
-    #     while chan is None:
-    #         wait_select(self.sock, self.session)
-    #         chan = self.session.open_session()
-    #     return chan
 
     def _run_with_retries(self, func, count=1, *args, **kwargs):
         while func(*args, **kwargs) == LIBSSH2_ERROR_EAGAIN:
@@ -249,23 +239,7 @@ class SSHClient(object):
             ret = func(*args, **kwargs)
         return ret
 
-    def _wait_select(self):
-        """
-        Find out from libssh2 if its blocked on read or write and wait
-        accordingly.
-
-        Return immediately if libssh2 is not blocked.
-        """
-        directions = self.session.block_directions()
-        if directions == 0:
-            return
-        readfds = [self.sock] \
-            if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()
-        writefds = [self.sock] \
-            if (directions & LIBSSH2_SESSION_BLOCK_OUTBOUND) else ()
-        select(readfds, writefds, [], 1)
-
-    def read_output_buffer(self, output_buffer, prefix='',
+    def read_output_buffer(self, output_buffer, prefix=None,
                            callback=None,
                            callback_args=None,
                            encoding='utf-8'):
@@ -280,9 +254,10 @@ class SSHClient(object):
         :param callback_args: Arguments for call back function
         :type callback_args: tuple
         """
+        prefix = '' if prefix is None else prefix
         for line in output_buffer:
-            output = line.decode(encoding)
-            host_logger.info("[%s]%s\t%s", self.host, prefix, output,)
+            output = line.strip().decode(encoding)
+            host_logger.info("[%s]%s\t%s", self.host, prefix, output)
             yield output
         if callback:
             callback(*callback_args)
@@ -305,9 +280,8 @@ class SSHClient(object):
                 _command += '$SHELL -c "%s"' % (command,)
         channel = self.execute(_command, use_pty=use_pty)
         return channel, self.host, \
-            self.read_output_buffer(self.read_output(channel),
-                                    encoding=encoding), \
-            self.read_output_buffer(self.read_stderr(channel),
-                                    encoding=encoding,
-                                    prefix='[stderr]'), \
-            iter([])
+            self.read_output_buffer(
+                self.read_output(channel), encoding=encoding), \
+            self.read_output_buffer(
+                self.read_stderr(channel), encoding=encoding,
+                prefix='\t[err]'), channel

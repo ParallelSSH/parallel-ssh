@@ -283,7 +283,7 @@ class SSHClient(object):
         sleep(0)
         return channel, self.host, stdout, stderr, stdin
 
-    def read_output_buffer(self, output_buffer, prefix='',
+    def read_output_buffer(self, output_buffer, prefix=None,
                            callback=None,
                            callback_args=None,
                            encoding='utf-8'):
@@ -298,9 +298,10 @@ class SSHClient(object):
         :param callback_args: Arguments for call back function
         :type callback_args: tuple
         """
+        prefix = '' if prefix is None else prefix
         for line in output_buffer:
             output = line.strip().decode(encoding)
-            host_logger.info("[%s]%s\t%s", self.host, prefix, output,)
+            host_logger.info("[%s]%s\t%s", self.host, prefix, output)
             yield output
         if callback:
             callback(*callback_args)
