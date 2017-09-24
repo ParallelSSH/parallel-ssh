@@ -97,12 +97,12 @@ def open_session(_socket not None, Session session):
     return PyChannel(chan, session)
 
 
-cdef void _wait_select(int _socket, LIBSSH2_SESSION *_session):
+cdef int _wait_select(int _socket, LIBSSH2_SESSION *_session) except -1:
     cdef int directions = libssh2_session_block_directions(
         _session)
     cdef tuple readfds, writefds
     if directions == 0:
-        return
+        return 0
     readfds = (_socket,) \
         if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()
     writefds = (_socket,) \

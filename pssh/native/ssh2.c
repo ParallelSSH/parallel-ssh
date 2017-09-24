@@ -802,6 +802,35 @@ struct __pyx_obj_4ssh2_7channel_Channel {
 #define __Pyx_FastGIL_Forget()
 #define __Pyx_FastGilFuncInit()
 
+/* PyThreadStateGet.proto */
+#if CYTHON_FAST_THREAD_STATE
+#define __Pyx_PyThreadState_declare  PyThreadState *__pyx_tstate;
+#define __Pyx_PyThreadState_assign  __pyx_tstate = PyThreadState_GET();
+#else
+#define __Pyx_PyThreadState_declare
+#define __Pyx_PyThreadState_assign
+#endif
+
+/* PyErrFetchRestore.proto */
+#if CYTHON_FAST_THREAD_STATE
+#define __Pyx_ErrRestoreWithState(type, value, tb)  __Pyx_ErrRestoreInState(PyThreadState_GET(), type, value, tb)
+#define __Pyx_ErrFetchWithState(type, value, tb)    __Pyx_ErrFetchInState(PyThreadState_GET(), type, value, tb)
+#define __Pyx_ErrRestore(type, value, tb)  __Pyx_ErrRestoreInState(__pyx_tstate, type, value, tb)
+#define __Pyx_ErrFetch(type, value, tb)    __Pyx_ErrFetchInState(__pyx_tstate, type, value, tb)
+static CYTHON_INLINE void __Pyx_ErrRestoreInState(PyThreadState *tstate, PyObject *type, PyObject *value, PyObject *tb);
+static CYTHON_INLINE void __Pyx_ErrFetchInState(PyThreadState *tstate, PyObject **type, PyObject **value, PyObject **tb);
+#else
+#define __Pyx_ErrRestoreWithState(type, value, tb)  PyErr_Restore(type, value, tb)
+#define __Pyx_ErrFetchWithState(type, value, tb)  PyErr_Fetch(type, value, tb)
+#define __Pyx_ErrRestore(type, value, tb)  PyErr_Restore(type, value, tb)
+#define __Pyx_ErrFetch(type, value, tb)  PyErr_Fetch(type, value, tb)
+#endif
+
+/* WriteUnraisableException.proto */
+static void __Pyx_WriteUnraisable(const char *name, int clineno,
+                                  int lineno, const char *filename,
+                                  int full_traceback, int nogil);
+
 /* RaiseArgTupleInvalid.proto */
 static void __Pyx_RaiseArgtupleInvalid(const char* func_name, int exact,
     Py_ssize_t num_min, Py_ssize_t num_max, Py_ssize_t num_found);
@@ -864,35 +893,6 @@ static CYTHON_INLINE PyObject* __Pyx_PyObject_Call(PyObject *func, PyObject *arg
 #else
 #define __Pyx_PyObject_Call(func, arg, kw) PyObject_Call(func, arg, kw)
 #endif
-
-/* PyThreadStateGet.proto */
-#if CYTHON_FAST_THREAD_STATE
-#define __Pyx_PyThreadState_declare  PyThreadState *__pyx_tstate;
-#define __Pyx_PyThreadState_assign  __pyx_tstate = PyThreadState_GET();
-#else
-#define __Pyx_PyThreadState_declare
-#define __Pyx_PyThreadState_assign
-#endif
-
-/* PyErrFetchRestore.proto */
-#if CYTHON_FAST_THREAD_STATE
-#define __Pyx_ErrRestoreWithState(type, value, tb)  __Pyx_ErrRestoreInState(PyThreadState_GET(), type, value, tb)
-#define __Pyx_ErrFetchWithState(type, value, tb)    __Pyx_ErrFetchInState(PyThreadState_GET(), type, value, tb)
-#define __Pyx_ErrRestore(type, value, tb)  __Pyx_ErrRestoreInState(__pyx_tstate, type, value, tb)
-#define __Pyx_ErrFetch(type, value, tb)    __Pyx_ErrFetchInState(__pyx_tstate, type, value, tb)
-static CYTHON_INLINE void __Pyx_ErrRestoreInState(PyThreadState *tstate, PyObject *type, PyObject *value, PyObject *tb);
-static CYTHON_INLINE void __Pyx_ErrFetchInState(PyThreadState *tstate, PyObject **type, PyObject **value, PyObject **tb);
-#else
-#define __Pyx_ErrRestoreWithState(type, value, tb)  PyErr_Restore(type, value, tb)
-#define __Pyx_ErrFetchWithState(type, value, tb)  PyErr_Fetch(type, value, tb)
-#define __Pyx_ErrRestore(type, value, tb)  PyErr_Restore(type, value, tb)
-#define __Pyx_ErrFetch(type, value, tb)  PyErr_Fetch(type, value, tb)
-#endif
-
-/* WriteUnraisableException.proto */
-static void __Pyx_WriteUnraisable(const char *name, int clineno,
-                                  int lineno, const char *filename,
-                                  int full_traceback, int nogil);
 
 /* Import.proto */
 static PyObject *__Pyx_Import(PyObject *name, PyObject *from_list, int level);
@@ -1063,7 +1063,7 @@ static PyObject *(*__pyx_f_4ssh2_7channel_PyChannel)(LIBSSH2_CHANNEL *, struct _
 
 /* Module declarations from 'pssh.native.ssh2' */
 static LIBSSH2_CHANNEL *__pyx_f_4pssh_6native_4ssh2__open_session(int, LIBSSH2_SESSION *); /*proto*/
-static void __pyx_f_4pssh_6native_4ssh2__wait_select(int, LIBSSH2_SESSION *); /*proto*/
+static int __pyx_f_4pssh_6native_4ssh2__wait_select(int, LIBSSH2_SESSION *); /*proto*/
 #define __Pyx_MODULE_NAME "pssh.native.ssh2"
 int __pyx_module_is_main_pssh__native__ssh2 = 0;
 
@@ -1119,6 +1119,7 @@ static LIBSSH2_CHANNEL *__pyx_f_4pssh_6native_4ssh2__open_session(int __pyx_v__s
   LIBSSH2_CHANNEL *__pyx_r;
   __Pyx_RefNannyDeclarations
   int __pyx_t_1;
+  int __pyx_t_2;
   #ifdef WITH_THREAD
   PyGILState_STATE __pyx_gilstate_save;
   #endif
@@ -1173,7 +1174,7 @@ static LIBSSH2_CHANNEL *__pyx_f_4pssh_6native_4ssh2__open_session(int __pyx_v__s
  *         chan = libssh2_channel_open_session(_session)
  *     return chan
  */
-            __pyx_f_4pssh_6native_4ssh2__wait_select(__pyx_v__sock, __pyx_v__session);
+            __pyx_t_2 = __pyx_f_4pssh_6native_4ssh2__wait_select(__pyx_v__sock, __pyx_v__session); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 87, __pyx_L11_error)
           }
 
           /* "pssh/native/ssh2.pyx":86
@@ -1189,6 +1190,12 @@ static LIBSSH2_CHANNEL *__pyx_f_4pssh_6native_4ssh2__open_session(int __pyx_v__s
               __Pyx_PyGILState_Release(__pyx_gilstate_save);
               #endif
               goto __pyx_L12;
+            }
+            __pyx_L11_error: {
+              #ifdef WITH_THREAD
+              __Pyx_PyGILState_Release(__pyx_gilstate_save);
+              #endif
+              goto __pyx_L4_error;
             }
             __pyx_L12:;
           }
@@ -1229,6 +1236,12 @@ static LIBSSH2_CHANNEL *__pyx_f_4pssh_6native_4ssh2__open_session(int __pyx_v__s
       #endif
       goto __pyx_L0;
     }
+    __pyx_L4_error: {
+      #ifdef WITH_THREAD
+      __pyx_gilstate_save = __Pyx_PyGILState_Ensure();
+      #endif
+      goto __pyx_L1_error;
+    }
   }
 
   /* "pssh/native/ssh2.pyx":82
@@ -1240,6 +1253,10 @@ static LIBSSH2_CHANNEL *__pyx_f_4pssh_6native_4ssh2__open_session(int __pyx_v__s
  */
 
   /* function exit code */
+  __pyx_r = 0;
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __Pyx_WriteUnraisable("pssh.native.ssh2._open_session", __pyx_clineno, __pyx_lineno, __pyx_filename, 1, 1);
   __pyx_r = 0;
   __pyx_L0:;
   #ifdef WITH_THREAD
@@ -1403,15 +1420,16 @@ static PyObject *__pyx_pf_4pssh_6native_4ssh2_open_session(CYTHON_UNUSED PyObjec
 /* "pssh/native/ssh2.pyx":100
  * 
  * 
- * cdef void _wait_select(int _socket, LIBSSH2_SESSION *_session):             # <<<<<<<<<<<<<<
+ * cdef int _wait_select(int _socket, LIBSSH2_SESSION *_session) except -1:             # <<<<<<<<<<<<<<
  *     cdef int directions = libssh2_session_block_directions(
  *         _session)
  */
 
-static void __pyx_f_4pssh_6native_4ssh2__wait_select(int __pyx_v__socket, LIBSSH2_SESSION *__pyx_v__session) {
+static int __pyx_f_4pssh_6native_4ssh2__wait_select(int __pyx_v__socket, LIBSSH2_SESSION *__pyx_v__session) {
   int __pyx_v_directions;
   PyObject *__pyx_v_readfds = 0;
   PyObject *__pyx_v_writefds = 0;
+  int __pyx_r;
   __Pyx_RefNannyDeclarations
   int __pyx_t_1;
   PyObject *__pyx_t_2 = NULL;
@@ -1423,7 +1441,7 @@ static void __pyx_f_4pssh_6native_4ssh2__wait_select(int __pyx_v__socket, LIBSSH
 
   /* "pssh/native/ssh2.pyx":101
  * 
- * cdef void _wait_select(int _socket, LIBSSH2_SESSION *_session):
+ * cdef int _wait_select(int _socket, LIBSSH2_SESSION *_session) except -1:
  *     cdef int directions = libssh2_session_block_directions(             # <<<<<<<<<<<<<<
  *         _session)
  *     cdef tuple readfds, writefds
@@ -1434,7 +1452,7 @@ static void __pyx_f_4pssh_6native_4ssh2__wait_select(int __pyx_v__socket, LIBSSH
  *         _session)
  *     cdef tuple readfds, writefds
  *     if directions == 0:             # <<<<<<<<<<<<<<
- *         return
+ *         return 0
  *     readfds = (_socket,) \
  */
   __pyx_t_1 = ((__pyx_v_directions == 0) != 0);
@@ -1443,23 +1461,24 @@ static void __pyx_f_4pssh_6native_4ssh2__wait_select(int __pyx_v__socket, LIBSSH
     /* "pssh/native/ssh2.pyx":105
  *     cdef tuple readfds, writefds
  *     if directions == 0:
- *         return             # <<<<<<<<<<<<<<
+ *         return 0             # <<<<<<<<<<<<<<
  *     readfds = (_socket,) \
  *         if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()
  */
+    __pyx_r = 0;
     goto __pyx_L0;
 
     /* "pssh/native/ssh2.pyx":104
  *         _session)
  *     cdef tuple readfds, writefds
  *     if directions == 0:             # <<<<<<<<<<<<<<
- *         return
+ *         return 0
  *     readfds = (_socket,) \
  */
   }
 
   /* "pssh/native/ssh2.pyx":107
- *         return
+ *         return 0
  *     readfds = (_socket,) \
  *         if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()             # <<<<<<<<<<<<<<
  *     writefds = (_socket,) \
@@ -1469,7 +1488,7 @@ static void __pyx_f_4pssh_6native_4ssh2__wait_select(int __pyx_v__socket, LIBSSH
 
     /* "pssh/native/ssh2.pyx":106
  *     if directions == 0:
- *         return
+ *         return 0
  *     readfds = (_socket,) \             # <<<<<<<<<<<<<<
  *         if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()
  *     writefds = (_socket,) \
@@ -1486,7 +1505,7 @@ static void __pyx_f_4pssh_6native_4ssh2__wait_select(int __pyx_v__socket, LIBSSH
   } else {
 
     /* "pssh/native/ssh2.pyx":107
- *         return
+ *         return 0
  *     readfds = (_socket,) \
  *         if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()             # <<<<<<<<<<<<<<
  *     writefds = (_socket,) \
@@ -1600,23 +1619,26 @@ static void __pyx_f_4pssh_6native_4ssh2__wait_select(int __pyx_v__socket, LIBSSH
   /* "pssh/native/ssh2.pyx":100
  * 
  * 
- * cdef void _wait_select(int _socket, LIBSSH2_SESSION *_session):             # <<<<<<<<<<<<<<
+ * cdef int _wait_select(int _socket, LIBSSH2_SESSION *_session) except -1:             # <<<<<<<<<<<<<<
  *     cdef int directions = libssh2_session_block_directions(
  *         _session)
  */
 
   /* function exit code */
+  __pyx_r = 0;
   goto __pyx_L0;
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_2);
   __Pyx_XDECREF(__pyx_t_3);
   __Pyx_XDECREF(__pyx_t_4);
   __Pyx_XDECREF(__pyx_t_6);
-  __Pyx_WriteUnraisable("pssh.native.ssh2._wait_select", __pyx_clineno, __pyx_lineno, __pyx_filename, 1, 0);
+  __Pyx_AddTraceback("pssh.native.ssh2._wait_select", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = -1;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_readfds);
   __Pyx_XDECREF(__pyx_v_writefds);
   __Pyx_RefNannyFinishContext();
+  return __pyx_r;
 }
 
 /* "pssh/native/ssh2.pyx":113
@@ -1734,7 +1756,7 @@ static PyObject *__pyx_pf_4pssh_6native_4ssh2_2wait_select(CYTHON_UNUSED PyObjec
  * 
  * 
  */
-  __pyx_f_4pssh_6native_4ssh2__wait_select(__pyx_v__sock, __pyx_v__session);
+  __pyx_t_2 = __pyx_f_4pssh_6native_4ssh2__wait_select(__pyx_v__sock, __pyx_v__session); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 116, __pyx_L1_error)
 
   /* "pssh/native/ssh2.pyx":113
  * 
@@ -2046,6 +2068,72 @@ end:
     return (__Pyx_RefNannyAPIStruct *)r;
 }
 #endif
+
+/* PyErrFetchRestore */
+#if CYTHON_FAST_THREAD_STATE
+static CYTHON_INLINE void __Pyx_ErrRestoreInState(PyThreadState *tstate, PyObject *type, PyObject *value, PyObject *tb) {
+    PyObject *tmp_type, *tmp_value, *tmp_tb;
+    tmp_type = tstate->curexc_type;
+    tmp_value = tstate->curexc_value;
+    tmp_tb = tstate->curexc_traceback;
+    tstate->curexc_type = type;
+    tstate->curexc_value = value;
+    tstate->curexc_traceback = tb;
+    Py_XDECREF(tmp_type);
+    Py_XDECREF(tmp_value);
+    Py_XDECREF(tmp_tb);
+}
+static CYTHON_INLINE void __Pyx_ErrFetchInState(PyThreadState *tstate, PyObject **type, PyObject **value, PyObject **tb) {
+    *type = tstate->curexc_type;
+    *value = tstate->curexc_value;
+    *tb = tstate->curexc_traceback;
+    tstate->curexc_type = 0;
+    tstate->curexc_value = 0;
+    tstate->curexc_traceback = 0;
+}
+#endif
+
+/* WriteUnraisableException */
+static void __Pyx_WriteUnraisable(const char *name, CYTHON_UNUSED int clineno,
+                                  CYTHON_UNUSED int lineno, CYTHON_UNUSED const char *filename,
+                                  int full_traceback, CYTHON_UNUSED int nogil) {
+    PyObject *old_exc, *old_val, *old_tb;
+    PyObject *ctx;
+    __Pyx_PyThreadState_declare
+#ifdef WITH_THREAD
+    PyGILState_STATE state;
+    if (nogil)
+        state = PyGILState_Ensure();
+#ifdef _MSC_VER
+    else state = (PyGILState_STATE)-1;
+#endif
+#endif
+    __Pyx_PyThreadState_assign
+    __Pyx_ErrFetch(&old_exc, &old_val, &old_tb);
+    if (full_traceback) {
+        Py_XINCREF(old_exc);
+        Py_XINCREF(old_val);
+        Py_XINCREF(old_tb);
+        __Pyx_ErrRestore(old_exc, old_val, old_tb);
+        PyErr_PrintEx(1);
+    }
+    #if PY_MAJOR_VERSION < 3
+    ctx = PyString_FromString(name);
+    #else
+    ctx = PyUnicode_FromString(name);
+    #endif
+    __Pyx_ErrRestore(old_exc, old_val, old_tb);
+    if (!ctx) {
+        PyErr_WriteUnraisable(Py_None);
+    } else {
+        PyErr_WriteUnraisable(ctx);
+        Py_DECREF(ctx);
+    }
+#ifdef WITH_THREAD
+    if (nogil)
+        PyGILState_Release(state);
+#endif
+}
 
 /* RaiseArgTupleInvalid */
 static void __Pyx_RaiseArgtupleInvalid(
@@ -2410,72 +2498,6 @@ static CYTHON_INLINE PyObject* __Pyx_PyObject_Call(PyObject *func, PyObject *arg
     return result;
 }
 #endif
-
-/* PyErrFetchRestore */
-  #if CYTHON_FAST_THREAD_STATE
-static CYTHON_INLINE void __Pyx_ErrRestoreInState(PyThreadState *tstate, PyObject *type, PyObject *value, PyObject *tb) {
-    PyObject *tmp_type, *tmp_value, *tmp_tb;
-    tmp_type = tstate->curexc_type;
-    tmp_value = tstate->curexc_value;
-    tmp_tb = tstate->curexc_traceback;
-    tstate->curexc_type = type;
-    tstate->curexc_value = value;
-    tstate->curexc_traceback = tb;
-    Py_XDECREF(tmp_type);
-    Py_XDECREF(tmp_value);
-    Py_XDECREF(tmp_tb);
-}
-static CYTHON_INLINE void __Pyx_ErrFetchInState(PyThreadState *tstate, PyObject **type, PyObject **value, PyObject **tb) {
-    *type = tstate->curexc_type;
-    *value = tstate->curexc_value;
-    *tb = tstate->curexc_traceback;
-    tstate->curexc_type = 0;
-    tstate->curexc_value = 0;
-    tstate->curexc_traceback = 0;
-}
-#endif
-
-/* WriteUnraisableException */
-  static void __Pyx_WriteUnraisable(const char *name, CYTHON_UNUSED int clineno,
-                                  CYTHON_UNUSED int lineno, CYTHON_UNUSED const char *filename,
-                                  int full_traceback, CYTHON_UNUSED int nogil) {
-    PyObject *old_exc, *old_val, *old_tb;
-    PyObject *ctx;
-    __Pyx_PyThreadState_declare
-#ifdef WITH_THREAD
-    PyGILState_STATE state;
-    if (nogil)
-        state = PyGILState_Ensure();
-#ifdef _MSC_VER
-    else state = (PyGILState_STATE)-1;
-#endif
-#endif
-    __Pyx_PyThreadState_assign
-    __Pyx_ErrFetch(&old_exc, &old_val, &old_tb);
-    if (full_traceback) {
-        Py_XINCREF(old_exc);
-        Py_XINCREF(old_val);
-        Py_XINCREF(old_tb);
-        __Pyx_ErrRestore(old_exc, old_val, old_tb);
-        PyErr_PrintEx(1);
-    }
-    #if PY_MAJOR_VERSION < 3
-    ctx = PyString_FromString(name);
-    #else
-    ctx = PyUnicode_FromString(name);
-    #endif
-    __Pyx_ErrRestore(old_exc, old_val, old_tb);
-    if (!ctx) {
-        PyErr_WriteUnraisable(Py_None);
-    } else {
-        PyErr_WriteUnraisable(ctx);
-        Py_DECREF(ctx);
-    }
-#ifdef WITH_THREAD
-    if (nogil)
-        PyGILState_Release(state);
-#endif
-}
 
 /* Import */
   static PyObject *__Pyx_Import(PyObject *name, PyObject *from_list, int level) {

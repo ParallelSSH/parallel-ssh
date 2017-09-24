@@ -26,6 +26,8 @@ from jinja2 import Template
 
 
 DIR_NAME = os.path.dirname(__file__)
+PDIR_NAME = os.path.dirname(DIR_NAME)
+PPDIR_NAME = os.path.dirname(PDIR_NAME)
 SERVER_KEY = os.path.abspath(os.path.sep.join([DIR_NAME, 'rsa.key']))
 SSHD_CONFIG_TMPL = os.path.abspath(os.path.sep.join(
     [DIR_NAME, 'sshd_config.tmpl']))
@@ -41,9 +43,15 @@ class OpenSSHServer(object):
         self.sshd_config = SSHD_CONFIG + '_%s' % ''.join(
             random.choice(string.ascii_lowercase + string.digits)
             for _ in xrange(8))
-        _mask = int('0600') if version_info <= (2,) else 0o600
-        os.chmod(SERVER_KEY, _mask)
+        self._fix_masks()
         self.make_config()
+
+    def _fix_masks(self):
+        _mask = int('0600') if version_info <= (2,) else 0o600
+        dir_mask = int('0755') if version_info <= (2,) else 0o755
+        os.chmod(SERVER_KEY, _mask)
+        for _dir in [DIR_NAME, PDIR_NAME, PPDIR_NAME]:
+            os.chmod(_dir, dir_mask)
 
     def make_config(self):
         with open(SSHD_CONFIG_TMPL) as fh:
