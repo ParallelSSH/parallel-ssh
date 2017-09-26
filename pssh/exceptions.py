@@ -47,3 +47,13 @@ class HostArgumentException(Exception):
 class SessionError(Exception):
     """Raised on errors establishing SSH session"""
     pass
+
+
+class SFTPError(Exception):
+    """Raised on SFTP errors"""
+    pass
+
+
+class SFTPIOError(SFTPError):
+    """Raised on SFTP IO errors"""
+    pass

@@ -25,16 +25,18 @@ from socket import error as sock_error
 from sys import version_info
 
 from gevent import sleep, get_hub
-from gevent.select import select
 from gevent import socket
-from ssh2.session import Session, LIBSSH2_SESSION_BLOCK_INBOUND, \
-    LIBSSH2_SESSION_BLOCK_OUTBOUND
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import AuthenticationError, AgentError, \
-    SessionHandshakeError
+    SessionHandshakeError, SFTPHandleError, SFTPIOError as SFTPIOError_ssh2
+from ssh2.session import Session
+from ssh2.sftp import LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
+    LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR, LIBSSH2_SFTP_S_IRGRP, \
+    LIBSSH2_SFTP_S_IWUSR, LIBSSH2_SFTP_S_IXUSR, LIBSSH2_SFTP_S_IROTH, \
+    LIBSSH2_SFTP_S_IXGRP, LIBSSH2_SFTP_S_IXOTH
 
 from .exceptions import UnknownHostException, AuthenticationException, \
-     ConnectionErrorException, SessionError
+     ConnectionErrorException, SessionError, SFTPError, SFTPIOError
 from .constants import DEFAULT_RETRIES
 from .native.ssh2 import open_session, wait_select
 
@@ -60,7 +62,6 @@ class SSHClient(object):
                  allow_agent=True, timeout=None):
         # proxy_host=None, proxy_port=22, proxy_user=None,
         # proxy_password=None, proxy_pkey=None,
-        # _openssh_config_file=None):
         self.host = host
         self.user = user if user else pwd.getpwuid(os.geteuid()).pw_name
         self.password = password
@@ -105,7 +106,7 @@ class SSHClient(object):
                 self.num_retries,)
 
     def _pkey_auth(self):
-        pub_file = "{}.pub".format(self.pkey)
+        pub_file = "%s.pub" % self.pkey
         logger.debug("Attempting authentication with public key %s for user %s",
                      pub_file, self.user)
         self._eagain(
@@ -171,13 +172,6 @@ class SSHClient(object):
 
     def open_session(self):
         return open_session(self.sock, self.session)
-
-    def _run_with_retries(self, func, count=1, *args, **kwargs):
-        while func(*args, **kwargs) == LIBSSH2_ERROR_EAGAIN:
-            if count > self.num_retries:
-                raise AuthenticationException(
-                    "Error authenticating %s@%s", self.user, self.host,)
-            count += 1
 
     def execute(self, cmd, use_pty=False, channel=None):
         logger.debug("Opening new channel for execute")
@@ -285,3 +279,224 @@ class SSHClient(object):
             self.read_output_buffer(
                 self.read_stderr(channel), encoding=encoding,
                 prefix='\t[err]'), channel
+
+    def _make_sftp(self):
+        """Make SFTP client from open transport"""
+        sftp = self.session.sftp_init()
+        while sftp is None:
+            wait_select(self.sock, self.session)
+            sftp = self.session.sftp_init()
+        return sftp
+
+    def _mkdir(self, sftp, directory):
+        """Make directory via SFTP channel
+
+        :param sftp: SFTP client object
+        :type sftp: :py:class:`paramiko.sftp_client.SFTPClient`
+        :param directory: Remote directory to create
+        :type directory: str
+
+        Catches and logs at error level remote IOErrors on creating directory.
+        """
+        mode = LIBSSH2_SFTP_S_IRUSR | \
+            LIBSSH2_SFTP_S_IWUSR | \
+            LIBSSH2_SFTP_S_IXUSR | \
+            LIBSSH2_SFTP_S_IRGRP | \
+            LIBSSH2_SFTP_S_IROTH | \
+            LIBSSH2_SFTP_S_IXGRP | \
+            LIBSSH2_SFTP_S_IXOTH
+        try:
+            self._eagain(sftp.mkdir, directory, mode)
+        except SFTPIOError_ssh2 as error:
+            msg = "Error occured creating directory %s on host %s - %s"
+            logger.error(msg, directory, self.host, error)
+            raise SFTPIOError(msg, directory, self.host, error)
+        logger.debug("Created remote directory %s", directory)
+
+    def copy_file(self, local_file, remote_file, recurse=False,
+                  sftp=None, _dir=None):
+        sftp = self._make_sftp() if sftp is None else sftp
+        if os.path.isdir(local_file) and recurse:
+            return self._copy_dir(local_file, remote_file, sftp)
+        elif os.path.isdir(local_file) and not recurse:
+            raise ValueError("Recurse must be true if local_file is a "
+                             "directory.")
+        destination = self._remote_paths_split(remote_file)
+        try:
+            self._eagain(sftp.stat, destination)
+        except SFTPHandleError:
+            self.mkdir(sftp, destination)
+        try:
+            self.sftp_put(sftp, local_file, remote_file)
+        except Exception as error:
+            logger.error("Error occured copying file %s to remote destination "
+                         "%s:%s - %s",
+                         local_file, self.host, remote_file, error)
+            raise error
+        logger.info("Copied local file %s to remote destination %s:%s",
+                    local_file, self.host, remote_file)
+
+    def sftp_put(self, sftp, local_file, remote_file):
+        mode = LIBSSH2_SFTP_S_IRUSR | \
+               LIBSSH2_SFTP_S_IWUSR | \
+               LIBSSH2_SFTP_S_IRGRP | \
+               LIBSSH2_SFTP_S_IROTH
+        f_flags = LIBSSH2_FXF_CREAT | LIBSSH2_FXF_WRITE | LIBSSH2_FXF_TRUNC
+        try:
+            with self._sftp_openfh(
+                    sftp.open, remote_file, f_flags, mode) as remote_fh, \
+                  open(local_file, 'rb') as local_fh:
+                for data in local_fh:
+                    remote_fh.write(data)
+        except SFTPIOError_ssh2 as ex:
+            msg = "Error writing to remote file %s - %s"
+            logger.error(msg, remote_file, ex)
+            raise SFTPIOError(msg, remote_file, ex)
+
+    def mkdir(self, sftp, directory, parent_path=None):
+        """Make directory via SFTP channel.
+
+        Parent paths in the directory are created if they do not exist.
+
+        :param sftp: SFTP client object
+        :type sftp: :py:class:`paramiko.sftp_client.SFTPClient`
+        :param directory: Remote directory to create
+        :type directory: str
+
+        Catches and logs at error level remote IOErrors on creating directory.
+        """
+        try:
+            _parent_path, sub_dirs = directory.split('/', 1)
+        except ValueError:
+            _parent_path = directory.split('/', 1)[0]
+            sub_dirs = None
+        _directory = _parent_path if parent_path is None else \
+            '/'.join([parent_path, _parent_path])
+        try:
+            self._eagain(sftp.stat, _directory)
+        except SFTPHandleError:
+            self._mkdir(sftp, _directory)
+        if sub_dirs is not None:
+            _parent_path = _parent_path if parent_path is None else \
+                           '/'.join([parent_path, _parent_path])
+            return self.mkdir(sftp, sub_dirs, parent_path=_parent_path)
+
+    def _copy_dir(self, local_dir, remote_dir, sftp):
+        """Call copy_file on every file in the specified directory, copying
+        them to the specified remote directory."""
+        file_list = os.listdir(local_dir)
+        for file_name in file_list:
+            local_path = os.path.join(local_dir, file_name)
+            remote_path = '/'.join([remote_dir, file_name])
+            self.copy_file(local_path, remote_path, recurse=True,
+                           sftp=sftp)
+
+    def copy_remote_file(self, remote_file, local_file, recurse=False,
+                         sftp=None):
+        """Copy remote file to local host via SFTP/SCP
+
+        Copy is done natively using SFTP/SCP version 2, no scp command
+        is used or required.
+
+        :param remote_file: Remote filepath to copy from
+        :type remote_file: str
+        :param local_file: Local filepath where file(s) will be copied to
+        :type local_file: str
+        :param recurse: Whether or not to recursively copy directories
+        :type recurse: bool
+
+        :raises: :py:class:`ValueError` when a directory is supplied to
+          ``local_file`` and ``recurse`` is not set
+        :raises: :py:class:`pssh.exceptions.SFTPIOError` on I/O errors reading
+          from SFTP
+        :raises: :py:class:`OSError` on local OS errors like permission denied
+        """
+        sftp = self._make_sftp() if sftp is None else sftp
+        try:
+            self._eagain(sftp.stat, remote_file)
+        except SFTPHandleError:
+            msg = "Remote file or directory %s does not exist"
+            logger.error(msg, remote_file)
+            raise SFTPIOError(msg, remote_file)
+        try:
+            dir_h = self._sftp_openfh(sftp.opendir, remote_file)
+        except SFTPError:
+            pass
+        else:
+            if not recurse:
+                raise ValueError("Recurse must be true if remote_file is a "
+                                 "directory.")
+            file_list = self._sftp_readdir(dir_h)
+            return self._copy_remote_dir(file_list, remote_file,
+                                         local_file, sftp)
+        destination = os.path.join(os.path.sep, os.path.sep.join(
+            [_dir for _dir in local_file.split('/')
+             if _dir][:-1]))
+        if not os.path.exists(destination):
+            os.makedirs(destination)
+        try:
+            self.sftp_get(sftp, remote_file, local_file)
+        except Exception as error:
+            logger.error("Error occured copying file %s from remote destination"
+                         " %s:%s - %s",
+                         local_file, self.host, remote_file, error)
+            raise
+        logger.info("Copied local file %s from remote destination %s:%s",
+                    local_file, self.host, remote_file)
+
+    def _sftp_readdir(self, dir_h):
+        for size, buf, attrs in dir_h.readdir():
+            for line in buf.splitlines():
+                yield line
+
+    def _sftp_openfh(self, open_func, remote_file, *args):
+        fh = open_func(remote_file, *args)
+        errno = self.session.last_errno()
+        while fh is None and errno == LIBSSH2_ERROR_EAGAIN:
+            wait_select(self.sock, self.session, timeout=0.1)
+            fh = open_func(remote_file, *args)
+            errno = self.session.last_errno()
+        if errno != LIBSSH2_ERROR_EAGAIN:
+            msg = "Error opening file handle for file %s - error no: %s"
+            logger.error(msg, remote_file, errno)
+            raise SFTPError(msg, remote_file, errno)
+        return fh
+
+    def sftp_get(self, sftp, remote_file, local_file):
+        try:
+            with open(local_file, 'wb') as local_fh, \
+                 self._sftp_openfh(sftp.open, remote_file, 0, 0) as remote_fh:
+                for size, data in remote_fh:
+                    local_fh.write(data)
+        except SFTPIOError_ssh2 as ex:
+            msg = "Error reading from remote file %s - %s"
+            logger.error(msg, remote_file, ex)
+            raise SFTPIOError(msg, remote_file, ex)
+
+    def _copy_remote_dir(self, file_list, remote_dir, local_dir, sftp):
+        for file_name in file_list:
+            if file_name in ['.', '..']:
+                continue
+            remote_path = os.path.join(remote_dir, file_name)
+            local_path = os.path.join(local_dir, file_name)
+            self.copy_remote_file(remote_path, local_path, sftp=sftp,
+                                  recurse=True)
+
+    def _make_local_dir(self, dirpath):
+        if os.path.exists(dirpath):
+            return
+        try:
+            os.makedirs(dirpath)
+        except OSError:
+            logger.error("Unable to create local directory structure for "
+                         "directory %s", dirpath)
+            raise
+
+    def _remote_paths_split(self, file_path):
+        try:
+            destination = '/'.join(
+                [_dir for _dir in file_path.split('/')
+                 if _dir][:-1])
+        except IndexError:
+            destination = ''
+        return destination

@@ -18,7 +18,7 @@ import os
 import socket
 import random
 import string
-from subprocess import Popen
+from gevent.subprocess import Popen
 from time import sleep
 from sys import version_info
 

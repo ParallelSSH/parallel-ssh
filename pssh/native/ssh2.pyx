@@ -84,7 +84,7 @@ cdef LIBSSH2_CHANNEL * _open_session(int _sock, LIBSSH2_SESSION * _session) nogi
     chan = libssh2_channel_open_session(_session)
     while chan is NULL:
         with gil:
-            _wait_select(_sock, _session)
+            _wait_select(_sock, _session, None)
         chan = libssh2_channel_open_session(_session)
     return chan
 
@@ -97,7 +97,7 @@ def open_session(_socket not None, Session session):
     return PyChannel(chan, session)
 
 
-cdef int _wait_select(int _socket, LIBSSH2_SESSION *_session) except -1:
+cdef int _wait_select(int _socket, LIBSSH2_SESSION *_session, timeout) except -1:
     cdef int directions = libssh2_session_block_directions(
         _session)
     cdef tuple readfds, writefds
@@ -107,13 +107,13 @@ cdef int _wait_select(int _socket, LIBSSH2_SESSION *_session) except -1:
         if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()
     writefds = (_socket,) \
         if (directions & LIBSSH2_SESSION_BLOCK_OUTBOUND) else ()
-    select(readfds, writefds, ())
+    select(readfds, writefds, (), timeout=timeout)
 
 
-def wait_select(_socket not None, Session session):
+def wait_select(_socket not None, Session session, timeout=None):
     cdef LIBSSH2_SESSION *_session = session._session
     cdef int _sock = PyObject_AsFileDescriptor(_socket)
-    _wait_select(_sock, _session)
+    _wait_select(_sock, _session, timeout)
 
 
 # def p_init(list sessions not None, list usernames not None, list sockets not None):
