@@ -26,8 +26,11 @@ import logging
 import os
 import shutil
 import sys
+import string
 from socket import timeout as socket_timeout
 from sys import version_info
+import random
+
 
 import gevent
 from pssh.pssh2_client import ParallelSSHClient, logger as pssh_logger
@@ -1004,6 +1007,28 @@ class ParallelSSHClientTest(unittest.TestCase):
         output = self.client.run_command(self.cmd, sudo=True)
         self.assertTrue(self.host in output)
         self.assertTrue(output[self.host].channel is not None)
+
+    def test_conn_failure(self):
+        """Test connection error failure case - ConnectionErrorException"""
+        client = ParallelSSHClient(['127.0.0.100'], port=self.port,
+                                   num_retries=0)
+        self.assertRaises(ConnectionErrorException,
+                          client.run_command, self.cmd)
+
+    def test_retries(self):
+        client = ParallelSSHClient(['127.0.0.100'], port=self.port,
+                                   num_retries=2, retry_delay=1)
+        self.assertRaises(ConnectionErrorException, client.run_command, self.cmd)
+        host = ''.join([random.choice(string.ascii_letters) for n in xrange(8)])
+        client.hosts = [host]
+        self.assertRaises(UnknownHostException, client.run_command, self.cmd)
+
+    def test_unknown_host_failure(self):
+        """Test connection error failure case - ConnectionErrorException"""
+        host = ''.join([random.choice(string.ascii_letters) for n in xrange(8)])
+        client = ParallelSSHClient([host], port=self.port,
+                                   num_retries=1)
+        self.assertRaises(UnknownHostException, client.run_command, self.cmd)
 
 #     def test_proxy_remote_host_failure_timeout(self):
 #         """Test that timeout setting is passed on to proxy to be used for the

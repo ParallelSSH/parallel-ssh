@@ -15,22 +15,20 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+"""Abstract parallel SSH client package"""
 
-"""Package containing ParallelSSHClient class"""
+import string
+import random
+import logging
 
-import string  # noqa: E402
-import random  # noqa: E402
-import logging  # noqa: E402
+import gevent.pool
+import gevent.hub
 
-import gevent.pool  # noqa: E402
-import gevent.hub  # noqa: E402
+from .exceptions import HostArgumentException
+from .constants import DEFAULT_RETRIES, RETRY_DELAY
+from .output import HostOutput
+
 gevent.hub.Hub.NOT_ERROR = (Exception,)
-
-from .exceptions import HostArgumentException  # noqa: E402
-from .constants import DEFAULT_RETRIES  # noqa: E402
-from .output import HostOutput  # noqa: E402
-
-
 logger = logging.getLogger(__name__)
 
 try:
@@ -45,7 +43,7 @@ class BaseParallelSSHClient(object):
                  allow_agent=True,
                  num_retries=DEFAULT_RETRIES,
                  timeout=120, pool_size=10,
-                 host_config=None):
+                 host_config=None, retry_delay=RETRY_DELAY):
         self.allow_agent = allow_agent
         self.pool_size = pool_size
         self.pool = gevent.pool.Pool(size=self.pool_size)
@@ -59,6 +57,7 @@ class BaseParallelSSHClient(object):
         # To hold host clients
         self.host_clients = {}
         self.host_config = host_config if host_config else {}
+        self.retry_delay = retry_delay
 
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
@@ -111,39 +110,7 @@ class BaseParallelSSHClient(object):
           :py:class:`pssh.output.HostOutput` values to be updated with output
           from cmd
         :type output: dict
-        :rtype: None
-
-        `output` parameter is modified in-place and has the following structure
-
-        ::
-
-          {'myhost1':
-                exit_code=exit code if ready else None
-                channel=SSH channel of command
-                stdout=<iterable>
-                stderr=<iterable>
-                cmd=<greenlet>
-                exception=<exception object if applicable>
-          }
-
-        Stdout and stderr are also logged via the logger named ``host_logger``
-        which can be enabled by calling ``enable_host_logger``
-
-        **Example usage**:
-
-        .. code-block:: python
-
-          output = client.get_output()
-          for host in output:
-              for line in output[host].stdout:
-                  print(line)
-          <stdout>
-          # Get exit code for a particular host's output after command
-          # has finished
-          self.get_exit_code(output[host])
-          0
-
-        """
+        :rtype: None"""
         try:
             (channel, host, stdout, stderr, stdin) = cmd.get()
         except Exception as ex:
