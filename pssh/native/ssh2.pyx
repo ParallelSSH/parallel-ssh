@@ -20,6 +20,7 @@
 from cpython cimport PyObject_AsFileDescriptor
 # from cython.parallel import parallel, prange, threadid
 from libc.stdlib cimport malloc, free
+from libc.stdio cimport fopen, fclose, fwrite, fread, FILE, printf
 # from openmp cimport omp_lock_t, omp_init_lock, omp_set_lock, omp_unset_lock, \
 #     omp_destroy_lock
 
@@ -27,12 +28,19 @@ from gevent.select import select
 
 from ssh2.c_ssh2 cimport LIBSSH2_CHANNEL, LIBSSH2_SESSION_BLOCK_INBOUND, \
     LIBSSH2_SESSION_BLOCK_OUTBOUND, LIBSSH2_SESSION, \
-    libssh2_session_block_directions, libssh2_channel_open_session
+    libssh2_session_block_directions, libssh2_channel_open_session, \
+    libssh2_session_last_errno, LIBSSH2_CHANNEL_WINDOW_DEFAULT, \
+    LIBSSH2_ERROR_EAGAIN
+from ssh2.c_sftp cimport libssh2_sftp_read, libssh2_sftp_write, \
+    LIBSSH2_SFTP_HANDLE, LIBSSH2_SFTP, libssh2_sftp_init
 from ssh2.session cimport Session
 from ssh2.channel cimport PyChannel
+from ssh2.sftp cimport PySFTP
+from ssh2.sftp_handle cimport SFTPHandle
+from ssh2.exceptions cimport SFTPIOError
 # from ssh2.agent cimport auth_identity, clear_agent, agent_auth, \
 #     init_connect_agent
-# from ssh2.utils cimport to_bytes
+from ssh2.utils cimport to_bytes
 
 
 # def p_open_session(list sockets not None, list sessions not None):
@@ -79,6 +87,98 @@ from ssh2.channel cimport PyChannel
 #     return channels
 
 
+# cdef _sftp_openfh(char *_remote_file, LIBSSH2_SESSION *_session,
+#                   int f_flags, int mode) nogil except NULL:
+#     cdef LIBSSH2_SFTP_HANDLE *_handle = libssh2_sftp_init(_session)
+#     cdef int errno = libssh2_last_errno(_session)
+
+
+def sftp_put(Session session, SFTPHandle handle,
+             local_file, size_t buffer_maxlen=LIBSSH2_CHANNEL_WINDOW_DEFAULT):
+    cdef bytes b_local_file = to_bytes(local_file)
+    cdef char *_local_file = b_local_file
+    cdef FILE *local_fh
+    cdef int rc
+    cdef int nread
+    cdef char *cbuf
+    cdef char *ptr
+    cdef LIBSSH2_SFTP_HANDLE *_handle = handle._handle
+    cdef LIBSSH2_SESSION *_session = session._session
+    cdef int _sock = session._sock
+
+    with nogil:
+        local_fh = fopen(_local_file, 'rb')
+        if local_fh is NULL:
+            with gil:
+                raise OSError
+        cbuf = <char *>malloc(sizeof(char) * buffer_maxlen)
+        if cbuf is NULL:
+            with gil:
+                raise MemoryError
+        try:
+            nread = fread(cbuf, 1, buffer_maxlen, local_fh)
+            if nread < 0:
+                with gil:
+                    raise IOError
+            while nread > 0:
+                ptr = cbuf
+                rc = libssh2_sftp_write(_handle, ptr, nread)
+                while rc > 0 or rc == LIBSSH2_ERROR_EAGAIN:
+                    if rc == LIBSSH2_ERROR_EAGAIN:
+                        with gil:
+                            _wait_select(_sock, _session, None)
+                        rc = libssh2_sftp_write(_handle, ptr, nread)
+                        continue
+                    ptr += rc
+                    nread -= rc
+                    rc = libssh2_sftp_write(_handle, ptr, nread)
+                if rc < 0:
+                    with gil:
+                        raise SFTPIOError
+                nread = fread(cbuf, 1, buffer_maxlen, local_fh)
+        finally:
+            free(cbuf)
+            fclose(local_fh)
+
+
+def sftp_get(Session session, SFTPHandle handle,
+             local_file, size_t buffer_maxlen=LIBSSH2_CHANNEL_WINDOW_DEFAULT):
+    cdef bytes b_local_file = to_bytes(local_file)
+    cdef char *_local_file = b_local_file
+    cdef FILE *local_fh
+    cdef int rc
+    cdef char *cbuf
+    cdef LIBSSH2_SFTP_HANDLE *_handle = handle._handle
+    cdef LIBSSH2_SESSION *_session = session._session
+    cdef int _sock = session._sock
+
+    with nogil:
+        local_fh = fopen(_local_file, 'wb')
+        if local_fh is NULL:
+            with gil:
+                raise OSError
+        cbuf = <char *>malloc(sizeof(char) * buffer_maxlen)
+        if cbuf is NULL:
+            with gil:
+                raise MemoryError
+        try:
+            rc = libssh2_sftp_read(_handle, cbuf, buffer_maxlen)
+            while rc > 0 or rc == LIBSSH2_ERROR_EAGAIN:
+                if rc > 0:
+                    if fwrite(cbuf, 1, rc, local_fh) < 0:
+                        with gil:
+                            raise IOError
+                elif rc == LIBSSH2_ERROR_EAGAIN:
+                    with gil:
+                        _wait_select(_sock, _session, None)
+                rc = libssh2_sftp_read(_handle, cbuf, buffer_maxlen)
+        finally:
+            free(cbuf)
+            fclose(local_fh)
+    if rc < 0 and rc != LIBSSH2_ERROR_EAGAIN:
+        raise SFTPIOError
+
+
 cdef LIBSSH2_CHANNEL * _open_session(int _sock, LIBSSH2_SESSION * _session) nogil:
     cdef LIBSSH2_CHANNEL *chan
     chan = libssh2_channel_open_session(_session)
@@ -92,7 +192,7 @@ cdef LIBSSH2_CHANNEL * _open_session(int _sock, LIBSSH2_SESSION * _session) nogi
 def open_session(_socket not None, Session session):
     cdef LIBSSH2_SESSION *_session = session._session
     cdef LIBSSH2_CHANNEL *chan
-    cdef int _sock = PyObject_AsFileDescriptor(_socket)
+    cdef int _sock = session._sock
     chan = _open_session(_sock, _session)
     return PyChannel(chan, session)
 
@@ -110,9 +210,9 @@ cdef int _wait_select(int _socket, LIBSSH2_SESSION *_session, timeout) except -1
     select(readfds, writefds, (), timeout=timeout)
 
 
-def wait_select(_socket not None, Session session, timeout=None):
+def wait_select(Session session, timeout=None):
     cdef LIBSSH2_SESSION *_session = session._session
-    cdef int _sock = PyObject_AsFileDescriptor(_socket)
+    cdef int _sock = session._sock
     _wait_select(_sock, _session, timeout)
 
 

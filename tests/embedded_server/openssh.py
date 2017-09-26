@@ -42,7 +42,7 @@ class OpenSSHServer(object):
         self.server_proc = None
         self.sshd_config = SSHD_CONFIG + '_%s' % ''.join(
             random.choice(string.ascii_lowercase + string.digits)
-            for _ in xrange(8))
+            for _ in range(8))
         self._fix_masks()
         self.make_config()
 

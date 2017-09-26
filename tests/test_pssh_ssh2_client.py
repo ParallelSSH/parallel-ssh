@@ -304,7 +304,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         try:
             self.assertTrue(os.path.isdir(remote_test_dir_abspath))
             self.assertTrue(os.path.isfile(remote_file_abspath))
-            remote_file_data = open(remote_file_abspath, 'rb').readlines()
+            remote_file_data = open(remote_file_abspath, 'r').readlines()
             self.assertEqual(remote_file_data[0].strip(), test_file_data)
         except Exception:
             raise
@@ -461,21 +461,21 @@ class ParallelSSHClientTest(unittest.TestCase):
 
     def test_pssh_pool_size(self):
         """Test setting pool size to non default values"""
-        hosts = ['host-%01d' % d for d in xrange(5)]
+        hosts = ['host-%01d' % d for d in range(5)]
         pool_size = 2
         client = ParallelSSHClient(hosts, pool_size=pool_size)
         expected, actual = pool_size, client.pool.size
         self.assertEqual(expected, actual,
                          msg="Expected pool size to be %s, got %s" % (
                              expected, actual,))
-        hosts = ['host-%01d' % d for d in xrange(15)]
+        hosts = ['host-%01d' % d for d in range(15)]
         pool_size = 5
         client = ParallelSSHClient(hosts, pool_size=pool_size)
         expected, actual = client.pool_size, client.pool.size
         self.assertEqual(expected, actual,
                          msg="Expected pool size to be %s, got %s" % (
                              expected, actual,))
-        hosts = ['host-%01d' % d for d in xrange(15)]
+        hosts = ['host-%01d' % d for d in range(15)]
         pool_size = len(hosts)+5
         client = ParallelSSHClient(hosts, pool_size=pool_size)
         expected, actual = pool_size, client.pool.size
@@ -771,7 +771,7 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_host_config(self):
         """Test per-host configuration functionality of ParallelSSHClient"""
         hosts = [('127.0.0.%01d' % n, self.make_random_port())
-                 for n in xrange(1,3)]
+                 for n in range(1,3)]
         host_config = dict.fromkeys([h for h,_ in hosts])
         servers = []
         password = 'overriden_pass'
@@ -922,7 +922,7 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_ssh_client_utf_encoding(self):
         """Test that unicode output works"""
         expected = [u'é']
-        _utf16 = 'é'.decode('utf-16')
+        _utf16 = u'é'.encode('utf-8').decode('utf-16')
         cmd = u"echo 'é'"
         output = self.client.run_command(cmd)
         stdout = list(output[self.host].stdout)
@@ -1019,13 +1019,13 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient(['127.0.0.100'], port=self.port,
                                    num_retries=2, retry_delay=1)
         self.assertRaises(ConnectionErrorException, client.run_command, self.cmd)
-        host = ''.join([random.choice(string.ascii_letters) for n in xrange(8)])
+        host = ''.join([random.choice(string.ascii_letters) for n in range(8)])
         client.hosts = [host]
         self.assertRaises(UnknownHostException, client.run_command, self.cmd)
 
     def test_unknown_host_failure(self):
         """Test connection error failure case - ConnectionErrorException"""
-        host = ''.join([random.choice(string.ascii_letters) for n in xrange(8)])
+        host = ''.join([random.choice(string.ascii_letters) for n in range(8)])
         client = ParallelSSHClient([host], port=self.port,
                                    num_retries=1)
         self.assertRaises(UnknownHostException, client.run_command, self.cmd)
