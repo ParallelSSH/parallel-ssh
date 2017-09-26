@@ -364,7 +364,7 @@ class SSHClient(object):
         file_list = os.listdir(local_dir)
         for file_name in file_list:
             local_path = os.path.join(local_dir, file_name)
-            remote_path = '/'.join([remote_dir,file_name])
+            remote_path = '/'.join([remote_dir, file_name])
             self.copy_file(local_path, remote_path, recurse=True,
                            sftp=sftp)
 
@@ -455,7 +455,7 @@ class SSHClient(object):
     def _copy_remote_dir(self, file_list, remote_dir, local_dir, sftp):
         for file_name in file_list:
             remote_path = '/'.join([remote_dir, file_name])
-            local_path = os.path.join(local_dir,file_name)
+            local_path = os.path.join(local_dir, file_name)
             self.copy_remote_file(remote_path, local_path, sftp=sftp,
                                   recurse=True)
 
