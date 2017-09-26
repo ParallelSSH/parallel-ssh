@@ -246,3 +246,6 @@ Frequently asked questions
 
 :A:
    There is a public `ParallelSSH Google group <https://groups.google.com/forum/#!forum/parallelssh>`_ setup for this purpose - both posting and viewing are open to the public.
+
+.. image:: https://ga-beacon.appspot.com/UA-9132694-7/parallel-ssh/README.rst?pixel
+  :target: https://github.com/igrigorik/ga-beacon
