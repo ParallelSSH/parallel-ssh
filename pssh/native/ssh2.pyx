@@ -17,7 +17,6 @@
 
 """Functions for interfacing directly with ssh2-python's C-API"""
 
-from sys import version_info
 from logging import getLogger
 
 from libc.stdlib cimport malloc, free
@@ -27,13 +26,12 @@ from gevent.select import select
 
 from ssh2.c_ssh2 cimport LIBSSH2_CHANNEL, LIBSSH2_SESSION_BLOCK_INBOUND, \
     LIBSSH2_SESSION_BLOCK_OUTBOUND, LIBSSH2_SESSION, \
-    libssh2_session_block_directions, libssh2_channel_open_session, \
-    libssh2_session_last_errno, LIBSSH2_CHANNEL_WINDOW_DEFAULT, \
-    LIBSSH2_ERROR_EAGAIN
+    libssh2_session_block_directions, \
+    LIBSSH2_CHANNEL_WINDOW_DEFAULT, LIBSSH2_ERROR_EAGAIN
 from ssh2.c_sftp cimport libssh2_sftp_read, libssh2_sftp_write, \
     LIBSSH2_SFTP_HANDLE
 from ssh2.session cimport Session
-from ssh2.channel cimport PyChannel, Channel
+from ssh2.channel cimport Channel
 from ssh2.sftp_handle cimport SFTPHandle
 from ssh2.exceptions cimport SFTPIOError
 from ssh2.utils cimport to_bytes
@@ -160,33 +158,6 @@ def sftp_get(Session session, SFTPHandle handle,
             fclose(local_fh)
     if rc < 0 and rc != LIBSSH2_ERROR_EAGAIN:
         raise SFTPIOError(rc)
-
-
-cdef LIBSSH2_CHANNEL * _open_session(
-      int _sock, LIBSSH2_SESSION * _session) nogil except NULL:
-    cdef int errno
-    cdef LIBSSH2_CHANNEL *chan
-    chan = libssh2_channel_open_session(_session)
-    errno = libssh2_session_last_errno(_session)
-    while chan is NULL and errno == LIBSSH2_ERROR_EAGAIN:
-        with gil:
-            _wait_select(_sock, _session, None)
-        chan = libssh2_channel_open_session(_session)
-        errno = libssh2_session_last_errno(_session)
-    if chan is NULL and errno != LIBSSH2_ERROR_EAGAIN:
-        with gil:
-            raise SessionError(errno)
-    return chan
-
-
-def open_session(_socket not None, Session session):
-    cdef LIBSSH2_SESSION *_session = session._session
-    cdef LIBSSH2_CHANNEL *chan
-    cdef int _sock = session._sock
-    chan = _open_session(_sock, _session)
-    if chan is NULL:
-        return
-    return PyChannel(chan, session)
 
 
 cdef int _wait_select(int _socket, LIBSSH2_SESSION *_session,
