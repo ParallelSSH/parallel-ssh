@@ -246,7 +246,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, local_file, remote_file, recurse=recurse)
 
     def copy_remote_file(self, remote_file, local_file, recurse=False,
-                         suffix_separator='_'):
+                         suffix_separator='_', encoding='utf-8'):
         """Copy remote file(s) in parallel as
         <local_file><suffix_separator><host>
 
@@ -280,6 +280,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
           resulting filename will be ``myfile_myhost`` for the file from
           host ``myhost``
         :type suffix_separator: str
+        :param encoding: Encoding to use for file paths.
+        :type encoding: str
         :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy
           commands
 
@@ -302,4 +304,4 @@ class ParallelSSHClient(BaseParallelSSHClient):
         """
         return BaseParallelSSHClient.copy_remote_file(
             self, remote_file, local_file, recurse=recurse,
-            suffix_separator=suffix_separator)
+            suffix_separator=suffix_separator, encoding=encoding)

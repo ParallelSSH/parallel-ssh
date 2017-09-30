@@ -18,27 +18,33 @@
 
 """Package containing SSHClient class."""
 
-import os
-import logging
-from socket import gaierror as sock_gaierror, error as sock_error
+import sys
+if 'threading' in sys.modules:
+    del sys.modules['threading']
+from gevent import monkey  # noqa: E402
+monkey.patch_all()
+import os  # noqa: E402
+import logging  # noqa: E402
+from socket import gaierror as sock_gaierror, error as sock_error  # noqa: E402
 
-from gevent import sleep
-import paramiko
-from paramiko.ssh_exception import ChannelException
+from gevent import sleep  # noqa: E402
+import paramiko  # noqa: E402
+from paramiko.ssh_exception import ChannelException  # noqa: E402
 
 from .exceptions import UnknownHostException, AuthenticationException, \
-     ConnectionErrorException, SSHException
-from .constants import DEFAULT_RETRIES
-from .utils import read_openssh_config
+     ConnectionErrorException, SSHException  # noqa: E402
+from .constants import DEFAULT_RETRIES  # noqa: E402
+from .utils import read_openssh_config  # noqa: E402
 
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
 
 
 class SSHClient(object):
-    """Wrapper class over paramiko.SSHClient with sane defaults
+    """SSH client based on Paramiko with sane defaults.
+
     Honours ``~/.ssh/config`` and ``/etc/ssh/ssh_config`` host entries
-    for host user name, port and key overrides
+    for host, user name, port and key overrides.
     """
 
     def __init__(self, host,

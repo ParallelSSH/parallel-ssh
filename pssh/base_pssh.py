@@ -226,7 +226,7 @@ class BaseParallelSSHClient(object):
                                                  recurse=recurse)
 
     def copy_remote_file(self, remote_file, local_file, recurse=False,
-                         suffix_separator='_'):
+                         suffix_separator='_', **kwargs):
         """Copy remote file(s) in parallel as
         <local_file><suffix_separator><host>
 
@@ -279,13 +279,15 @@ class BaseParallelSSHClient(object):
         """
         return [self.pool.spawn(
             self._copy_remote_file, host, remote_file,
-            local_file, recurse, suffix_separator=suffix_separator)
+            local_file, recurse, suffix_separator=suffix_separator,
+            **kwargs)
             for host in self.hosts]
 
     def _copy_remote_file(self, host, remote_file, local_file, recurse,
-                          suffix_separator='_'):
+                          suffix_separator='_', **kwargs):
         """Make sftp client, copy file to local"""
         file_w_suffix = suffix_separator.join([local_file, host])
         self._make_ssh_client(host)
         return self.host_clients[host].copy_remote_file(
-                remote_file, file_w_suffix, recurse=recurse)
+            remote_file, file_w_suffix, recurse=recurse,
+            **kwargs)

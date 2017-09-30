@@ -26,9 +26,11 @@ import socket
 import time
 import shutil
 import unittest
-from pssh import SSHClient, ParallelSSHClient, UnknownHostException, AuthenticationException,\
-     logger, ConnectionErrorException, UnknownHostException, SSHException, utils
-from embedded_server.embedded_server import start_server, make_socket, logger as server_logger, \
+from pssh.ssh_client import SSHClient, logger
+from pssh.exceptions import  UnknownHostException, AuthenticationException,\
+     ConnectionErrorException, UnknownHostException, SSHException
+from pssh import utils
+from .embedded_server.embedded_server import start_server, make_socket, logger as server_logger, \
      paramiko_logger
 from pssh.agent import SSHAgent
 import paramiko

@@ -16,8 +16,8 @@
 import platform
 from setuptools import setup, find_packages
 from platform import python_version
-import versioneer
 
+import versioneer
 
 try:
     from Cython.Build import cythonize
@@ -49,8 +49,7 @@ extensions = [
     Extension('pssh.native.ssh2',
               sources=['pssh/native/ssh2.pyx'],
               libraries=_libs,
-              # extra_compile_args=['-O3', '-fopenmp'],
-              # extra_link_args=['-fopenmp'],
+              extra_compile_args=['-O3'],
               **cython_args
     )]
 

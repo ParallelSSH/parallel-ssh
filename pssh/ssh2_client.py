@@ -21,7 +21,6 @@ import logging
 import os
 import pwd
 from socket import gaierror as sock_gaierror, error as sock_error
-from sys import version_info
 
 from gevent import sleep, get_hub
 from gevent import socket
@@ -37,11 +36,12 @@ from ssh2.sftp import LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
 from .exceptions import UnknownHostException, AuthenticationException, \
      ConnectionErrorException, SessionError, SFTPError, SFTPIOError
 from .constants import DEFAULT_RETRIES, RETRY_DELAY
-from .native.ssh2 import open_session, wait_select, sftp_get, sftp_put
+from .native.ssh2 import wait_select, sftp_get, sftp_put, \
+    _read_output
+
 
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
-LINESEP = os.linesep.encode('utf-8') if version_info > (2,) else os.linesep
 THREAD_POOL = get_hub().threadpool
 
 
@@ -181,10 +181,17 @@ class SSHClient(object):
             raise AuthenticationException("Password authentication failed")
 
     def open_session(self):
-        return open_session(self.sock, self.session)
+        chan = self.session.open_session()
+        errno = self.session.last_errno()
+        while chan is None and errno == LIBSSH2_ERROR_EAGAIN:
+            wait_select(self.session)
+            chan = self.session.open_session()
+            errno = self.session.last_errno()
+        if chan is None and errno != LIBSSH2_ERROR_EAGAIN:
+            raise SessionError(errno)
+        return chan
 
     def execute(self, cmd, use_pty=False, channel=None):
-        logger.debug("Opening new channel for execute")
         channel = self.open_session() if channel is None else channel
         if use_pty:
             self._eagain(channel.pty)
@@ -193,35 +200,10 @@ class SSHClient(object):
         return channel
 
     def read_stderr(self, channel):
-        return self._read_output(channel, channel.read_stderr)
+        return _read_output(self.session, channel, channel.read_stderr)
 
     def read_output(self, channel):
-        return self._read_output(channel, channel.read)
-
-    def _read_output(self, channel, read_func):
-        remainder = b""
-        _pos = 0
-        _size, _data = read_func()
-        while _size == LIBSSH2_ERROR_EAGAIN:
-            logger.debug("Waiting on socket read")
-            wait_select(self.session)
-            _size, _data = read_func()
-        while _size > 0:
-            logger.debug("Got data size %s", _size)
-            while _pos < _size:
-                linesep = _data[:_size].find(LINESEP, _pos)
-                if linesep > 0:
-                    if len(remainder) > 0:
-                        yield remainder + _data[_pos:linesep].strip()
-                        remainder = b""
-                    else:
-                        yield _data[_pos:linesep].strip()
-                        _pos = linesep + 1
-                else:
-                    remainder += _data[_pos:]
-                    break
-            _size, _data = read_func()
-            _pos = 0
+        return _read_output(self.session, channel, channel.read)
 
     def wait_finished(self, channel):
         """Wait for EOF from channel, close channel and wait for
@@ -440,6 +422,8 @@ class SSHClient(object):
         :type local_file: str
         :param recurse: Whether or not to recursively copy directories
         :type recurse: bool
+        :param encoding: Encoding to use for file paths.
+        :type encoding: str
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           ``local_file`` and ``recurse`` is not set
@@ -504,9 +488,6 @@ class SSHClient(object):
     def sftp_get(self, sftp, remote_file, local_file):
         with self._sftp_openfh(sftp.open, remote_file, 0, 0) as remote_fh:
             try:
-                # open(local_file, 'wb') as local_fh, \
-                # for size, data in remote_fh:
-                #     local_fh.write(data)
                 THREAD_POOL.apply(
                     sftp_get, args=(self.session, remote_fh, local_file))
             except SFTPIOError_ssh2 as ex:

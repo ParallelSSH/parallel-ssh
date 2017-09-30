@@ -31,12 +31,12 @@ from socket import timeout as socket_timeout
 from platform import python_version
 
 from gevent import sleep
-from pssh import ParallelSSHClient, UnknownHostException, \
-     AuthenticationException, ConnectionErrorException, SSHException, \
-     logger as pssh_logger
-from pssh.exceptions import HostArgumentException
+from pssh.pssh_client import ParallelSSHClient, logger as pssh_logger
+from pssh.exceptions import UnknownHostException, \
+    AuthenticationException, ConnectionErrorException, SSHException, \
+    HostArgumentException
 from pssh.utils import load_private_key
-from embedded_server.embedded_server import start_server, make_socket, \
+from .embedded_server.embedded_server import start_server, make_socket, \
      logger as server_logger, paramiko_logger, start_server_from_ip
 from pssh.agent import SSHAgent
 from paramiko import RSAKey
