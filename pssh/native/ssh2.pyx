@@ -15,9 +15,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-"""Functions for interfacing directly with ssh2-python's C-API"""
-
-from logging import getLogger
+"""Cython functions for interfacing directly with ssh2-python's C-API"""
 
 from libc.stdlib cimport malloc, free
 from libc.stdio cimport fopen, fclose, fwrite, fread, FILE
@@ -31,7 +29,6 @@ from ssh2.c_ssh2 cimport LIBSSH2_CHANNEL, LIBSSH2_SESSION_BLOCK_INBOUND, \
 from ssh2.c_sftp cimport libssh2_sftp_read, libssh2_sftp_write, \
     LIBSSH2_SFTP_HANDLE
 from ssh2.session cimport Session
-from ssh2.channel cimport Channel
 from ssh2.sftp_handle cimport SFTPHandle
 from ssh2.exceptions cimport SFTPIOError
 from ssh2.utils cimport to_bytes
@@ -39,39 +36,37 @@ from ssh2.utils cimport to_bytes
 from ..exceptions import SessionError
 
 
-logger = getLogger('pssh.ssh_client')
 cdef bytes LINESEP = b'\n'
 
 
-def _read_output(Session session, Channel channel, read_func not None):
-    cdef ssize_t size
+def _read_output(Session session, read_func):
+    cdef Py_ssize_t _size
     cdef bytes _data
     cdef bytes remainder = b""
     cdef LIBSSH2_SESSION *_session = session._session
     cdef int _sock = session._sock
     cdef size_t _pos = 0
-    cdef ssize_t linesep
+    cdef Py_ssize_t linesep
     _size, _data = read_func()
-    while _size == LIBSSH2_ERROR_EAGAIN:
-        logger.debug("Waiting on socket read")
-        _wait_select(_sock, _session, None)
-        _size, _data = read_func()
-    while _size > 0:
-        logger.debug("Got data size %s", _size)
-        while _pos < _size:
-            linesep = _data[:_size].find(LINESEP, _pos)
-            if linesep > 0:
-                if len(remainder) > 0:
-                    yield remainder + _data[_pos:linesep].strip()
-                    remainder = b""
+    while _size == LIBSSH2_ERROR_EAGAIN or _size > 0:
+        if _size == LIBSSH2_ERROR_EAGAIN:
+            _wait_select(_sock, _session, None)
+            _size, _data = read_func()
+        while _size > 0:
+            while _pos < _size:
+                linesep = _data[:_size].find(LINESEP, _pos)
+                if linesep > 0:
+                    if len(remainder) > 0:
+                        yield remainder + _data[_pos:linesep].strip()
+                        remainder = b""
+                    else:
+                        yield _data[_pos:linesep].strip()
+                        _pos = linesep + 1
                 else:
-                    yield _data[_pos:linesep].strip()
-                    _pos = linesep + 1
-            else:
-                remainder += _data[_pos:]
-                break
-        _size, _data = read_func()
-        _pos = 0
+                    remainder += _data[_pos:]
+                    break
+            _size, _data = read_func()
+            _pos = 0
 
 
 def sftp_put(Session session, SFTPHandle handle,

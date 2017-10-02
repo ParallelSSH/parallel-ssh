@@ -119,8 +119,7 @@ class SSHClient(object):
         pub_file = "%s.pub" % self.pkey
         logger.debug("Attempting authentication with public key %s for user %s",
                      pub_file, self.user)
-        self._eagain(
-            self.session.userauth_publickey_fromfile,
+        self.session.userauth_publickey_fromfile(
             self.user,
             pub_file,
             self.pkey,
@@ -135,8 +134,7 @@ class SSHClient(object):
                 "Trying to authenticate with identity file %s",
                 identity_file)
             try:
-                self._eagain(
-                    self.session.userauth_publickey_fromfile,
+                self.session.userauth_publickey_fromfile(
                     self.user,
                     pub_file,
                     identity_file,
@@ -176,8 +174,7 @@ class SSHClient(object):
             self._password_auth()
 
     def _password_auth(self):
-        if self._eagain(self.session.userauth_password,
-                        self.user, self.password) != 0:
+        if self.session.userauth_password(self.user, self.password) != 0:
             raise AuthenticationException("Password authentication failed")
 
     def open_session(self):
@@ -200,10 +197,10 @@ class SSHClient(object):
         return channel
 
     def read_stderr(self, channel):
-        return _read_output(self.session, channel, channel.read_stderr)
+        return _read_output(self.session, channel.read_stderr)
 
     def read_output(self, channel):
-        return _read_output(self.session, channel, channel.read)
+        return _read_output(self.session, channel.read)
 
     def wait_finished(self, channel):
         """Wait for EOF from channel, close channel and wait for
