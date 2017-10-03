@@ -1,0 +1,3 @@
+[submodule "libssh2"]
+	path = libssh2
+	url = https://github.com/libssh2/libssh2.git
