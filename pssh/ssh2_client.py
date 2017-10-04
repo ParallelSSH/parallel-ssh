@@ -561,7 +561,7 @@ class SSHClient(object):
                          encoding='utf-8'):
         for file_name in file_list:
             file_name = file_name.decode(encoding)
-            if file_name in ['.', '..']:
+            if file_name in ('.', '..'):
                 continue
             remote_path = os.path.join(remote_dir, file_name)
             local_path = os.path.join(local_dir, file_name)
