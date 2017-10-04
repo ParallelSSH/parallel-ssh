@@ -1,5 +1,3 @@
-.. contents::
-
 ***********
 Quickstart
 ***********
@@ -69,7 +67,7 @@ There is nothing special needed to ensure output is available.
 
 Please note that retrieving all of a command's standard output by definition requires that the command has completed.
 
-Iterating over ``stdout`` for any host *to completion* will therefor *block* until that host's command has completed unless interrupted.
+Iterating over ``stdout`` for any host *to completion* will therefor *only complete* when that host's command has completed unless interrupted.
 
 ``stdout`` is a generator. Iterating over it will consume the remote standard output stream via the network as it becomes available. To retrieve all of stdout can wrap it with list, per below.
 

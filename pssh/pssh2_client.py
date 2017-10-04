@@ -15,28 +15,23 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+import logging
 
-"""Package containing ParallelSSHClient class"""
+import gevent.pool
+import gevent.hub
 
 from .base_pssh import BaseParallelSSHClient
 from .constants import DEFAULT_RETRIES, RETRY_DELAY
 from .ssh2_client import SSHClient
 
-import logging  # noqa: E402
-
-import gevent.pool  # noqa: E402
-import gevent.hub  # noqa: E402
 
 gevent.hub.Hub.NOT_ERROR = (Exception,)
 logger = logging.getLogger(__name__)
 
-try:
-    xrange
-except NameError:
-    xrange = range
-
 
 class ParallelSSHClient(BaseParallelSSHClient):
+    """ssh2-python based parallel client."""
+
     def __init__(self, hosts, user=None, password=None, port=None, pkey=None,
                  num_retries=DEFAULT_RETRIES, timeout=None, pool_size=10,
                  allow_agent=True, host_config=None, retry_delay=RETRY_DELAY):

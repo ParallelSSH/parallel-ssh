@@ -43,6 +43,7 @@ To install from source run:
 
 .. code-block:: shell
 
+  pip install -r requirements.txt
   python setup.py install
 
 Or with `pip`'s development mode which will ensure local changes are made available:

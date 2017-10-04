@@ -15,8 +15,6 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-"""ssh2-python (libssh2) based SSH client package"""
-
 import logging
 import os
 import pwd
@@ -46,7 +44,7 @@ THREAD_POOL = get_hub().threadpool
 
 
 class SSHClient(object):
-    """ssh2-python based SSH client"""
+    """ssh2-python (libssh2) based non-blocking SSH client"""
 
     IDENTITIES = [
         os.path.expanduser('~/.ssh/id_rsa'),

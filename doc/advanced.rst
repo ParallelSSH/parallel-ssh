@@ -1,10 +1,7 @@
-.. contents::
-
-
 Advanced Usage
 =================
 
-There are several more advanced use cases of `ParallelSSH`, such as tunneling (aka proxying) via an intermediate SSH server and per-host configuration and command substitution among others.
+There are several more advanced usage features of ``parallel-ssh``, such as tunnelling (aka proxying) via an intermediate SSH server and per-host configuration and command substitution among others.
 
 Agents and Private Keys
 *************************
