@@ -44,7 +44,7 @@ THREAD_POOL = get_hub().threadpool
 
 
 class SSHClient(object):
-    """ssh2-python (libssh2) based non-blocking SSH client"""
+    """ssh2-python (libssh2) based non-blocking SSH client."""
 
     IDENTITIES = [
         os.path.expanduser('~/.ssh/id_rsa'),
@@ -58,6 +58,31 @@ class SSHClient(object):
                  num_retries=DEFAULT_RETRIES,
                  retry_delay=RETRY_DELAY,
                  allow_agent=True, timeout=None):
+        """:param host: Host name or IP to connect to.
+        :type host: str
+        :param user: User to connect as. Defaults to logged in user.
+        :type user: str
+        :param password: Password to use for password authentication.
+        :type password: str
+        :param port: SSH port to connect to. Defaults to SSH default (22)
+        :type port: int
+        :param pkey: Private key file path to use for authentication.
+          Note that the public key file
+          pair *must* also exist in the same location with name ``<pkey>.pub``
+        :type pkey: str
+        :param num_retries: (Optional) Number of connection and authentication
+          attempts before the client gives up. Defaults to 3.
+        :type num_retries: int
+        :param retry_delay: Number of seconds to wait between retries. Defaults
+          to :py:class:`pssh.constants.RETRY_DELAY`
+        :type retry_delay: int
+        :param timeout: SSH session timeout setting in seconds. This controls
+          timeout setting of authenticated SSH sessions.
+        :type timeout: int
+        :param allow_agent: (Optional) set to False to disable connecting to
+          the system's SSH agent
+        :type allow_agent: bool
+        """
         # proxy_host=None, proxy_port=22, proxy_user=None,
         # proxy_password=None, proxy_pkey=None,
         self.host = host
@@ -176,6 +201,7 @@ class SSHClient(object):
             raise AuthenticationException("Password authentication failed")
 
     def open_session(self):
+        """Open new channel from session"""
         chan = self.session.open_session()
         errno = self.session.last_errno()
         while chan is None and errno == LIBSSH2_ERROR_EAGAIN:
@@ -187,6 +213,16 @@ class SSHClient(object):
         return chan
 
     def execute(self, cmd, use_pty=False, channel=None):
+        """Execute command on remote server
+
+        :param cmd: Command to execute.
+        :type cmd: str
+        :param use_pty: Whether or not to obtain a PTY on the channel.
+        :type use_pty: bool
+        :param channel: Use provided channel for execute rather than creating
+          a new one.
+        :type channel: :py:class:`ssh2.channel.Channel`
+        """
         channel = self.open_session() if channel is None else channel
         if use_pty:
             self._eagain(channel.pty)
@@ -195,14 +231,27 @@ class SSHClient(object):
         return channel
 
     def read_stderr(self, channel):
+        """Read standard error buffer from channel.
+
+        :param channel: Channel to read output from.
+        :type channel: :py:class:`ssh2.channel.Channel`
+        """
         return _read_output(self.session, channel.read_stderr)
 
     def read_output(self, channel):
+        """Read standard output buffer from channel.
+
+        :param channel: Channel to read output from.
+        :type channel: :py:class:`ssh2.channel.Channel`
+        """
         return _read_output(self.session, channel.read)
 
     def wait_finished(self, channel):
         """Wait for EOF from channel, close channel and wait for
         close acknowledgement.
+
+        Used to wait for remote command completion and be able to gather
+        exit code.
 
         :param channel: The channel to use
         :type channel: :py:class:`ssh2.channel.Channel`
@@ -246,6 +295,24 @@ class SSHClient(object):
     def run_command(self, command, sudo=False, user=None,
                     use_pty=False, shell=None,
                     encoding='utf-8'):
+        """Run remote command.
+
+        :param command: Command to run.
+        :type command: str
+        :param sudo: Run command via sudo as super-user.
+        :type sudo: bool
+        :param user: Run command as user via sudo
+        :type user: str
+        :param use_pty: Whether or not to obtain a PTY on the channel.
+        :type use_pty: bool
+        :param shell: (Optional) Override shell to use to run command with.
+          Defaults to login user's defined shell. Use the shell's command
+          syntax, eg `shell='bash -c'` or `shell='zsh -c'`.
+        :type shell: str
+        :param encoding: Encoding to use for output. Must be valid
+          `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
+        :type encoding: str
+        """
         # Fast path for no command substitution needed
         if not sudo and not user and not shell:
             _command = command

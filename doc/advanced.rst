@@ -305,7 +305,7 @@ No output from ``stderr``.
 SFTP
 *****
 
-SFTP - `SCP version 2` - is supported by ``Parallel-SSH`` and two functions are provided by the client for copying files with SFTP.
+SFTP - `SCP version 2` - is supported by ``parallel-ssh`` and two functions are provided by the client for copying files with SFTP.
 
 SFTP does not have a shell interface and no output is provided for any SFTP commands.
 

@@ -46,33 +46,31 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param port: (Optional) Port number to use for SSH connection. Defaults
           to ``None`` which uses SSH default (22)
         :type port: int
-        :param pkey: (Optional) Client's private key file to be used to
-          connect with
+        :param pkey: Private key file path to use. Note that the public key file
+          pair *must* also exist in the same location with name ``<pkey>.pub``
         :type pkey: str
-        :param num_retries: (Optional) Number of retries for connection attempts
-          before the client gives up. Defaults to 3.
+        :param num_retries: (Optional) Number of connection and authentication
+          attempts before the client gives up. Defaults to 3.
         :type num_retries: int
         :param retry_delay: Number of seconds to wait between retries. Defaults
           to :py:class:`pssh.constants.RETRY_DELAY`
         :type retry_delay: int
-        :param timeout: (Optional) Number of seconds to wait before connection
-          and authentication attempt times out. Note that total time before
-          timeout will be
-          ``timeout`` * ``num_retries`` + (5 * (``num_retries``-1)) number of
-          seconds, where (5 * (``num_retries``-1)) refers to a five (5) second
-          delay between retries.
+        :param timeout: SSH session timeout setting in seconds. This controls
+          timeout setting of authenticated SSH sessions.
         :type timeout: int
-        :param pool_size: (Optional) Greenlet pool size. Controls on how many
-          hosts to execute tasks in parallel. Defaults to 10. Overhead in event
+        :param pool_size: (Optional) Greenlet pool size. Controls
+          concurrency, on how many hosts to execute tasks in parallel.
+          Defaults to 10. Overhead in event
           loop will determine how high this can be set to, see scaling guide
           lines in project's readme.
         :type pool_size: int
         :param host_config: (Optional) Per-host configuration for cases where
-          not all hosts use the same configuration values.
+          not all hosts use the same configuration.
         :type host_config: dict
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent
-        :type allow_agent: bool"""
+        :type allow_agent: bool
+        """
         BaseParallelSSHClient.__init__(
             self, hosts, user=user, password=password, port=port, pkey=pkey,
             allow_agent=allow_agent, num_retries=num_retries,
@@ -127,7 +125,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           raised otherwise
         :type host_args: tuple or list
         :param encoding: Encoding to use for output. Must be valid
-            `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
+          `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
         :type encoding: str
 
         :rtype: Dictionary with host as key and
@@ -161,8 +159,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
             use_pty=use_pty, encoding=encoding)
 
     def join(self, output, consume_output=False):
-        """Block until all remote commands in output have finished
-        and retrieve exit codes
+        """Wait until all remote commands in output have finished
+        and retrieve exit codes. Does *not* block other commands from
+        running in parallel.
 
         :param output: Output of commands to join on
         :type output: dict as returned by
@@ -220,7 +219,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type remote_file: str
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
-        :rtype: List(:py:class:`gevent.Greenlet`) of greenlets for remote copy
+
+        :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy
           commands
 
         :raises: :py:class:`ValueError` when a directory is supplied to
@@ -277,6 +277,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type suffix_separator: str
         :param encoding: Encoding to use for file paths.
         :type encoding: str
+
         :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy
           commands
 
