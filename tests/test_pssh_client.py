@@ -29,6 +29,7 @@ import warnings
 import shutil
 import sys
 from socket import timeout as socket_timeout
+from platform import python_version
 
 from gevent import sleep
 from pssh import ParallelSSHClient, UnknownHostException, \
@@ -1089,6 +1090,41 @@ class ParallelSSHClientTest(unittest.TestCase):
             del client
             server.kill()
             proxy_server.kill()
+
+    def test_openssh_config(self):
+        self.server.kill()
+        ssh_config = os.path.expanduser('~/.ssh/config')
+        mode = '0700' if python_version() < '3' else 0o700
+        if os.path.isfile(ssh_config):
+            shutil.move(ssh_config, '.')
+        elif not os.path.isdir(os.path.expanduser('~/.ssh')):
+            os.mkdir(os.path.expanduser('~/.ssh'), mode=mode)
+        config_file = open(ssh_config, 'w')
+        _host = "127.0.0.2"
+        _user = "config_user"
+        _server, _port = start_server_from_ip(_host)
+        content = [("""Host %s\n""" % (self.host,)),
+                   ("""  HostName %s\n""" % (_host,)),
+                   ("""  User %s\n""" % (_user,)),
+                   ("""  Port %s\n""" % (_port,)),
+                   ("""  IdentityFile %s\n""" % (PKEY_FILENAME,)),
+        ]
+        config_file.writelines(content)
+        config_file.close()
+        try:
+            client = ParallelSSHClient([self.host],
+                                       num_retries=1)
+            output = client.run_command(self.fake_cmd)
+            self.assertTrue(self.host in output)
+            output = list(output[self.host].stdout)
+            expected = [self.fake_resp]
+            self.assertEqual(output, expected)
+        except Exception:
+            raise
+        finally:
+            os.unlink(ssh_config)
+            if os.path.isfile('config'):
+                shutil.move('config', os.path.expanduser('~/.ssh/'))
 
 
 if __name__ == '__main__':
