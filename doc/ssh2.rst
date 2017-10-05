@@ -11,16 +11,17 @@ Feature                          paramiko   ssh2-python (libssh2)
 Agent forwarding                  Yes       Not supported
 Proxying/tunnelling               Yes       Not yet implemented
 Kerberos (GSS) authentication     Yes       Not supported
-Per-channel timeout setting       Yes       Not supported
-Public key from memory            Yes       Not yet implemented
-SFTP copy to/from hosts           Yes       Yes
-Agent authentication              Yes       Yes
 Private key file authentication   Yes       Yes
+Private key from memory           Yes       Not yet implemented
+Agent authentication              Yes       Yes
 Password authentication           Yes       Yes
+SFTP copy to/from hosts           Yes       Yes
 Session timeout setting           Yes       Yes
 Per-channel timeout setting       Yes       Not supported
 Programmatic SSH agent            Yes       Not supported
 OpenSSH config parsing            Yes       Not yet implemented
 ===============================  =========  ======================
 
-If any of missing features are required for a use case, then the paramiko based clients should be used instead. In all other cases the ``ssh2-python`` based clients offer significantly greater performance at less overhead and are preferred.
+If any of missing features are required for a use case, then the paramiko based clients should be used instead.
+
+In all other cases the ``ssh2-python`` based clients offer significantly greater performance at less overhead and are preferred.
