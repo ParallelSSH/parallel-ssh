@@ -23,7 +23,7 @@ script:
 before_deploy:
   - cd $TRAVIS_BUILD_DIR
 after_success:
-  - coveralls
+  - codecov
 deploy:
   provider: pypi
   user: pkittenis
