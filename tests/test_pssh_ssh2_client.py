@@ -212,7 +212,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                         msg="Failed host does not exist in output - output is %s" % (output,))
         self.assertTrue('exception' in output[hosts[1]],
                         msg="Failed host %s has no exception in output - %s" % (hosts[1], output,))
-        print(output[hosts[1]])
+        self.assertTrue(output[hosts[1]].exception is not None)
         try:
             raise output[hosts[1]]['exception']
         except ConnectionErrorException:
