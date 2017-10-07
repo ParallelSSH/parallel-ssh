@@ -29,8 +29,8 @@ after_success:
   - codecov
 jobs:
   include:
-    - os: osx
-      if: tag IS present OR branch = master
+    - if: (tag IS present) OR (branch = master)
+      os: osx
       # tag =~ ^\d+\.\d+(\.\d+)?(-\S*)?$
       before_install: skip
       install:
