@@ -396,11 +396,13 @@ class SSHClient(object):
         :raises: :py:class:`OSError` on local OS errors like permission denied
         """
         sftp = self._make_sftp() if sftp is None else sftp
+        # import ipdb; ipdb.set_trace()
         if os.path.isdir(local_file) and recurse:
             return self._copy_dir(local_file, remote_file, sftp)
         elif os.path.isdir(local_file) and not recurse:
             raise ValueError("Recurse must be true if local_file is a "
                              "directory.")
+        # import ipdb; ipdb.set_trace()
         destination = self._remote_paths_split(remote_file)
         if destination is not None:
             try:
@@ -433,7 +435,7 @@ class SSHClient(object):
                 logger.error(msg, remote_file, ex)
                 raise SFTPIOError(msg, remote_file, ex)
 
-    def mkdir(self, sftp, directory, parent_path=None):
+    def mkdir(self, sftp, directory, _parent_path=None):
         """Make directory via SFTP channel.
 
         Parent paths in the directory are created if they do not exist.
@@ -445,21 +447,32 @@ class SSHClient(object):
 
         Catches and logs at error level remote IOErrors on creating directory.
         """
+        # import ipdb; ipdb.set_trace()
+        # if _parent_path is None and directory.startswith('/'):
+        #     directory = self._eagain(sftp.realpath, directory)
         try:
-            _parent_path, sub_dirs = directory.split('/', 1)
+            _dir, sub_dirs = directory.split('/', 1)
         except ValueError:
-            _parent_path = directory.split('/', 1)[0]
+            _dir = directory.split('/', 1)[0]
             sub_dirs = None
-        _directory = _parent_path if parent_path is None else \
-            '/'.join([parent_path, _parent_path])
+        if not _dir and directory.startswith('/'):
+            try:
+                _dir, sub_dirs = sub_dirs.split(os.path.sep, 1)
+            except ValueError:
+                return True
+        if _parent_path is not None:
+            _dir = '/'.join((_parent_path, _dir))
         try:
-            self._eagain(sftp.stat, _directory)
+            self._eagain(sftp.stat, _dir)
         except SFTPHandleError:
-            self._mkdir(sftp, _directory)
+            self._mkdir(sftp, _dir)
         if sub_dirs is not None:
-            _parent_path = _parent_path if parent_path is None else \
-                           '/'.join([parent_path, _parent_path])
-            return self.mkdir(sftp, sub_dirs, parent_path=_parent_path)
+            # import ipdb; ipdb.set_trace()c
+            if directory.startswith('/'):
+                _dir = ''.join(('/', _dir))
+            # _parent_path = _dir if _parent_path is None else \
+            #                '/'.join([_parent_path, _dir])
+            return self.mkdir(sftp, sub_dirs, _parent_path=_dir)
 
     def _copy_dir(self, local_dir, remote_dir, sftp):
         """Call copy_file on every file in the specified directory, copying
@@ -496,6 +509,7 @@ class SSHClient(object):
         :raises: :py:class:`IOError` on local file IO errors
         :raises: :py:class:`OSError` on local OS errors like permission denied
         """
+        # import ipdb; ipdb.set_trace()
         sftp = self._make_sftp() if sftp is None else sftp
         try:
             self._eagain(sftp.stat, remote_file)
@@ -585,6 +599,6 @@ class SSHClient(object):
                  if _dir][:-1])
         except IndexError:
             return
-        if destination == '':
-            return
+        if file_path.startswith('/') or destination == '':
+            return '/' + destination
         return destination

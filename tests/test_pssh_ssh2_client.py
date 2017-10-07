@@ -319,7 +319,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         test_file_data = 'test'
         local_test_path = 'directory_test'
         remote_test_path = 'directory_test_copied'
-        remote_test_path_abs = os.path.expanduser('~/' + remote_test_path)
+        dir_name = os.path.dirname(__file__)
+        remote_test_path_abs = os.sep.join(
+            (dir_name, remote_test_path))
         for path in [local_test_path, remote_test_path_abs]:
             try:
                 shutil.rmtree(path)
@@ -334,23 +336,25 @@ class ParallelSSHClientTest(unittest.TestCase):
             local_file_path = os.path.join(local_file_path_dir, 'foo' + str(i))
             remote_file_path = os.path.join(
                 remote_test_path, 'sub_dir1', 'sub_dir2', 'dir_foo' + str(i), 'foo' + str(i))
-            remote_file_paths.append(os.path.expanduser('~/' + remote_file_path))
+            remote_file_paths.append(
+                os.sep.join((os.path.dirname(__file__), remote_file_path)))
             test_file = open(local_file_path, 'w')
             test_file.write(test_file_data)
             test_file.close()
-        cmds = self.client.copy_file(local_test_path, remote_test_path, recurse=True)
+        cmds = self.client.copy_file(local_test_path, remote_test_path_abs, recurse=True)
         gevent.joinall(cmds, raise_error=True)
         for path in remote_file_paths:
             self.assertTrue(os.path.isfile(path))
         shutil.rmtree(local_test_path)
-        shutil.rmtree(remote_test_path_abs)
+        shutil.rmtree(os.sep.join((os.path.dirname(__file__), remote_test_path)))
 
     def test_pssh_client_copy_file_failure(self):
         """Test failure scenarios of file copy"""
         test_file_data = 'test'
         local_test_path = 'directory_test'
         remote_test_path = 'directory_test_copied'
-        remote_test_path_abs = os.path.expanduser('~/' + remote_test_path)
+        dir_name = os.path.dirname(__file__)
+        remote_test_path_abs = os.sep.join((dir_name, remote_test_path))
         for path in [local_test_path, remote_test_path_abs]:
             mask = int('0700') if sys.version_info <= (2,) else 0o700
             if os.path.isdir(path):
@@ -367,32 +371,32 @@ class ParallelSSHClientTest(unittest.TestCase):
         os.mkdir(remote_test_path_abs)
         local_file_path = os.path.join(local_test_path, 'test_file')
         remote_file_path = os.path.join(remote_test_path, 'test_file')
-        remote_file_path_abs = os.path.expanduser('~/' + remote_file_path)
+        remote_test_path_abs = os.sep.join((dir_name, remote_test_path))
         test_file = open(local_file_path, 'w')
         test_file.write('testing\n')
         test_file.close()
         # Permission errors on writing into dir
         mask = int('0111') if sys.version_info <= (2,) else 0o111
         os.chmod(remote_test_path_abs, mask)
-        cmds = self.client.copy_file(local_test_path, remote_test_path, recurse=True)
+        cmds = self.client.copy_file(local_test_path, remote_test_path_abs, recurse=True)
         try:
             gevent.joinall(cmds, raise_error=True)
             raise Exception("Expected SFTPError exception")
         except SFTPError:
             pass
-        self.assertFalse(os.path.isfile(remote_file_path_abs))
+        self.assertFalse(os.path.isfile(remote_test_path_abs))
         # Create directory tree failure test
         local_file_path = os.path.join(local_test_path, 'test_file')
         remote_file_path = os.path.join(remote_test_path, 'test_dir', 'test_file')
-        remote_file_path_abs = os.path.expanduser('~/' + remote_file_path)
-        cmds = self.client.copy_file(local_file_path, remote_file_path, recurse=True)
+        remote_test_path_abs = os.sep.join((dir_name, remote_test_path))
+        cmds = self.client.copy_file(local_file_path, remote_test_path_abs, recurse=True)
         try:
             gevent.joinall(cmds, raise_error=True)
             raise Exception("Expected SFTPError exception on creating remote "
                             "directory")
         except SFTPError:
             pass
-        self.assertFalse(os.path.isfile(remote_file_path_abs))
+        self.assertFalse(os.path.isfile(remote_test_path_abs))
         mask = int('0600') if sys.version_info <= (2,) else 0o600
         os.chmod(remote_test_path_abs, mask)
         for path in [local_test_path, remote_test_path_abs]:
@@ -406,9 +410,10 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_pssh_copy_remote_file(self):
         """Test parallel copy file to local host"""
         test_file_data = 'test'
-        local_test_path = os.path.expanduser('~/' + 'directory_test_local_remote_copied')
+        dir_name = os.path.dirname(__file__)
+        local_test_path = os.sep.join((dir_name, 'directory_test_local_remote_copied'))
         remote_test_path = 'directory_test_remote_copy'
-        remote_test_path_abs = os.path.expanduser('~/' + remote_test_path)
+        remote_test_path_abs = os.sep.join((dir_name, remote_test_path))
         local_copied_dir = '_'.join([local_test_path, self.host])
         new_local_copied_dir = '.'.join([local_test_path, self.host])
         for path in [local_test_path, remote_test_path_abs, local_copied_dir,
@@ -434,9 +439,9 @@ class ParallelSSHClientTest(unittest.TestCase):
             test_file = open(remote_file_path, 'w')
             test_file.write(test_file_data)
             test_file.close()
-        cmds = self.client.copy_remote_file(remote_test_path, local_test_path)
+        cmds = self.client.copy_remote_file(remote_test_path_abs, local_test_path)
         self.assertRaises(ValueError, gevent.joinall, cmds, raise_error=True)
-        cmds = self.client.copy_remote_file(remote_test_path, local_test_path,
+        cmds = self.client.copy_remote_file(remote_test_path_abs, local_test_path,
                                             recurse=True)
         gevent.joinall(cmds, raise_error=True)
         try:
@@ -447,7 +452,7 @@ class ParallelSSHClientTest(unittest.TestCase):
             shutil.rmtree(remote_test_path_abs)
         finally:
             shutil.rmtree(local_copied_dir)
-        cmds = self.client.copy_remote_file(remote_test_path, local_test_path,
+        cmds = self.client.copy_remote_file(remote_test_path_abs, local_test_path,
                                             suffix_separator='.', recurse=True)
         gevent.joinall(cmds, raise_error=True)
         new_local_copied_dir = '.'.join([local_test_path, self.host])
