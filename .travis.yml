@@ -22,7 +22,7 @@ before_install:
 install:
   - pip install -r requirements_dev.txt
 script:
-  - nosetests --with-coverage --cover-package=pssh
+  - nosetests --with-coverage --cover-package=pssh tests/test_ssh2_client.py tests/test_pssh_ssh2_client.py
   - flake8 pssh
   - cd doc; make html; cd ..
 after_success:
