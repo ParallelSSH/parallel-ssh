@@ -18,6 +18,8 @@ Native code based client with extremely high performance - based on ``libssh2`` 
   :target: https://travis-ci.org/ParallelSSH/parallel-ssh
 .. image:: https://coveralls.io/repos/ParallelSSH/parallel-ssh/badge.png?branch=master
   :target: https://coveralls.io/r/ParallelSSH/parallel-ssh?branch=master
+.. image:: https://img.shields.io/pypi/wheel/parallel-ssh.svg
+   :target: https://pypi.python.org/pypi/parallel-ssh
 .. image:: https://readthedocs.org/projects/parallel-ssh/badge/?version=latest
   :target: http://parallel-ssh.readthedocs.org/en/latest/
   :alt: Latest documentation
@@ -69,9 +71,9 @@ As of version ``1.2.0``, a new client is supported in ``ParallelSSH`` which offe
 
 The new client is based on ``libssh2`` via the ``ssh2-python`` extension library and supports non-blocking mode natively. In addition, SFTP push/pull operations in the new client have also been implemented in native code, allowing for much greater performance and significantly reduced overhead.
 
-See `this post <https://parallel-ssh.org/post/pssh>`_ for a performance comparison of the available clients.
+See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of the available clients.
 
-To make use of this new client, ``ParallelSSHClient`` can be imported from ``pssh.pssh2_client`` instead. The respective APIs are almost identical, though some features have either not yet been implemented or are not supported by ``libssh2``.
+To make use of this new client, ``ParallelSSHClient`` can be imported from ``pssh.pssh2_client`` instead. Their respective APIs are almost identical.
 
 Note that the new client will become the default and will replace the current ``pssh.pssh_client`` in a new major version of the library - ``2.x.x`` - once remaining features have been implemented. The current client will remain available as an option under a new name.
 

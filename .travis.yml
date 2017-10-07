@@ -30,7 +30,7 @@ after_success:
 jobs:
   include:
     - os: osx
-      # if: tag IS present OR branch = master
+      if: tag IS present OR branch = master
       # tag =~ ^\d+\.\d+(\.\d+)?(-\S*)?$
       before_install: skip
       install:
