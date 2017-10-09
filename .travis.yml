@@ -59,7 +59,9 @@ jobs:
       python: 3.6
       before_install: skip
       install: skip
-      script: skip
+      script:
+        - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+        - ./ci/docker/build-packages.sh
       after_success: skip
       before_deploy:
         - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
@@ -75,6 +77,7 @@ jobs:
             repo: ParallelSSH/parallel-ssh
             tags: true
     - stage: deploy_pypi
+      if: tag IS present
       os: linux
       python: 3.6
       before_install: skip
@@ -99,10 +102,12 @@ jobs:
       install:
         - pip install twine
       script:
-        - if [[ ! -z "$TRAVIS_TAG" ]]; then
-              echo "Building wheels for tag ${TRAVIS_TAG}" &&
-              docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" &&
-              ./ci/travis/build-manylinux.sh;
-          fi
+        - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" &&
+          ./ci/travis/build-manylinux.sh;
+        # - if [[ ! -z "$TRAVIS_TAG" ]]; then
+        #       echo "Building wheels for tag ${TRAVIS_TAG}" &&
+        #       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" &&
+        #       ./ci/travis/build-manylinux.sh;
+        #   fi
       after_success:
         - twine upload -u $PYPI_U -p $PYPI_P wheelhouse/*.whl
