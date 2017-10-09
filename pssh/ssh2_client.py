@@ -34,8 +34,7 @@ from ssh2.sftp import LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
 from .exceptions import UnknownHostException, AuthenticationException, \
      ConnectionErrorException, SessionError, SFTPError, SFTPIOError
 from .constants import DEFAULT_RETRIES, RETRY_DELAY
-from .native.ssh2 import wait_select, sftp_get, sftp_put, \
-    _read_output
+from .native.ssh2 import wait_select, _read_output  # , sftp_get, sftp_put
 
 
 host_logger = logging.getLogger('pssh.host_logger')
@@ -396,28 +395,25 @@ class SSHClient(object):
         :raises: :py:class:`OSError` on local OS errors like permission denied
         """
         sftp = self._make_sftp() if sftp is None else sftp
-        # import ipdb; ipdb.set_trace()
         if os.path.isdir(local_file) and recurse:
             return self._copy_dir(local_file, remote_file, sftp)
         elif os.path.isdir(local_file) and not recurse:
             raise ValueError("Recurse must be true if local_file is a "
                              "directory.")
-        # import ipdb; ipdb.set_trace()
         destination = self._remote_paths_split(remote_file)
         if destination is not None:
             try:
                 self._eagain(sftp.stat, destination)
             except SFTPHandleError:
                 self.mkdir(sftp, destination)
-        try:
-            self.sftp_put(sftp, local_file, remote_file)
-        except Exception as error:
-            logger.error("Error occured copying file %s to remote destination "
-                         "%s:%s - %s",
-                         local_file, self.host, remote_file, error)
-            raise error
+        self.sftp_put(sftp, local_file, remote_file)
         logger.info("Copied local file %s to remote destination %s:%s",
                     local_file, self.host, remote_file)
+
+    def _sftp_put(self, remote_fh, local_file):
+        with open(local_file, 'rb') as local_fh:
+            for data in local_fh:
+                self._eagain(remote_fh.write, data)
 
     def sftp_put(self, sftp, local_file, remote_file):
         mode = LIBSSH2_SFTP_S_IRUSR | \
@@ -426,10 +422,11 @@ class SSHClient(object):
                LIBSSH2_SFTP_S_IROTH
         f_flags = LIBSSH2_FXF_CREAT | LIBSSH2_FXF_WRITE | LIBSSH2_FXF_TRUNC
         with self._sftp_openfh(
-                  sftp.open, remote_file, f_flags, mode) as remote_fh:
+                sftp.open, remote_file, f_flags, mode) as remote_fh:
             try:
-                THREAD_POOL.apply(
-                    sftp_put, args=(self.session, remote_fh, local_file))
+                self._sftp_put(remote_fh, local_file)
+                # THREAD_POOL.apply(
+                #     sftp_put, args=(self.session, remote_fh, local_file))
             except SFTPIOError_ssh2 as ex:
                 msg = "Error writing to remote file %s - %s"
                 logger.error(msg, remote_file, ex)
@@ -447,9 +444,6 @@ class SSHClient(object):
 
         Catches and logs at error level remote IOErrors on creating directory.
         """
-        # import ipdb; ipdb.set_trace()
-        # if _parent_path is None and directory.startswith('/'):
-        #     directory = self._eagain(sftp.realpath, directory)
         try:
             _dir, sub_dirs = directory.split('/', 1)
         except ValueError:
@@ -464,14 +458,12 @@ class SSHClient(object):
             _dir = '/'.join((_parent_path, _dir))
         try:
             self._eagain(sftp.stat, _dir)
-        except SFTPHandleError:
+        except SFTPHandleError as ex:
+            logger.debug("Stat for %s failed with %s", _dir, ex)
             self._mkdir(sftp, _dir)
         if sub_dirs is not None:
-            # import ipdb; ipdb.set_trace()c
             if directory.startswith('/'):
                 _dir = ''.join(('/', _dir))
-            # _parent_path = _dir if _parent_path is None else \
-            #                '/'.join([_parent_path, _dir])
             return self.mkdir(sftp, sub_dirs, _parent_path=_dir)
 
     def _copy_dir(self, local_dir, remote_dir, sftp):
@@ -509,7 +501,6 @@ class SSHClient(object):
         :raises: :py:class:`IOError` on local file IO errors
         :raises: :py:class:`OSError` on local OS errors like permission denied
         """
-        # import ipdb; ipdb.set_trace()
         sftp = self._make_sftp() if sftp is None else sftp
         try:
             self._eagain(sftp.stat, remote_file)
@@ -532,15 +523,8 @@ class SSHClient(object):
         destination = os.path.join(os.path.sep, os.path.sep.join(
             [_dir for _dir in local_file.split('/')
              if _dir][:-1]))
-        if not os.path.exists(destination):
-            os.makedirs(destination)
-        try:
-            self.sftp_get(sftp, remote_file, local_file)
-        except Exception as error:
-            logger.error("Error occured copying file %s from remote destination"
-                         " %s:%s - %s",
-                         local_file, self.host, remote_file, error)
-            raise
+        self._make_local_dir(destination)
+        self.sftp_get(sftp, remote_file, local_file)
         logger.info("Copied local file %s from remote destination %s:%s",
                     local_file, self.host, remote_file)
 
@@ -561,11 +545,20 @@ class SSHClient(object):
             raise SFTPError(msg, remote_file, errno)
         return fh
 
+    def _sftp_get(self, remote_fh, local_file):
+        with open(local_file, 'wb') as local_fh:
+            for size, data in remote_fh:
+                if size == LIBSSH2_ERROR_EAGAIN:
+                    wait_select(self.session)
+                    continue
+                local_fh.write(data)
+
     def sftp_get(self, sftp, remote_file, local_file):
         with self._sftp_openfh(sftp.open, remote_file, 0, 0) as remote_fh:
             try:
-                THREAD_POOL.apply(
-                    sftp_get, args=(self.session, remote_fh, local_file))
+                self._sftp_get(remote_fh, local_file)
+                # THREAD_POOL.apply(
+                #     sftp_get, args=(self.session, remote_fh, local_file))
             except SFTPIOError_ssh2 as ex:
                 msg = "Error reading from remote file %s - %s"
                 logger.error(msg, remote_file, ex)
@@ -593,12 +586,7 @@ class SSHClient(object):
             raise
 
     def _remote_paths_split(self, file_path):
-        try:
-            destination = '/'.join(
-                [_dir for _dir in file_path.split('/')
-                 if _dir][:-1])
-        except IndexError:
-            return
-        if file_path.startswith('/') or destination == '':
-            return '/' + destination
-        return destination
+        _sep = file_path.rfind('/')
+        if _sep > 0:
+            return file_path[:_sep]
+        return

@@ -76,16 +76,16 @@ install:
   # about it being out of date.
   - "pip install --disable-pip-version-check --user --upgrade pip"
 
+  - git submodule update --init --recursive
+  - "%CMD_IN_ENV% ci\\appveyor\\build_ssh2.bat"
   # Install the build dependencies of the project. If some dependencies contain
   # compiled extensions and are not provided as pre-built wheel packages,
   # pip will build them from source using the MSVC compiler matching the
   # target Python version and architecture
   - "%CMD_IN_ENV% pip install -r requirements.txt"
   - "%CMD_IN_ENV% pip install -U wheel setuptools twine"
-  - git submodule update --init --recursive
 
 build_script:
-  - "%CMD_IN_ENV% ci\\appveyor\\build_ssh2.bat"
   # Build the compiled extension
   - "%CMD_IN_ENV% python setup.py build_ext -i"
 

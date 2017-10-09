@@ -16,8 +16,8 @@ Native code based client with extremely high performance - based on ``libssh2`` 
   :alt: Latest Version
 .. image:: https://travis-ci.org/ParallelSSH/parallel-ssh.svg?branch=master
   :target: https://travis-ci.org/ParallelSSH/parallel-ssh
-.. image:: https://coveralls.io/repos/ParallelSSH/parallel-ssh/badge.png?branch=master
-  :target: https://coveralls.io/r/ParallelSSH/parallel-ssh?branch=master
+.. image:: https://codecov.io/gh/ParallelSSH/parallel-ssh/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/ParallelSSH/parallel-ssh
 .. image:: https://img.shields.io/pypi/wheel/parallel-ssh.svg
    :target: https://pypi.python.org/pypi/parallel-ssh
 .. image:: https://readthedocs.org/projects/parallel-ssh/badge/?version=latest
@@ -63,19 +63,21 @@ Run ``uname`` on two remote hosts in parallel with ``sudo``.
       Linux
       Linux
 
-*******************
-Native code client
-*******************
+**************
+Native client
+**************
 
-As of version ``1.2.0``, a new client is supported in ``ParallelSSH`` which offers much greater performance and reduced overhead than the current default client library. Binary wheel packages with ``libssh2`` included are provided for Linux, OSX and Windows platforms and all supported Python versions.
+Starting from version ``1.2.0``, a new client is supported in ``parallel-ssh`` which offers much greater performance and reduced overhead than the current default client.
 
-The new client is based on ``libssh2`` via the ``ssh2-python`` extension library and supports non-blocking mode natively. In addition, SFTP push/pull operations in the new client have also been implemented in native code, allowing for much greater performance and significantly reduced overhead.
+The new client is based on ``libssh2`` via the ``ssh2-python`` extension library and supports non-blocking mode natively. Binary wheel packages with ``libssh2`` included are provided for Linux, OSX and Windows platforms and all supported Python versions.
 
 See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of the available clients.
 
 To make use of this new client, ``ParallelSSHClient`` can be imported from ``pssh.pssh2_client`` instead. Their respective APIs are almost identical.
 
-Note that the new client will become the default and will replace the current ``pssh.pssh_client`` in a new major version of the library - ``2.x.x`` - once remaining features have been implemented. The current client will remain available as an option under a new name.
+The new client will become the default and will replace the current ``pssh.pssh_client`` in a new major version of the library - ``2.0.0`` - once remaining features have been implemented. The native client should be considered as *beta* status until the ``2.0.0`` release when it is made the default.
+
+The current default client will remain available as an option under a new name.
 
 For example:
 
@@ -101,9 +103,8 @@ Native Code Client Features
 ****************************
 
 * Highest performance and least overhead of any Python SSH libraries
-* Thread safe - utilises both native threads for blocking calls like authentication and non-blocking I/O
+* Thread safe - makes use of native threads for blocking calls like authentication
 * Natively non-blocking utilising ``libssh2`` via ``ssh2-python`` - **no monkey patching of the Python standard library**
-* Native binary-like SFTP speeds thanks to SFTP and local file read/write native code implementations
 * Significantly reduced overhead in CPU and memory usage
 
 

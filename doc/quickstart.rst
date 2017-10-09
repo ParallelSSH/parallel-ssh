@@ -2,15 +2,19 @@
 Quickstart
 ***********
 
-First, make sure that ``parallel-ssh`` is `installed <installation>`_.
+First, make sure that ``parallel-ssh`` is `installed <installation.html>`_.
 
 .. note::
 
-   ParallelSSH uses gevent's monkey patching to enable asynchronous use of the Python standard library's network I/O.
+   ``parallel-ssh`` uses gevent's monkey patching to enable asynchronous use of the Python standard library's network I/O.
 
    Make sure that ParallelSSH imports come **before** any other imports in your code. Otherwise, patching may not be done before the standard library is loaded which will then cause ParallelSSH to block.
 
    If you are seeing messages like ``This operation would block forever``, this is the cause.
+
+   Monkey patching is only done for the clients under ``pssh.pssh_client`` and ``pssh.ssh_client`` for parallel and single host clients respectively.
+
+   New native library based clients under ``pssh.pssh2_client`` and ``pssh.ssh2_client`` **do not perform monkey patching** and are an option if monkey patching is not suitable. These clients are currently in beta and will become the default in a future major release - ``2.0.0``.
 
 Run a command on hosts in parallel
 ------------------------------------
@@ -207,4 +211,4 @@ With this flag, the ``exception`` attribute will contain the exception on any fa
 
 .. seealso::
 
-   Possible exceptions can be found in :mod:`pssh.exceptions` module.
+   Exceptions raised by the library can be found in :mod:`pssh.exceptions` module.

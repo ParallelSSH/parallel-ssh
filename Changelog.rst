@@ -7,7 +7,7 @@ Change Log
 Changes
 ---------
 
-* New ``ssh2-python`` (``libssh2``) based clients
+* New ``ssh2-python`` (``libssh2``) native library based clients
 
 Fixes
 --------
