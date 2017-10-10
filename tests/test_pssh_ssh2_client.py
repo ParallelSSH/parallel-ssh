@@ -97,6 +97,14 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue(len(stdout) == 0)
         self.assertTrue(len(stderr) == 0)
         self.assertEqual(expected_exit_code, exit_code)
+        output = self.client.run_command('echo "me" >&2', use_pty=False)
+        self.client.join(output, consume_output=True)
+        exit_code = output[self.host].exit_code
+        stdout = list(output[self.host]['stdout'])
+        stderr = list(output[self.host]['stderr'])
+        self.assertTrue(len(stdout) == 0)
+        self.assertTrue(len(stderr) == 0)
+        self.assertEqual(expected_exit_code, exit_code)
 
     def test_client_join_stdout(self):
         output = self.client.run_command(self.cmd)
@@ -1121,6 +1129,10 @@ class ParallelSSHClientTest(unittest.TestCase):
         client.join(client.run_command(self.cmd))
         client.host_clients[self.host].session.disconnect()
         self.assertRaises(SessionError, client.host_clients[self.host].open_session)
+
+    def test_host_no_client(self):
+        output = {'blah': None}
+        self.client.join(output)
 
 #     def test_proxy_remote_host_failure_timeout(self):
 #         """Test that timeout setting is passed on to proxy to be used for the

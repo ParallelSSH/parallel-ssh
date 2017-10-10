@@ -22,6 +22,7 @@ from socket import gaierror as sock_gaierror, error as sock_error
 
 from gevent import sleep, get_hub
 from gevent import socket
+from gevent.hub import Hub
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import AuthenticationError, AgentError, \
     SessionHandshakeError, SFTPHandleError, SFTPIOError as SFTPIOError_ssh2
@@ -37,6 +38,7 @@ from .constants import DEFAULT_RETRIES, RETRY_DELAY
 from .native.ssh2 import wait_select, _read_output  # , sftp_get, sftp_put
 
 
+Hub.NOT_ERROR = (Exception,)
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
 THREAD_POOL = get_hub().threadpool

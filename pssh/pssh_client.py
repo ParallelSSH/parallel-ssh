@@ -28,7 +28,7 @@ gevent.hub.Hub.NOT_ERROR = (Exception,)
 
 from .base_pssh import BaseParallelSSHClient  # noqa: E402
 from .exceptions import HostArgumentException  # noqa: E402
-from .constants import DEFAULT_RETRIES  # noqa: E402
+from .constants import DEFAULT_RETRIES, RETRY_DELAY  # noqa: E402
 from .ssh_client import SSHClient  # noqa: E402
 
 
@@ -43,7 +43,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                  timeout=120, pool_size=10, proxy_host=None, proxy_port=22,
                  proxy_user=None, proxy_password=None, proxy_pkey=None,
                  agent=None, allow_agent=True, host_config=None,
-                 channel_timeout=None):
+                 channel_timeout=None, retry_delay=RETRY_DELAY):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -61,6 +61,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param num_retries: (Optional) Number of retries for connection attempts
           before the client gives up. Defaults to 3.
         :type num_retries: int
+        :param retry_delay: Number of seconds to wait between retries. Defaults
+          to :py:class:`pssh.constants.RETRY_DELAY`
+        :type retry_delay: int
         :param timeout: (Optional) Number of seconds to wait before connection
           and authentication attempt times out. Note that total time before
           timeout will be
@@ -111,7 +114,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, hosts, user=user, password=password, port=port, pkey=pkey,
             allow_agent=allow_agent, num_retries=num_retries,
             timeout=timeout, pool_size=pool_size,
-            host_config=host_config)
+            host_config=host_config, retry_delay=retry_delay)
         self.forward_ssh_agent = forward_ssh_agent
         self.proxy_host, self.proxy_port, self.proxy_user, \
             self.proxy_password, self.proxy_pkey = proxy_host, proxy_port, \

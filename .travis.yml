@@ -32,7 +32,8 @@ jobs:
     - if: tag IS present
       os: osx
       # tag =~ ^\d+\.\d+(\.\d+)?(-\S*)?$
-      before_install: skip
+      before_install:
+        - brew update
       install:
         - brew install libssh2
         - pip install -U delocate twine wheel pip setuptools
@@ -54,14 +55,13 @@ jobs:
           fi
       language: generic
       python: skip
-    - stage: build_packages
+    - stage: build system packages
+      if: tag IS present
       os: linux
       python: 3.6
       before_install: skip
       install: skip
-      script:
-        - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-        - ./ci/docker/build-packages.sh
+      script: skip
       after_success: skip
       before_deploy:
         - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
@@ -76,7 +76,7 @@ jobs:
           on:
             repo: ParallelSSH/parallel-ssh
             tags: true
-    - stage: deploy_pypi
+    - stage: deploy pypi sdist
       if: tag IS present
       os: linux
       python: 3.6
@@ -95,7 +95,8 @@ jobs:
           distributions: sdist
           skip_upload_docs: true
           skip_cleanup: true
-    - stage: build wheels
+    - stage: build and deploy wheels
+      if: tag IS present
       os: linux
       python: 3.6
       before_install: skip
@@ -104,10 +105,7 @@ jobs:
       script:
         - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" &&
           ./ci/travis/build-manylinux.sh;
-        # - if [[ ! -z "$TRAVIS_TAG" ]]; then
-        #       echo "Building wheels for tag ${TRAVIS_TAG}" &&
-        #       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" &&
-        #       ./ci/travis/build-manylinux.sh;
-        #   fi
       after_success:
-        - twine upload -u $PYPI_U -p $PYPI_P wheelhouse/*.whl
+        - if [[ ! -z "$TRAVIS_TAG" ]]; then
+            twine upload -u $PYPI_U -p $PYPI_P wheelhouse/*.whl;
+          fi

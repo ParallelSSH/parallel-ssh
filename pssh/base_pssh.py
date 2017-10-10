@@ -22,13 +22,14 @@ import random
 import logging
 
 import gevent.pool
-import gevent.hub
+from gevent.hub import Hub
 
 from .exceptions import HostArgumentException
 from .constants import DEFAULT_RETRIES, RETRY_DELAY
 from .output import HostOutput
 
-gevent.hub.Hub.NOT_ERROR = (Exception,)
+
+Hub.NOT_ERROR = (Exception,)
 logger = logging.getLogger(__name__)
 
 try:
@@ -165,6 +166,8 @@ class BaseParallelSSHClient(object):
         :rtype: None
         """
         for host in output:
+            if output[host] is None:
+                continue
             output[host].exit_code = self.get_exit_code(output[host])
 
     def get_exit_code(self, host_output):

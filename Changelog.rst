@@ -8,6 +8,7 @@ Changes
 ---------
 
 * New ``ssh2-python`` (``libssh2``) native library based clients
+* Added ``retry_delay`` keyword parameter to parallel clients
 
 Fixes
 --------

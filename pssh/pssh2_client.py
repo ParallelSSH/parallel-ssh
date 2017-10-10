@@ -17,15 +17,11 @@
 
 import logging
 
-import gevent.pool
-import gevent.hub
-
 from .base_pssh import BaseParallelSSHClient
 from .constants import DEFAULT_RETRIES, RETRY_DELAY
 from .ssh2_client import SSHClient
 
 
-gevent.hub.Hub.NOT_ERROR = (Exception,)
 logger = logging.getLogger(__name__)
 
 
