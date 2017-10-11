@@ -138,6 +138,12 @@ class SSHClient(object):
         else:
             self._connect(self.client, real_host, self.port, **paramiko_kwargs)
 
+    def __del__(self):
+        try:
+            self.client.close()
+        except Exception:
+            pass
+
     def _connect_tunnel(self, host, **paramiko_kwargs):
         """Connects to SSH server via an intermediate SSH tunnel server.
         client (me) -> tunnel (ssh server to proxy through) ->

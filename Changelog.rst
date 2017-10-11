@@ -15,6 +15,7 @@ Fixes
 
 * Remote path for SFTP operations was created incorrectly on Windows - #88 - thanks @moscoquera
 * Parallel client key error when openssh config with a host name override was used - #93
+* Clean up after paramiko clients
 
 1.1.1
 ++++++

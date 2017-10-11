@@ -60,14 +60,17 @@ def load_private_key(_pkey):
     :type pkey: file/str"""
     if not hasattr(_pkey, 'read'):
         _pkey = open(_pkey)
-    for keytype in [RSAKey, DSSKey, ECDSAKey]:
-        try:
-            pkey = keytype.from_private_key(_pkey)
-        except SSHException:
-            _pkey.seek(0)
-            continue
-        else:
-            return pkey
+    try:
+        for keytype in [RSAKey, DSSKey, ECDSAKey]:
+            try:
+                pkey = keytype.from_private_key(_pkey)
+            except SSHException:
+                _pkey.seek(0)
+                continue
+            else:
+                return pkey
+    finally:
+        _pkey.close()
     logger.error("Failed to load private key using all available key types "
                  "- giving up..")
 
