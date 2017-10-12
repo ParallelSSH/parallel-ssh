@@ -59,6 +59,7 @@ class BaseParallelSSHClient(object):
         self.host_clients = {}
         self.host_config = host_config if host_config else {}
         self.retry_delay = retry_delay
+        self.cmds = None
 
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
@@ -89,6 +90,23 @@ class BaseParallelSSHClient(object):
             except Exception:
                 if stop_on_errors:
                     raise
+        self.cmds = cmds
+        return output
+
+    def get_last_output(self, cmds=None):
+        """Get output for last commands executed by ``run_command``
+
+        :param cmds: Commands to get output for. Defaults to ``client.cmds``
+        :type cmds: list(:py:class:`gevent.Greenlet`)
+
+        :rtype: dict
+        """
+        cmds = self.cmds if cmds is None else cmds
+        if cmds is None:
+            return
+        output = {}
+        for cmd in self.cmds:
+            self.get_output(cmd, output)
         return output
 
     def _get_host_config_values(self, host):

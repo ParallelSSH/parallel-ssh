@@ -9,6 +9,8 @@ Changes
 
 * New ``ssh2-python`` (``libssh2``) native library based clients
 * Added ``retry_delay`` keyword parameter to parallel clients
+* Added ``get_last_output`` function for retrieving output of last executed commands
+* Added ``cmds`` attribute to parallel clients for last executed commands
 
 Fixes
 --------

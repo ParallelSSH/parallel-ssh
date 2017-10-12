@@ -57,7 +57,7 @@ In a nutshell
 
 As of version ``1.2.0``, new single host and parallel clients are available based on the ``libssh2`` C library via its ``ssh2-python`` wrapper.
 
-They offer significantly enhanced performance and stability, at much less overhead, with a native non-blocking mode meaning *no monkey patching of the Python standard library* when using the new clients.
+They offer significantly enhanced performance and stability, at much less overhead, with a native non-blocking mode meaning *no monkey patching of the Python standard library* when using them.
 
 To use them, import from ``pssh2_client`` or ``ssh2_client`` for the parallel and single clients respectively.
 

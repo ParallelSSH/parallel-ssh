@@ -131,6 +131,33 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.client.join(output)
         exit_code = output[self.host].exit_code
         self.assertTrue(exit_code == 1)
+        self.assertTrue(len(output), len(self.client.cmds))
+        _output = {}
+        for i, host in enumerate([self.host]):
+            cmd = self.client.cmds[i]
+            self.client.get_output(cmd, _output)
+        self.assertTrue(len(_output) == len(output))
+        for host in output:
+            self.assertTrue(host in _output)
+
+    def test_get_last_output(self):
+        host = '127.0.0.9'
+        server = OpenSSHServer(listen_ip=host, port=self.port)
+        server.start_server()
+        hosts = [self.host, host]
+        client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key)
+        self.assertTrue(client.cmds is None)
+        self.assertTrue(client.get_last_output() is None)
+        client.run_command(self.cmd)
+        self.assertTrue(client.cmds is not None)
+        self.assertEqual(len(client.cmds), len(hosts))
+        output = client.get_last_output()
+        self.assertTrue(len(output), len(hosts))
+        client.join(output)
+        for host in hosts:
+            self.assertTrue(host in output)
+            exit_code = output[host].exit_code
+            self.assertTrue(exit_code == 0)
 
     def test_pssh_client_no_stdout_non_zero_exit_code_immediate_exit(self):
         output = self.client.run_command('exit 1')
