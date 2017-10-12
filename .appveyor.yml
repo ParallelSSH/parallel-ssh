@@ -91,6 +91,7 @@ build_script:
 
 test_script:
   - python -c "import pssh.native.ssh2"
+  - python -c "import pssh.pssh2_client"
 
 after_test:
   # If tests are successful, create binary packages for the project.

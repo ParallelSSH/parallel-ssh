@@ -43,6 +43,7 @@ def _read_output(Session session, read_func):
     cdef Py_ssize_t _size
     cdef bytes _data
     cdef bytes remainder = b""
+    cdef Py_ssize_t remainder_len = 0
     cdef LIBSSH2_SESSION *_session = session._session
     cdef int _sock = session._sock
     cdef size_t _pos = 0
@@ -55,18 +56,23 @@ def _read_output(Session session, read_func):
         while _size > 0:
             while _pos < _size:
                 linesep = _data[:_size].find(LINESEP, _pos)
-                if linesep > 0:
-                    if len(remainder) > 0:
-                        yield remainder + _data[_pos:linesep].strip()
+                if linesep >= 0:
+                    if remainder_len > 0:
+                        yield remainder + _data[_pos:linesep].rstrip()
                         remainder = b""
+                        remainder_len = 0
                     else:
-                        yield _data[_pos:linesep].strip()
-                        _pos = linesep + 1
+                        yield _data[_pos:linesep].rstrip()
+                    _pos = linesep + 1
                 else:
                     remainder += _data[_pos:]
+                    remainder_len = len(remainder)
                     break
             _size, _data = read_func()
             _pos = 0
+    if remainder_len > 0:
+        # Finished reading without finding ending linesep
+        yield remainder
 
 
 def sftp_put(Session session, SFTPHandle handle,

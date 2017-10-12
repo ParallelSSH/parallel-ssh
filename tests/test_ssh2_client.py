@@ -2,6 +2,7 @@ import unittest
 import os
 import logging
 import time
+import subprocess
 
 from gevent import socket
 
@@ -54,6 +55,25 @@ class SSH2ClientTest(SSH2TestCase):
         client.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client._connect()
         client._init()
+
+    def test_stdout_parsing(self):
+        dir_list = os.listdir(os.path.expanduser('~'))
+        channel, host, stdout, stderr, stdin = self.client.run_command(
+            'ls -la')
+        output = list(stdout)
+        # Output of `ls` will have 'total', '.', and '..' in addition to dir
+        # listing
+        self.assertEqual(len(dir_list), len(output) - 3)
+
+    def test_file_output_parsing(self):
+        lines = int(subprocess.check_output(
+            ['wc', '-l', 'pssh/native/ssh2.c']).split()[0])
+        dir_name = os.path.dirname(__file__)
+        ssh2_file = os.sep.join((dir_name, '..', 'pssh', 'native', 'ssh2.c'))
+        channel, host, stdout, stderr, stdin = self.client.run_command(
+            'cat %s' % ssh2_file)
+        output = list(stdout)
+        self.assertEqual(lines, len(output))
 
     def test_identity_auth_failure(self):
         self.assertRaises(AuthenticationException,

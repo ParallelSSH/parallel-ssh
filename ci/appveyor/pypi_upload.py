@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import sys
 import subprocess
 import os
@@ -18,4 +16,8 @@ if __name__ == "__main__":
     if not len(sys.argv) > 1:
         sys.stderr.write("Need files to upload argument" + os.linesep)
         sys.exit(1)
+    if os.environ['APPVEYOR_REPO_TAG'] != 'true':
+        sys.stderr.write(
+            "Not a tagged build - skipping PyPi upload" + os.linesep)
+        sys.exit(0)
     upload_pypi(os.path.abspath(sys.argv[1]))

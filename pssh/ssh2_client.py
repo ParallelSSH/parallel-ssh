@@ -17,7 +17,12 @@
 
 import logging
 import os
-import pwd
+try:
+    import pwd
+except ImportError:
+    WIN_PLATFORM = True
+else:
+    WIN_PLATFORM = False
 from socket import gaierror as sock_gaierror, error as sock_error
 
 from gevent import sleep, get_hub
@@ -87,7 +92,11 @@ class SSHClient(object):
         # proxy_host=None, proxy_port=22, proxy_user=None,
         # proxy_password=None, proxy_pkey=None,
         self.host = host
-        self.user = user if user else pwd.getpwuid(os.geteuid()).pw_name
+        self.user = user if user else None
+        if self.user is None and WIN_PLATFORM is False:
+            self.user = pwd.getpwuid(os.geteuid()).pw_name
+        elif self.user is None and WIN_PLATFORM is True:
+            raise ValueError("Must provide user parameter on Windows")
         self.password = password
         self.port = port if port else 22
         self.pkey = pkey
@@ -287,7 +296,7 @@ class SSHClient(object):
         """
         prefix = '' if prefix is None else prefix
         for line in output_buffer:
-            output = line.strip().decode(encoding)
+            output = line.decode(encoding)
             host_logger.info("[%s]%s\t%s", self.host, prefix, output)
             yield output
         if callback:
