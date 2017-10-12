@@ -9,7 +9,9 @@ from gevent import socket
 from .base_ssh2_test import SSH2TestCase
 from .embedded_server.openssh import OpenSSHServer
 from pssh.ssh2_client import SSHClient, logger as ssh_logger
-from pssh.exceptions import AuthenticationException, ConnectionErrorException
+from ssh2.session import Session
+from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
+    SessionError
 
 
 ssh_logger.setLevel(logging.DEBUG)
@@ -48,13 +50,31 @@ class SSH2ClientTest(SSH2TestCase):
     def test_manual_auth(self):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
-                           num_retries=1)
+                           num_retries=1,
+                           timeout=1)
         client.session.disconnect()
         del client.session
         del client.sock
         client.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client._connect()
         client._init()
+        # Identity auth
+        client.pkey = None
+        client.session.disconnect()
+        del client.session
+        del client.sock
+        client.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client._connect()
+        client.session = Session()
+        client.session.handshake(client.sock)
+        self.assertRaises(AuthenticationException, client.auth)
+
+    def test_handshake_fail(self):
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1)
+        client.session.disconnect()
+        self.assertRaises(SessionError, client._init)
 
     def test_stdout_parsing(self):
         dir_list = os.listdir(os.path.expanduser('~'))
@@ -88,6 +108,7 @@ class SSH2ClientTest(SSH2TestCase):
     def test_password_auth_failure(self):
         self.assertRaises(AuthenticationException,
                           SSHClient, self.host, port=self.port, num_retries=1,
+                          allow_agent=False,
                           password='blah blah blah')
 
     def test_retry_failure(self):
