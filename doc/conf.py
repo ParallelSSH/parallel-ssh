@@ -13,7 +13,6 @@
 # serve to show the default.
 
 import sys
-sys.path.append("..")
 import pssh
 import os
 
