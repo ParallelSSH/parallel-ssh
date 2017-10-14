@@ -4,4 +4,6 @@ sphinx
 sphinx_rtd_theme
 nose
 python-gssapi
+jinja2
+-r requirements.txt
 -e .

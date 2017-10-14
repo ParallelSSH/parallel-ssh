@@ -1,10 +1,7 @@
-.. contents::
-
-
 Advanced Usage
 =================
 
-There are several more advanced use cases of `ParallelSSH`, such as tunneling (aka proxying) via an intermediate SSH server and per-host configuration and command substitution among others.
+There are several more advanced usage features of ``parallel-ssh``, such as tunnelling (aka proxying) via an intermediate SSH server and per-host configuration and command substitution among others.
 
 Agents and Private Keys
 *************************
@@ -23,7 +20,7 @@ will disable this behaviour.
 Programmatic Private Keys
 --------------------------
 
-By default, ``ParallelSSH`` will use all keys in an available SSH agent and identity keys under the user's SSH directory - ``id_rsa`` and ``id_dsa`` in ``~/.ssh``.
+By default, ``parallel-ssh`` will use all keys in an available SSH agent and identity keys under the user's SSH directory - ``id_rsa``, ``id_dsa`` and ``identity`` in ``~/.ssh``.
 
 A private key can also be provided programmatically.
 
@@ -58,7 +55,7 @@ Use of an available SSH agent can also be disabled.
 
    If the number of hosts is large enough, available connections to the system SSH agent may be exhausted which will stop the client from working on a subset of hosts.
 
-   This is a limitation of the underlying SSH client used by ``ParallelSSH``.
+   This is a limitation of the underlying SSH client used by ``parallel-ssh``.
 
 Programmatic SSH Agent
 -----------------------
@@ -87,6 +84,32 @@ It is also possible to programmatically provide an SSH agent for the client to u
 
    :py:class:`pssh.agent.SSHAgent`
 
+
+Native clients
+*****************
+
+Starting from version ``1.2.0``, a new client is supported in ``parallel-ssh`` which offers much greater performance and reduced overhead than the current default client.
+
+The new client is based on ``libssh2`` via the ``ssh2-python`` extension library and supports non-blocking mode natively. Binary wheel packages with ``libssh2`` included are provided for Linux, OSX and Windows platforms and all supported Python versions.
+
+See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of the available clients.
+
+To make use of this new client, ``ParallelSSHClient`` can be imported from ``pssh.pssh2_client`` instead. Their respective APIs are almost identical. 
+
+.. code-block:: python
+
+  from pssh.pssh2_client import ParallelSSHClient
+
+  hosts = ['my_host', 'my_other_host']
+  client = ParallelSSHClient(hosts)
+  client.run_command(<..>)
+
+
+.. seealso::
+
+   `Feature comparison <ssh2.html>`_ for how the client features compare.
+
+   API documentation for `parallel <pssh2_client.html>`_ and `single <ssh2_client.html>`_ native clients.
 
 Tunneling
 **********
@@ -122,7 +145,7 @@ In the above example, connections to the target hosts are made via ``my_proxy_us
 
    Proxy host connections are asynchronous and use the SSH protocol's native TCP tunneling - aka local port forward. No external commands or processes are used for the proxy connection, unlike the `ProxyCommand` directive in OpenSSH and other utilities.
 
-   While connections initiated by ``ParallelSSH`` are asynchronous, connections from proxy host -> target hosts may not be, depending on SSH server implementation. If only one proxy host is used to connect to a large number of target hosts and proxy SSH server connections are *not* asynchronous, this may adversely impact performance on the proxy host.
+   While connections initiated by ``parallel-ssh`` are asynchronous, connections from proxy host -> target hosts may not be, depending on SSH server implementation. If only one proxy host is used to connect to a large number of target hosts and proxy SSH server connections are *not* asynchronous, this may adversely impact performance on the proxy host.
 
 Per-Host Configuration
 ***********************
@@ -208,7 +231,7 @@ See :py:func:`run_command API documentation <pssh.pssh_client.ParallelSSHClient.
 Run with sudo
 ---------------
 
-``ParallelSSH`` can be instructed to run its commands under ``sudo``:
+``parallel-ssh`` can be instructed to run its commands under ``sudo``:
 
 .. code-block:: python
 
@@ -251,7 +274,7 @@ Contents of ``stdout`` will be `UTF-16` encoded.
 Disabling use of pseudo terminal emulation
 --------------------------------------------
 
-By default, ``ParallelSSH`` uses the user's configured shell to run commands with. As a shell is used by default, a pseudo terminal (`PTY`) is also requested by default.
+By default, ``parallel-ssh`` uses the user's configured shell to run commands with. As a shell is used by default, a pseudo terminal (`PTY`) is also requested by default.
 
 For cases where use of a `PTY` is not wanted, such as having separate stdout and stderr outputs, the remote command is a daemon that needs to fork and detach itself or when use of a shell is explicitly disabled, use of PTY can also be disabled.
 
@@ -308,7 +331,7 @@ No output from ``stderr``.
 SFTP
 *****
 
-SFTP - `SCP version 2` - is supported by ``Parallel-SSH`` and two functions are provided by the client for copying files with SFTP.
+SFTP - `SCP version 2` - is supported by ``parallel-ssh`` and two functions are provided by the client for copying files with SFTP.
 
 SFTP does not have a shell interface and no output is provided for any SFTP commands.
 
@@ -428,7 +451,7 @@ Hosts list can be modified in place. A call to ``run_command`` will create new c
 Additional options for underlying SSH libraries
 ************************************************
 
-Not all SSH library configuration options are used directly by ``Parallel-SSH``.
+Not all SSH library configuration options are used directly by ``parallel-ssh``.
 
 Additional options can be passed on to the underlying SSH libraries used via an optional keyword argument.
 

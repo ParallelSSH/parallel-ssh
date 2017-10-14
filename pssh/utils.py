@@ -60,23 +60,26 @@ def load_private_key(_pkey):
     :type pkey: file/str"""
     if not hasattr(_pkey, 'read'):
         _pkey = open(_pkey)
-    for keytype in [RSAKey, DSSKey, ECDSAKey]:
-        try:
-            pkey = keytype.from_private_key(_pkey)
-        except SSHException:
-            _pkey.seek(0)
-            continue
-        else:
-            return pkey
+    try:
+        for keytype in [RSAKey, DSSKey, ECDSAKey]:
+            try:
+                pkey = keytype.from_private_key(_pkey)
+            except SSHException:
+                _pkey.seek(0)
+                continue
+            else:
+                return pkey
+    finally:
+        _pkey.close()
     logger.error("Failed to load private key using all available key types "
                  "- giving up..")
 
 
-def read_openssh_config(_host, config_file=None):
+def read_openssh_config(host, config_file=None):
     """Parses user's OpenSSH config for per hostname configuration for
     hostname, user, port and private key values
 
-    :param _host: Hostname to lookup in config
+    :param host: Hostname to lookup in config
     """
     _ssh_config_file = config_file if config_file else \
         os.path.sep.join([os.path.expanduser('~'), '.ssh', 'config'])
@@ -86,10 +89,10 @@ def read_openssh_config(_host, config_file=None):
         return
     ssh_config = SSHConfig()
     ssh_config.parse(open(_ssh_config_file))
-    host_config = ssh_config.lookup(_host)
+    host_config = ssh_config.lookup(host)
     host = (host_config['hostname'] if
             'hostname' in host_config
-            else _host)
+            else host)
     user = host_config['user'] if 'user' in host_config else None
     port = int(host_config['port']) if 'port' in host_config else 22
     pkey = None

@@ -18,3 +18,4 @@
 """Constants definitions for pssh package"""
 
 DEFAULT_RETRIES = 3
+RETRY_DELAY = 5

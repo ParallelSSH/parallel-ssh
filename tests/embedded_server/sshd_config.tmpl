@@ -1,0 +1,9 @@
+Protocol 2
+UsePAM no
+HostbasedAuthentication no
+IgnoreUserKnownHosts yes
+ListenAddress {{listen_ip}}
+
+AcceptEnv LANG LC_*
+Subsystem sftp internal-sftp
+AuthorizedKeysFile {{parent_dir}}/authorized_keys

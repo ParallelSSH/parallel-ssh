@@ -1,18 +1,20 @@
-.. contents::
-
 ***********
 Quickstart
 ***********
 
-First, make sure that ``parallel-ssh`` is `installed <installation>`_.
+First, make sure that ``parallel-ssh`` is `installed <installation.html>`_.
 
 .. note::
 
-   ParallelSSH uses gevent's monkey patching to enable asynchronous use of the Python standard library's network I/O.
+   ``parallel-ssh`` uses gevent's monkey patching to enable asynchronous use of the Python standard library's network I/O.
 
    Make sure that ParallelSSH imports come **before** any other imports in your code. Otherwise, patching may not be done before the standard library is loaded which will then cause ParallelSSH to block.
 
    If you are seeing messages like ``This operation would block forever``, this is the cause.
+
+   Monkey patching is only done for the clients under ``pssh.pssh_client`` and ``pssh.ssh_client`` for parallel and single host clients respectively.
+
+   New native library based clients under ``pssh.pssh2_client`` and ``pssh.ssh2_client`` **do not perform monkey patching** and are an option if monkey patching is not suitable. These clients will become the default in a future major release - ``2.0.0``.
 
 Run a command on hosts in parallel
 ------------------------------------
@@ -48,7 +50,7 @@ Now one or more commands can be run via the client:
 
 Once the call to ``run_command`` returns, the command has started executing in parallel.
 
-Output is keyed by host and contains a host output object. From that, SSH output is available.
+Output is keyed by host and contains a `host output <output.html>`_ object. From that, SSH output is available.
 
 Standard Output
 ----------------
@@ -69,7 +71,7 @@ There is nothing special needed to ensure output is available.
 
 Please note that retrieving all of a command's standard output by definition requires that the command has completed.
 
-Iterating over ``stdout`` for any host *to completion* will therefor *block* until that host's command has completed unless interrupted.
+Iterating over ``stdout`` for any host *to completion* will therefor *only complete* when that host's command has completed unless interrupted.
 
 ``stdout`` is a generator. Iterating over it will consume the remote standard output stream via the network as it becomes available. To retrieve all of stdout can wrap it with list, per below.
 
@@ -140,6 +142,39 @@ The helper function :py:func:`load_private_key <pssh.utils.load_private_key>` is
       pkey = load_private_key('my_pkey.pem')
       client = ParallelSSHClient(hosts, pkey=pkey)
 
+Output for Last Executed Commands
+-----------------------------------
+
+Output for last executed commands can be retrieved by ``get_last_output``:
+
+.. code-block:: python
+
+   client.run_command('uname')
+   output = client.get_last_output()
+   for host, host_output in output.items():
+       for line in host.stdout:
+           print(line)
+
+This function can also be used to retrieve output for previously executed commands in the case where output object was not stored or is no longer available.
+
+*New in 1.2.0*
+
+Retrieving Last Executed Commands
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Commands last executed by ``run_command`` can also be retrieved from the ``cmds`` attribute of ``ParallelSSHClient``:
+
+.. code-block:: python
+
+   client.run_command('uname')
+   output = {}
+   for i, host in enumerate(hosts):
+       cmd = self.cmds[i]
+       client.get_output(cmd, output)
+       print("Got output for host %s from cmd %s" % (host, cmd))
+
+*New in 1.2.0*
+
 Host Logger
 ------------
 
@@ -209,4 +244,4 @@ With this flag, the ``exception`` attribute will contain the exception on any fa
 
 .. seealso::
 
-   Possible exceptions can be found in :mod:`pssh.exceptions` module.
+   Exceptions raised by the library can be found in :mod:`pssh.exceptions` module.

@@ -1,0 +1,3 @@
+ignore:
+  - "embedded_server/.*"
+  - "tests/.*"

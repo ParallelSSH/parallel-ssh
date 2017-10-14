@@ -15,30 +15,33 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+import sys
+if 'threading' in sys.modules:
+    del sys.modules['threading']
+from gevent import monkey  # noqa: E402
+monkey.patch_all()
+import os  # noqa: E402
+import logging  # noqa: E402
+from socket import gaierror as sock_gaierror, error as sock_error  # noqa: E402
 
-"""Package containing SSHClient class."""
-
-import os
-import logging
-from socket import gaierror as sock_gaierror, error as sock_error
-
-from gevent import sleep
-import paramiko
-from paramiko.ssh_exception import ChannelException
+from gevent import sleep  # noqa: E402
+import paramiko  # noqa: E402
+from paramiko.ssh_exception import ChannelException  # noqa: E402
 
 from .exceptions import UnknownHostException, AuthenticationException, \
-     ConnectionErrorException, SSHException
-from .constants import DEFAULT_RETRIES
-from .utils import read_openssh_config
+     ConnectionErrorException, SSHException  # noqa: E402
+from .constants import DEFAULT_RETRIES  # noqa: E402
+from .utils import read_openssh_config  # noqa: E402
 
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
 
 
 class SSHClient(object):
-    """Wrapper class over paramiko.SSHClient with sane defaults
+    """SSH client based on Paramiko with sane defaults.
+
     Honours ``~/.ssh/config`` and ``/etc/ssh/ssh_config`` host entries
-    for host user name, port and key overrides
+    for host, user name, port and key overrides.
     """
 
     def __init__(self, host,
@@ -134,6 +137,12 @@ class SSHClient(object):
             self._connect_tunnel(real_host, **paramiko_kwargs)
         else:
             self._connect(self.client, real_host, self.port, **paramiko_kwargs)
+
+    def __del__(self):
+        try:
+            self.client.close()
+        except Exception:
+            pass
 
     def _connect_tunnel(self, host, **paramiko_kwargs):
         """Connects to SSH server via an intermediate SSH tunnel server.
@@ -283,7 +292,7 @@ class SSHClient(object):
         sleep(0)
         return channel, self.host, stdout, stderr, stdin
 
-    def read_output_buffer(self, output_buffer, prefix='',
+    def read_output_buffer(self, output_buffer, prefix=None,
                            callback=None,
                            callback_args=None,
                            encoding='utf-8'):
@@ -298,9 +307,10 @@ class SSHClient(object):
         :param callback_args: Arguments for call back function
         :type callback_args: tuple
         """
+        prefix = '' if prefix is None else prefix
         for line in output_buffer:
             output = line.strip().decode(encoding)
-            host_logger.info("[%s]%s\t%s", self.host, prefix, output,)
+            host_logger.info("[%s]%s\t%s", self.host, prefix, output)
             yield output
         if callback:
             callback(*callback_args)
@@ -396,7 +406,7 @@ class SSHClient(object):
             raise ValueError("Recurse must be true if local_file is a "
                              "directory.")
         sftp = self._make_sftp() if not sftp else sftp
-        destination = self._parent_paths_split(remote_file)
+        destination = self._parent_paths_split(remote_file, sep='/')
         try:
             sftp.stat(destination)
         except IOError:
@@ -472,13 +482,14 @@ class SSHClient(object):
                          "directory %s", dirpath)
             raise
 
-    def _parent_paths_split(self, file_path):
+    def _parent_paths_split(self, file_path, sep=None):
+        sep = os.path.sep if sep is None else sep
         try:
-            destination = os.path.sep.join(
+            destination = sep.join(
                 [_dir for _dir in file_path.split(os.path.sep)
                  if _dir][:-1])
         except IndexError:
             destination = ''
-        if file_path.startswith(os.path.sep) or not destination:
-            destination = os.path.sep + destination
+        if file_path.startswith(sep) or not destination:
+            destination = sep + destination
         return destination

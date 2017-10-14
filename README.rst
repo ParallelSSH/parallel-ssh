@@ -2,9 +2,11 @@
 parallel-ssh
 ============
 
-Asynchronous parallel SSH client library.
+Non-blocking, asynchronous parallel SSH client library.
 
 Run SSH commands over many - hundreds/hundreds of thousands - number of servers asynchronously and with minimal system load on the client host.
+
+Native code based client with extremely high performance - based on ``libssh2`` C library.
 
 .. image:: https://img.shields.io/badge/License-LGPL%20v2-blue.svg
   :target: https://pypi.python.org/pypi/parallel-ssh
@@ -14,8 +16,10 @@ Run SSH commands over many - hundreds/hundreds of thousands - number of servers 
   :alt: Latest Version
 .. image:: https://travis-ci.org/ParallelSSH/parallel-ssh.svg?branch=master
   :target: https://travis-ci.org/ParallelSSH/parallel-ssh
-.. image:: https://coveralls.io/repos/ParallelSSH/parallel-ssh/badge.png?branch=master
-  :target: https://coveralls.io/r/ParallelSSH/parallel-ssh?branch=master
+.. image:: https://codecov.io/gh/ParallelSSH/parallel-ssh/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/ParallelSSH/parallel-ssh
+.. image:: https://img.shields.io/pypi/wheel/parallel-ssh.svg
+   :target: https://pypi.python.org/pypi/parallel-ssh
 .. image:: https://readthedocs.org/projects/parallel-ssh/badge/?version=latest
   :target: http://parallel-ssh.readthedocs.org/en/latest/
   :alt: Latest documentation
@@ -38,56 +42,77 @@ Usage Example
 
 See documentation on `read the docs`_ for more complete examples.
 
-
-Run ``ls`` on two remote hosts in parallel with ``sudo``.
+Run ``uname`` on two remote hosts in parallel with ``sudo``.
 
 .. code-block:: python
 
-  from pprint import pprint
   from pssh.pssh_client import ParallelSSHClient
 
   hosts = ['myhost1', 'myhost2']
   client = ParallelSSHClient(hosts)
 
-  output = client.run_command('ls -ltrh /tmp/', sudo=True)
-  pprint(output)
-
-:Output:
-
-   .. code-block:: python
-
-      {'myhost1':
-            host=myhost1
-	    cmd=<Greenlet>
-	    channel=<channel>
-	    stdout=<generator>
-	    stderr=<generator>
-	    stdin=<channel>
-	    exception=None
-       'myhost2':
-            <..>
-      }
-
-Standard output buffers are available in output object. Iterating on them can be used to get output as it becomes available. Iteration ends *only when command has finished*, though it may be interrupted and resumed at any point.
-
-`Host output <http://parallel-ssh.readthedocs.io/en/latest/output.html>`_ attributes are available in host output object, for example ``output['myhost1'].stdout``.
-
-.. code-block:: python
-
-  for host in output:
-     for line in output[host].stdout:
-         pprint("Host %s - output: %s" % (host, line))
+  output = client.run_command('uname')
+  for host, host_output in output.items():
+      for line in host_output.stdout:
+          print(line)
 
 :Output:
 
    .. code-block:: shell
 
-      Host myhost1 - output: drwxr-xr-x  6 xxx xxx 4.0K Jan  1 00:00 xxx
-      Host myhost1 - output: <..>
-      Host myhost2 - output: drwxr-xr-x  6 xxx xxx 4.0K Jan  1 00:00 xxx
-      Host myhost2 - output: <..>
+      Linux
+      Linux
 
-Exit codes become available once output is iterated on to completion *or* ``client.join(output)`` is called.
+**************
+Native client
+**************
+
+Starting from version ``1.2.0``, a new client is supported in ``parallel-ssh`` which offers much greater performance and reduced overhead than the current default client.
+
+The new client is based on ``libssh2`` via the ``ssh2-python`` extension library and supports non-blocking mode natively. Binary wheel packages with ``libssh2`` included are provided for Linux, OSX and Windows platforms and all supported Python versions.
+
+See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of the available clients.
+
+To make use of this new client, ``ParallelSSHClient`` can be imported from ``pssh.pssh2_client`` instead. Their respective APIs are almost identical.
+
+The new client will become the default and will replace the current ``pssh.pssh_client`` in a new major version of the library - ``2.0.0`` - once remaining features have been implemented. The native client should be considered as *beta* status until the ``2.0.0`` release when it is made the default.
+
+The current default client will remain available as an option under a new name.
+
+For example:
+
+.. code-block:: python
+
+  from pprint import pprint
+  from pssh.pssh2_client import ParallelSSHClient
+
+  hosts = ['myhost1', 'myhost2']
+  client = ParallelSSHClient(hosts)
+
+  output = client.run_command('uname')
+  for host, host_output in output.items():
+      for line in host_output.stdout:
+          print(line)
+
+
+See `documentation <http://parallel-ssh.readthedocs.io/en/latest/ssh2.html>`_ for a feature comparison of the two clients.
+
+
+****************************
+Native Code Client Features
+****************************
+
+* Highest performance and least overhead of any Python SSH libraries
+* Thread safe - makes use of native threads for blocking calls like authentication
+* Natively non-blocking utilising ``libssh2`` via ``ssh2-python`` - **no monkey patching of the Python standard library**
+* Significantly reduced overhead in CPU and memory usage
+
+
+***********
+Exit codes
+***********
+
+Once either standard output is iterated on *to completion*, or ``client.join(output)`` is called, exit codes become available in host output. Iteration ends *only when remote command has completed*, though it may be interrupted and resumed at any point.
 
 .. code-block:: python
 
@@ -99,6 +124,7 @@ Exit codes become available once output is iterated on to completion *or* ``clie
 
       0
       0
+
 
 The client's ``join`` function can be used to block and wait for all parallel commands to finish:
 
@@ -112,13 +138,15 @@ Similarly, output and exit codes are available after ``client.join`` is called:
 
   output = client.run_command('exit 0')
 
-  # Block and gather exit codes. Output is updated in-place
+  # Wait for commands to complete and gather exit codes. 
+  # Output is updated in-place.
   client.join(output)
   pprint(output.values()[0].exit_code)
 
-  # Output is available
-  for line in output.values()[0].stdout:
-      pprint(line)
+  # Output remains available in output generators
+  for host, host_output in output.items():
+      for line in host_output.stdout:
+          pprint(line)
 
 :Output:
    .. code-block:: python
@@ -126,16 +154,15 @@ Similarly, output and exit codes are available after ``client.join`` is called:
       0
       <..stdout..>
 
-.. note::
 
-  In versions prior to ``1.0.0`` only, ``client.join`` would consume standard output.
+There is also a built in host logger that can be enabled to log output from remote hosts. The helper function ``pssh.utils.enable_host_logger`` will enable host logging to stdout.
 
-There is also a built in host logger that can be enabled to log output from remote hosts. The helper function ``pssh.utils.enable_host_logger`` will enable host logging to stdout, for example:
+To log output without having to iterate over output generators, the ``consume_output`` flag can be enabled - for example:
 
 .. code-block:: python
 
-  import pssh.utils
-  pssh.utils.enable_host_logger()
+  from pssh.utils import enable_host_logger
+  enable_host_logger()
   client.join(client.run_command('uname'), consume_output=True)
 
 :Output:
@@ -143,13 +170,46 @@ There is also a built in host logger that can be enabled to log output from remo
 
       [localhost]	Linux
 
+
+SFTP/SCP
+********
+
+SFTP is supported natively, no ``scp`` binary required.
+
+For example to copy a local file to remote hosts in parallel:
+
+.. code-block:: python
+
+  from pssh.pssh_client import ParallelSSHClient
+  from pssh import utils
+  from gevent import joinall
+
+  utils.enable_logger(utils.logger)
+  hosts = ['myhost1', 'myhost2']
+  client = ParallelSSHClient(hosts)
+  cmds = client.copy_file('../test', 'test_dir/test')
+  joinall(cmds, raise_error=True)
+
+:Output:
+   .. code-block:: python
+
+      Copied local file ../test to remote destination myhost1:test_dir/test
+      Copied local file ../test to remote destination myhost2:test_dir/test
+
+There is similar capability to copy remote files to local ones suffixed with the host's name with the ``copy_remote_file`` function.
+
+Directory recursion is supported in both cases via the ``recurse`` parameter - defaults to off.
+
+See `SFTP documentation <http://parallel-ssh.readthedocs.io/en/latest/advanced.html#sftp>`_ for more examples.
+
+
 *****************
 Design And Goals
 *****************
 
-``ParallelSSH``'s design goals and motivation are to provide a *library* for running *asynchronous* SSH commands in parallel with little to no load induced on the system by doing so with the intended usage being completely programmatic and non-interactive.
+``ParallelSSH``'s design goals and motivation are to provide a *library* for running *non-blocking* asynchronous SSH commands in parallel with little to no load induced on the system by doing so with the intended usage being completely programmatic and non-interactive.
 
-To meet these goals, API driven solutions are preferred first and foremost. This frees up the developer to drive the library via any method desired, be that environment variables, CI driven tasks, command line tools, existing OpenSSH or new configuration files, from within an application et al.
+To meet these goals, API driven solutions are preferred first and foremost. This frees up developers to drive the library via any method desired, be that environment variables, CI driven tasks, command line tools, existing OpenSSH or new configuration files, from within an application et al.
 
 ********
 Scaling
@@ -174,78 +234,11 @@ On the other end of the spectrum, long lived remote commands that generate *no* 
 
 Output *generation* is done remotely and has no effect on the event loop until output is gathered - output buffers are iterated on. Only at that point does the event loop need to be held.
 
-********
-SFTP/SCP
-********
+*************
+User's group
+*************
 
-SFTP is supported (SCP version 2) natively, no ``scp`` binary required.
-
-For example to copy a local file to remote hosts in parallel:
-
-.. code-block:: python
-
-  from pssh import ParallelSSHClient, utils
-  from gevent import joinall
-
-  utils.enable_logger(utils.logger)
-  hosts = ['myhost1', 'myhost2']
-  client = ParallelSSHClient(hosts)
-  greenlets = client.copy_file('../test', 'test_dir/test')
-  joinall(greenlets, raise_error=True)
-
-:Output:
-   .. code-block:: python
-
-      Copied local file ../test to remote destination myhost1:test_dir/test
-      Copied local file ../test to remote destination myhost2:test_dir/test
-
-There is similar capability to copy remote files to local ones suffixed with the host's name with the ``copy_remote_file`` function.
-
-Directory recursion is supported in both cases via the ``recurse`` parameter - defaults to off.
-
-See `SFTP documentation <http://parallel-ssh.readthedocs.io/en/latest/advanced.html#sftp>`_ for more examples.
-
-**************************
-Frequently asked questions
-**************************
-
-:Q:
-   Why should I use this library and not, for example, `fabric <https://github.com/fabric/fabric>`_?
-
-:A:
-   In short, the tools are intended for different use cases.
-
-   ``ParallelSSH`` is a parallel SSH client library that scales well over hundreds to hundreds of thousands of hosts - per `Design And Goals`_ - a use case that is very common on cloud platforms and virtual machine automation. It would be best used where it is a good fit for the use case at hand.
-
-   Fabric and tools like it on the other hand are not well suited to such use cases, for many reasons, performance and differing design goals in particular. The similarity is only that these tools also make use of SSH to run commands.
-
-   ``ParallelSSH`` is in other words well suited to be the SSH client tools like Fabric and Ansible and others use to run their commands rather than a direct replacement for.
-
-   By focusing on providing a well defined, lightweight - actual code is a few hundred lines - library, ``ParallelSSH`` is far better suited for *run this command on X number of hosts* tasks for which frameworks like Fabric, Capistrano and others are overkill and unsuprisignly, as it is not what they are for, ill-suited to and do not perform particularly well with.
-
-   Fabric and tools like it are high level deployment frameworks - as opposed to general purpose libraries - for building deployment tasks to perform on hosts matching a role with task chaining, a DSL like syntax and are primarily intended for command line use for which the framework is a good fit for - very far removed from an SSH client *library*.
-
-   Fabric in particular is a port of `Capistrano <https://github.com/capistrano/capistrano>`_ from Ruby to Python. Its design goals are to provide a faithful port of Capistrano with its `tasks` and `roles` framework to python with interactive command line being the intended usage.
-
-   Furthermore, Fabric's use as a library is non-standard and in `many <https://github.com/fabric/fabric/issues/521>`_ `cases <https://github.com/fabric/fabric/pull/674>`_ `just <https://github.com/fabric/fabric/pull/1215>`_ `plain <https://github.com/fabric/fabric/issues/762>`_ `broken <https://github.com/fabric/fabric/issues/1068>`_ and currently stands at over 7,000 lines of code most of which is lacking code testing.
-
-   In addition, Fabric's parallel command implementation uses a combination of both threads and processes with extremely high CPU usage and system load while running with as little as hosts in the single digits.
-
-:Q:
-   Is Windows supported?
-
-:A:
-   The library installs and works on Windows though not formally supported as unit tests are currently Posix system based.
- 
-   Pip versions >= 8.0 are required for binary package installation of ``gevent`` on Windows, a dependency of ``ParallelSSH``. 
- 
-   Though ``ParallelSSH`` is pure python code and will run on any platform that has a working Python interpreter, its ``gevent`` dependency and certain dependencies of ``paramiko`` contain native code which either needs a binary package to be provided for the platform or to be built from source. Binary packages for ``gevent`` are provided for OSX, Linux and Windows platforms as of this time of writing.
-
-:Q:
-   Is there a user's group for feedback and discussion about ParallelSSH?
-
-:A:
-   There is a public `ParallelSSH Google group <https://groups.google.com/forum/#!forum/parallelssh>`_ setup for this purpose - both posting and viewing are open to the public.
+here is a public `ParallelSSH Google group <https://groups.google.com/forum/#!forum/parallelssh>`_ setup for this purpose - both posting and viewing are open to the public.
 
 .. image:: https://ga-beacon.appspot.com/UA-9132694-7/parallel-ssh/README.rst?pixel
   :target: https://github.com/igrigorik/ga-beacon
