@@ -83,7 +83,6 @@ jobs:
       before_install: skip
       install: skip
       script: skip
-      after_success: skip
       deploy:
         - provider: pypi
           user: pkittenis
