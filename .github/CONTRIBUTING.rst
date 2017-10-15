@@ -26,6 +26,7 @@ Responsibilities
 * Write PEP-8 compliant code of no more than 80 columns per line
 * If adding new features, write an appropriate test - see existing tests for reference
 * Contributions are expected to be in line with the project's stated `design and goals <http://parallel-ssh.readthedocs.io/en/latest/introduction.html#design-and-goals>`_
+* Be welcoming to newcomers and encourage diverse new contributors from all backgrounds. See the `Python Community Code of Conduct <https://www.python.org/psf/codeofconduct/>`_.
 
 .. _reporting-bugs:
 

@@ -1,3 +1,11 @@
+coverage:
+  status:
+    patch:
+      threshold:
+        number: 0.5
+    project:
+      threshold:
+        number: 0.5
 ignore:
   - "embedded_server/.*"
   - "tests/.*"
