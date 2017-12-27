@@ -40,7 +40,7 @@ from ssh2.sftp import LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
 from .exceptions import UnknownHostException, AuthenticationException, \
      ConnectionErrorException, SessionError, SFTPError, SFTPIOError
 from .constants import DEFAULT_RETRIES, RETRY_DELAY
-from .native.ssh2 import wait_select, _read_output  # , sftp_get, sftp_put
+from .native._ssh2 import wait_select, _read_output  # , sftp_get, sftp_put
 
 
 Hub.NOT_ERROR = (Exception,)

@@ -13,15 +13,18 @@ python:
 addons:
   apt:
     packages:
-      - libssh2-1-dev
+      - libssh-dev
       - openssh-server
       - rpm
       - dpkg
+      - cmake
 before_install:
   - pip install -U pip setuptools
 install:
+  - sudo ci/install-ssh2.sh
   - pip install -r requirements_dev.txt
 script:
+  - export LD_LIBRARY_PATH=/usr/local/lib/x86_64-linux-gnu
   - nosetests --with-coverage --cover-package=pssh
   - flake8 pssh
   - cd doc; make html; cd ..
@@ -29,53 +32,54 @@ after_success:
   - codecov
 jobs:
   include:
-    - if: tag IS present
+    - stage: OSX wheel build
       os: osx
-      # tag =~ ^\d+\.\d+(\.\d+)?(-\S*)?$
+      if: tag IS present
       before_install:
         - brew update
       install:
         - brew install libssh2
-        - pip install -U delocate twine wheel pip setuptools
-        - pip install -r requirements.txt
-        - python setup.py bdist_wheel
+        - sudo pip2 install -U delocate twine wheel pip setuptools
+        - pip2 install --user -r requirements.txt
+        - pip2 wheel .
       script:
-        - delocate-listdeps --all dist/*.whl
-        - delocate-wheel -v dist/*.whl
-        - delocate-listdeps --all dist/*.whl
-        - ls -l dist/
+        - delocate-listdeps --all *.whl
+        - delocate-wheel -v *.whl
+        - delocate-listdeps --all *.whl
+        - ls -l *.whl
         - brew uninstall libssh2
-        - pip install -v dist/*.whl
+        - pip install -v *.whl
         - pwd; mkdir temp; cd temp; pwd
         - python -c "import pssh.native.ssh2"
         - cd ..; pwd
       after_success:
         - if [[ ! -z "$TRAVIS_TAG" ]]; then
-              twine upload -u $PYPI_U -p $PYPI_P dist/*.whl;
+              twine upload -u $PYPI_U -p $PYPI_P *.whl;
           fi
       language: generic
       python: skip
-    - stage: build system packages
-      if: tag IS present
-      os: linux
-      python: 3.6
-      before_install: skip
-      install: skip
-      script: skip
-      after_success: skip
-      before_deploy:
-        - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-        - ./ci/docker/build-packages.sh
-      deploy:
-        - provider: releases
-          skip_cleanup: true
-          api_key:
-            secure: hKf+D9ZWRCJWNQtlOWeFh7z1a+VSz+GK5qOY0e1+iV/PrM0f41wy2yej0bxG1zS6CQAnJBK6/gmq5uXXhQhGNQeIQs7zElyKlrijQAn5UstPPJTRIk2oywRr2b+q0k3V42tto6WbhjqPRpOQl/pNTjKJCc/UPgd6kOVZEhCfAec=
-          file_glob: true
-          file: '*.{deb,rpm}'
-          on:
-            repo: ParallelSSH/parallel-ssh
-            tags: true
+    # - os: linux
+    #   stage: build system packages
+    #   if: tag IS present
+    #   python: 3.6
+    #   before_install: skip
+    #   install: skip
+    #   # script: skip
+    #   after_success: skip
+    #   # before_deploy:
+    #   script:
+    #     - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+    #     - ./ci/docker/build-packages.sh
+    #   deploy:
+    #     - provider: releases
+    #       skip_cleanup: true
+    #       api_key:
+    #         secure: hKf+D9ZWRCJWNQtlOWeFh7z1a+VSz+GK5qOY0e1+iV/PrM0f41wy2yej0bxG1zS6CQAnJBK6/gmq5uXXhQhGNQeIQs7zElyKlrijQAn5UstPPJTRIk2oywRr2b+q0k3V42tto6WbhjqPRpOQl/pNTjKJCc/UPgd6kOVZEhCfAec=
+    #       file_glob: true
+    #       file: '*.{deb,rpm}'
+    #       on:
+    #         repo: ParallelSSH/parallel-ssh
+    #         tags: true
     - stage: deploy pypi sdist
       if: tag IS present
       os: linux

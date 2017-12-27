@@ -47,8 +47,8 @@ _libs = ['ssh2'] if platform.system() != 'Windows' else [
 
 _comp_args = ["-O3"] if platform.system() != 'Windows' else None
 extensions = [
-    Extension('pssh.native.ssh2',
-              sources=['pssh/native/ssh2.pyx'],
+    Extension('pssh.native._ssh2',
+              sources=['pssh/native/_ssh2.pyx'],
               include_dirs=["libssh2/include"],
               libraries=_libs,
               extra_compile_args=_comp_args,

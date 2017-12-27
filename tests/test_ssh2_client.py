@@ -87,9 +87,9 @@ class SSH2ClientTest(SSH2TestCase):
 
     def test_file_output_parsing(self):
         lines = int(subprocess.check_output(
-            ['wc', '-l', 'pssh/native/ssh2.c']).split()[0])
+            ['wc', '-l', 'pssh/native/_ssh2.c']).split()[0])
         dir_name = os.path.dirname(__file__)
-        ssh2_file = os.sep.join((dir_name, '..', 'pssh', 'native', 'ssh2.c'))
+        ssh2_file = os.sep.join((dir_name, '..', 'pssh', 'native', '_ssh2.c'))
         channel, host, stdout, stderr, stdin = self.client.run_command(
             'cat %s' % ssh2_file)
         output = list(stdout)

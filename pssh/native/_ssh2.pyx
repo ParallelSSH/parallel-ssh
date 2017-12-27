@@ -30,7 +30,7 @@ from ssh2.c_sftp cimport libssh2_sftp_read, libssh2_sftp_write, \
     LIBSSH2_SFTP_HANDLE
 from ssh2.session cimport Session
 from ssh2.sftp_handle cimport SFTPHandle
-from ssh2.exceptions cimport SFTPIOError
+from ssh2.exceptions import SFTPIOError
 from ssh2.utils cimport to_bytes
 
 from ..exceptions import SessionError

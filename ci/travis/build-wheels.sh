@@ -1,7 +1,7 @@
 #!/bin/bash -xe
 
 # Compile wheels
-for PYBIN in /opt/python/*/bin; do
+for PYBIN in `ls -1d /opt/python/*/bin | grep -v cpython`; do
     "${PYBIN}/pip" install gevent==1.1
     "${PYBIN}/pip" install -r /io/requirements.txt
     "${PYBIN}/pip" wheel --no-deps /io/ -w wheelhouse/
@@ -13,7 +13,7 @@ for whl in wheelhouse/*.whl; do
 done
 
 # Install packages and test
-for PYBIN in /opt/python/*/bin; do
+for PYBIN in `ls -1d /opt/python/*/bin | grep -v cpython`; do
     "${PYBIN}/pip" install parallel-ssh --no-index -f /io/wheelhouse
-    (cd "$HOME"; "${PYBIN}/python" -c 'import pssh.native.ssh2')
+    (cd "$HOME"; "${PYBIN}/python" -c 'import pssh.native._ssh2')
 done
