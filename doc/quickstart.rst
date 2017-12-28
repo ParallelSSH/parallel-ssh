@@ -129,11 +129,25 @@ User/password authentication can be used by providing user name and password cre
 Programmatic Private Key authentication
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-It is also possible to programmatically use a private key for authentication. 
+It is also possible to programmatically use a private key for authentication.
 
-The helper function :py:func:`load_private_key <pssh.utils.load_private_key>` is provided to easily load all possible key types. It takes either a file path or a file-like object.
+Native Client
+______________
 
-:File path:
+For the native client (``pssh.pssh2_client``), only private key filepath is needed. The corresponding public key *must* be available in the same directory as ``my_pkey.pub`` where private key file is ``my_pkey``. Public key file name and path will be made configurable in a future version.
+
+ .. code-block:: python
+
+   from pssh.pssh2_client import ParallelSSHClient
+
+   client = ParallelSSHClient(hosts, pkey='my_pkey')
+
+Paramiko Client
+__________________
+
+For the paramiko based client, the helper function :py:func:`load_private_key <pssh.utils.load_private_key>` is provided to easily load all possible key types. It takes either a file path or a file-like object.
+
+ :File path:
    .. code-block:: python
 
       from pssh.pssh_client import ParallelSSHClient
@@ -141,6 +155,10 @@ The helper function :py:func:`load_private_key <pssh.utils.load_private_key>` is
       
       pkey = load_private_key('my_pkey.pem')
       client = ParallelSSHClient(hosts, pkey=pkey)
+
+.. note::
+
+   The two available clients support different key types and authentication mechanisms - see Paramiko and libssh2 documentation for details, as well as `clients features comparison <ssh2.html>`_.
 
 Output for Last Executed Commands
 -----------------------------------

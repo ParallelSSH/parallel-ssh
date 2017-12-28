@@ -16,10 +16,12 @@ Native code based client with extremely high performance - based on ``libssh2`` 
   :alt: Latest Version
 .. image:: https://travis-ci.org/ParallelSSH/parallel-ssh.svg?branch=master
   :target: https://travis-ci.org/ParallelSSH/parallel-ssh
+.. image:: https://ci.appveyor.com/api/projects/status/github/parallelssh/parallel-ssh?svg=true&branch=master
+  :target: https://ci.appveyor.com/project/pkittenis/parallel-ssh
 .. image:: https://codecov.io/gh/ParallelSSH/parallel-ssh/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/ParallelSSH/parallel-ssh
 .. image:: https://img.shields.io/pypi/wheel/parallel-ssh.svg
-   :target: https://pypi.python.org/pypi/parallel-ssh
+  :target: https://pypi.python.org/pypi/parallel-ssh
 .. image:: https://readthedocs.org/projects/parallel-ssh/badge/?version=latest
   :target: http://parallel-ssh.readthedocs.org/en/latest/
   :alt: Latest documentation
@@ -45,6 +47,8 @@ See documentation on `read the docs`_ for more complete examples.
 Run ``uname`` on two remote hosts in parallel with ``sudo``.
 
 .. code-block:: python
+
+  from __future__ import print_function
 
   from pssh.pssh_client import ParallelSSHClient
 
@@ -75,7 +79,7 @@ See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a perf
 
 To make use of this new client, ``ParallelSSHClient`` can be imported from ``pssh.pssh2_client`` instead. Their respective APIs are almost identical.
 
-The new client will become the default and will replace the current ``pssh.pssh_client`` in a new major version of the library - ``2.0.0`` - once remaining features have been implemented. The native client should be considered as *beta* status until the ``2.0.0`` release when it is made the default.
+The new client will become the default and will replace the current ``pssh.pssh_client`` in a new major version of the library - ``2.0.0`` - once remaining features have been implemented.
 
 The current default client will remain available as an option under a new name.
 
@@ -126,7 +130,7 @@ Once either standard output is iterated on *to completion*, or ``client.join(out
       0
 
 
-The client's ``join`` function can be used to block and wait for all parallel commands to finish:
+The client's ``join`` function can be used to wait for all commands in output object to finish:
 
 .. code-block:: python
 
@@ -135,6 +139,8 @@ The client's ``join`` function can be used to block and wait for all parallel co
 Similarly, output and exit codes are available after ``client.join`` is called:
 
 .. code-block:: python
+
+  from pprint import pprint
 
   output = client.run_command('exit 0')
 
@@ -157,11 +163,12 @@ Similarly, output and exit codes are available after ``client.join`` is called:
 
 There is also a built in host logger that can be enabled to log output from remote hosts. The helper function ``pssh.utils.enable_host_logger`` will enable host logging to stdout.
 
-To log output without having to iterate over output generators, the ``consume_output`` flag can be enabled - for example:
+To log output without having to iterate over output generators, the ``consume_output`` flag *must* be enabled - for example:
 
 .. code-block:: python
 
   from pssh.utils import enable_host_logger
+
   enable_host_logger()
   client.join(client.run_command('uname'), consume_output=True)
 
@@ -171,20 +178,20 @@ To log output without having to iterate over output generators, the ``consume_ou
       [localhost]	Linux
 
 
-SFTP/SCP
-********
+SFTP
+******
 
-SFTP is supported natively, no ``scp`` binary required.
+SFTP is supported natively.
 
-For example to copy a local file to remote hosts in parallel:
+To copy a local file to remote hosts in parallel:
 
 .. code-block:: python
 
   from pssh.pssh_client import ParallelSSHClient
-  from pssh import utils
+  from pssh.utils import enable_logger, logger
   from gevent import joinall
 
-  utils.enable_logger(utils.logger)
+  enable_logger(logger)
   hosts = ['myhost1', 'myhost2']
   client = ParallelSSHClient(hosts)
   cmds = client.copy_file('../test', 'test_dir/test')
@@ -238,7 +245,7 @@ Output *generation* is done remotely and has no effect on the event loop until o
 User's group
 *************
 
-here is a public `ParallelSSH Google group <https://groups.google.com/forum/#!forum/parallelssh>`_ setup for this purpose - both posting and viewing are open to the public.
+There is a public `ParallelSSH Google group <https://groups.google.com/forum/#!forum/parallelssh>`_ setup for this purpose - both posting and viewing are open to the public.
 
 .. image:: https://ga-beacon.appspot.com/UA-9132694-7/parallel-ssh/README.rst?pixel
   :target: https://github.com/igrigorik/ga-beacon

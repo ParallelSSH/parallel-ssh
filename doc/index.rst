@@ -10,17 +10,19 @@ Parallel-SSH Documentation
   :alt: Latest Version
 .. image:: https://travis-ci.org/ParallelSSH/parallel-ssh.svg?branch=master
   :target: https://travis-ci.org/ParallelSSH/parallel-ssh
+.. image:: https://ci.appveyor.com/api/projects/status/github/parallelssh/ssh2-python?svg=true&branch=master
+  :target: https://ci.appveyor.com/project/pkittenis/ssh2-python
 .. image:: https://codecov.io/gh/ParallelSSH/parallel-ssh/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/ParallelSSH/parallel-ssh
 .. image:: https://img.shields.io/pypi/wheel/parallel-ssh.svg
-   :target: https://pypi.python.org/pypi/parallel-ssh
+  :target: https://pypi.python.org/pypi/parallel-ssh
 .. image:: https://readthedocs.org/projects/parallel-ssh/badge/?version=latest
   :target: http://parallel-ssh.readthedocs.org/en/latest/
   :alt: Latest documentation
 
 ``parallel-ssh`` is a non-blocking parallel SSH client library.
 
-It uses non-blocking asynchronous SSH sessions and is, to date, the only publicly available non-blocking SSH client library for Python, as well as the only non-blocking *parallel* SSH client library available for Python.
+It uses non-blocking asynchronous SSH sessions and is to date the only publicly available non-blocking SSH client library, as well as the only non-blocking *parallel* SSH client library available for Python.
 
 .. toctree::
    :maxdepth: 2
@@ -77,7 +79,6 @@ The API is mostly identical to the current clients, though some features are not
 .. note::
 
    From version ``2.x.x`` onwards, the ``ssh2-python`` based clients will *become the default*, replacing the current ``pssh_client.ParallelSSHClient``, with the current clients renamed.
-
 
 
 Indices and tables
