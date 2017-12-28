@@ -13,7 +13,6 @@ python:
 addons:
   apt:
     packages:
-      - libssh-dev
       - openssh-server
       - rpm
       - dpkg
@@ -48,9 +47,9 @@ jobs:
         - delocate-listdeps --all *.whl
         - ls -l *.whl
         - brew uninstall libssh2
-        - pip install -v *.whl
+        - pip2 install --user -v *.whl
         - pwd; mkdir temp; cd temp; pwd
-        - python -c "import pssh.native.ssh2"
+        - python -c "import pssh.pssh2_client"
         - cd ..; pwd
       after_success:
         - if [[ ! -z "$TRAVIS_TAG" ]]; then

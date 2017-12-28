@@ -90,7 +90,6 @@ build_script:
   - "%CMD_IN_ENV% python setup.py build_ext -i"
 
 test_script:
-  - python -c "import pssh.native.ssh2"
   - python -c "import pssh.pssh2_client"
 
 after_test:
