@@ -20,7 +20,6 @@ from platform import python_version
 import versioneer
 
 try:
-    from Cython.Build import cythonize
     from Cython.Distutils.extension import Extension
     from Cython.Distutils import build_ext
 except ImportError:
@@ -45,10 +44,12 @@ _libs = ['ssh2'] if platform.system() != 'Windows' else [
     # 'libeay32', 'ssleay32',
     'Ws2_32', 'libssh2', 'user32']
 
+
+ext = 'pyx' if USING_CYTHON else 'c'
 _comp_args = ["-O3"] if platform.system() != 'Windows' else None
 extensions = [
     Extension('pssh.native._ssh2',
-              sources=['pssh/native/_ssh2.pyx'],
+              sources=['pssh/native/_ssh2.%s' % ext],
               include_dirs=["libssh2/include"],
               libraries=_libs,
               extra_compile_args=_comp_args,
