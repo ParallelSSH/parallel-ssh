@@ -214,26 +214,92 @@ See `SFTP documentation <http://parallel-ssh.readthedocs.io/en/latest/advanced.h
 Design And Goals
 *****************
 
-``ParallelSSH``'s design goals and motivation are to provide a *library* for running *non-blocking* asynchronous SSH commands in parallel with little to no load induced on the system by doing so with the intended usage being completely programmatic and non-interactive.
+``parallel-ssh``'s design goals and motivation are to provide a *library* for running *non-blocking* asynchronous SSH commands in parallel with little to no load induced on the system by doing so with the intended usage being completely programmatic and non-interactive.
 
 To meet these goals, API driven solutions are preferred first and foremost. This frees up developers to drive the library via any method desired, be that environment variables, CI driven tasks, command line tools, existing OpenSSH or new configuration files, from within an application et al.
+
+
+Comparison With Alternatives
+*****************************
+
+There are not many alternatives for SSH libraries in Python. Of the few that do exist, here is how they compare with ``parallel-ssh``.
+
+As always, it is best to use a tool that is suited to the task at hand. ``parallel-ssh`` is a library for programmatic and non-interactive use - see `Design And Goals`_. If requirements do not match what it provides then it best not be used. Same applies for the tools described below.
+
+`Paramiko <http://paramiko.org>`_
+_____________________________________
+
+The default SSH client library in ``parallel-ssh`` ``1.x.x`` series.
+
+Pure Python code, while having native extensions as dependencies, with poor performance and numerous bugs compared to both OpenSSH binaries and the ``libssh2`` based native clients in ``parallel-ssh`` ``1.2.x`` and above. Recent versions have regressed in performance and have `blocker issues <https://github.com/ParallelSSH/parallel-ssh/issues/83>`_.
+
+It does not support non-blocking mode, so to make it non-blocking monkey patching must be used which affects all other uses of the Python standard library. However, some functionality like Kerberos (GSS-API) authentication is not provided by other libraries.
+
+`asyncssh <https://github.com/ronf/asyncssh>`_
+_________________________________________________
+
+Python 3 only ``asyncio`` framework using client library. License (`EPL`) is not compatible with GPL, BSD or other open source licenses and `combined works cannot be distributed <https://www.eclipse.org/legal/eplfaq.php#USEINANOTHER>`_.
+
+Therefore unsuitable for use in many projects, including ``parallel-ssh``.
+
+`Fabric <http://www.fabfile.org/>`_
+___________________________________
+
+Port of Capistrano from Ruby to Python. Intended for command line use and is heavily systems administration oriented rather than non-interactive library. Same maintainer as Paramiko.
+
+Uses Paramiko and suffers from the same limitations. More over, uses threads for parallelisation, while `not being thread safe <https://github.com/fabric/fabric/issues/1433>`_, and exhibits very poor performance and extremely high CPU usage even for limited number of hosts - 1 to 10 - with scaling limited to one core.
+
+Library API is non-standard, poorly documented and with numerous issues as API use is not intended.
+
+`Ansible <https://www.ansible.com/>`_
+_________________________________________
+
+A configuration management and automation tool that makes use of SSH remote commands. Uses, in parts, both Paramiko and OpenSSH binaries.
+
+Similarly to Fabric, uses threads for parallelisation and suffers from the poor scaling that this model offers.
+
+See `The State of Python SSH Libraries <https://parallel-ssh.org/post/ssh2-python/>`_ for what to expect from scaling SSH with threads, as compared `to non-blocking I/O <https://parallel-ssh.org/post/parallel-ssh-libssh2/>`_ with ``parallel-ssh``.
+
+Again similar to Fabric, its intended and documented use is interactive via command line rather than library API based. It may, however, be an option if Ansible is already being used for automation purposes with existing playbooks, the number of hosts is small, and when the use case is interactive via command line.
+
+``parallel-ssh`` is, on the other hand, a suitable option for Ansible as an SSH client that would improve its parallel SSH performance significantly.
+
+`ssh2-python <https://github.com/ParallelSSH/ssh2-python>`_
+_____________________________________________________________
+
+Wrapper to ``libssh2`` C library. Used by ``parallel-ssh`` as of ``1.2.0`` and is by same author.
+
+Does not do parallelisation out of the box but can be made parallel via Python's ``threading`` library relatively easily and as it is a wrapper to a native library that releases Python's GIL, can scale to multiple cores.
+
+``parallel-ssh`` uses ``ssh2-python`` in its native non-blocking mode with event loop and co-operative sockets provided by ``gevent`` for an extremely high performance library without the side-effects of monkey patching - see `benchmarks <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_.
+
+In addition, ``parallel-ssh`` uses native threads to offload CPU blocked tasks like authentication in order to scale to multiple cores while still remaining non-blocking for network I/O.
+
+``pssh.ssh2_client.SSHClient`` is a single host natively non-blocking client for users that do not need parallel capabilities but still want a non-blocking client with native code performance.
+
+Out of all the available Python SSH libraries, ``libssh2`` and ``ssh2-python`` have been shown, see benchmarks above, to perform the best with the least resource utilisation and ironically for a native code extension the least amount of dependencies. Only ``libssh2`` C library and its dependencies which are included in binary wheels.
+
+However, it lacks support for some SSH features present elsewhere like ECDSA keys (`PR pending <https://github.com/libssh2/libssh2/pull/206>`_), agent forwarding (`PR pending <https://github.com/libssh2/libssh2/pull/219>`_) and Kerberos authentication - see `feature comparison <http://parallel-ssh.readthedocs.io/en/latest/ssh2.html>`_.
+
 
 ********
 Scaling
 ********
 
-Some guide lines on scaling ``ParallelSSH`` client and pool size numbers.
+Some guide lines on scaling ``parallel-ssh`` and pool size numbers.
 
-In general, long lived commands with little or no output *gathering* will scale better. Pool sizes in the multiple thousands have been used successfully with little CPU overhead in the single process running them in these use cases.
+In general, long lived commands with little or no output *gathering* will scale better. Pool sizes in the multiple thousands have been used successfully with little CPU overhead in the single thread running them in these use cases.
 
-Conversely, many short lived commands with output gathering will not scale as well. In this use case, smaller pool sizes in the hundreds are likely to perform better with regards to CPU overhead in the event loop. Multiple python processes, each with its own event loop, may be used to scale this use case further as CPU overhead allows.
+Conversely, many short lived commands with output gathering will not scale as well. In this use case, smaller pool sizes in the hundreds are likely to perform better with regards to CPU overhead in the event loop.
+
+Multiple Python native threads, each of which can get its own event loop, may be used to scale this use case further as number of CPU cores allows. Note that ``parallel-ssh`` imports *must* be done within the target function of the newly started thread for it to receive its own event loop. ``gevent.get_hub()`` may be used to confirm that the worker thread event loop differs from the main thread.
 
 Gathering is highlighted here as output generation does not affect scaling. Only when output is gathered either over multiple still running commands, or while more commands are being triggered, is overhead increased.
 
 Technical Details
 ******************
 
-To understand why this is, consider that in co-operative multi tasking, which is being used in this project via the ``gevent`` library, a co-routine (greenlet) needs to ``yield`` the event loop to allow others to execute - *co-operation*. When one co-routine is constantly grabbing the event loop in order to gather output, or when co-routines are constantly trying to start new short-lived commands, it causes overhead with other co-routines that also want to use the event loop.
+To understand why this is, consider that in co-operative multi tasking, which is being used in this project via the ``gevent`` library, a co-routine (greenlet) needs to ``yield`` the event loop to allow others to execute - *co-operation*. When one co-routine is constantly grabbing the event loop in order to gather output, or when co-routines are constantly trying to start new short-lived commands, it causes contention with other co-routines that also want to use the event loop.
 
 This manifests itself as increased CPU usage in the process running the event loop and reduced performance with regards to scaling improvements from increasing pool size.
 
