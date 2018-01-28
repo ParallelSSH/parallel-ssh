@@ -30,6 +30,7 @@ script:
   # Test building from source distribution
   - python setup.py sdist
   - cd dist; pip install *; cd ..
+  - python setup.py check --restructuredtext
 after_success:
   - codecov
 jobs:

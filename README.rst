@@ -226,8 +226,8 @@ There are not many alternatives for SSH libraries in Python. Of the few that do 
 
 As always, it is best to use a tool that is suited to the task at hand. ``parallel-ssh`` is a library for programmatic and non-interactive use - see `Design And Goals`_. If requirements do not match what it provides then it best not be used. Same applies for the tools described below.
 
-`Paramiko <http://paramiko.org>`_
-_____________________________________
+Paramiko
+________
 
 The default SSH client library in ``parallel-ssh`` ``1.x.x`` series.
 
@@ -235,15 +235,15 @@ Pure Python code, while having native extensions as dependencies, with poor perf
 
 It does not support non-blocking mode, so to make it non-blocking monkey patching must be used which affects all other uses of the Python standard library. However, some functionality like Kerberos (GSS-API) authentication is not provided by other libraries.
 
-`asyncssh <https://github.com/ronf/asyncssh>`_
-_________________________________________________
+asyncssh
+________
 
 Python 3 only ``asyncio`` framework using client library. License (`EPL`) is not compatible with GPL, BSD or other open source licenses and `combined works cannot be distributed <https://www.eclipse.org/legal/eplfaq.php#USEINANOTHER>`_.
 
 Therefore unsuitable for use in many projects, including ``parallel-ssh``.
 
-`Fabric <http://www.fabfile.org/>`_
-___________________________________
+Fabric
+______
 
 Port of Capistrano from Ruby to Python. Intended for command line use and is heavily systems administration oriented rather than non-interactive library. Same maintainer as Paramiko.
 
@@ -251,8 +251,8 @@ Uses Paramiko and suffers from the same limitations. More over, uses threads for
 
 Library API is non-standard, poorly documented and with numerous issues as API use is not intended.
 
-`Ansible <https://www.ansible.com/>`_
-_________________________________________
+Ansible
+_______
 
 A configuration management and automation tool that makes use of SSH remote commands. Uses, in parts, both Paramiko and OpenSSH binaries.
 
@@ -264,8 +264,8 @@ Again similar to Fabric, its intended and documented use is interactive via comm
 
 ``parallel-ssh`` is, on the other hand, a suitable option for Ansible as an SSH client that would improve its parallel SSH performance significantly.
 
-`ssh2-python <https://github.com/ParallelSSH/ssh2-python>`_
-_____________________________________________________________
+ssh2-python
+___________
 
 Wrapper to ``libssh2`` C library. Used by ``parallel-ssh`` as of ``1.2.0`` and is by same author.
 
@@ -279,7 +279,7 @@ In addition, ``parallel-ssh`` uses native threads to offload CPU blocked tasks l
 
 Out of all the available Python SSH libraries, ``libssh2`` and ``ssh2-python`` have been shown, see benchmarks above, to perform the best with the least resource utilisation and ironically for a native code extension the least amount of dependencies. Only ``libssh2`` C library and its dependencies which are included in binary wheels.
 
-However, it lacks support for some SSH features present elsewhere like ECDSA keys (`PR pending <https://github.com/libssh2/libssh2/pull/206>`_), agent forwarding (`PR pending <https://github.com/libssh2/libssh2/pull/219>`_) and Kerberos authentication - see `feature comparison <http://parallel-ssh.readthedocs.io/en/latest/ssh2.html>`_.
+However, it lacks support for some SSH features present elsewhere like ECDSA keys (`PR pending <https://github.com/libssh2/libssh2/pull/206>`_), agent forwarding (`PR also pending <https://github.com/libssh2/libssh2/pull/219>`_) and Kerberos authentication - see `feature comparison <http://parallel-ssh.readthedocs.io/en/latest/ssh2.html>`_.
 
 
 ********
