@@ -104,7 +104,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8'):
+                    encoding='utf-8', timeout=None):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output dictionary.
 
@@ -152,6 +152,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param encoding: Encoding to use for output. Must be valid
           `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
         :type encoding: str
+        :param timeout: (Optional) Timeout in seconds for reading from stdout
+          or stderr. Defaults to no timeout. Reading from stdout/stderr will
+          timeout after this many seconds if remote output is not ready.
+        :type timeout: int
 
         :rtype: Dictionary with host as key and
           :py:class:`pssh.output.HostOutput` as value as per
@@ -169,24 +173,24 @@ class ParallelSSHClient(BaseParallelSSHClient):
           string format
         :raises: :py:class:`KeyError` on no host argument key in arguments
           dict for cmd string format
-        :raises: :py:class:`pssh.exceptions.ProxyErrors` on errors connecting
+        :raises: :py:class:`pssh.exceptions.ProxyError` on errors connecting
           to proxy if a proxy host has been set.
         """
         return BaseParallelSSHClient.run_command(
             self, command, stop_on_errors=stop_on_errors, host_args=host_args,
             user=user, shell=shell, sudo=sudo,
-            encoding=encoding, use_pty=use_pty)
+            encoding=encoding, use_pty=use_pty, timeout=timeout)
 
     def _run_command(self, host, command, sudo=False, user=None,
                      shell=None, use_pty=False,
-                     encoding='utf-8'):
+                     encoding='utf-8', timeout=None):
         """Make SSHClient if needed, run command on host"""
         self._make_ssh_client(host)
         return self.host_clients[host].run_command(
             command, sudo=sudo, user=user, shell=shell,
-            use_pty=use_pty, encoding=encoding)
+            use_pty=use_pty, encoding=encoding, timeout=timeout)
 
-    def join(self, output, consume_output=False):
+    def join(self, output, consume_output=False, timeout=None):
         """Wait until all remote commands in output have finished
         and retrieve exit codes. Does *not* block other commands from
         running in parallel.
@@ -198,11 +202,17 @@ class ParallelSSHClient(BaseParallelSSHClient):
           buffers. Output buffers will be empty after ``join`` if set
           to ``True``. Must be set to ``True`` to allow host logger to log
           output on call to ``join`` when host logger has been enabled.
-        :type consume_output: bool"""
+        :type consume_output: bool
+        :param timeout: Timeout in seconds if remote command is not yet
+          finished.
+        :type timeout: int
+
+        :rtype: ``None``"""
         for host in output:
             if host not in self.host_clients or self.host_clients[host] is None:
                 continue
-            self.host_clients[host].wait_finished(output[host].channel)
+            self.host_clients[host].wait_finished(output[host].channel,
+                                                  timeout=timeout)
             if consume_output:
                 for line in output[host].stdout:
                     pass
@@ -217,6 +227,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
         return channel.get_exit_status()
 
     def _start_tunnel(self, host):
+        if host in self._tunnels:
+            return self._tunnels[host]
         tunnel = Tunnel(
             self.proxy_host, host, self.port, user=self.proxy_user,
             password=self.proxy_password, port=self.proxy_port,
@@ -284,7 +296,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
         .. note ::
 
-          Remote directories in `remote_file` that do not exist will be
+          Remote directories in ``remote_file`` that do not exist will be
           created as long as permissions allow.
 
         """

@@ -13,6 +13,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+import os
 import platform
 from setuptools import setup, find_packages
 from platform import python_version
@@ -36,7 +37,11 @@ cython_directives = {'embedsignature': True,
                      'optimize.use_switch': True,
                      'wraparound': False,
 }
-cython_args = {'cython_directives': cython_directives} if USING_CYTHON else {}
+_embedded_lib = bool(os.environ.get('EMBEDDED_LIB', 1))
+
+cython_args = {'cython_directives': cython_directives,
+               'cython_compile_time_env': {'EMBEDDED_LIB': _embedded_lib},
+} if USING_CYTHON else {}
 
 _libs = ['ssh2'] if platform.system() != 'Windows' else [
     # For libssh2 OpenSSL backend on Windows.
@@ -47,6 +52,7 @@ _libs = ['ssh2'] if platform.system() != 'Windows' else [
 
 ext = 'pyx' if USING_CYTHON else 'c'
 _comp_args = ["-O3"] if platform.system() != 'Windows' else None
+
 extensions = [
     Extension('pssh.native._ssh2',
               sources=['pssh/native/_ssh2.%s' % ext],

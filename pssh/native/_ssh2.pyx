@@ -39,7 +39,7 @@ from ..exceptions import SessionError
 cdef bytes LINESEP = b'\n'
 
 
-def _read_output(Session session, read_func):
+def _read_output(Session session, read_func, timeout=None):
     cdef Py_ssize_t _size
     cdef bytes _data
     cdef bytes remainder = b""
@@ -51,8 +51,10 @@ def _read_output(Session session, read_func):
     _size, _data = read_func()
     while _size == LIBSSH2_ERROR_EAGAIN or _size > 0:
         if _size == LIBSSH2_ERROR_EAGAIN:
-            _wait_select(_sock, _session, None)
+            _wait_select(_sock, _session, timeout)
             _size, _data = read_func()
+            if timeout is not None and _size == LIBSSH2_ERROR_EAGAIN:
+                break
         while _size > 0:
             while _pos < _size:
                 linesep = _data[:_size].find(LINESEP, _pos)

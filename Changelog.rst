@@ -1,6 +1,19 @@
 Change Log
 ============
 
+1.3.1
+++++++
+
+Changes
+--------
+
+* Added ``timeout`` optional parameter to ``join`` and ``run_command``, for reading output, on native clients.
+
+Fixes
+------
+
+* From source builds when Cython is installed with recent versions of ``ssh2-python``.
+
 1.3.0
 ++++++
 

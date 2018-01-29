@@ -253,35 +253,43 @@ class SSHClient(object):
         self._eagain(channel.execute, cmd)
         return channel
 
-    def read_stderr(self, channel):
+    def read_stderr(self, channel, timeout=None):
         """Read standard error buffer from channel.
 
         :param channel: Channel to read output from.
         :type channel: :py:class:`ssh2.channel.Channel`
         """
-        return _read_output(self.session, channel.read_stderr)
+        return _read_output(self.session, channel.read_stderr, timeout=timeout)
 
-    def read_output(self, channel):
+    def read_output(self, channel, timeout=None):
         """Read standard output buffer from channel.
 
         :param channel: Channel to read output from.
         :type channel: :py:class:`ssh2.channel.Channel`
         """
-        return _read_output(self.session, channel.read)
+        return _read_output(self.session, channel.read, timeout=timeout)
 
-    def wait_finished(self, channel):
+    def wait_finished(self, channel, timeout=None):
         """Wait for EOF from channel, close channel and wait for
         close acknowledgement.
 
         Used to wait for remote command completion and be able to gather
         exit code.
 
-        :param channel: The channel to use
+        :param channel: The channel to use.
         :type channel: :py:class:`ssh2.channel.Channel`
         """
         if channel is None:
             return
-        self._eagain(channel.wait_eof)
+        # If .eof() returns EAGAIN after a select with a timeout, it means
+        # it reached timeout without EOF and the connection should not be
+        # closed as the command is still running.
+        ret = channel.wait_eof()
+        while ret == LIBSSH2_ERROR_EAGAIN:
+            wait_select(self.session, timeout=timeout)
+            ret = channel.wait_eof()
+            if ret == LIBSSH2_ERROR_EAGAIN and timeout is not None:
+                return
         self._eagain(channel.close)
         self._eagain(channel.wait_closed)
 
@@ -317,7 +325,7 @@ class SSHClient(object):
 
     def run_command(self, command, sudo=False, user=None,
                     use_pty=False, shell=None,
-                    encoding='utf-8'):
+                    encoding='utf-8', timeout=None):
         """Run remote command.
 
         :param command: Command to run.
@@ -352,9 +360,10 @@ class SSHClient(object):
         channel = self.execute(_command, use_pty=use_pty)
         return channel, self.host, \
             self.read_output_buffer(
-                self.read_output(channel), encoding=encoding), \
+                self.read_output(channel, timeout=timeout),
+                encoding=encoding), \
             self.read_output_buffer(
-                self.read_stderr(channel), encoding=encoding,
+                self.read_stderr(channel, timeout=timeout), encoding=encoding,
                 prefix='\t[err]'), channel
 
     def _make_sftp(self):

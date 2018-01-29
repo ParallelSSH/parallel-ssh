@@ -1110,7 +1110,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.client.join(output)
         stderr = list(output[self.host].stderr)
         self.assertTrue(len(stderr) > 0)
-        self.assertTrue(output[self.host].exit_code == 1)
+        self.assertEqual(output[self.host].exit_code, 1)
 
     def test_run_command_shell(self):
         output = self.client.run_command(self.cmd, shell="bash -c")
@@ -1162,6 +1162,27 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_host_no_client(self):
         output = {'blah': None}
         self.client.join(output)
+
+    def test_join_timeout(self):
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.user_key)
+        output = client.run_command('sleep 2')
+        client.join(output, timeout=1)
+        self.assertFalse(output[self.host].channel.eof())
+        client.join(output, timeout=2)
+        self.assertTrue(output[self.host].channel.eof())
+
+    def test_read_timeout(self):
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.user_key)
+        output = client.run_command('sleep 2', timeout=1)
+        stdout = list(output[self.host].stdout)
+        self.assertFalse(output[self.host].channel.eof())
+        self.assertEqual(len(stdout), 0)
+        list(output[self.host].stdout)
+        list(output[self.host].stdout)
+        client.join(output)
+        self.assertTrue(output[self.host].channel.eof())
 
     ## OpenSSHServer needs to run in its own thread for this test to work
     ##  Race conditions otherwise.

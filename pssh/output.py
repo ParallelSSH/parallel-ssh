@@ -83,3 +83,6 @@ class HostOutput(dict):
                 stdout=self.stdout, stdin=self.stdin, stderr=self.stderr,
                 exception=self.exception, linesep=linesep,
                 exit_code=self.exit_code)
+
+    def __str__(self):
+        return self.__repr__()
