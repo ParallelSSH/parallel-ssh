@@ -905,7 +905,9 @@ class ParallelSSHClientTest(unittest.TestCase):
             host_config[host]['private_key'] = self.user_key
             servers.append(server)
         host_config[hosts[1][0]]['private_key'] = fake_key
-        client = ParallelSSHClient([h for h, _ in hosts], host_config=host_config)
+        client = ParallelSSHClient([h for h, _ in hosts],
+                                   host_config=host_config,
+                                   num_retries=1)
         output = client.run_command(self.cmd, stop_on_errors=False)
         client.join(output)
         for host, _ in hosts:
@@ -1160,6 +1162,20 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_host_no_client(self):
         output = {'blah': None}
         self.client.join(output)
+
+    ## OpenSSHServer needs to run in its own thread for this test to work
+    ##  Race conditions otherwise.
+    #
+    # def test_tunnel(self):
+    #     proxy_host = '127.0.0.9'
+    #     server = OpenSSHServer(listen_ip=proxy_host, port=self.port)
+    #     server.start_server()
+    #     client = ParallelSSHClient(
+    #         [self.host], port=self.port, pkey=self.user_key,
+    #         proxy_host=proxy_host, proxy_port=self.port, num_retries=1,
+    #         proxy_pkey=self.user_key,
+    #         timeout=2)
+    #     client.join(client.run_command('echo me'))
 
 #     def test_proxy_remote_host_failure_timeout(self):
 #         """Test that timeout setting is passed on to proxy to be used for the

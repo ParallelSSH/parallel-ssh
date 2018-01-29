@@ -16,10 +16,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import logging
+from gevent import sleep
 
 from .base_pssh import BaseParallelSSHClient
 from .constants import DEFAULT_RETRIES, RETRY_DELAY
 from .ssh2_client import SSHClient
+from .exceptions import ProxyError
+from .tunnel import Tunnel
 
 
 logger = logging.getLogger(__name__)
@@ -30,7 +33,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
     def __init__(self, hosts, user=None, password=None, port=None, pkey=None,
                  num_retries=DEFAULT_RETRIES, timeout=None, pool_size=10,
-                 allow_agent=True, host_config=None, retry_delay=RETRY_DELAY):
+                 allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
+                 proxy_host=None, proxy_port=22,
+                 proxy_user=None, proxy_password=None, proxy_pkey=None):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -64,14 +69,38 @@ class ParallelSSHClient(BaseParallelSSHClient):
           not all hosts use the same configuration.
         :type host_config: dict
         :param allow_agent: (Optional) set to False to disable connecting to
-          the system's SSH agent
+          the system's SSH agent.
         :type allow_agent: bool
+        :param proxy_host: (Optional) SSH host to tunnel connection through
+          so that SSH clients connect to host via client -> proxy_host -> host
+        :type proxy_host: str
+        :param proxy_port: (Optional) SSH port to use to login to proxy host if
+          set. Defaults to 22.
+        :type proxy_port: int
+        :param proxy_user: (Optional) User to login to ``proxy_host`` as.
+          Defaults to logged in user.
+        :type proxy_user: str
+        :param proxy_password: (Optional) Password to login to ``proxy_host``
+          with. Defaults to no password.
+        :type proxy_password: str
+        :param proxy_pkey: (Optional) Private key file to be used for
+          authentication with ``proxy_host``. Defaults to available keys from
+          SSHAgent and user's SSH identities.
+        :type proxy_pkey: Private key file path to use. Note that the public
+          key file pair *must* also exist in the same location with name
+          ``<pkey>.pub``.
         """
         BaseParallelSSHClient.__init__(
             self, hosts, user=user, password=password, port=port, pkey=pkey,
             allow_agent=allow_agent, num_retries=num_retries,
             timeout=timeout, pool_size=pool_size,
             host_config=host_config, retry_delay=retry_delay)
+        self.proxy_host = proxy_host
+        self.proxy_port = proxy_port
+        self.proxy_pkey = proxy_pkey
+        self.proxy_user = proxy_user
+        self.proxy_password = proxy_password
+        self._tunnels = {}
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
@@ -79,8 +108,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output dictionary.
 
-        This function will block until all commands have been successfully
-        received by remote servers and then return immediately.
+        This function will block until all commands have been received
+        by remote servers and then return immediately.
 
         More explicitly, function will return after connection and
         authentication establishment and after commands have been accepted by
@@ -139,7 +168,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :raises: :py:class:`TypeError` on not enough host arguments for cmd
           string format
         :raises: :py:class:`KeyError` on no host argument key in arguments
-          dict for cmd string format"""
+          dict for cmd string format
+        :raises: :py:class:`pssh.exceptions.ProxyErrors` on errors connecting
+          to proxy if a proxy host has been set.
+        """
         return BaseParallelSSHClient.run_command(
             self, command, stop_on_errors=stop_on_errors, host_args=host_args,
             user=user, shell=shell, sudo=sudo,
@@ -184,11 +216,34 @@ class ParallelSSHClient(BaseParallelSSHClient):
             return
         return channel.get_exit_status()
 
+    def _start_tunnel(self, host):
+        tunnel = Tunnel(
+            self.proxy_host, host, self.port, user=self.proxy_user,
+            password=self.proxy_password, port=self.proxy_port,
+            pkey=self.proxy_pkey, num_retries=self.num_retries,
+            timeout=self.timeout, retry_delay=self.retry_delay,
+            allow_agent=self.allow_agent)
+        tunnel.daemon = True
+        tunnel.start()
+        self._tunnels[host] = tunnel
+        while not tunnel.tunnel_open.is_set():
+            logger.debug("Waiting for tunnel to become active")
+            sleep(.1)
+            if not tunnel.is_alive():
+                msg = "Proxy authentication failed"
+                logger.error(msg)
+                raise ProxyError(msg)
+        return tunnel
+
     def _make_ssh_client(self, host):
         if host not in self.host_clients or self.host_clients[host] is None:
+            if self.proxy_host is not None:
+                tunnel = self._start_tunnel(host)
             _user, _port, _password, _pkey = self._get_host_config_values(host)
+            _host = host if self.proxy_host is None else '127.0.0.1'
+            _port = _port if self.proxy_host is None else tunnel.listen_port
             self.host_clients[host] = SSHClient(
-                host, user=_user, password=_password, port=_port, pkey=_pkey,
+                _host, user=_user, password=_password, port=_port, pkey=_pkey,
                 num_retries=self.num_retries, timeout=self.timeout,
                 allow_agent=self.allow_agent, retry_delay=self.retry_delay)
 

@@ -128,11 +128,11 @@ class ParallelSSHClient(BaseParallelSSHClient):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output buffers.
 
-        This function will block until all commands have been *sent* to remote
-        servers and then return immediately
+        This function will block until all commands have been received
+        by remote servers and then return immediately.
 
         More explicitly, function will return after connection and
-        authentication establishment and after commands have been sent to
+        authentication establishment and after commands have been received by
         successfully established SSH channels.
 
         Any connection and/or authentication exceptions will be raised here

@@ -1,6 +1,17 @@
 Change Log
 ============
 
+1.3.0
+++++++
+
+Changes
+---------
+
+* Native clients proxy implementation
+* Native clients connection and authentication retry mechanism
+
+Proxy/tunnelling implementation is experimental - please report any issues.
+
 1.2.1
 ++++++
 

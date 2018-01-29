@@ -57,3 +57,7 @@ class SFTPError(Exception):
 class SFTPIOError(SFTPError):
     """Raised on SFTP IO errors"""
     pass
+
+
+class ProxyError(Exception):
+    """Raised on proxy errors"""

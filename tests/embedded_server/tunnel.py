@@ -27,7 +27,7 @@ import logging
 logger = logging.getLogger("embedded_server.tunnel")
 
 class Tunneler(gevent.Greenlet):
-    
+
     def __init__(self, address, transport, chanid):
         gevent.Greenlet.__init__(self)
         gevent.sleep(.2)

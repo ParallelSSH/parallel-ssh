@@ -25,8 +25,7 @@ else:
     WIN_PLATFORM = False
 from socket import gaierror as sock_gaierror, error as sock_error
 
-from gevent import sleep, get_hub
-from gevent import socket
+from gevent import sleep, socket, get_hub
 from gevent.hub import Hub
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import AuthenticationError, AgentError, \
@@ -89,63 +88,77 @@ class SSHClient(object):
           the system's SSH agent
         :type allow_agent: bool
         """
-        # proxy_host=None, proxy_port=22, proxy_user=None,
-        # proxy_password=None, proxy_pkey=None,
         self.host = host
         self.user = user if user else None
-        if self.user is None and WIN_PLATFORM is False:
+        if self.user is None and not WIN_PLATFORM:
             self.user = pwd.getpwuid(os.geteuid()).pw_name
-        elif self.user is None and WIN_PLATFORM is True:
+        elif self.user is None and WIN_PLATFORM:
             raise ValueError("Must provide user parameter on Windows")
         self.password = password
         self.port = port if port else 22
         self.pkey = pkey
         self.num_retries = num_retries
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock = None
         self.timeout = timeout * 1000 if timeout else None
         self.retry_delay = retry_delay
         self.allow_agent = allow_agent
-        self._connect()
+        self.session = None
+        self._connect(self.host, self.port)
         THREAD_POOL.apply(self._init)
 
-    def _init(self):
+    def _connect_init_retry(self, retries):
+        retries += 1
+        self.session = None
+        if not self.sock.closed:
+            self.sock.close()
+        sleep(self.retry_delay)
+        self._connect(self.host, self.port, retries=retries)
+        return self._init(retries=retries)
+
+    def _init(self, retries=1):
         self.session = Session()
         if self.timeout:
             self.session.set_timeout(self.timeout)
         try:
             self.session.handshake(self.sock)
         except SessionHandshakeError as ex:
+            while retries < self.num_retries:
+                return self._connect_init_retry(retries)
             msg = "Error connecting to host %s:%s - %s"
             raise SessionError(msg, self.host, self.port, ex)
         try:
             self.auth()
         except AuthenticationError as ex:
+            while retries < self.num_retries:
+                return self._connect_init_retry(retries)
             msg = "Authentication error while connecting to %s:%s - %s"
             raise AuthenticationException(msg, self.host, self.port, ex)
         self.session.set_blocking(0)
 
-    def _connect(self, retries=1):
+    def _connect(self, host, port, retries=1):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        logger.debug("Connecting to %s:%s", host, port)
         try:
-            self.sock.connect((self.host, self.port))
+            self.sock.connect((host, port))
         except sock_gaierror as ex:
             logger.error("Could not resolve host '%s' - retry %s/%s",
-                         self.host, retries, self.num_retries)
+                         host, retries, self.num_retries)
             while retries < self.num_retries:
                 sleep(self.retry_delay)
-                return self._connect(retries=retries+1)
+                return self._connect(host, port, retries=retries+1)
             raise UnknownHostException("Unknown host %s - %s - retry %s/%s",
-                                       self.host, str(ex.args[1]), retries,
+                                       host, str(ex.args[1]), retries,
                                        self.num_retries)
         except sock_error as ex:
             logger.error("Error connecting to host '%s:%s' - retry %s/%s",
-                         self.host, self.port, retries, self.num_retries)
+                         host, port, retries, self.num_retries)
             while retries < self.num_retries:
                 sleep(self.retry_delay)
-                return self._connect(retries=retries+1)
+                return self._connect(host, port, retries=retries+1)
             error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
             raise ConnectionErrorException(
                 "Error connecting to host '%s:%s' - %s - retry %s/%s",
-                self.host, self.port, str(error_type), retries,
+                host, port, str(error_type), retries,
                 self.num_retries,)
 
     def _pkey_auth(self):
