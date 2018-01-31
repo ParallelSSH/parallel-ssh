@@ -1,6 +1,14 @@
 Change Log
 ============
 
+1.3.2
+++++++
+
+Fixes
+-------
+
+* Binary wheels would have bad version info and require `git` for installation.
+
 1.3.1
 ++++++
 
