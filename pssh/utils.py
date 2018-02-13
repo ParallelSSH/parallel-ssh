@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 
-# Copyright (C) 2014-2017 Panos Kittenis
+# Copyright (C) 2014-2018 Panos Kittenis
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-"""Package containing static utility functions for parallel-ssh module."""
+"""Module containing static utility functions for parallel-ssh."""
 
 
 import logging
@@ -54,7 +54,9 @@ def enable_host_logger():
 
 
 def load_private_key(_pkey):
-    """Load private key from pkey file object or filename
+    """Load private key from pkey file object or filename.
+
+    For Paramiko based clients only.
 
     :param pkey: File object or file name containing private key
     :type pkey: file/str"""

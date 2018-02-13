@@ -5,22 +5,24 @@ For the ``ssh2-python`` (``libssh2``) based clients, not all features supported 
 
 Below is a comparison of feature support for the two client types.
 
-===============================  =========  ======================
-Feature                          paramiko   ssh2-python (libssh2)
-===============================  =========  ======================
-Agent forwarding                  Yes       Not supported
-Proxying/tunnelling               Yes       Not yet implemented
-Kerberos (GSS) authentication     Yes       Not supported
-Private key file authentication   Yes       Yes
-Private key from memory           Yes       Not yet implemented
-Agent authentication              Yes       Yes
-Password authentication           Yes       Yes
-SFTP copy to/from hosts           Yes       Yes
-Session timeout setting           Yes       Yes
-Per-channel timeout setting       Yes       Not supported
-Programmatic SSH agent            Yes       Not supported
-OpenSSH config parsing            Yes       Not yet implemented
-===============================  =========  ======================
+===============================  ============== ======================
+Feature                          paramiko       ssh2-python (libssh2)
+===============================  ============== ======================
+Agent forwarding                  Yes           Not supported (*PR Pending*)
+Proxying/tunnelling               Yes           Yes
+Kerberos (GSS) authentication     Yes           Not supported
+Private key file authentication   Yes           Yes
+Private key from memory           Yes           Not yet implemented
+Agent authentication              Yes           Yes
+Password authentication           Yes           Yes
+SFTP copy to/from hosts           Yes           Yes
+Session timeout setting           Yes           Yes
+Per-channel timeout setting       Yes           Yes
+Programmatic SSH agent            Yes           Not supported
+OpenSSH config parsing            Yes           Not yet implemented
+ECSA keys support                 Yes           Not supported (*PR Pending*)
+SCP functionality                 Not supported Not yet implemented
+===============================  ============== ======================
 
 If any of missing features are required for a use case, then the paramiko based clients should be used instead.
 

@@ -1,6 +1,20 @@
 Change Log
 ============
 
+1.4.0
+++++++
+
+Changes
+----------
+
+* ``ParallelSSH2Client.join`` now raises ``pssh.exceptions.Timeout`` exception when timeout is requested and reached with command still running.
+
+
+Fixes
+--------
+
+* ``ParallelSSH2Client.join`` timeout duration was incorrectly for per-host rather than total.
+
 1.3.2
 ++++++
 

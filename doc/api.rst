@@ -8,6 +8,7 @@ API Documentation
    ssh_client
    pssh2_client
    ssh2_client
+   base_pssh
    output
    agent
    utils

@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 
-# Copyright (C) 2014-2017 Panos Kittenis
+# Copyright (C) 2014-2018 Panos Kittenis
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -39,6 +39,8 @@ except NameError:
 
 
 class BaseParallelSSHClient(object):
+
+    """Parallel client base class."""
 
     def __init__(self, hosts, user=None, password=None, port=None, pkey=None,
                  allow_agent=True,

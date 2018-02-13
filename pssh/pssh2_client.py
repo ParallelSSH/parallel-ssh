@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 
-# Copyright (C) 2014-2017 Panos Kittenis
+# Copyright (C) 2014-2018 Panos Kittenis
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -21,7 +21,7 @@ from gevent import sleep
 from .base_pssh import BaseParallelSSHClient
 from .constants import DEFAULT_RETRIES, RETRY_DELAY
 from .ssh2_client import SSHClient
-from .exceptions import ProxyError
+from .exceptions import ProxyError, Timeout
 from .tunnel import Tunnel
 
 
@@ -207,13 +207,20 @@ class ParallelSSHClient(BaseParallelSSHClient):
           finished.
         :type timeout: int
 
+        :raises: :py:class:`pssh.exceptions.Timeout` on timeout requested and
+          reached with commands still running.
+
         :rtype: ``None``"""
         for host in output:
             if host not in self.host_clients or self.host_clients[host] is None:
                 continue
             self.host_clients[host].wait_finished(output[host].channel,
                                                   timeout=timeout)
-            if consume_output:
+            if timeout and not output[host].channel.eof():
+                raise Timeout(
+                    "Timeout of %s sec(s) reached on host %s with command "
+                    "still running", timeout, host)
+            elif consume_output:
                 for line in output[host].stdout:
                     pass
                 for line in output[host].stderr:

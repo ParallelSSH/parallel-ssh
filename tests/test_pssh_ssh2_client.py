@@ -39,7 +39,7 @@ import gevent
 from pssh.pssh2_client import ParallelSSHClient, logger as pssh_logger
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
-    HostArgumentException, SFTPError, SFTPIOError
+    HostArgumentException, SFTPError, SFTPIOError, Timeout
 
 from .embedded_server.embedded_server import make_socket
 from .embedded_server.openssh import OpenSSHServer
@@ -1167,10 +1167,11 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)
         output = client.run_command('sleep 2')
-        client.join(output, timeout=1)
+        self.assertRaises(Timeout, client.join, output, timeout=1)
         self.assertFalse(output[self.host].channel.eof())
         client.join(output, timeout=2)
         self.assertTrue(output[self.host].channel.eof())
+        self.assertTrue(client.finished(output))
 
     def test_read_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,

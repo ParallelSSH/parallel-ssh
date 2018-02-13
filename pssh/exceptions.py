@@ -61,3 +61,7 @@ class SFTPIOError(SFTPError):
 
 class ProxyError(Exception):
     """Raised on proxy errors"""
+
+
+class Timeout(Exception):
+    """Raised on timeout requested and reached"""
