@@ -31,7 +31,7 @@ from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import AuthenticationError, AgentError, \
     SessionHandshakeError, SFTPHandleError, SFTPIOError as SFTPIOError_ssh2
 from ssh2.session import Session
-from ssh2.sftp import LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
+from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR, LIBSSH2_SFTP_S_IRGRP, \
     LIBSSH2_SFTP_S_IWUSR, LIBSSH2_SFTP_S_IXUSR, LIBSSH2_SFTP_S_IROTH, \
     LIBSSH2_SFTP_S_IXGRP, LIBSSH2_SFTP_S_IXOTH
@@ -587,7 +587,9 @@ class SSHClient(object):
                 local_fh.write(data)
 
     def sftp_get(self, sftp, remote_file, local_file):
-        with self._sftp_openfh(sftp.open, remote_file, 0, 0) as remote_fh:
+        with self._sftp_openfh(
+                sftp.open, remote_file,
+                LIBSSH2_FXF_READ, LIBSSH2_SFTP_S_IRUSR) as remote_fh:
             try:
                 self._sftp_get(remote_fh, local_file)
                 # THREAD_POOL.apply(

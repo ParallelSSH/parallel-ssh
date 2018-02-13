@@ -14,6 +14,7 @@ Fixes
 --------
 
 * ``ParallelSSH2Client.join`` timeout duration was incorrectly for per-host rather than total.
+* SFTP read flags were not fully portable.
 
 1.3.2
 ++++++
