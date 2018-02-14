@@ -98,8 +98,8 @@ jobs:
         - brew install libssh2
         - wget --no-check-certificate https://bootstrap.pypa.io/get-pip.py
         - sudo python get-pip.py
-        - sudo pip install -U pip
-        - sudo pip install -U delocate twine wheel pip setuptools
+        - sudo -H pip install -U pip
+        - sudo -H pip install -U delocate twine wheel pip setuptools
         - pip install --user -r requirements.txt
         - pip wheel --no-deps .
       script:

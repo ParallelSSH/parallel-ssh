@@ -1,6 +1,6 @@
 #!/bin/bash -xe
 
-docker_tag="parallelssh/ssh2-manylinux"
+docker_tag="parallelssh/parallelssh-manylinux"
 
 rm -rf build dist
 

@@ -17,7 +17,7 @@ Native code based client with extremely high performance - based on ``libssh2`` 
 .. image:: https://travis-ci.org/ParallelSSH/parallel-ssh.svg?branch=master
   :target: https://travis-ci.org/ParallelSSH/parallel-ssh
 .. image:: https://ci.appveyor.com/api/projects/status/github/parallelssh/parallel-ssh?svg=true&branch=master
-  :target: https://ci.appveyor.com/project/pkittenis/parallel-ssh
+  :target: https://ci.appveyor.com/project/pkittenis/parallel-ssh-4nme1
 .. image:: https://codecov.io/gh/ParallelSSH/parallel-ssh/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/ParallelSSH/parallel-ssh
 .. image:: https://img.shields.io/pypi/wheel/parallel-ssh.svg
