@@ -316,12 +316,13 @@ class ParallelSSHClient(BaseParallelSSHClient):
             if self.proxy_host is not None:
                 tunnel = self._start_tunnel(host)
             _user, _port, _password, _pkey = self._get_host_config_values(host)
-            _host = host if self.proxy_host is None else '127.0.0.1'
+            proxy_host = None if self.proxy_host is None else '127.0.0.1'
             _port = _port if self.proxy_host is None else tunnel.listen_port
             self.host_clients[host] = SSHClient(
-                _host, user=_user, password=_password, port=_port, pkey=_pkey,
+                host, user=_user, password=_password, port=_port, pkey=_pkey,
                 num_retries=self.num_retries, timeout=self.timeout,
-                allow_agent=self.allow_agent, retry_delay=self.retry_delay)
+                allow_agent=self.allow_agent, retry_delay=self.retry_delay,
+                proxy_host=proxy_host)
 
     def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel

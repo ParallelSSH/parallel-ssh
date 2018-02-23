@@ -38,7 +38,7 @@ cython_directives = {'embedsignature': True,
                      'optimize.use_switch': True,
                      'wraparound': False,
 }
-_embedded_lib = bool(os.environ.get('EMBEDDED_LIB', 1))
+_embedded_lib = bool(int(os.environ.get('EMBEDDED_LIB', 1)))
 
 cython_args = {'cython_directives': cython_directives,
                'cython_compile_time_env': {'EMBEDDED_LIB': _embedded_lib},
@@ -65,7 +65,6 @@ extensions = [
               extra_compile_args=_comp_args,
               **cython_args
     )]
-
 
 package_data = {}
 

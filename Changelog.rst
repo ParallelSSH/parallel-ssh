@@ -1,6 +1,14 @@
 Change Log
 ============
 
+1.6.1
++++++++
+
+Fixes
+-------
+
+* Host would always be `127.0.0.1` when using ``proxy_host`` on native client - #120.
+
 1.6.0
 ++++++
 

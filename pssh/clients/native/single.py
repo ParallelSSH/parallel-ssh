@@ -64,7 +64,8 @@ class SSHClient(object):
                  num_retries=DEFAULT_RETRIES,
                  retry_delay=RETRY_DELAY,
                  allow_agent=True, timeout=None,
-                 forward_ssh_agent=True):
+                 forward_ssh_agent=True,
+                 proxy_host=None):
         """:param host: Host name or IP to connect to.
         :type host: str
         :param user: User to connect as. Defaults to logged in user.
@@ -93,6 +94,9 @@ class SSHClient(object):
           equivalent to `ssh -A` from the `ssh` command line utility.
           Defaults to True if not set.
         :type forward_ssh_agent: bool
+        :param proxy_host: Connection to host is via provided proxy host
+          and client should use self.proxy_host for connection attempts.
+        :type proxy_host: str
         """
         self.host = host
         self.user = user if user else None
@@ -111,7 +115,8 @@ class SSHClient(object):
         self.forward_ssh_agent = forward_ssh_agent
         self._forward_requested = False
         self.session = None
-        self._connect(self.host, self.port)
+        self._host = proxy_host if proxy_host else host
+        self._connect(self._host, self.port)
         THREAD_POOL.apply(self._init)
 
     def disconnect(self):
@@ -139,7 +144,7 @@ class SSHClient(object):
         if not self.sock.closed:
             self.sock.close()
         sleep(self.retry_delay)
-        self._connect(self.host, self.port, retries=retries)
+        self._connect(self._host, self.port, retries=retries)
         return self._init(retries=retries)
 
     def _init(self, retries=1):

@@ -1389,8 +1389,8 @@ class ParallelSSHClientTest(unittest.TestCase):
             gevent.joinall(cmds, raise_error=True)
             self.assertTrue(os.path.isdir(remote_test_dir_abspath))
             self.assertTrue(os.path.isfile(remote_file_abspath))
-            remote_file_data = open(remote_file_abspath, 'r').readlines()
-            self.assertEqual(remote_file_data[0].strip(), test_file_data)
+            remote_file_data = open(remote_file_abspath, 'r').read()
+            self.assertEqual(remote_file_data.strip(), test_file_data)
         except Exception:
             raise
         finally:
@@ -1496,19 +1496,19 @@ class ParallelSSHClientTest(unittest.TestCase):
             shutil.rmtree(remote_test_path_abs)
             shutil.rmtree(local_copied_dir)
 
-    ## OpenSSHServer needs to run in its own thread for this test to work
-    ##  Race conditions otherwise.
-    #
-    # def test_tunnel(self):
-    #     proxy_host = '127.0.0.9'
-    #     server = OpenSSHServer(listen_ip=proxy_host, port=self.port)
-    #     server.start_server()
-    #     client = ParallelSSHClient(
-    #         [self.host], port=self.port, pkey=self.user_key,
-    #         proxy_host=proxy_host, proxy_port=self.port, num_retries=1,
-    #         proxy_pkey=self.user_key,
-    #         timeout=2)
-    #     client.join(client.run_command('echo me'))
+    # This is a unit test, no output is checked, due to race conditions
+    # with running server in same thread.
+    def test_tunnel(self):
+        proxy_host = '127.0.0.9'
+        server = OpenSSHServer(listen_ip=proxy_host, port=self.port)
+        server.start_server()
+        client = ParallelSSHClient(
+            [self.host], port=self.port, pkey=self.user_key,
+            proxy_host=proxy_host, proxy_port=self.port, num_retries=1,
+            proxy_pkey=self.user_key,
+            timeout=2)
+        output = client.run_command('echo me', stop_on_errors=False)
+        self.assertEqual(self.host, list(output.keys())[0])
 
 #     def test_proxy_remote_host_failure_timeout(self):
 #         """Test that timeout setting is passed on to proxy to be used for the
