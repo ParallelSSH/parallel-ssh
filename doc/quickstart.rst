@@ -12,9 +12,9 @@ First, make sure that ``parallel-ssh`` is `installed <installation.html>`_.
 
    If you are seeing messages like ``This operation would block forever``, this is the cause.
 
-   Monkey patching is only done for the clients under ``pssh.pssh_client`` and ``pssh.ssh_client`` for parallel and single host clients respectively.
+   Monkey patching is only done for the clients under ``pssh.clients.miko``.
 
-   New native library based clients under ``pssh.pssh2_client`` and ``pssh.ssh2_client`` **do not perform monkey patching** and are an option if monkey patching is not suitable. These clients will become the default in a future major release - ``2.0.0``.
+   New native library based clients under ``pssh.clients.native`` **do not perform monkey patching** and are an option if monkey patching is not suitable. These clients will become the default, replacing the current ``pssh.pssh_client``, in a future major release - ``2.0.0``.
 
 Run a command on hosts in parallel
 ------------------------------------
@@ -138,19 +138,19 @@ For the native client (``pssh.pssh2_client``), only private key filepath is need
 
  .. code-block:: python
 
-   from pssh.pssh2_client import ParallelSSHClient
+   from pssh.clients.native import ParallelSSHClient
 
    client = ParallelSSHClient(hosts, pkey='my_pkey')
 
 Paramiko Client
 __________________
 
-For the paramiko based client, the helper function :py:func:`load_private_key <pssh.utils.load_private_key>` is provided to easily load all possible key types. It takes either a file path or a file-like object.
+For the paramiko based client only, the helper function :py:func:`load_private_key <pssh.utils.load_private_key>` is provided to easily load all possible key types. It takes either a file path or a file-like object.
 
  :File path:
    .. code-block:: python
 
-      from pssh.pssh_client import ParallelSSHClient
+      from pssh.clients.miko import ParallelSSHClient
       from pssh.utils import load_private_key
       
       pkey = load_private_key('my_pkey.pem')

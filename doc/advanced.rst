@@ -27,7 +27,7 @@ A private key can also be provided programmatically.
 .. code-block:: python
 
   from pssh.utils import load_private_key
-  from pssh import ParallelSSHClient
+  from pssh.pssh_client import ParallelSSHClient
 
   client = ParallelSSHClient(hosts, pkey=load_private_key('my_key'))
 
@@ -60,13 +60,15 @@ Use of an available SSH agent can also be disabled.
 Programmatic SSH Agent
 -----------------------
 
+*Paramiko client only*.
+
 It is also possible to programmatically provide an SSH agent for the client to use, instead of a system provided one. This is useful in cases where hosts need different private keys and a system SSH agent is not available.
 
 .. code-block:: python
    
    from pssh.agent import SSHAgent
    from pssh.utils import load_private_key
-   from pssh import ParallelSSHClient
+   from pssh.clients.miko import ParallelSSHClient
 
    agent = SSHAgent()
    agent.add_key(load_private_key('my_private_key_filename'))
@@ -94,11 +96,11 @@ The new client is based on ``libssh2`` via the ``ssh2-python`` extension library
 
 See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of the available clients.
 
-To make use of this new client, ``ParallelSSHClient`` can be imported from ``pssh.pssh2_client`` instead. Their respective APIs are almost identical. 
+To make use of this new client, ``ParallelSSHClient`` can be imported from ``pssh.clients.native`` instead. Their respective APIs are almost identical. 
 
 .. code-block:: python
 
-  from pssh.pssh2_client import ParallelSSHClient
+  from pssh.clients.native import ParallelSSHClient
 
   hosts = ['my_host', 'my_other_host']
   client = ParallelSSHClient(hosts)
@@ -316,7 +318,7 @@ Run with sudo
    output = client.run_command(<..>, sudo=True)
    client.join(output)
 
-While not best practice and password-less `sudo` is best configured for a limited set of commands, a sudo password may be provided via the stdin channel:
+While not best practice and password-less ``sudo`` is best configured for a limited set of commands, a sudo password may be provided via the stdin channel:
 
 .. code-block:: python
 
@@ -350,8 +352,6 @@ Contents of ``stdout`` will be `UTF-16` encoded.
 Disabling use of pseudo terminal emulation
 --------------------------------------------
 
-By default, ``parallel-ssh`` uses the user's configured shell to run commands with. As a shell is used by default, a pseudo terminal (`PTY`) is also requested by default.
-
 For cases where use of a `PTY` is not wanted, such as having separate stdout and stderr outputs, the remote command is a daemon that needs to fork and detach itself or when use of a shell is explicitly disabled, use of PTY can also be disabled.
 
 The following example prints to stderr with PTY disabled.
@@ -374,7 +374,7 @@ The following example prints to stderr with PTY disabled.
 Combined stdout/stderr
 -----------------------
 
-With a PTY, stdout and stderr output is combined.
+With a PTY on the paramiko client, stdout and stderr output is combined.
 
 The same example as above with a PTY:
 
@@ -470,14 +470,14 @@ If wanting to copy a file from a single remote host and retain the original file
 
 .. code-block:: python
 
-   from pssh.ssh_client import SSHClient
+   from pssh.pssh_client import SSHClient
 
    client = SSHClient('localhost')
    client.copy_remote_file('remote_filename', 'local_filename')
 
 .. seealso::
 
-   :py:func:`SSHClient.copy_remote_file <pssh.ssh_client.SSHClient.copy_remote_file>`  API documentation and exceptions raised.
+   :py:func:`SSHClient.copy_remote_file <pssh.clients.native.SSHClient.copy_remote_file>`  API documentation and exceptions raised.
 
 
 Hosts filtering and overriding

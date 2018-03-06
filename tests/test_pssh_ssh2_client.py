@@ -685,8 +685,11 @@ class ParallelSSHClientTest(unittest.TestCase):
                 remote_file_abspath = os.path.expanduser(
                         '~/' + remote_file_prefix + str(i + 1))
                 local_file_path = local_file_prefix + str(i + 1)
-                os.unlink(remote_file_abspath)
-                os.unlink(local_file_path)
+                try:
+                    os.unlink(remote_file_abspath)
+                    os.unlink(local_file_path)
+                except OSError:
+                    pass
 
     def test_pssh_pool_size(self):
         """Test setting pool size to non default values"""

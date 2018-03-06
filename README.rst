@@ -77,18 +77,18 @@ The new client is based on ``libssh2`` via the ``ssh2-python`` extension library
 
 See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of the available clients.
 
-To make use of this new client, ``ParallelSSHClient`` can be imported from ``pssh.pssh2_client`` instead. Their respective APIs are almost identical.
+To make use of this new client, ``ParallelSSHClient`` can be imported from ``pssh.clients.native`` instead. Their respective APIs are almost identical.
 
-The new client will become the default and will replace the current ``pssh.pssh_client`` in a new major version of the library - ``2.0.0`` - once remaining features have been implemented.
+The new client will become the default and will replace the current ``pssh.pssh_client`` in a new major version of the library - ``2.0.0``.
 
-The current default client will remain available as an option under a new name.
+The paramiko based client will remain available under ``pssh.clients.miko``.
 
 For example:
 
 .. code-block:: python
 
   from pprint import pprint
-  from pssh.pssh2_client import ParallelSSHClient
+  from pssh.clients.native import ParallelSSHClient
 
   hosts = ['myhost1', 'myhost2']
   client = ParallelSSHClient(hosts)
@@ -187,7 +187,7 @@ To copy a local file to remote hosts in parallel:
 
 .. code-block:: python
 
-  from pssh.pssh_client import ParallelSSHClient
+  from pssh.clients import ParallelSSHClient
   from pssh.utils import enable_logger, logger
   from gevent import joinall
 

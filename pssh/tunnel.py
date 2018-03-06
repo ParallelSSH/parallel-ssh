@@ -5,7 +5,7 @@ from gevent import socket, spawn, joinall, get_hub
 
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 
-from .ssh2_client import SSHClient
+from .clients.native.single import SSHClient
 from .native._ssh2 import wait_select
 from .constants import DEFAULT_RETRIES, RETRY_DELAY
 

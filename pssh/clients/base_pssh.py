@@ -24,9 +24,9 @@ import logging
 import gevent.pool
 from gevent.hub import Hub
 
-from .exceptions import HostArgumentException
-from .constants import DEFAULT_RETRIES, RETRY_DELAY
-from .output import HostOutput
+from ..exceptions import HostArgumentException
+from ..constants import DEFAULT_RETRIES, RETRY_DELAY
+from ..output import HostOutput
 
 
 Hub.NOT_ERROR = (Exception,)
