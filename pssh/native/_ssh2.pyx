@@ -33,7 +33,7 @@ from ssh2.sftp_handle cimport SFTPHandle
 from ssh2.exceptions import SFTPIOError
 from ssh2.utils cimport to_bytes
 
-from ..exceptions import SessionError
+from ..exceptions import SessionError, Timeout
 
 
 cdef bytes LINESEP = b'\n'
@@ -54,7 +54,7 @@ def _read_output(Session session, read_func, timeout=None):
             _wait_select(_sock, _session, timeout)
             _size, _data = read_func()
             if timeout is not None and _size == LIBSSH2_ERROR_EAGAIN:
-                break
+                raise Timeout
         while _size > 0:
             while _pos < _size:
                 linesep = _data[:_size].find(LINESEP, _pos)

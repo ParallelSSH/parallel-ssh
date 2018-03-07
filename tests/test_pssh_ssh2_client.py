@@ -1193,14 +1193,43 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_read_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)
-        output = client.run_command('sleep 2', timeout=1)
-        stdout = list(output[self.host].stdout)
+        output = client.run_command('sleep 2; echo me', timeout=1)
+        for host, host_out in output.items():
+            self.assertRaises(Timeout, list, host_out.stdout)
         self.assertFalse(output[self.host].channel.eof())
-        self.assertEqual(len(stdout), 0)
-        list(output[self.host].stdout)
-        list(output[self.host].stdout)
         client.join(output)
-        self.assertTrue(output[self.host].channel.eof())
+        for host, host_out in output.items():
+            stdout_buf = client.host_clients[self.host].read_output_buffer(
+                client.host_clients[self.host].read_output(
+                    output[self.host].channel, timeout=1))
+            host_out.stdout = stdout_buf
+            stdout = list(output[self.host].stdout)
+            self.assertEqual(len(stdout), 1)
+
+    def test_timeout_file_read(self):
+        dir_name = os.path.dirname(__file__)
+        _file = os.sep.join((dir_name, 'file_to_read'))
+        contents = [b'a line\n' for _ in range(50)]
+        with open(_file, 'wb') as fh:
+            fh.writelines(contents)
+        try:
+            output = self.client.run_command('tail -f %s' % (_file,),
+                                             use_pty=True,
+                                             timeout=1)
+            self.assertRaises(Timeout, self.client.join, output, timeout=1)
+            for host, host_out in output.items():
+                try:
+                    for line in host_out.stdout:
+                        pass
+                except Timeout:
+                    pass
+                else:
+                    raise Exception("Timeout should have been raised")
+            channel = output[self.host].channel
+            self.client.host_clients[self.host].close_channel(channel)
+            self.client.join(output)
+        finally:
+            os.unlink(_file)
 
     ## OpenSSHServer needs to run in its own thread for this test to work
     ##  Race conditions otherwise.

@@ -1,6 +1,14 @@
 Change Log
 ============
 
+1.5.1
+++++++
+
+Fixes
+--------
+
+* Output ``pssh.exceptions.Timeout`` exception raising was not enabled.
+
 1.5.0
 ++++++
 

@@ -178,6 +178,38 @@ The native clients have timeout functionality on reading output and ``client.joi
 
 The client will raise a ``Timeout`` exception if remote commands have not finished within five seconds in the above examples.
 
+In some cases, such as when the remote command never terminates unless interrupted, it is necessary to use PTY and to close the channel to force the process to be terminated before a ``join`` sans timeout can complete. For example:
+
+.. code-block:: python
+
+   output = client.run_command('tail -f /var/log/messages', use_pty=True)
+   client.join(output, timeout=1)
+   # Closing channel which has PTY has the effect of terminating
+   # any running processes started on that channel.
+   for host in client.hosts:
+       client.host_clients[host].close_channel(output[host].channel)
+   client.join(output)
+
+Without a PTY, the ``join`` will complete but the remote process will be left running as per SSH protocol specifications.
+
+Output reading and Timeouts
+______________________________
+
+Furthermore, once reading output has timed out, it is necessary to restart the output generators as by Python design they only iterate once. This can be done as follows:
+
+.. code-block:: python
+
+   output = client.run_command(.., timeout=1)
+   for host, host_out in output.items():
+       try:
+           stdout = list(host_out.stdout)
+       except Timeout:
+           stdout_buf = client.host_clients[host].read_output_buffer(
+               client.host_clients[host].read_output(
+	           output[host].channel, timeout=1))
+	   # Reset generator to be able to gather new output
+           host_out.stdout = stdout_buf
+
 .. note::
 
    ``join`` with a timeout forces output to be consumed as otherwise the pending output will keep the channel open and make it appear as if command has not yet finished.

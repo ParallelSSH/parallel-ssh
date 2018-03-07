@@ -1005,6 +1005,9 @@ static CYTHON_INLINE int __Pyx_IterFinish(void);
 /* UnpackItemEndCheck.proto */
 static int __Pyx_IternextUnpackEndCheck(PyObject *retval, Py_ssize_t expected);
 
+/* GetModuleGlobalName.proto */
+static CYTHON_INLINE PyObject *__Pyx_GetModuleGlobalName(PyObject *name);
+
 /* PyThreadStateGet.proto */
 #if CYTHON_FAST_THREAD_STATE
 #define __Pyx_PyThreadState_declare  PyThreadState *__pyx_tstate;
@@ -1043,9 +1046,6 @@ static CYTHON_INLINE void __Pyx_ErrFetchInState(PyThreadState *tstate, PyObject 
 
 /* RaiseException.proto */
 static void __Pyx_Raise(PyObject *type, PyObject *value, PyObject *tb, PyObject *cause);
-
-/* GetModuleGlobalName.proto */
-static CYTHON_INLINE PyObject *__Pyx_GetModuleGlobalName(PyObject *name);
 
 /* GetException.proto */
 #if CYTHON_FAST_THREAD_STATE
@@ -1296,6 +1296,7 @@ static const char __pyx_k_rstrip[] = "rstrip";
 static const char __pyx_k_select[] = "select";
 static const char __pyx_k_IOError[] = "IOError";
 static const char __pyx_k_OSError[] = "OSError";
+static const char __pyx_k_Timeout[] = "Timeout";
 static const char __pyx_k_linesep[] = "linesep";
 static const char __pyx_k_session[] = "session";
 static const char __pyx_k_timeout[] = "timeout";
@@ -1329,6 +1330,7 @@ static PyObject *__pyx_n_s_MemoryError;
 static PyObject *__pyx_n_s_OSError;
 static PyObject *__pyx_n_s_SFTPIOError;
 static PyObject *__pyx_n_s_SessionError;
+static PyObject *__pyx_n_s_Timeout;
 static PyObject *__pyx_kp_b__4;
 static PyObject *__pyx_n_s_args;
 static PyObject *__pyx_n_s_b_local_file;
@@ -1725,7 +1727,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
  *             _wait_select(_sock, _session, timeout)
  *             _size, _data = read_func()             # <<<<<<<<<<<<<<
  *             if timeout is not None and _size == LIBSSH2_ERROR_EAGAIN:
- *                 break
+ *                 raise Timeout
  */
       __Pyx_INCREF(__pyx_cur_scope->__pyx_v_read_func);
       __pyx_t_5 = __pyx_cur_scope->__pyx_v_read_func; __pyx_t_4 = NULL;
@@ -1809,7 +1811,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
  *             _wait_select(_sock, _session, timeout)
  *             _size, _data = read_func()
  *             if timeout is not None and _size == LIBSSH2_ERROR_EAGAIN:             # <<<<<<<<<<<<<<
- *                 break
+ *                 raise Timeout
  *         while _size > 0:
  */
       __pyx_t_10 = (__pyx_cur_scope->__pyx_v_timeout != Py_None);
@@ -1827,17 +1829,21 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
         /* "pssh/native/_ssh2.pyx":57
  *             _size, _data = read_func()
  *             if timeout is not None and _size == LIBSSH2_ERROR_EAGAIN:
- *                 break             # <<<<<<<<<<<<<<
+ *                 raise Timeout             # <<<<<<<<<<<<<<
  *         while _size > 0:
  *             while _pos < _size:
  */
-        goto __pyx_L7_break;
+        __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_Timeout); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 57, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        __Pyx_Raise(__pyx_t_3, 0, 0, 0);
+        __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+        __PYX_ERR(0, 57, __pyx_L1_error)
 
         /* "pssh/native/_ssh2.pyx":56
  *             _wait_select(_sock, _session, timeout)
  *             _size, _data = read_func()
  *             if timeout is not None and _size == LIBSSH2_ERROR_EAGAIN:             # <<<<<<<<<<<<<<
- *                 break
+ *                 raise Timeout
  *         while _size > 0:
  */
       }
@@ -1853,7 +1859,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
 
     /* "pssh/native/_ssh2.pyx":58
  *             if timeout is not None and _size == LIBSSH2_ERROR_EAGAIN:
- *                 break
+ *                 raise Timeout
  *         while _size > 0:             # <<<<<<<<<<<<<<
  *             while _pos < _size:
  *                 linesep = _data[:_size].find(LINESEP, _pos)
@@ -1863,7 +1869,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
       if (!__pyx_t_9) break;
 
       /* "pssh/native/_ssh2.pyx":59
- *                 break
+ *                 raise Timeout
  *         while _size > 0:
  *             while _pos < _size:             # <<<<<<<<<<<<<<
  *                 linesep = _data[:_size].find(LINESEP, _pos)
@@ -2248,7 +2254,6 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
       __pyx_cur_scope->__pyx_v__pos = 0;
     }
   }
-  __pyx_L7_break:;
 
   /* "pssh/native/_ssh2.pyx":75
  *             _size, _data = read_func()
@@ -4382,6 +4387,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_OSError, __pyx_k_OSError, sizeof(__pyx_k_OSError), 0, 0, 1, 1},
   {&__pyx_n_s_SFTPIOError, __pyx_k_SFTPIOError, sizeof(__pyx_k_SFTPIOError), 0, 0, 1, 1},
   {&__pyx_n_s_SessionError, __pyx_k_SessionError, sizeof(__pyx_k_SessionError), 0, 0, 1, 1},
+  {&__pyx_n_s_Timeout, __pyx_k_Timeout, sizeof(__pyx_k_Timeout), 0, 0, 1, 1},
   {&__pyx_kp_b__4, __pyx_k__4, sizeof(__pyx_k__4), 0, 0, 0, 0},
   {&__pyx_n_s_args, __pyx_k_args, sizeof(__pyx_k_args), 0, 0, 1, 1},
   {&__pyx_n_s_b_local_file, __pyx_k_b_local_file, sizeof(__pyx_k_b_local_file), 0, 0, 1, 1},
@@ -4705,21 +4711,28 @@ static int __pyx_pymod_exec__ssh2(PyObject *__pyx_pyinit_module)
   /* "pssh/native/_ssh2.pyx":36
  * from ssh2.utils cimport to_bytes
  * 
- * from ..exceptions import SessionError             # <<<<<<<<<<<<<<
+ * from ..exceptions import SessionError, Timeout             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_t_2 = PyList_New(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 36, __pyx_L1_error)
+  __pyx_t_2 = PyList_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 36, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_INCREF(__pyx_n_s_SessionError);
   __Pyx_GIVEREF(__pyx_n_s_SessionError);
   PyList_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_SessionError);
+  __Pyx_INCREF(__pyx_n_s_Timeout);
+  __Pyx_GIVEREF(__pyx_n_s_Timeout);
+  PyList_SET_ITEM(__pyx_t_2, 1, __pyx_n_s_Timeout);
   __pyx_t_3 = __Pyx_Import(__pyx_n_s_exceptions, __pyx_t_2, 2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 36, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_2 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_SessionError); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 36, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_SessionError, __pyx_t_2) < 0) __PYX_ERR(0, 36, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_2 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_Timeout); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 36, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_Timeout, __pyx_t_2) < 0) __PYX_ERR(0, 36, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
@@ -5336,8 +5349,26 @@ static CYTHON_INLINE PyObject* __Pyx_PyObject_CallNoArg(PyObject *func) {
     return 0;
 }
 
+/* GetModuleGlobalName */
+  static CYTHON_INLINE PyObject *__Pyx_GetModuleGlobalName(PyObject *name) {
+    PyObject *result;
+#if !CYTHON_AVOID_BORROWED_REFS
+    result = PyDict_GetItem(__pyx_d, name);
+    if (likely(result)) {
+        Py_INCREF(result);
+    } else {
+#else
+    result = PyObject_GetItem(__pyx_d, name);
+    if (!result) {
+        PyErr_Clear();
+#endif
+        result = __Pyx_GetBuiltinName(name);
+    }
+    return result;
+}
+
 /* PyErrFetchRestore */
-  #if CYTHON_FAST_THREAD_STATE
+    #if CYTHON_FAST_THREAD_STATE
 static CYTHON_INLINE void __Pyx_ErrRestoreInState(PyThreadState *tstate, PyObject *type, PyObject *value, PyObject *tb) {
     PyObject *tmp_type, *tmp_value, *tmp_tb;
     tmp_type = tstate->curexc_type;
@@ -5361,7 +5392,7 @@ static CYTHON_INLINE void __Pyx_ErrFetchInState(PyThreadState *tstate, PyObject 
 #endif
 
 /* RaiseException */
-  #if PY_MAJOR_VERSION < 3
+    #if PY_MAJOR_VERSION < 3
 static void __Pyx_Raise(PyObject *type, PyObject *value, PyObject *tb,
                         CYTHON_UNUSED PyObject *cause) {
     __Pyx_PyThreadState_declare
@@ -5518,24 +5549,6 @@ bad:
     return;
 }
 #endif
-
-/* GetModuleGlobalName */
-  static CYTHON_INLINE PyObject *__Pyx_GetModuleGlobalName(PyObject *name) {
-    PyObject *result;
-#if !CYTHON_AVOID_BORROWED_REFS
-    result = PyDict_GetItem(__pyx_d, name);
-    if (likely(result)) {
-        Py_INCREF(result);
-    } else {
-#else
-    result = PyObject_GetItem(__pyx_d, name);
-    if (!result) {
-        PyErr_Clear();
-#endif
-        result = __Pyx_GetBuiltinName(name);
-    }
-    return result;
-}
 
 /* GetException */
     #if CYTHON_FAST_THREAD_STATE
