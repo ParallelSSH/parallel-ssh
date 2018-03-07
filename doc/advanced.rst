@@ -192,9 +192,6 @@ In some cases, such as when the remote command never terminates unless interrupt
 
 Without a PTY, the ``join`` will complete but the remote process will be left running as per SSH protocol specifications.
 
-Output reading and Timeouts
-______________________________
-
 Furthermore, once reading output has timed out, it is necessary to restart the output generators as by Python design they only iterate once. This can be done as follows:
 
 .. code-block:: python
@@ -283,9 +280,9 @@ Command can also have multiple arguments to be substituted.
 .. code-block:: python
 
    output = client.run_command('%s %s',
-   host_args=(('host1_cmd1', 'host1_cmd2'),
-              ('host2_cmd1', 'host2_cmd2'),
-	      ('host3_cmd1', 'host3_cmd2'),))
+   host_args = (('host1_cmd1', 'host1_cmd2'),
+                ('host2_cmd1', 'host2_cmd2'),
+                ('host3_cmd1', 'host3_cmd2'),))
 
 A list of dictionaries can also be used as ``host_args`` for named argument substitution.
 
@@ -293,8 +290,8 @@ In the following example, first host in host list will use cmd ``host-index-0``,
 
 .. code-block:: python
 
-   host_args=[{'cmd': 'host-index-%s' % (i,))
-              for i in range(len(client.hosts))]
+   host_args = [{'cmd': 'host-index-%s' % (i,)}
+                for i in range(len(client.hosts))]
    output = client.run_command('%(cmd)s', host_args=host_args)
 
 
