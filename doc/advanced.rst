@@ -139,13 +139,62 @@ Configuration for the proxy host's user name, port, password and private key can
 
 Where ``proxy.key`` is a filename containing private key to use for proxy host authentication.
 
-In the above example, connections to the target hosts are made via ``my_proxy_user@bastion:2222`` -> ``target_host_user@<host>``.
+In the above example, connections to the target hosts are made via SSH through ``my_proxy_user@bastion:2222`` -> ``target_host_user@<host>``.
 
 .. note::
 
    Proxy host connections are asynchronous and use the SSH protocol's native TCP tunneling - aka local port forward. No external commands or processes are used for the proxy connection, unlike the `ProxyCommand` directive in OpenSSH and other utilities.
 
    While connections initiated by ``parallel-ssh`` are asynchronous, connections from proxy host -> target hosts may not be, depending on SSH server implementation. If only one proxy host is used to connect to a large number of target hosts and proxy SSH server connections are *not* asynchronous, this may adversely impact performance on the proxy host.
+
+Join and Output Timeouts
+**************************
+
+*New in 1.5.0*
+
+The native clients have timeout functionality on reading output and ``client.join``.
+
+.. code-block:: python
+
+   from pssh.exceptions import Timeout
+
+   output = client.run_command(..)
+   try:
+       client.join(output, timeout=5)
+   except Timeout:
+       pass
+
+.. code-block:: python
+
+   output = client.run_command(.., timeout=5)
+   for host, host_out in output.items():
+       try:
+           for line in host_out.stdout:
+	       pass
+           for line in host_out.stderr:
+	       pass
+       except Timeout:
+           pass
+
+The client will raise a ``Timeout`` exception if remote commands have not finished within five seconds in the above examples.
+
+.. note::
+
+   ``join`` with a timeout forces output to be consumed as otherwise the pending output will keep the channel open and make it appear as if command has not yet finished.
+
+   To capture output when using ``join`` with a timeout, gather output first before calling ``join``, making use of output timeout as well, and/or make use of :ref:`host logger` functionality.
+
+
+.. warning::
+
+   Beware of race conditions when using timeout functionality. For best results, only send one command per call to ``run_command`` when using timeout functionality.
+
+   As the timeouts are performed on ``select`` calls on the socket which is responsible for all client <-> server communication, whether or not a timeout will occur depends on what the socket is doing at that time.
+
+   Multiple commands like ``run_command('echo blah; sleep 5')`` where ``sleep 5`` is a placeholder for something taking five seconds to complete will result in a race condition as the second command may or may not have started by the time ``join`` is called or output is read which will cause timeout to *not* be raised even if the second command has not started or completed.
+
+   It is responsibility of developer to avoid these race conditions such as by only sending one command in such cases.
+
 
 Per-Host Configuration
 ***********************

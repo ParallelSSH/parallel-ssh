@@ -193,6 +193,8 @@ Commands last executed by ``run_command`` can also be retrieved from the ``cmds`
 
 *New in 1.2.0*
 
+.. _host logger:
+
 Host Logger
 ------------
 

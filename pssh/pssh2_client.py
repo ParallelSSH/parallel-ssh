@@ -204,28 +204,44 @@ class ParallelSSHClient(BaseParallelSSHClient):
           output on call to ``join`` when host logger has been enabled.
         :type consume_output: bool
         :param timeout: Timeout in seconds if remote command is not yet
-          finished.
+          finished. Note that use of timeout forces ``consume_output=True``
+          otherwise the channel output pending to be consumed always results
+          in the channel not being finished.
         :type timeout: int
 
         :raises: :py:class:`pssh.exceptions.Timeout` on timeout requested and
           reached with commands still running.
 
         :rtype: ``None``"""
-        for host in output:
+        for host, host_out in output.items():
             if host not in self.host_clients or self.host_clients[host] is None:
                 continue
-            self.host_clients[host].wait_finished(output[host].channel,
-                                                  timeout=timeout)
-            if timeout and not output[host].channel.eof():
+            client = self.host_clients[host]
+            channel = host_out.channel
+            try:
+                client.wait_finished(channel, timeout=timeout)
+            except Timeout:
                 raise Timeout(
                     "Timeout of %s sec(s) reached on host %s with command "
                     "still running", timeout, host)
+            stdout = host_out.stdout
+            stderr = host_out.stderr
+            if timeout:
+                # Must consume buffers prior to EOF check
+                self._consume_output(stdout, stderr)
+                if not channel.eof():
+                    raise Timeout(
+                        "Timeout of %s sec(s) reached on host %s with command "
+                        "still running", timeout, host)
             elif consume_output:
-                for line in output[host].stdout:
-                    pass
-                for line in output[host].stderr:
-                    pass
+                self._consume_output(stdout, stderr)
         self.get_exit_codes(output)
+
+    def _consume_output(self, stdout, stderr):
+        for line in stdout:
+            pass
+        for line in stderr:
+            pass
 
     def _get_exit_code(self, channel):
         """Get exit code from channel if ready"""

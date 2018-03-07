@@ -37,7 +37,7 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_SFTP_S_IXGRP, LIBSSH2_SFTP_S_IXOTH
 
 from .exceptions import UnknownHostException, AuthenticationException, \
-     ConnectionErrorException, SessionError, SFTPError, SFTPIOError
+     ConnectionErrorException, SessionError, SFTPError, SFTPIOError, Timeout
 from .constants import DEFAULT_RETRIES, RETRY_DELAY
 from .native._ssh2 import wait_select, _read_output  # , sftp_get, sftp_put
 
@@ -282,14 +282,19 @@ class SSHClient(object):
         if channel is None:
             return
         # If .eof() returns EAGAIN after a select with a timeout, it means
-        # it reached timeout without EOF and the connection should not be
+        # it reached timeout without EOF and the channel should not be
         # closed as the command is still running.
         ret = channel.wait_eof()
         while ret == LIBSSH2_ERROR_EAGAIN:
             wait_select(self.session, timeout=timeout)
             ret = channel.wait_eof()
             if ret == LIBSSH2_ERROR_EAGAIN and timeout is not None:
-                return
+                raise Timeout
+        # Close channel to indicate no more commands will be sent over it
+        self.close_channel(channel)
+
+    def close_channel(self, channel):
+        logger.debug("Closing channel")
         self._eagain(channel.close)
         self._eagain(channel.wait_closed)
 

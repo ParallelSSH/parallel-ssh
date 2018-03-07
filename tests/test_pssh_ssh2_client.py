@@ -67,6 +67,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         cls.user_key = PKEY_FILENAME
         cls.user_pub_key = PUB_FILE
         cls.user = pwd.getpwuid(os.geteuid()).pw_name
+        # Single client for all tests ensures that the client does not do
+        # anything that causes server to disconnect the session and
+        # affect all subsequent uses of the same session.
         cls.client = ParallelSSHClient([cls.host],
                                        pkey=PKEY_FILENAME,
                                        port=cls.port,
@@ -1166,12 +1169,26 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_join_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)
-        output = client.run_command('sleep 2')
+        output = client.run_command('echo me; sleep 2')
+        # Wait for long running command to start to avoid race condition
+        time.sleep(.1)
         self.assertRaises(Timeout, client.join, output, timeout=1)
         self.assertFalse(output[self.host].channel.eof())
-        client.join(output, timeout=2)
+        # Ensure command has actually finished - avoid race conditions
+        time.sleep(2)
+        client.join(output, timeout=3)
         self.assertTrue(output[self.host].channel.eof())
         self.assertTrue(client.finished(output))
+
+    def test_join_timeout_set_no_timeout(self):
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.user_key)
+        output = client.run_command('echo me; sleep 1')
+        # Allow enough time for blocking command to start - avoid race condition
+        time.sleep(.1)
+        client.join(output, timeout=2)
+        self.assertTrue(client.finished(output))
+        self.assertTrue(output[self.host].channel.eof())
 
     def test_read_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,

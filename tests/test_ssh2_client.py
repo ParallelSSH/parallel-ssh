@@ -51,8 +51,7 @@ class SSH2ClientTest(SSH2TestCase):
     def test_manual_auth(self):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
-                           num_retries=1,
-                           timeout=1)
+                           num_retries=1)
         client.session.disconnect()
         del client.session
         del client.sock

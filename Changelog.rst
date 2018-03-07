@@ -1,6 +1,20 @@
 Change Log
 ============
 
+1.5.0
+++++++
+
+Changes
+---------
+
+* ``ParallelSSH2Client.join`` with timeout now consumes output to ensure command completion status is accurate.
+* Output reading now raises ``pssh.exceptions.Timeout`` exception when timeout is requested and reached with command still running.
+
+Fixes
+------
+
+* ``ParallelSSH2Client.join`` would always raise ``Timeout`` when output has not been consumed even if command has finished - #104.
+
 1.4.0
 ++++++
 
