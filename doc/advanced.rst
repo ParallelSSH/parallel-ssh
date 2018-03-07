@@ -186,8 +186,8 @@ In some cases, such as when the remote command never terminates unless interrupt
    client.join(output, timeout=1)
    # Closing channel which has PTY has the effect of terminating
    # any running processes started on that channel.
-   for host in client.hosts:
-       client.host_clients[host].close_channel(output[host].channel)
+   for host, host_out in output:
+       client.host_clients[host].close_channel(host_out.channel)
    client.join(output)
 
 Without a PTY, the ``join`` will complete but the remote process will be left running as per SSH protocol specifications.
@@ -196,16 +196,14 @@ Furthermore, once reading output has timed out, it is necessary to restart the o
 
 .. code-block:: python
 
-   output = client.run_command(.., timeout=1)
+   output = client.run_command(<..>, timeout=1)
    for host, host_out in output.items():
        try:
            stdout = list(host_out.stdout)
        except Timeout:
-           stdout_buf = client.host_clients[host].read_output_buffer(
-               client.host_clients[host].read_output(
-	           output[host].channel, timeout=1))
-	   # Reset generator to be able to gather new output
-           host_out.stdout = stdout_buf
+           client.reset_output_generators(host_out)
+
+Generator reset shown above is also performed automatically by calls to ``join`` and does not need to be done manually ``join`` is used after output reading.
 
 .. note::
 

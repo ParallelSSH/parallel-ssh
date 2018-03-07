@@ -150,7 +150,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           raised otherwise
         :type host_args: tuple or list
         :param encoding: Encoding to use for output. Must be valid
-          `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
+          `Python codec <https://docs.python.org/library/codecs.html>`_
         :type encoding: str
         :param timeout: (Optional) Timeout in seconds for reading from stdout
           or stderr. Defaults to no timeout. Reading from stdout/stderr will
@@ -218,14 +218,14 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 continue
             client = self.host_clients[host]
             channel = host_out.channel
+            stdout, stderr = self.reset_output_generators(
+                host_out, client=client, channel=channel, timeout=timeout)
             try:
                 client.wait_finished(channel, timeout=timeout)
             except Timeout:
                 raise Timeout(
                     "Timeout of %s sec(s) reached on host %s with command "
                     "still running", timeout, host)
-            stdout = host_out.stdout
-            stderr = host_out.stderr
             if timeout:
                 # Must consume buffers prior to EOF check
                 self._consume_output(stdout, stderr)
@@ -236,6 +236,36 @@ class ParallelSSHClient(BaseParallelSSHClient):
             elif consume_output:
                 self._consume_output(stdout, stderr)
         self.get_exit_codes(output)
+
+    def reset_output_generators(self, host_out, timeout=None,
+                                client=None, channel=None,
+                                encoding='utf-8'):
+        """Reset output generators for host output.
+
+        :param host_out: Host output
+        :type host_out: :py:class:`pssh.output.HostOutput`
+        :param client: (Optional) SSH client
+        :type client: :py:class:`pssh.ssh2_client.SSHClient`
+        :param channel: (Optional) SSH channel
+        :type channel: :py:class:`ssh2.channel.Channel`
+        :param timeout: (Optional) Timeout setting
+        :type timeout: int
+        :param encoding: (Optional) Encoding to use for output. Must be valid
+          `Python codec <https://docs.python.org/library/codecs.html>`_
+        :type encoding: str
+
+        :rtype: tuple(stdout, stderr)
+        """
+        channel = host_out.channel if channel is None else channel
+        client = self.host_clients[host_out.host] if client is None else client
+        stdout = client.read_output_buffer(
+            client.read_output(channel, timeout=timeout), encoding=encoding)
+        stderr = client.read_output_buffer(
+            client.read_stderr(channel, timeout=timeout),
+            prefix='\t[err]', encoding=encoding)
+        host_out.stdout = stdout
+        host_out.stderr = stderr
+        return stdout, stderr
 
     def _consume_output(self, stdout, stderr):
         for line in stdout:

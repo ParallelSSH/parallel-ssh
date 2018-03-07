@@ -1193,18 +1193,15 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_read_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)
-        output = client.run_command('sleep 2; echo me', timeout=1)
+        output = client.run_command('sleep 2; echo me; echo me; echo me', timeout=1)
         for host, host_out in output.items():
             self.assertRaises(Timeout, list, host_out.stdout)
         self.assertFalse(output[self.host].channel.eof())
         client.join(output)
         for host, host_out in output.items():
-            stdout_buf = client.host_clients[self.host].read_output_buffer(
-                client.host_clients[self.host].read_output(
-                    output[self.host].channel, timeout=1))
-            host_out.stdout = stdout_buf
             stdout = list(output[self.host].stdout)
-            self.assertEqual(len(stdout), 1)
+            self.assertEqual(len(stdout), 3)
+        self.assertTrue(output[self.host].channel.eof())
 
     def test_timeout_file_read(self):
         dir_name = os.path.dirname(__file__)
@@ -1225,6 +1222,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                     pass
                 else:
                     raise Exception("Timeout should have been raised")
+            self.assertRaises(Timeout, self.client.join, output, timeout=1)
             channel = output[self.host].channel
             self.client.host_clients[self.host].close_channel(channel)
             self.client.join(output)

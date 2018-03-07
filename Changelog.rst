@@ -1,6 +1,14 @@
 Change Log
 ============
 
+1.5.2
+++++++
+
+Changes
+--------
+
+* Output generators automatically restarted on call to ``join`` so output can resume on any timeouts.
+
 1.5.1
 ++++++
 
