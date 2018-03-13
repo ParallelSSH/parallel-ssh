@@ -29,6 +29,7 @@ except ImportError:
 else:
     USING_CYTHON = True
 
+ON_WINDOWS = platform.system() == 'Windows'
 
 gevent_req = 'gevent<=1.1' if python_version() < '2.7' else 'gevent>=1.1'
 
@@ -43,15 +44,18 @@ cython_args = {'cython_directives': cython_directives,
                'cython_compile_time_env': {'EMBEDDED_LIB': _embedded_lib},
 } if USING_CYTHON else {}
 
-_libs = ['ssh2'] if platform.system() != 'Windows' else [
+_libs = ['ssh2'] if not ON_WINDOWS else [
     # For libssh2 OpenSSL backend on Windows.
     # Windows native WinCNG is used by default.
     # 'libeay32', 'ssleay32',
-    'Ws2_32', 'libssh2', 'user32']
+    'Ws2_32', 'libssh2', 'user32',
+    'libeay32MD', 'ssleay32MD',
+    'zlibstatic',
+]
 
 
 ext = 'pyx' if USING_CYTHON else 'c'
-_comp_args = ["-O3"] if platform.system() != 'Windows' else None
+_comp_args = ["-O3"] if not ON_WINDOWS else None
 
 extensions = [
     Extension('pssh.native._ssh2',
@@ -61,6 +65,14 @@ extensions = [
               extra_compile_args=_comp_args,
               **cython_args
     )]
+
+
+package_data = {}
+
+if ON_WINDOWS:
+    package_data['pssh.native'] = [
+        'libeay32.dll', 'ssleay32.dll',
+    ]
 
 cmdclass = versioneer.get_cmdclass()
 if USING_CYTHON:
@@ -96,4 +108,5 @@ setup(name='parallel-ssh',
         'Operating System :: Microsoft :: Windows',
         ],
       ext_modules=extensions,
+      package_data=package_data,
 )

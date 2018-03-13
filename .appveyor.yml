@@ -5,6 +5,7 @@ environment:
     # See: http://stackoverflow.com/a/13751649/163740
     CMD_IN_ENV: "cmd /E:ON /V:ON /C %APPVEYOR_BUILD_FOLDER%\\ci\\appveyor\\run_with_env.cmd"
     PYTHONUNBUFFERED: 1
+    OPENSSL_VER: 1.0.2l
     PYPI_USER:
       secure: 2m0jy6JD/R9RExIosOT6YA==
     PYPI_PASS:
@@ -14,41 +15,49 @@ environment:
       PYTHON_VERSION: "2.7"
       PYTHON_ARCH: "32"
       MSVC: "Visual Studio 9"
+      ARCH: i386
 
     - PYTHON: "C:\\Python27-x64"
       PYTHON_VERSION: "2.7"
       PYTHON_ARCH: "64"
       MSVC: "Visual Studio 9"
+      ARCH: x64_86
 
     - PYTHON: "C:\\Python34"
       PYTHON_VERSION: "3.4"
       PYTHON_ARCH: "32"
       MSVC: "Visual Studio 10"
+      ARCH: i386
 
     - PYTHON: "C:\\Python34-x64"
       PYTHON_VERSION: "3.4"
       PYTHON_ARCH: "64"
       MSVC: "Visual Studio 10 Win64"
+      ARCH: x64_86
 
     - PYTHON: "C:\\Python35"
       PYTHON_VERSION: "3.5"
       PYTHON_ARCH: "32"
       MSVC: "Visual Studio 14"
+      ARCH: i386
 
     - PYTHON: "C:\\Python35-x64"
       PYTHON_VERSION: "3.5"
       PYTHON_ARCH: "64"
       MSVC: "Visual Studio 14 Win64"
+      ARCH: x64_86
 
     - PYTHON: "C:\\Python36"
       PYTHON_VERSION: "3.6"
       PYTHON_ARCH: "32"
       MSVC: "Visual Studio 14"
+      ARCH: i386
 
     - PYTHON: "C:\\Python36-x64"
       PYTHON_VERSION: "3.6"
       PYTHON_ARCH: "64"
       MSVC: "Visual Studio 14 Win64"
+      ARCH: x64_86
 
 install:
   # If there is a newer build queued for the same PR, cancel this one.
@@ -72,25 +81,26 @@ install:
   - "python --version"
   - "python -c \"import struct; print(struct.calcsize('P') * 8)\""
 
-  # Upgrade to the latest version of pip to avoid it displaying warnings
-  # about it being out of date.
-  - "pip install --disable-pip-version-check --user --upgrade pip"
+  # - "pip install --disable-pip-version-check --user --upgrade pip"
 
   - git submodule update --init --recursive
-  - "%CMD_IN_ENV% ci\\appveyor\\build_ssh2.bat"
-  # Install the build dependencies of the project. If some dependencies contain
-  # compiled extensions and are not provided as pre-built wheel packages,
-  # pip will build them from source using the MSVC compiler matching the
-  # target Python version and architecture
+  - appveyor DownloadFile http://zlib.net/zlib1211.zip
+  - 7z x zlib1211.zip
+  - appveyor DownloadFile https://indy.fulgan.com/SSL/openssl-%OPENSSL_VER%-%ARCH%-win%PYTHON_ARCH%.zip
+  - 7z x openssl-%OPENSSL_VER%-%ARCH%-win%PYTHON_ARCH%.zip
+  - cp ssleay32.dll pssh\native\
+  - cp libeay32.dll pssh\native\
+  - ps: ls pssh\native
   - "%CMD_IN_ENV% pip install -r requirements.txt"
   - "%CMD_IN_ENV% pip install -U wheel setuptools twine"
 
 build_script:
-  # Build the compiled extension
+  - "%CMD_IN_ENV% ci\\appveyor\\build_zlib.bat"
+  - "%CMD_IN_ENV% ci\\appveyor\\build_ssh2.bat"
   - "%CMD_IN_ENV% python setup.py build_ext -i"
 
 test_script:
-  - python -c "import pssh.pssh2_client"
+  - python -c "import pssh.clients"
 
 after_test:
   # If tests are successful, create binary packages for the project.
@@ -102,4 +112,4 @@ artifacts:
   - path: "*.whl"
 
 deploy_script:
-  - python ci/appveyor/pypi_upload.py *.whl
+  - IF "%APPVEYOR_REPO_TAG%" == "true"( python ci/appveyor/pypi_upload.py *.whl )
