@@ -1,6 +1,14 @@
 Change Log
 ============
 
+1.5.3
+++++++
+
+Changes
+--------
+
+* Compatibility with ``ssh2-python`` >= ``0.11.0``.
+
 1.5.2
 ++++++
 

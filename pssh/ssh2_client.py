@@ -227,9 +227,13 @@ class SSHClient(object):
         """Open new channel from session"""
         chan = self.session.open_session()
         errno = self.session.last_errno()
-        while chan is None and errno == LIBSSH2_ERROR_EAGAIN:
+        while (chan is None and errno == LIBSSH2_ERROR_EAGAIN) \
+                or chan == LIBSSH2_ERROR_EAGAIN:
             wait_select(self.session)
-            chan = self.session.open_session()
+            try:
+                chan = self.session.open_session()
+            except Exception as ex:
+                raise SessionError(ex)
             errno = self.session.last_errno()
         if chan is None and errno != LIBSSH2_ERROR_EAGAIN:
             raise SessionError(errno)
@@ -269,6 +273,14 @@ class SSHClient(object):
         """
         return _read_output(self.session, channel.read, timeout=timeout)
 
+    def _select_timeout(self, func, timeout):
+        ret = func()
+        while ret == LIBSSH2_ERROR_EAGAIN:
+            wait_select(self.session, timeout=timeout)
+            ret = func()
+            if ret == LIBSSH2_ERROR_EAGAIN and timeout is not None:
+                raise Timeout
+
     def wait_finished(self, channel, timeout=None):
         """Wait for EOF from channel, close channel and wait for
         close acknowledgement.
@@ -284,19 +296,13 @@ class SSHClient(object):
         # If .eof() returns EAGAIN after a select with a timeout, it means
         # it reached timeout without EOF and the channel should not be
         # closed as the command is still running.
-        ret = channel.wait_eof()
-        while ret == LIBSSH2_ERROR_EAGAIN:
-            wait_select(self.session, timeout=timeout)
-            ret = channel.wait_eof()
-            if ret == LIBSSH2_ERROR_EAGAIN and timeout is not None:
-                raise Timeout
+        self._select_timeout(channel.wait_eof, timeout)
         # Close channel to indicate no more commands will be sent over it
         self.close_channel(channel)
 
     def close_channel(self, channel):
         logger.debug("Closing channel")
         self._eagain(channel.close)
-        self._eagain(channel.wait_closed)
 
     def _eagain(self, func, *args, **kwargs):
         ret = func(*args, **kwargs)
@@ -373,11 +379,18 @@ class SSHClient(object):
 
     def _make_sftp(self):
         """Make SFTP client from open transport"""
-        sftp = self.session.sftp_init()
-        errno = self.session.last_errno()
-        while sftp is None and errno == LIBSSH2_ERROR_EAGAIN:
-            wait_select(self.session)
+        try:
             sftp = self.session.sftp_init()
+        except Exception as ex:
+            raise SFTPError(ex)
+        errno = self.session.last_errno()
+        while (sftp is None and errno == LIBSSH2_ERROR_EAGAIN) \
+                or sftp == LIBSSH2_ERROR_EAGAIN:
+            wait_select(self.session)
+            try:
+                sftp = self.session.sftp_init()
+            except Exception as ex:
+                raise SFTPError(ex)
             errno = self.session.last_errno()
         if sftp is None and errno != LIBSSH2_ERROR_EAGAIN:
             raise SFTPError("Error initialising SFTP - error code %s",
@@ -572,11 +585,18 @@ class SSHClient(object):
                 yield line
 
     def _sftp_openfh(self, open_func, remote_file, *args):
-        fh = open_func(remote_file, *args)
-        errno = self.session.last_errno()
-        while fh is None and errno == LIBSSH2_ERROR_EAGAIN:
-            wait_select(self.session, timeout=0.1)
+        try:
             fh = open_func(remote_file, *args)
+        except Exception as ex:
+            raise SFTPError(ex)
+        errno = self.session.last_errno()
+        while (fh is None and errno == LIBSSH2_ERROR_EAGAIN) \
+                or fh == LIBSSH2_ERROR_EAGAIN:
+            wait_select(self.session, timeout=0.1)
+            try:
+                fh = open_func(remote_file, *args)
+            except Exception as ex:
+                raise SFTPError(ex)
             errno = self.session.last_errno()
         if fh is None and errno != LIBSSH2_ERROR_EAGAIN:
             msg = "Error opening file handle for file %s - error no: %s"
