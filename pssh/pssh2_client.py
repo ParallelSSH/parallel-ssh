@@ -312,7 +312,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 num_retries=self.num_retries, timeout=self.timeout,
                 allow_agent=self.allow_agent, retry_delay=self.retry_delay)
 
-    def copy_file(self, local_file, remote_file, recurse=False):
+    def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel
 
         This function returns a list of greenlets which can be
@@ -335,12 +335,19 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type remote_file: str
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
+        :param copy_args: (Optional) format local_file and remote_file strings
+          with per-host arguments in ``copy_args``. ``copy_args`` length must
+          equal length of host list -
+          :py:class:`pssh.exceptions.HostArgumentException` is raised otherwise
+        :type copy_args: tuple or list
 
         :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy
           commands
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           local_file and recurse is not set
+        :raises: :py:class:`pssh.exceptions.HostArgumentException` on number of
+          per-host copy arguments not equal to number of hosts
         :raises: :py:class:`pss.exceptions.SFTPError` on SFTP initialisation
           errors
         :raises: :py:class:`pssh.exceptions.SFTPIOError` on I/O errors writing
@@ -354,10 +361,11 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
         """
         return BaseParallelSSHClient.copy_file(
-            self, local_file, remote_file, recurse=recurse)
+            self, local_file, remote_file, recurse=recurse, copy_args=copy_args)
 
     def copy_remote_file(self, remote_file, local_file, recurse=False,
-                         suffix_separator='_', encoding='utf-8'):
+                         suffix_separator='_', copy_args=None,
+                         encoding='utf-8'):
         """Copy remote file(s) in parallel as
         <local_file><suffix_separator><host>
 
@@ -389,8 +397,14 @@ class ParallelSSHClient(BaseParallelSSHClient):
           filename and host, defaults to ``_``. For example, for a
           ``local_file`` value of ``myfile`` and default separator the
           resulting filename will be ``myfile_myhost`` for the file from
-          host ``myhost``
+          host ``myhost``. ``suffix_separator`` has no meaning if
+          ``copy_args`` is provided
         :type suffix_separator: str
+        :param copy_args: (Optional) format remote_file and local_file strings
+          with per-host arguments in ``copy_args``.   ``copy_args`` length must
+          equal length of host list -
+          :py:class:`pssh.exceptions.HostArgumentException` is raised otherwise
+        :type copy_args: tuple or list
         :param encoding: Encoding to use for file paths.
         :type encoding: str
 
@@ -399,6 +413,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           local_file and recurse is not set
+        :raises: :py:class:`pssh.exceptions.HostArgumentException` on number of
+          per-host copy arguments not equal to number of hosts
         :raises: :py:class:`pss.exceptions.SFTPError` on SFTP initialisation
           errors
         :raises: :py:class:`pssh.exceptions.SFTPIOError` on I/O errors reading
@@ -416,4 +432,5 @@ class ParallelSSHClient(BaseParallelSSHClient):
         """
         return BaseParallelSSHClient.copy_remote_file(
             self, remote_file, local_file, recurse=recurse,
-            suffix_separator=suffix_separator, encoding=encoding)
+            suffix_separator=suffix_separator, copy_args=copy_args,
+            encoding=encoding)

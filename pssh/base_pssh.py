@@ -201,7 +201,7 @@ class BaseParallelSSHClient(object):
             return
         return self._get_exit_code(host_output.channel)
 
-    def copy_file(self, local_file, remote_file, recurse=False):
+    def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel
 
         This function returns a list of greenlets which can be
@@ -224,11 +224,19 @@ class BaseParallelSSHClient(object):
         :type remote_file: str
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
+        :param copy_args: (Optional) format local_file and remote_file strings
+          with per-host arguments in ``copy_args``. ``copy_args`` length must
+          equal length of host list -
+          :py:class:`pssh.exceptions.HostArgumentException` is raised otherwise
+        :type copy_args: tuple or list
+
         :rtype: List(:py:class:`gevent.Greenlet`) of greenlets for remote copy
           commands
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           local_file and recurse is not set
+        :raises: :py:class:`pssh.exceptions.HostArgumentException` on number of
+          per-host copy arguments not equal to number of hosts
         :raises: :py:class:`IOError` on I/O errors writing files
         :raises: :py:class:`OSError` on OS errors like permission denied
 
@@ -238,9 +246,21 @@ class BaseParallelSSHClient(object):
           created as long as permissions allow.
 
         """
-        return [self.pool.spawn(self._copy_file, host, local_file, remote_file,
-                                {'recurse': recurse})
-                for host in self.hosts]
+        if copy_args:
+            try:
+                return [self.pool.spawn(self._copy_file, host,
+                                        local_file % copy_args[host_i],
+                                        remote_file % copy_args[host_i],
+                                        {'recurse': recurse})
+                        for host_i, host in enumerate(self.hosts)]
+            except IndexError:
+                raise HostArgumentException(
+                    "Number of per-host copy arguments provided does not match "
+                    "number of hosts")
+        else:
+            return [self.pool.spawn(self._copy_file, host, local_file,
+                                    remote_file, {'recurse': recurse})
+                    for host in self.hosts]
 
     def _copy_file(self, host, local_file, remote_file, recurse=False):
         """Make sftp client, copy file"""
@@ -249,7 +269,7 @@ class BaseParallelSSHClient(object):
                                                  recurse=recurse)
 
     def copy_remote_file(self, remote_file, local_file, recurse=False,
-                         suffix_separator='_', **kwargs):
+                         suffix_separator='_', copy_args=None, **kwargs):
         """Copy remote file(s) in parallel as
         <local_file><suffix_separator><host>
 
@@ -281,13 +301,22 @@ class BaseParallelSSHClient(object):
           filename and host, defaults to ``_``. For example, for a
           ``local_file`` value of ``myfile`` and default separator the
           resulting filename will be ``myfile_myhost`` for the file from
-          host ``myhost``
+          host ``myhost``. ``suffix_separator`` has no meaning if
+          ``copy_args`` is provided
         :type suffix_separator: str
+        :param copy_args: (Optional) format remote_file and local_file strings
+          with per-host arguments in ``copy_args``.   ``copy_args`` length must
+          equal length of host list -
+          :py:class:`pssh.exceptions.HostArgumentException` is raised otherwise
+        :type copy_args: tuple or list
+
         :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy
           commands
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           local_file and recurse is not set
+        :raises: :py:class:`pssh.exceptions.HostArgumentException` on number of
+          per-host copy arguments not equal to number of hosts
         :raises: :py:class:`IOError` on I/O errors writing files
         :raises: :py:class:`OSError` on OS errors like permission denied
 
@@ -300,17 +329,29 @@ class BaseParallelSSHClient(object):
           filepath separated by ``suffix_separator``.
 
         """
-        return [self.pool.spawn(
-            self._copy_remote_file, host, remote_file,
-            local_file, recurse, suffix_separator=suffix_separator,
-            **kwargs)
-            for host in self.hosts]
+        if copy_args:
+            try:
+                return [self.pool.spawn(
+                    self._copy_remote_file, host,
+                    remote_file % copy_args[host_i],
+                    local_file % copy_args[host_i], {'recurse': recurse},
+                    **kwargs)
+                    for host_i, host in enumerate(self.hosts)]
+            except IndexError:
+                raise HostArgumentException(
+                    "Number of per-host copy arguments provided does not match "
+                    "number of hosts")
+        else:
+            return [self.pool.spawn(
+                self._copy_remote_file, host, remote_file,
+                suffix_separator.join([local_file, host]), recurse,
+                **kwargs)
+                for host in self.hosts]
 
     def _copy_remote_file(self, host, remote_file, local_file, recurse,
-                          suffix_separator='_', **kwargs):
+                          **kwargs):
         """Make sftp client, copy file to local"""
-        file_w_suffix = suffix_separator.join([local_file, host])
         self._make_ssh_client(host)
         return self.host_clients[host].copy_remote_file(
-            remote_file, file_w_suffix, recurse=recurse,
+            remote_file, local_file, recurse=recurse,
             **kwargs)
