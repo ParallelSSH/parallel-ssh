@@ -733,9 +733,9 @@ static const char *__pyx_filename;
 
 static const char *__pyx_f[] = {
   "pssh/native/_ssh2.pyx",
-  "env/local/lib/python2.7/site-packages/ssh2/session.pxd",
-  "env/local/lib/python2.7/site-packages/ssh2/sftp.pxd",
-  "env/local/lib/python2.7/site-packages/ssh2/sftp_handle.pxd",
+  "env3/lib/python3.4/site-packages/ssh2/session.pxd",
+  "env3/lib/python3.4/site-packages/ssh2/sftp.pxd",
+  "env3/lib/python3.4/site-packages/ssh2/sftp_handle.pxd",
 };
 /* NoFastGil.proto */
 #define __Pyx_PyGILState_Ensure PyGILState_Ensure
@@ -782,6 +782,7 @@ struct __pyx_obj_4ssh2_7session_Session {
  */
 struct __pyx_obj_4ssh2_4sftp_SFTP {
   PyObject_HEAD
+  struct __pyx_vtabstruct_4ssh2_4sftp_SFTP *__pyx_vtab;
   LIBSSH2_SFTP *_sftp;
   struct __pyx_obj_4ssh2_7session_Session *_session;
 };
@@ -851,6 +852,20 @@ struct __pyx_obj_4pssh_6native_5_ssh2___pyx_scope_struct___read_output {
   PyObject *__pyx_v_timeout;
 };
 
+
+
+/* "sftp.pxd":26
+ * 
+ * 
+ * cdef class SFTP:             # <<<<<<<<<<<<<<
+ *     cdef c_sftp.LIBSSH2_SFTP *_sftp
+ *     cdef Session _session
+ */
+
+struct __pyx_vtabstruct_4ssh2_4sftp_SFTP {
+  int (*_handle_error)(struct __pyx_obj_4ssh2_4sftp_SFTP *, int, PyObject *);
+};
+static struct __pyx_vtabstruct_4ssh2_4sftp_SFTP *__pyx_vtabptr_4ssh2_4sftp_SFTP;
 
 /* --- Runtime support code (head) --- */
 /* Refnanny.proto */
@@ -1076,6 +1091,9 @@ static CYTHON_INLINE void __Pyx__ExceptionReset(PyThreadState *tstate, PyObject 
 
 /* IncludeStringH.proto */
 #include <string.h>
+
+/* GetVTable.proto */
+static void* __Pyx_GetVtable(PyObject *dict);
 
 /* Import.proto */
 static PyObject *__Pyx_Import(PyObject *name, PyObject *from_list, int level);
@@ -1309,6 +1327,7 @@ static const char __pyx_k_remainder[] = "remainder";
 static const char __pyx_k_session_2[] = "_session";
 static const char __pyx_k_exceptions[] = "exceptions";
 static const char __pyx_k_local_file[] = "local_file";
+static const char __pyx_k_pyx_vtable[] = "__pyx_vtable__";
 static const char __pyx_k_MemoryError[] = "MemoryError";
 static const char __pyx_k_SFTPIOError[] = "SFTPIOError";
 static const char __pyx_k_read_output[] = "_read_output";
@@ -1355,6 +1374,7 @@ static PyObject *__pyx_n_s_pos;
 static PyObject *__pyx_n_s_pssh_native__ssh2;
 static PyObject *__pyx_kp_s_pssh_native__ssh2_pyx;
 static PyObject *__pyx_n_s_ptr;
+static PyObject *__pyx_n_s_pyx_vtable;
 static PyObject *__pyx_n_s_rc;
 static PyObject *__pyx_n_s_read_func;
 static PyObject *__pyx_n_s_read_output;
@@ -4412,6 +4432,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_pssh_native__ssh2, __pyx_k_pssh_native__ssh2, sizeof(__pyx_k_pssh_native__ssh2), 0, 0, 1, 1},
   {&__pyx_kp_s_pssh_native__ssh2_pyx, __pyx_k_pssh_native__ssh2_pyx, sizeof(__pyx_k_pssh_native__ssh2_pyx), 0, 0, 1, 0},
   {&__pyx_n_s_ptr, __pyx_k_ptr, sizeof(__pyx_k_ptr), 0, 0, 1, 1},
+  {&__pyx_n_s_pyx_vtable, __pyx_k_pyx_vtable, sizeof(__pyx_k_pyx_vtable), 0, 0, 1, 1},
   {&__pyx_n_s_rc, __pyx_k_rc, sizeof(__pyx_k_rc), 0, 0, 1, 1},
   {&__pyx_n_s_read_func, __pyx_k_read_func, sizeof(__pyx_k_read_func), 0, 0, 1, 1},
   {&__pyx_n_s_read_output, __pyx_k_read_output, sizeof(__pyx_k_read_output), 0, 0, 1, 1},
@@ -4653,6 +4674,7 @@ static int __pyx_pymod_exec__ssh2(PyObject *__pyx_pyinit_module)
   /*--- Type import code ---*/
   __pyx_ptype_4ssh2_7session_Session = __Pyx_ImportType("ssh2.session", "Session", sizeof(struct __pyx_obj_4ssh2_7session_Session), 1); if (unlikely(!__pyx_ptype_4ssh2_7session_Session)) __PYX_ERR(1, 19, __pyx_L1_error)
   __pyx_ptype_4ssh2_4sftp_SFTP = __Pyx_ImportType("ssh2.sftp", "SFTP", sizeof(struct __pyx_obj_4ssh2_4sftp_SFTP), 1); if (unlikely(!__pyx_ptype_4ssh2_4sftp_SFTP)) __PYX_ERR(2, 26, __pyx_L1_error)
+  __pyx_vtabptr_4ssh2_4sftp_SFTP = (struct __pyx_vtabstruct_4ssh2_4sftp_SFTP*)__Pyx_GetVtable(__pyx_ptype_4ssh2_4sftp_SFTP->tp_dict); if (unlikely(!__pyx_vtabptr_4ssh2_4sftp_SFTP)) __PYX_ERR(2, 26, __pyx_L1_error)
   __pyx_ptype_4ssh2_11sftp_handle_SFTPHandle = __Pyx_ImportType("ssh2.sftp_handle", "SFTPHandle", sizeof(struct __pyx_obj_4ssh2_11sftp_handle_SFTPHandle), 1); if (unlikely(!__pyx_ptype_4ssh2_11sftp_handle_SFTPHandle)) __PYX_ERR(3, 25, __pyx_L1_error)
   __pyx_ptype_4ssh2_11sftp_handle_SFTPAttributes = __Pyx_ImportType("ssh2.sftp_handle", "SFTPAttributes", sizeof(struct __pyx_obj_4ssh2_11sftp_handle_SFTPAttributes), 1); if (unlikely(!__pyx_ptype_4ssh2_11sftp_handle_SFTPAttributes)) __PYX_ERR(3, 31, __pyx_L1_error)
   __pyx_ptype_4ssh2_11sftp_handle_SFTPStatVFS = __Pyx_ImportType("ssh2.sftp_handle", "SFTPStatVFS", sizeof(struct __pyx_obj_4ssh2_11sftp_handle_SFTPStatVFS), 1); if (unlikely(!__pyx_ptype_4ssh2_11sftp_handle_SFTPStatVFS)) __PYX_ERR(3, 35, __pyx_L1_error)
@@ -5692,6 +5714,26 @@ static CYTHON_INLINE void __Pyx__ExceptionReset(PyThreadState *tstate, PyObject 
     Py_XDECREF(tmp_tb);
 }
 #endif
+
+/* GetVTable */
+      static void* __Pyx_GetVtable(PyObject *dict) {
+    void* ptr;
+    PyObject *ob = PyObject_GetItem(dict, __pyx_n_s_pyx_vtable);
+    if (!ob)
+        goto bad;
+#if PY_VERSION_HEX >= 0x02070000
+    ptr = PyCapsule_GetPointer(ob, 0);
+#else
+    ptr = PyCObject_AsVoidPtr(ob);
+#endif
+    if (!ptr && !PyErr_Occurred())
+        PyErr_SetString(PyExc_RuntimeError, "invalid vtable found for imported type");
+    Py_DECREF(ob);
+    return ptr;
+bad:
+    Py_XDECREF(ob);
+    return NULL;
+}
 
 /* Import */
       static PyObject *__Pyx_Import(PyObject *name, PyObject *from_list, int level) {
