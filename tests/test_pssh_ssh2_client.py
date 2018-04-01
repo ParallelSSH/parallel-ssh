@@ -777,9 +777,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         command = """for i in 1 2 3; do echo $i; done"""
         output = list(self.client.run_command(command)[self.host]['stdout'])
         expected = ['1','2','3']
-        self.assertEqual(output, expected,
-                         msg="Unexpected output from bash variable substitution %s - should be %s" % (
-                             output, expected,))
+        self.assertListEqual(output, expected)
 
     def test_identical_host_output(self):
         """Test that we get output when running with duplicated hosts"""
@@ -1132,6 +1130,13 @@ class ParallelSSHClientTest(unittest.TestCase):
         output = self.client.run_command(self.cmd, sudo=True)
         self.assertTrue(self.host in output)
         self.assertTrue(output[self.host].channel is not None)
+
+    def test_run_command_sudo_var(self):
+        command = """for i in 1 2 3; do echo $i; done"""
+        output = list(self.client.run_command(
+            command, sudo=True)[self.host]['stdout'])
+        expected = ['1','2','3']
+        self.assertListEqual(output, expected)
 
     def test_conn_failure(self):
         """Test connection error failure case - ConnectionErrorException"""

@@ -1,6 +1,14 @@
 Change Log
 ============
 
+1.5.5
+++++++
+
+Fixes
+------
+
+* Use of ``sudo`` in native client incorrectly required escaping of command.
+
 1.5.4
 ++++++
 

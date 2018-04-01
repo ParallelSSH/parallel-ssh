@@ -364,10 +364,8 @@ class SSHClient(object):
                 _command = 'sudo -S '
             elif user:
                 _command = 'sudo -u %s -S ' % (user,)
-            if shell:
-                _command += '%s "%s"' % (shell, command,)
-            else:
-                _command += '$SHELL -c "%s"' % (command,)
+            _shell = shell if shell else '$SHELL -c'
+            _command += "%s '%s'" % (_shell, command,)
         channel = self.execute(_command, use_pty=use_pty)
         return channel, self.host, \
             self.read_output_buffer(
