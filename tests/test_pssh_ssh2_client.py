@@ -1229,6 +1229,25 @@ class ParallelSSHClientTest(unittest.TestCase):
         finally:
             os.unlink(_file)
 
+    def test_file_read_no_timeout(self):
+        try:
+            xrange
+        except NameError:
+            xrange = range
+        dir_name = os.path.dirname(__file__)
+        _file = os.sep.join((dir_name, 'file_to_read'))
+        contents = [b'a line\n' for _ in xrange(10000)]
+        with open(_file, 'wb') as fh:
+            fh.writelines(contents)
+        output = self.client.run_command('cat %s' % (_file,), timeout=10)
+        try:
+            _out = list(output[self.client.hosts[0]].stdout)
+        finally:
+            os.unlink(_file)
+        _contents = [c.decode('utf-8').strip() for c in contents]
+        self.assertEqual(len(contents), len(_out))
+        self.assertListEqual(_contents, _out)
+
     ## OpenSSHServer needs to run in its own thread for this test to work
     ##  Race conditions otherwise.
     #
