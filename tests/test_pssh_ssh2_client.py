@@ -370,6 +370,60 @@ class ParallelSSHClientTest(unittest.TestCase):
             except OSError:
                 pass
 
+    def test_pssh_copy_file_per_host_args(self):
+        """Test parallel copy file with per-host arguments"""
+        host2, host3 = '127.0.0.6', '127.0.0.7'
+        server2 = OpenSSHServer(host2)
+        server3 = OpenSSHServer(host3)
+        servers = [server2, server3]
+        for server in servers:
+            server.start_server()
+        time.sleep(1)
+        hosts = [self.host, host2, host3]
+
+        local_file_prefix = 'test_file_'
+        remote_file_prefix = 'test_remote_'
+
+        copy_args = [dict(zip(('local_file', 'remote_file',),
+                              (local_file_prefix + str(i + 1),
+                               remote_file_prefix + str(i + 1),)
+                              ))
+                     for i, _ in enumerate(hosts)]
+
+        test_file_data = 'test'
+        for i, _ in enumerate(hosts):
+            test_file = open(local_file_prefix + str(i + 1), 'w')
+            test_file.writelines([test_file_data + os.linesep])
+            test_file.close()
+
+        client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key,
+                                   num_retries=2)
+        greenlets = client.copy_file('%(local_file)s', '%(remote_file)s',
+                                     copy_args=copy_args)
+        gevent.joinall(greenlets)
+
+        self.assertRaises(HostArgumentException, client.copy_file,
+                          '%(local_file)s', '%(remote_file)s',
+                          copy_args=[copy_args[0]])
+        try:
+            for i, _ in enumerate(hosts):
+                remote_file_abspath = os.path.expanduser(
+                    '~/' + remote_file_prefix + str(i + 1))
+                self.assertTrue(os.path.isfile(remote_file_abspath))
+                remote_file_data = open(
+                    remote_file_abspath, 'r').readlines()
+                self.assertEqual(
+                    remote_file_data[0].strip(), test_file_data)
+        except Exception:
+            raise
+        finally:
+            for i, _ in enumerate(hosts):
+                remote_file_abspath = os.path.expanduser(
+                        '~/' + remote_file_prefix + str(i + 1))
+                local_file_path = local_file_prefix + str(i + 1)
+                os.unlink(remote_file_abspath)
+                os.unlink(local_file_path)
+
     def test_pssh_client_directory_relative_path(self):
         """Tests copying multiple directories with SSH client. Copy all the files from
         local directory to server, then make sure they are all present."""
@@ -580,6 +634,59 @@ class ParallelSSHClientTest(unittest.TestCase):
         finally:
             shutil.rmtree(new_local_copied_dir)
             shutil.rmtree(remote_test_path_abs)
+
+    def test_pssh_copy_remote_file_per_host_args(self):
+        """Test parallel remote copy file with per-host arguments"""
+        host2, host3 = '127.0.0.10', '127.0.0.11'
+        server2 = OpenSSHServer(host2)
+        server3 = OpenSSHServer(host3)
+        servers = [server2, server3]
+        for server in servers:
+            server.start_server()
+        time.sleep(1)
+        hosts = [self.host, host2, host3]
+
+        remote_file_prefix = 'test_file_'
+        local_file_prefix = 'test_local_'
+
+        copy_args = [dict(zip(('remote_file', 'local_file',),
+                              (remote_file_prefix + str(i + 1),
+                               local_file_prefix + str(i + 1),)
+                              ))
+                     for i, _ in enumerate(hosts)]
+
+        test_file_data = 'test'
+        for i, _ in enumerate(hosts):
+            remote_file_abspath = os.path.expanduser(
+                '~/' + remote_file_prefix + str(i + 1))
+            test_file = open(remote_file_abspath, 'w')
+            test_file.writelines([test_file_data + os.linesep])
+            test_file.close()
+
+        client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key,
+                                   num_retries=2)
+        greenlets = client.copy_remote_file('%(remote_file)s', '%(local_file)s',
+                                            copy_args=copy_args)
+        gevent.joinall(greenlets)
+
+        self.assertRaises(HostArgumentException, client.copy_remote_file,
+                          '%(remote_file)s', '%(local_file)s',
+                          copy_args=[copy_args[0]])
+        try:
+            for i, _ in enumerate(hosts):
+                local_file_path = local_file_prefix + str(i + 1)
+                self.assertTrue(os.path.isfile(local_file_path))
+                local_file_data = open(local_file_path, 'r').readlines()
+                self.assertEqual(local_file_data[0].strip(), test_file_data)
+        except Exception:
+            raise
+        finally:
+            for i, _ in enumerate(hosts):
+                remote_file_abspath = os.path.expanduser(
+                        '~/' + remote_file_prefix + str(i + 1))
+                local_file_path = local_file_prefix + str(i + 1)
+                os.unlink(remote_file_abspath)
+                os.unlink(local_file_path)
 
     def test_pssh_pool_size(self):
         """Test setting pool size to non default values"""

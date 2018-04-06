@@ -40,7 +40,7 @@ class SSHException(Exception):
 
 
 class HostArgumentException(Exception):
-    """Raised on errors with per-host command arguments"""
+    """Raised on errors with per-host arguments to parallel functions"""
     pass
 
 
