@@ -51,7 +51,7 @@ def test_parallel():
     output = client.run_command('ls -ltrh')
     client.join(output)
     pprint(output)
-    cmds = client.copy_file('../test', 'test_dir/test')
+    client.copy_file('../test', 'test_dir/test')
     client.pool.join()
 
 if __name__ == "__main__":

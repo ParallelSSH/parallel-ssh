@@ -426,14 +426,14 @@ To copy the local file with relative path ``../test`` to the remote relative pat
    
    client = ParallelSSHClient(hosts)
    
-   greenlets = client.copy_file('../test', 'test_dir/test')
+   _hosts, greenlets = zip(*(client.copy_file('../test', 'test_dir/test')))
    joinall(greenlets, raise_error=True)
 
 To recursively copy directory structures, enable the ``recurse`` flag:
 
 .. code-block:: python
 
-   greenlets = client.copy_file('my_dir', 'my_dir', recurse=True)
+   _hosts, greenlets = zip(*(client.copy_file('my_dir', 'my_dir', recurse=True)))
    joinall(greenlets, raise_error=True)
 
 .. seealso::
@@ -454,7 +454,7 @@ Copying remote files in parallel requires that file names are de-duplicated othe
    
    client = ParallelSSHClient(hosts)
    
-   greenlets = client.copy_remote_file('remote.file', 'local.file')
+   _hosts, greenlets = zip(*(client.copy_remote_file('remote.file', 'local.file')))
    joinall(greenlets, raise_error=True)
 
 The above will create files ``local.file_host1`` where ``host1`` is the host name the file was copied from.

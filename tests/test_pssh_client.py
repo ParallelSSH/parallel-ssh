@@ -150,10 +150,10 @@ class ParallelSSHClientTest(unittest.TestCase):
 
     def test_pssh_client_run_command_get_output_explicit(self):
         out = self.client.run_command(self.fake_cmd)
-        cmds = [cmd for host in out for cmd in [out[host]['cmd']]]
+        cmds = [(host, cmd) for host in out for cmd in [out[host]['cmd']]]
         output = {}
-        for cmd in cmds:
-            self.client.get_output(cmd, output)
+        for host, cmd in cmds:
+            self.client.get_output(host, cmd, output)
         expected_exit_code = 0
         expected_stdout = [self.fake_resp]
         expected_stderr = []
@@ -314,7 +314,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient([self.host], port=port, num_retries=1)
         cmds = client.copy_file("test", "test")
         client.pool.join()
-        for cmd in cmds:
+        for _host, cmd in cmds:
             self.assertRaises(ConnectionErrorException, cmd.get)
 
     def test_pssh_copy_file(self):
@@ -329,7 +329,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient([self.host], port=self.listen_port,
                                    pkey=self.user_key)
         cmds = client.copy_file(local_filename, remote_filename)
-        cmds[0].get()
+        cmds[0][1].get()
         self.assertTrue(os.path.isdir(remote_test_dir),
                         msg="SFTP create remote directory failed")
         self.assertTrue(os.path.isfile(remote_filename),
@@ -364,7 +364,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient([self.host], port=self.listen_port,
                                    pkey=self.user_key)
         cmds = client.copy_file(local_test_path, remote_test_path, recurse=True)
-        for cmd in cmds:
+        for _host, cmd in cmds:
             cmd.get()
         for path in remote_file_paths:
             self.assertTrue(os.path.isfile(path))
@@ -401,7 +401,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient([self.host], port=self.listen_port,
                                    pkey=self.user_key)
         cmds = client.copy_file(local_test_path, remote_test_path, recurse=True)
-        for cmd in cmds:
+        for _host, cmd in cmds:
             try:
                 cmd.get()
                 raise Exception("Expected IOError exception, got none")
@@ -412,7 +412,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         local_file_path = os.path.join(local_test_path, 'test_file')
         remote_file_path = os.path.join(remote_test_path, 'test_dir', 'test_file')
         cmds = client.copy_file(local_file_path, remote_file_path, recurse=True)
-        for cmd in cmds:
+        for _host, cmd in cmds:
             try:
                 cmd.get()
                 raise Exception("Expected IOError exception on creating remote "
@@ -456,11 +456,11 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient([self.host], port=self.listen_port,
                                    pkey=self.user_key)
         cmds = client.copy_remote_file(remote_test_path, local_test_path)
-        for cmd in cmds:
+        for _host, cmd in cmds:
             self.assertRaises(ValueError, cmd.get)
         cmds = client.copy_remote_file(remote_test_path, local_test_path,
                                        recurse=True)
-        for cmd in cmds:
+        for _host, cmd in cmds:
             cmd.get()
         try:
             self.assertTrue(os.path.isdir(local_copied_dir))
@@ -472,7 +472,7 @@ class ParallelSSHClientTest(unittest.TestCase):
             shutil.rmtree(local_copied_dir)
         cmds = client.copy_remote_file(remote_test_path, local_test_path,
                                        suffix_separator='.', recurse=True)
-        for cmd in cmds:
+        for _host, cmd in cmds:
             cmd.get()
         new_local_copied_dir = '.'.join([local_test_path, self.host])
         try:

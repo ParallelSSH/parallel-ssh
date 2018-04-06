@@ -136,9 +136,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue(exit_code == 1)
         self.assertTrue(len(output), len(self.client.cmds))
         _output = {}
-        for i, host in enumerate([self.host]):
-            cmd = self.client.cmds[i]
-            self.client.get_output(cmd, _output)
+        for cmd_host, cmd in self.client.cmds:
+            self.client.get_output(cmd_host, cmd, _output)
         self.assertTrue(len(_output) == len(output))
         for host in output:
             self.assertTrue(host in _output)
@@ -195,10 +194,10 @@ class ParallelSSHClientTest(unittest.TestCase):
 
     def test_pssh_client_run_command_get_output_explicit(self):
         out = self.client.run_command(self.cmd)
-        cmds = [cmd for host in out for cmd in [out[host]['cmd']]]
+        cmds = [(host, cmd) for host in out for cmd in [out[host]['cmd']]]
         output = {}
-        for cmd in cmds:
-            self.client.get_output(cmd, output)
+        for host, cmd in cmds:
+            self.client.get_output(host, cmd, output)
         expected_exit_code = 0
         expected_stdout = [self.resp]
         expected_stderr = []
@@ -327,7 +326,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient([self.host], port=port, num_retries=1)
         cmds = client.copy_file("test", "test")
         client.pool.join()
-        for cmd in cmds:
+        for _host, cmd in cmds:
             self.assertRaises(ConnectionErrorException, cmd.get)
 
     def test_pssh_copy_file(self):
@@ -344,7 +343,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         test_file.writelines([test_file_data + os.linesep])
         test_file.close()
         cmds = client.copy_file(local_filename, remote_filename)
-        cmds[0].get()
+        cmds[0][1].get()
         try:
             self.assertTrue(os.path.isdir(remote_test_dir_abspath))
             self.assertTrue(os.path.isfile(remote_file_abspath))
@@ -357,7 +356,7 @@ class ParallelSSHClientTest(unittest.TestCase):
             shutil.rmtree(remote_test_dir_abspath)
         # No directory
         remote_file_abspath = os.path.expanduser('~/' + remote_filepath)
-        cmds = client.copy_file(local_filename, remote_filepath)
+        _hosts, cmds = zip(*(client.copy_file(local_filename, remote_filepath)))
         try:
             gevent.joinall(cmds, raise_error=True)
         except Exception:
@@ -398,8 +397,9 @@ class ParallelSSHClientTest(unittest.TestCase):
 
         client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key,
                                    num_retries=2)
-        greenlets = client.copy_file('%(local_file)s', '%(remote_file)s',
-                                     copy_args=copy_args)
+        _hosts, greenlets = zip(*(
+            client.copy_file('%(local_file)s', '%(remote_file)s',
+                             copy_args=copy_args)))
         gevent.joinall(greenlets)
 
         self.assertRaises(HostArgumentException, client.copy_file,
@@ -456,7 +456,8 @@ class ParallelSSHClientTest(unittest.TestCase):
             test_file = open(local_file_path, 'w')
             test_file.write(test_file_data)
             test_file.close()
-        cmds = client.copy_file(local_test_path, remote_test_path_rel, recurse=True)
+        _hosts, cmds = zip(*(client.copy_file(
+            local_test_path, remote_test_path_rel, recurse=True)))
         try:
             gevent.joinall(cmds, raise_error=True)
             for path in remote_file_paths:
@@ -492,7 +493,8 @@ class ParallelSSHClientTest(unittest.TestCase):
             test_file = open(local_file_path, 'w')
             test_file.write(test_file_data)
             test_file.close()
-        cmds = client.copy_file(local_test_path, remote_test_path_abs, recurse=True)
+        _hosts, cmds = zip(*(client.copy_file(
+            local_test_path, remote_test_path_abs, recurse=True)))
         try:
             gevent.joinall(cmds, raise_error=True)
             for path in remote_file_paths:
@@ -531,7 +533,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         # Permission errors on writing into dir
         mask = int('0111') if sys.version_info <= (2,) else 0o111
         os.chmod(remote_test_path_abs, mask)
-        cmds = self.client.copy_file(local_test_path, remote_test_path_abs, recurse=True)
+        _hosts, cmds = zip(*(self.client.copy_file(
+            local_test_path, remote_test_path_abs, recurse=True)))
         try:
             gevent.joinall(cmds, raise_error=True)
             raise Exception("Expected SFTPError exception")
@@ -542,7 +545,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         local_file_path = os.path.join(local_test_path, 'test_file')
         remote_file_path = os.path.join(remote_test_path, 'test_dir', 'test_file')
         remote_test_path_abs = os.sep.join((dir_name, remote_test_path))
-        cmds = self.client.copy_file(local_file_path, remote_test_path_abs, recurse=True)
+        _hosts, cmds = zip(*(self.client.copy_file(
+            local_file_path, remote_test_path_abs, recurse=True)))
         try:
             gevent.joinall(cmds, raise_error=True)
             raise Exception("Expected SFTPError exception on creating remote "
@@ -558,7 +562,7 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_pssh_copy_remote_file_failure(self):
         cmds = self.client.copy_remote_file(
             'fakey fakey fake fake', 'equally fake')
-        self.assertRaises(SFTPIOError, cmds[0].get)
+        self.assertRaises(SFTPIOError, cmds[0][1].get)
 
     def test_pssh_copy_remote_file(self):
         """Test parallel copy file to local host"""
@@ -595,10 +599,11 @@ class ParallelSSHClientTest(unittest.TestCase):
             test_file = open(remote_file_path, 'w')
             test_file.write(test_file_data)
             test_file.close()
-        cmds = self.client.copy_remote_file(remote_test_path_abs, local_test_path)
+        _hosts, cmds = zip(*(self.client.copy_remote_file(
+            remote_test_path_abs, local_test_path)))
         self.assertRaises(ValueError, gevent.joinall, cmds, raise_error=True)
-        cmds = self.client.copy_remote_file(remote_test_path_abs, local_test_path,
-                                            recurse=True)
+        _hosts, cmds = zip(*(self.client.copy_remote_file(
+            remote_test_path_abs, local_test_path, recurse=True)))
         gevent.joinall(cmds, raise_error=True)
         try:
             self.assertTrue(os.path.isdir(local_copied_dir))
@@ -610,8 +615,8 @@ class ParallelSSHClientTest(unittest.TestCase):
             shutil.rmtree(local_copied_dir)
 
         # Relative path
-        cmds = self.client.copy_remote_file(remote_test_path_rel, local_test_path,
-                                            recurse=True)
+        _hosts, cmds = zip(*(self.client.copy_remote_file(
+            remote_test_path_rel, local_test_path, recurse=True)))
         gevent.joinall(cmds, raise_error=True)
         try:
             self.assertTrue(os.path.isdir(local_copied_dir))
@@ -623,8 +628,9 @@ class ParallelSSHClientTest(unittest.TestCase):
             shutil.rmtree(local_copied_dir)
 
         # Different suffix
-        cmds = self.client.copy_remote_file(remote_test_path_abs, local_test_path,
-                                            suffix_separator='.', recurse=True)
+        _hosts, cmds = zip(*(self.client.copy_remote_file(
+            remote_test_path_abs, local_test_path,
+            suffix_separator='.', recurse=True)))
         gevent.joinall(cmds, raise_error=True)
         new_local_copied_dir = '.'.join([local_test_path, self.host])
         try:
@@ -665,8 +671,9 @@ class ParallelSSHClientTest(unittest.TestCase):
 
         client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key,
                                    num_retries=2)
-        greenlets = client.copy_remote_file('%(remote_file)s', '%(local_file)s',
-                                            copy_args=copy_args)
+        _hosts, greenlets = zip(*(
+            client.copy_remote_file('%(remote_file)s', '%(local_file)s',
+                                    copy_args=copy_args)))
         gevent.joinall(greenlets)
 
         self.assertRaises(HostArgumentException, client.copy_remote_file,
