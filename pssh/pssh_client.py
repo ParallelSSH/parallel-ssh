@@ -200,26 +200,27 @@ class ParallelSSHClient(BaseParallelSSHClient):
         output = {}
         if host_args:
             try:
-                cmds = [self.pool.spawn(self._run_command, host,
-                                        command % host_args[host_i],
-                                        sudo=sudo, user=user, shell=shell,
-                                        use_shell=use_shell, use_pty=use_pty,
-                                        **paramiko_kwargs)
-                        for host_i, host in enumerate(self.hosts)]
+                cmds = [(host,
+                         self.pool.spawn(self._run_command, host,
+                                         command % host_args[host_i],
+                                         sudo=sudo, user=user, shell=shell,
+                                         use_shell=use_shell, use_pty=use_pty,
+                                         **paramiko_kwargs)
+                         ) for host_i, host in enumerate(self.hosts)]
             except IndexError:
                 raise HostArgumentException(
                     "Number of host arguments provided does not match "
                     "number of hosts ")
         else:
-            cmds = [self.pool.spawn(
-                self._run_command, host, command,
-                sudo=sudo, user=user, shell=shell,
-                use_shell=use_shell, use_pty=use_pty,
-                **paramiko_kwargs)
-                for host in self.hosts]
-        for cmd in cmds:
+            cmds = [(host,
+                     self.pool.spawn(self._run_command, host, command,
+                                     sudo=sudo, user=user, shell=shell,
+                                     use_shell=use_shell, use_pty=use_pty,
+                                     **paramiko_kwargs)
+                     ) for host in self.hosts]
+        for host, cmd in cmds:
             try:
-                self.get_output(cmd, output, encoding=encoding)
+                self.get_output(host, cmd, output, encoding=encoding)
             except Exception:
                 if stop_on_errors:
                     raise
@@ -234,7 +235,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             command, sudo=sudo, user=user, shell=shell,
             use_shell=use_shell, use_pty=use_pty)
 
-    def get_output(self, cmd, output, encoding='utf-8'):
+    def get_output(self, cmd_host, cmd, output, encoding='utf-8'):
         """Get output from command greenlet.
 
         `output` parameter is modified in-place.
@@ -249,12 +250,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         try:
             (channel, host, stdout, stderr, stdin) = cmd.get()
         except Exception as ex:
-            try:
-                host = ex.args[1]
-            except IndexError:
-                logger.error("Got exception with no host argument - "
-                             "cannot update output data with %s", ex)
-                raise ex
+            host = cmd_host
             self._update_host_output(
                 output, host, None, None, None, None, None, cmd, exception=ex)
             raise

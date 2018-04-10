@@ -70,25 +70,27 @@ class BaseParallelSSHClient(object):
         output = {}
         if host_args:
             try:
-                cmds = [self.pool.spawn(self._run_command, host,
-                                        command % host_args[host_i],
-                                        user=user, encoding=encoding,
-                                        use_pty=use_pty, shell=shell,
-                                        *args, **kwargs)
-                        for host_i, host in enumerate(self.hosts)]
+                cmds = [(host,
+                         self.pool.spawn(self._run_command, host,
+                                         command % host_args[host_i],
+                                         user=user, encoding=encoding,
+                                         use_pty=use_pty, shell=shell,
+                                         *args, **kwargs)
+                         ) for host_i, host in enumerate(self.hosts)]
             except IndexError:
                 raise HostArgumentException(
                     "Number of host arguments provided does not match "
                     "number of hosts ")
         else:
-            cmds = [self.pool.spawn(
-                self._run_command, host, command,
-                user=user, encoding=encoding, use_pty=use_pty, shell=shell,
-                *args, **kwargs)
-                    for host in self.hosts]
-        for cmd in cmds:
+            cmds = [(host,
+                     self.pool.spawn(self._run_command, host, command,
+                                     user=user, encoding=encoding,
+                                     use_pty=use_pty, shell=shell,
+                                     *args, **kwargs)
+                     ) for host in self.hosts]
+        for host, cmd in cmds:
             try:
-                self.get_output(cmd, output)
+                self.get_output(host, cmd, output)
             except Exception:
                 if stop_on_errors:
                     raise
@@ -107,8 +109,8 @@ class BaseParallelSSHClient(object):
         if cmds is None:
             return
         output = {}
-        for cmd in self.cmds:
-            self.get_output(cmd, output)
+        for host, cmd in self.cmds:
+            self.get_output(host, cmd, output)
         return output
 
     def _get_host_config_values(self, host):
@@ -122,9 +124,11 @@ class BaseParallelSSHClient(object):
     def _run_command(self, host, command, *args, **kwargs):
         raise NotImplementedError
 
-    def get_output(self, cmd, output):
+    def get_output(self, cmd_host, cmd, output):
         """Get output from command.
 
+        :param cmd_host: Host to get output for
+        :type cmd_host: str
         :param cmd: Command to get output from
         :type cmd: :py:class:`gevent.Greenlet`
         :param output: Dictionary containing
@@ -135,12 +139,7 @@ class BaseParallelSSHClient(object):
         try:
             (channel, host, stdout, stderr, stdin) = cmd.get()
         except Exception as ex:
-            try:
-                host = ex.args[1]
-            except IndexError:
-                logger.error("Got exception with no host argument - "
-                             "cannot update output data with %s", ex)
-                raise ex
+            host = cmd_host
             self._update_host_output(
                 output, host, None, None, None, None, None, cmd, exception=ex)
             raise
@@ -248,19 +247,21 @@ class BaseParallelSSHClient(object):
         """
         if copy_args:
             try:
-                return [self.pool.spawn(self._copy_file, host,
-                                        local_file % copy_args[host_i],
-                                        remote_file % copy_args[host_i],
-                                        {'recurse': recurse})
-                        for host_i, host in enumerate(self.hosts)]
+                return [(host,
+                         self.pool.spawn(self._copy_file, host,
+                                         local_file % copy_args[host_i],
+                                         remote_file % copy_args[host_i],
+                                         {'recurse': recurse})
+                         ) for host_i, host in enumerate(self.hosts)]
             except IndexError:
                 raise HostArgumentException(
                     "Number of per-host copy arguments provided does not match "
                     "number of hosts")
         else:
-            return [self.pool.spawn(self._copy_file, host, local_file,
-                                    remote_file, {'recurse': recurse})
-                    for host in self.hosts]
+            return [(host,
+                     self.pool.spawn(self._copy_file, host, local_file,
+                                     remote_file, {'recurse': recurse})
+                     ) for host in self.hosts]
 
     def _copy_file(self, host, local_file, remote_file, recurse=False):
         """Make sftp client, copy file"""
@@ -331,22 +332,23 @@ class BaseParallelSSHClient(object):
         """
         if copy_args:
             try:
-                return [self.pool.spawn(
-                    self._copy_remote_file, host,
-                    remote_file % copy_args[host_i],
-                    local_file % copy_args[host_i], {'recurse': recurse},
-                    **kwargs)
-                    for host_i, host in enumerate(self.hosts)]
+                return [(host,
+                         self.pool.spawn(
+                            self._copy_remote_file, host,
+                            remote_file % copy_args[host_i],
+                            local_file % copy_args[host_i],
+                            recurse, **kwargs)
+                         ) for host_i, host in enumerate(self.hosts)]
             except IndexError:
                 raise HostArgumentException(
                     "Number of per-host copy arguments provided does not match "
                     "number of hosts")
         else:
-            return [self.pool.spawn(
-                self._copy_remote_file, host, remote_file,
-                suffix_separator.join([local_file, host]), recurse,
-                **kwargs)
-                for host in self.hosts]
+            return [(host,
+                     self.pool.spawn(self._copy_remote_file, host, remote_file,
+                                     suffix_separator.join([local_file, host]),
+                                     recurse, **kwargs)
+                     ) for host in self.hosts]
 
     def _copy_remote_file(self, host, remote_file, local_file, recurse,
                           **kwargs):

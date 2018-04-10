@@ -186,9 +186,8 @@ Commands last executed by ``run_command`` can also be retrieved from the ``cmds`
 
    client.run_command('uname')
    output = {}
-   for i, host in enumerate(hosts):
-       cmd = self.cmds[i]
-       client.get_output(cmd, output)
+   for host, cmd in client.cmds:
+       client.get_output(host, cmd, output)
        print("Got output for host %s from cmd %s" % (host, cmd))
 
 *New in 1.2.0*

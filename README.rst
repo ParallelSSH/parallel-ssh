@@ -194,7 +194,7 @@ To copy a local file to remote hosts in parallel:
   enable_logger(logger)
   hosts = ['myhost1', 'myhost2']
   client = ParallelSSHClient(hosts)
-  cmds = client.copy_file('../test', 'test_dir/test')
+  hosts, cmds = zip(*(client.copy_file('../test', 'test_dir/test')))
   joinall(cmds, raise_error=True)
 
 :Output:
