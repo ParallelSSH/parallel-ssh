@@ -24,6 +24,8 @@ install:
   - pip install -r requirements_dev.txt
 script:
   - export LD_LIBRARY_PATH=/usr/local/lib/x86_64-linux-gnu
+  # For testing SSH agent related functionality
+  - eval `ssh-agent -s`
   - nosetests --with-coverage --cover-package=pssh
   - flake8 pssh
   - cd doc; make html; cd ..
@@ -140,8 +142,7 @@ jobs:
     #       on:
     #         repo: ParallelSSH/parallel-ssh
     #         tags: true
-    - stage: build and deploy source and wheels
-      if: tag IS present
+    - stage: build wheels
       os: linux
       python: 3.6
       before_install: skip

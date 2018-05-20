@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 
-# Copyright (C) 2014-2017 Panos Kittenis
+# Copyright (C) 2014-2018 Panos Kittenis.
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -62,7 +62,8 @@ class SSHClient(object):
                  pkey=None,
                  num_retries=DEFAULT_RETRIES,
                  retry_delay=RETRY_DELAY,
-                 allow_agent=True, timeout=None):
+                 allow_agent=True, timeout=None,
+                 forward_ssh_agent=True):
         """:param host: Host name or IP to connect to.
         :type host: str
         :param user: User to connect as. Defaults to logged in user.
@@ -87,6 +88,10 @@ class SSHClient(object):
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent
         :type allow_agent: bool
+        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
+          equivalent to `ssh -A` from the `ssh` command line utility.
+          Defaults to True if not set.
+        :type forward_ssh_agent: bool
         """
         self.host = host
         self.user = user if user else None
@@ -102,6 +107,8 @@ class SSHClient(object):
         self.timeout = timeout * 1000 if timeout else None
         self.retry_delay = retry_delay
         self.allow_agent = allow_agent
+        self.forward_ssh_agent = forward_ssh_agent
+        self._forward_requested = False
         self.session = None
         self._connect(self.host, self.port)
         THREAD_POOL.apply(self._init)
@@ -225,18 +232,21 @@ class SSHClient(object):
 
     def open_session(self):
         """Open new channel from session"""
-        chan = self.session.open_session()
-        errno = self.session.last_errno()
-        while (chan is None and errno == LIBSSH2_ERROR_EAGAIN) \
-                or chan == LIBSSH2_ERROR_EAGAIN:
+        try:
+            chan = self.session.open_session()
+        except Exception as ex:
+            raise SessionError(ex)
+        while chan == LIBSSH2_ERROR_EAGAIN:
             wait_select(self.session)
             try:
                 chan = self.session.open_session()
             except Exception as ex:
                 raise SessionError(ex)
-            errno = self.session.last_errno()
-        if chan is None and errno != LIBSSH2_ERROR_EAGAIN:
-            raise SessionError(errno)
+        # Multiple forward requests result in ChannelRequestDenied
+        # errors, flag is used to avoid this.
+        if self.forward_ssh_agent and not self._forward_requested:
+            self._eagain(chan.request_auth_agent)
+            self._forward_requested = True
         return chan
 
     def execute(self, cmd, use_pty=False, channel=None):

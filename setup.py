@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2017 Panos Kittenis and contributors
+# Copyright (C) 2014-2018 Panos Kittenis.
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -91,7 +91,7 @@ setup(name='parallel-ssh',
                         'tests', 'tests.*',
                         '*.tests', '*.tests.*')
       ),
-      install_requires=['paramiko<2.2', gevent_req, 'ssh2-python>=0.6.0'],
+      install_requires=['paramiko', gevent_req, 'ssh2-python>=0.12.0'],
       classifiers=[
         'License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)',
         'Intended Audience :: Developers',

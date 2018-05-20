@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 
-# Copyright (C) 2014-2017 Panos Kittenis
+# Copyright (C) 2014-2018 Panos Kittenis and contributors.
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -36,17 +36,16 @@ from .single import SSHClient  # noqa: E402
 
 logger = logging.getLogger('pssh')
 
-warn(
-    "This client will be replaced as the default client "
-    "by the better performing and non-monkey patching "
-    "pssh.clients.native.ParallelSSHClient from 2.0.0 onwards.%(nl)s"
-    "Please ensure required functionality is supported by the new client by "
-    "switching to 'from pssh.clients import ParallelSSHClient'. "
-    "The pssh2_client import for the new client will continue to be supported "
-    "for compatibility purposes. %(nl)s"
-
-    "To continue using this client please update imports to "
-    "'from pssh.clients.miko import ParallelSSHClient'.""" % ({'nl': linesep}))
+_msg = "This client will be replaced as the default client " \
+       "by the better performing and non-monkey patching " \
+       "pssh.clients.native.ParallelSSHClient from 2.0.0 onwards.%(nl)s" \
+       "Please ensure required functionality is supported by the new client " \
+       "by switching to 'from pssh.clients import ParallelSSHClient'. " \
+       "The pssh2_client import for the new client will continue to be " \
+       "supported for backwards compatibility. %(nl)s%(nl)s" \
+       "To continue using this client please update imports to " \
+       "'from pssh.clients.miko import ParallelSSHClient'." % {'nl': linesep}
+warn(_msg)
 
 
 class ParallelSSHClient(BaseParallelSSHClient):
@@ -243,10 +242,15 @@ class ParallelSSHClient(BaseParallelSSHClient):
                      shell=None, use_shell=True, use_pty=True,
                      **paramiko_kwargs):
         """Make SSHClient, run command on host"""
-        self._make_ssh_client(host, **paramiko_kwargs)
-        return self.host_clients[host].exec_command(
-            command, sudo=sudo, user=user, shell=shell,
-            use_shell=use_shell, use_pty=use_pty)
+        try:
+            self._make_ssh_client(host, **paramiko_kwargs)
+            return self.host_clients[host].exec_command(
+                command, sudo=sudo, user=user, shell=shell,
+                use_shell=use_shell, use_pty=use_pty)
+        except Exception as ex:
+            ex.host = host
+            logger.error("Failed to run on host %s", host)
+            raise ex
 
     def get_output(self, cmd, output, encoding='utf-8'):
         """Get output from command greenlet.

@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 
-# Copyright (C) 2014-2018 Panos Kittenis
+# Copyright (C) 2014-2018 Panos Kittenis and contributors.
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -135,12 +135,7 @@ class BaseParallelSSHClient(object):
         try:
             (channel, host, stdout, stderr, stdin) = cmd.get()
         except Exception as ex:
-            try:
-                host = ex.args[1]
-            except IndexError:
-                logger.error("Got exception with no host argument - "
-                             "cannot update output data with %s", ex)
-                raise ex
+            host = ex.host
             self._update_host_output(
                 output, host, None, None, None, None, None, cmd, exception=ex)
             raise
@@ -264,9 +259,13 @@ class BaseParallelSSHClient(object):
 
     def _copy_file(self, host, local_file, remote_file, recurse=False):
         """Make sftp client, copy file"""
-        self._make_ssh_client(host)
-        return self.host_clients[host].copy_file(local_file, remote_file,
-                                                 recurse=recurse)
+        try:
+            self._make_ssh_client(host)
+            return self.host_clients[host].copy_file(local_file, remote_file,
+                                                     recurse=recurse)
+        except Exception as ex:
+            ex.host = host
+            raise ex
 
     def copy_remote_file(self, remote_file, local_file, recurse=False,
                          suffix_separator='_', copy_args=None, **kwargs):
@@ -351,7 +350,11 @@ class BaseParallelSSHClient(object):
     def _copy_remote_file(self, host, remote_file, local_file, recurse,
                           **kwargs):
         """Make sftp client, copy file to local"""
-        self._make_ssh_client(host)
-        return self.host_clients[host].copy_remote_file(
-            remote_file, local_file, recurse=recurse,
-            **kwargs)
+        try:
+            self._make_ssh_client(host)
+            return self.host_clients[host].copy_remote_file(
+                remote_file, local_file, recurse=recurse,
+                **kwargs)
+        except Exception as ex:
+            ex.host = host
+            raise ex

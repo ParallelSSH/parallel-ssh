@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 
-# Copyright (C) 2014-2018 Panos Kittenis
+# Copyright (C) 2014-2018 Panos Kittenis.
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -35,7 +35,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
                  num_retries=DEFAULT_RETRIES, timeout=None, pool_size=10,
                  allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
                  proxy_host=None, proxy_port=22,
-                 proxy_user=None, proxy_password=None, proxy_pkey=None):
+                 proxy_user=None, proxy_password=None, proxy_pkey=None,
+                 forward_ssh_agent=True):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -89,6 +90,11 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type proxy_pkey: Private key file path to use. Note that the public
           key file pair *must* also exist in the same location with name
           ``<pkey>.pub``.
+        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
+          equivalent to `ssh -A` from the `ssh` command line utility.
+          Defaults to True if not set.
+        :type forward_ssh_agent: bool
+
         """
         BaseParallelSSHClient.__init__(
             self, hosts, user=user, password=password, port=port, pkey=pkey,
@@ -100,6 +106,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         self.proxy_pkey = proxy_pkey
         self.proxy_user = proxy_user
         self.proxy_password = proxy_password
+        self.forward_ssh_agent = forward_ssh_agent
         self._tunnels = {}
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
@@ -185,10 +192,15 @@ class ParallelSSHClient(BaseParallelSSHClient):
                      shell=None, use_pty=False,
                      encoding='utf-8', timeout=None):
         """Make SSHClient if needed, run command on host"""
-        self._make_ssh_client(host)
-        return self.host_clients[host].run_command(
-            command, sudo=sudo, user=user, shell=shell,
-            use_pty=use_pty, encoding=encoding, timeout=timeout)
+        try:
+            self._make_ssh_client(host)
+            return self.host_clients[host].run_command(
+                command, sudo=sudo, user=user, shell=shell,
+                use_pty=use_pty, encoding=encoding, timeout=timeout)
+        except Exception as ex:
+            ex.host = host
+            logger.error("Failed to run on host %s", host)
+            raise ex
 
     def join(self, output, consume_output=False, timeout=None):
         """Wait until all remote commands in output have finished

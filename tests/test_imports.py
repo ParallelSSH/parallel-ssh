@@ -33,3 +33,8 @@ class ImportTestCase(unittest.TestCase):
         from pssh.clients.miko.single import SSHClient as Miko
         from pssh.clients.native.single import SSHClient as Nat
         self.assertNotEqual(Miko, Nat)
+
+    def test_client_imports(self):
+        import pssh.clients.miko
+        import pssh.clients.native
+        import pssh.clients

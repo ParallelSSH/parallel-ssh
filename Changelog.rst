@@ -1,6 +1,26 @@
 Change Log
 ============
 
+1.6.0
+++++++
+
+Changes
+--------
+
+* Upgrade embedded ``libssh2`` in binary wheels to latest version plus enhancements.
+* Adds support for ECDSA host keys for native client.
+* Adds support for SHA-256 host key fingerprints for native client.
+* Added SSH agent forwarding to native client, defaults to on as per paramiko client - ``forward_ssh_agent`` keyword parameter.
+* Windows wheels switched to OpenSSL back end for native client.
+* Windows wheels include zlib and have compression enabled for native client.
+
+Fixes
+------
+
+* Windows native client could not connect to newer SSH servers - thanks Pavel.
+
+Note - changes apply to binary wheels only. See building from source instructions to make system packages.
+
 1.5.5
 ++++++
 

@@ -3,7 +3,7 @@
 
 # This file is part of parallel-ssh.
 
-# Copyright (C) 2015 Panos Kittenis
+# Copyright (C) 2015-2018 Panos Kittenis
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -43,7 +43,7 @@ from pssh.exceptions import UnknownHostException, \
 
 from .embedded_server.embedded_server import make_socket
 from .embedded_server.openssh import OpenSSHServer
-from .base_ssh2_test import SSH2TestCase, PKEY_FILENAME, PUB_FILE
+from .base_ssh2_test import PKEY_FILENAME, PUB_FILE
 # from pssh.utils import load_private_key
 # from pssh.agent import SSHAgent
 
@@ -254,6 +254,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue('exception' in output[hosts[1]],
                         msg="Failed host %s has no exception in output - %s" % (hosts[1], output,))
         self.assertTrue(output[hosts[1]].exception is not None)
+        self.assertEqual(output[hosts[1]].exception.host, hosts[1])
         try:
             raise output[hosts[1]]['exception']
         except ConnectionErrorException:
@@ -322,13 +323,18 @@ class ParallelSSHClientTest(unittest.TestCase):
 
     def test_sftp_exceptions(self):
         # Port with no server listening on it on separate ip
-        host = '127.0.0.3'
-        port = self.make_random_port(host=host)
+        port = self.make_random_port(host=self.host)
         client = ParallelSSHClient([self.host], port=port, num_retries=1)
         cmds = client.copy_file("test", "test")
         client.pool.join()
         for cmd in cmds:
-            self.assertRaises(ConnectionErrorException, cmd.get)
+            try:
+                cmd.get()
+            except Exception as ex:
+                self.assertEqual(ex.host, self.host)
+                self.assertIsInstance(ex, ConnectionErrorException)
+            else:
+                raise Exception("Expected ConnectionErrorException, got none")
 
     def test_pssh_copy_file(self):
         """Test parallel copy file"""
@@ -558,7 +564,13 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_pssh_copy_remote_file_failure(self):
         cmds = self.client.copy_remote_file(
             'fakey fakey fake fake', 'equally fake')
-        self.assertRaises(SFTPIOError, cmds[0].get)
+        try:
+            cmds[0].get()
+        except Exception as ex:
+            self.assertEqual(ex.host, self.host)
+            self.assertIsInstance(ex, SFTPIOError)
+        else:
+            raise Exception("Expected SFTPIOError, got none")
 
     def test_pssh_copy_remote_file(self):
         """Test parallel copy file to local host"""
