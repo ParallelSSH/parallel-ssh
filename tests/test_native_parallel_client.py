@@ -39,7 +39,7 @@ import gevent
 from pssh.pssh2_client import ParallelSSHClient, logger as pssh_logger
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
-    HostArgumentException, SFTPError, SFTPIOError, Timeout
+    HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError
 
 from .embedded_server.embedded_server import make_socket
 from .embedded_server.openssh import OpenSSHServer
@@ -77,6 +77,7 @@ class ParallelSSHClientTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        del cls.client
         cls.server.stop()
         del cls.server
 
@@ -618,6 +619,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                 self.assertTrue(os.path.isfile(path))
         except Exception:
             shutil.rmtree(remote_test_path_abs)
+            raise
         finally:
             shutil.rmtree(local_copied_dir)
 
@@ -629,8 +631,6 @@ class ParallelSSHClientTest(unittest.TestCase):
             self.assertTrue(os.path.isdir(local_copied_dir))
             for path in local_file_paths:
                 self.assertTrue(os.path.isfile(path))
-        except Exception:
-            shutil.rmtree(remote_test_path_abs)
         finally:
             shutil.rmtree(local_copied_dir)
 
@@ -1374,6 +1374,127 @@ class ParallelSSHClientTest(unittest.TestCase):
         _contents = [c.decode('utf-8').strip() for c in contents]
         self.assertEqual(len(contents), len(_out))
         self.assertListEqual(_contents, _out)
+
+    def test_scp_send_dir(self):
+        test_file_data = 'test'
+        local_filename = 'test_file'
+        remote_test_dir, remote_filepath = 'remote_test_dir', 'test_file_copy'
+        with open(local_filename, 'w') as file_h:
+            file_h.writelines([test_file_data + os.linesep])
+        remote_filename = os.path.sep.join([remote_test_dir, remote_filepath])
+        remote_file_abspath = os.path.expanduser('~/' + remote_filename)
+        remote_test_dir_abspath = os.path.expanduser('~/' + remote_test_dir)
+        try:
+            cmds = self.client.scp_send(local_filename, remote_filename)
+            gevent.joinall(cmds, raise_error=True)
+            self.assertTrue(os.path.isdir(remote_test_dir_abspath))
+            self.assertTrue(os.path.isfile(remote_file_abspath))
+            remote_file_data = open(remote_file_abspath, 'r').readlines()
+            self.assertEqual(remote_file_data[0].strip(), test_file_data)
+        except Exception:
+            raise
+        finally:
+            try:
+                os.unlink(local_filename)
+                shutil.rmtree(remote_test_dir_abspath)
+            except OSError:
+                pass
+
+    def test_scp_send(self):
+        test_file_data = 'test'
+        local_filename = 'test_file'
+        remote_test_dir, remote_filepath = 'remote_test_dir', 'test_file_copy'
+        with open(local_filename, 'w') as file_h:
+            file_h.writelines([test_file_data + os.linesep])
+        remote_file_abspath = os.path.expanduser('~/' + remote_filepath)
+        cmds = self.client.scp_send(local_filename, remote_filepath)
+        try:
+            gevent.joinall(cmds, raise_error=True)
+        except Exception:
+            raise
+        else:
+            self.assertTrue(os.path.isfile(remote_file_abspath))
+            remote_contents = open(remote_file_abspath, 'rb').read()
+            local_contents = open(local_filename, 'rb').read()
+            self.assertEqual(local_contents, remote_contents)
+        finally:
+            try:
+                os.unlink(local_filename)
+                os.unlink(remote_file_abspath)
+            except OSError:
+                pass
+
+    def test_scp_recv_failure(self):
+        cmds = self.client.scp_recv(
+            'fakey fakey fake fake', 'equally fake')
+        try:
+            gevent.joinall(cmds, raise_error=True)
+        except Exception as ex:
+            self.assertEqual(ex.host, self.host)
+            self.assertIsInstance(ex, SCPError)
+        else:
+            raise Exception("Expected SCPError, got none")
+
+    def test_scp_recv(self):
+        test_file_data = 'test'
+        dir_name = os.path.dirname(__file__)
+        local_test_path = os.sep.join((dir_name, 'directory_test_local_remote_copied'))
+        remote_test_path = 'directory_test_remote_copy'
+        remote_test_path_abs = os.sep.join((dir_name, remote_test_path))
+        remote_test_path_rel = os.sep.join(
+            (dir_name.replace(os.path.expanduser('~') + os.sep, ''),
+             remote_test_path))
+        local_copied_dir = '_'.join([local_test_path, self.host])
+        new_local_copied_dir = '.'.join([local_test_path, self.host])
+        for path in [local_test_path, remote_test_path_abs, local_copied_dir,
+                     new_local_copied_dir]:
+            try:
+                shutil.rmtree(path)
+            except OSError:
+                try:
+                    os.unlink(path)
+                except Exception:
+                    pass
+                pass
+        os.mkdir(remote_test_path_abs)
+        local_file_paths = []
+        for i in range(0, 10):
+            remote_file_path_dir = os.path.join(
+                remote_test_path_abs, 'sub_dir', 'dir_foo' + str(i))
+            os.makedirs(remote_file_path_dir)
+            remote_file_path = os.path.join(remote_file_path_dir, 'foo' + str(i))
+            local_file_path = os.path.join(
+                local_copied_dir, 'sub_dir', 'dir_foo' + str(i), 'foo' + str(i))
+            local_file_paths.append(local_file_path)
+            test_file = open(remote_file_path, 'w')
+            test_file.write(test_file_data)
+            test_file.close()
+        cmds = self.client.scp_recv(remote_test_path_abs, local_test_path)
+        self.assertRaises(SCPError, gevent.joinall, cmds, raise_error=True)
+        cmds = self.client.scp_recv(remote_test_path_abs, local_test_path,
+                                    recurse=True)
+        try:
+            gevent.joinall(cmds, raise_error=True)
+            self.assertTrue(os.path.isdir(local_copied_dir))
+            for path in local_file_paths:
+                self.assertTrue(os.path.isfile(path))
+        except Exception:
+            shutil.rmtree(remote_test_path_abs)
+            raise
+        finally:
+            shutil.rmtree(local_copied_dir)
+
+        # Relative path
+        cmds = self.client.scp_recv(remote_test_path_rel, local_test_path,
+                                    recurse=True)
+        try:
+            gevent.joinall(cmds, raise_error=True)
+            self.assertTrue(os.path.isdir(local_copied_dir))
+            for path in local_file_paths:
+                self.assertTrue(os.path.isfile(path))
+        finally:
+            shutil.rmtree(remote_test_path_abs)
+            shutil.rmtree(local_copied_dir)
 
     ## OpenSSHServer needs to run in its own thread for this test to work
     ##  Race conditions otherwise.

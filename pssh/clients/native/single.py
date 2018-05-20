@@ -28,8 +28,8 @@ from socket import gaierror as sock_gaierror, error as sock_error
 from gevent import sleep, socket, get_hub
 from gevent.hub import Hub
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
-from ssh2.exceptions import AuthenticationError, AgentError, \
-    SessionHandshakeError, SFTPHandleError, SFTPIOError as SFTPIOError_ssh2
+from ssh2.exceptions import SFTPHandleError, \
+    SFTPIOError as SFTPIOError_ssh2
 from ssh2.session import Session
 from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR, LIBSSH2_SFTP_S_IRGRP, \
@@ -37,7 +37,8 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_SFTP_S_IXGRP, LIBSSH2_SFTP_S_IXOTH
 
 from ...exceptions import UnknownHostException, AuthenticationException, \
-     ConnectionErrorException, SessionError, SFTPError, SFTPIOError, Timeout
+     ConnectionErrorException, SessionError, SFTPError, SFTPIOError, Timeout, \
+     SCPError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...native._ssh2 import wait_select, _read_output  # , sftp_get, sftp_put
 
@@ -113,6 +114,25 @@ class SSHClient(object):
         self._connect(self.host, self.port)
         THREAD_POOL.apply(self._init)
 
+    def disconnect(self):
+        """Disconnect session, close socket if needed."""
+        if self.session is not None:
+            try:
+                self._eagain(self.session.disconnect)
+            except Exception:
+                pass
+        if not self.sock.closed:
+            self.sock.close()
+
+    def __del__(self):
+        self.disconnect()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.disconnect()
+
     def _connect_init_retry(self, retries):
         retries += 1
         self.session = None
@@ -128,14 +148,14 @@ class SSHClient(object):
             self.session.set_timeout(self.timeout)
         try:
             self.session.handshake(self.sock)
-        except SessionHandshakeError as ex:
+        except Exception as ex:
             while retries < self.num_retries:
                 return self._connect_init_retry(retries)
             msg = "Error connecting to host %s:%s - %s"
             raise SessionError(msg, self.host, self.port, ex)
         try:
             self.auth()
-        except AuthenticationError as ex:
+        except Exception as ex:
             while retries < self.num_retries:
                 return self._connect_init_retry(retries)
             msg = "Authentication error while connecting to %s:%s - %s"
@@ -211,7 +231,7 @@ class SSHClient(object):
         if self.allow_agent:
             try:
                 self.session.agent_auth(self.user)
-            except (AuthenticationError, AgentError) as ex:
+            except Exception as ex:
                 logger.debug("Agent auth failed with %s, "
                              "continuing with other authentication methods",
                              ex)
@@ -250,7 +270,7 @@ class SSHClient(object):
         return chan
 
     def execute(self, cmd, use_pty=False, channel=None):
-        """Execute command on remote server
+        """Execute command on remote server.
 
         :param cmd: Command to execute.
         :type cmd: str
@@ -292,8 +312,7 @@ class SSHClient(object):
                 raise Timeout
 
     def wait_finished(self, channel, timeout=None):
-        """Wait for EOF from channel, close channel and wait for
-        close acknowledgement.
+        """Wait for EOF from channel and close channel.
 
         Used to wait for remote command completion and be able to gather
         exit code.
@@ -304,8 +323,9 @@ class SSHClient(object):
         if channel is None:
             return
         # If .eof() returns EAGAIN after a select with a timeout, it means
-        # it reached timeout without EOF and the channel should not be
-        # closed as the command is still running.
+        # it reached timeout without EOF and _select_timeout will raise
+        # timeout exception causing the channel to appropriately
+        # not be closed as the command is still running.
         self._select_timeout(channel.wait_eof, timeout)
         # Close channel to indicate no more commands will be sent over it
         self.close_channel(channel)
@@ -325,7 +345,7 @@ class SSHClient(object):
                            callback=None,
                            callback_args=None,
                            encoding='utf-8'):
-        """Read from output buffers and log to host_logger
+        """Read from output buffers and log to ``host_logger``.
 
         :param output_buffer: Iterator containing buffer
         :type output_buffer: iterator
@@ -432,10 +452,7 @@ class SSHClient(object):
 
     def copy_file(self, local_file, remote_file, recurse=False,
                   sftp=None, _dir=None):
-        """Copy local file to host via SFTP/SCP
-
-        Copy is done natively using SFTP/SCP version 2 protocol, no scp command
-        is used or required.
+        """Copy local file to host via SFTP.
 
         :param local_file: Local filepath to copy to remote host
         :type local_file: str
@@ -537,10 +554,7 @@ class SSHClient(object):
 
     def copy_remote_file(self, remote_file, local_file, recurse=False,
                          sftp=None, encoding='utf-8'):
-        """Copy remote file to local host via SFTP/SCP
-
-        Copy is done natively using SFTP/SCP version 2, no scp command
-        is used or required.
+        """Copy remote file to local host via SFTP.
 
         :param remote_file: Remote filepath to copy from
         :type remote_file: str
@@ -587,6 +601,170 @@ class SSHClient(object):
         logger.info("Copied local file %s from remote destination %s:%s",
                     local_file, self.host, remote_file)
 
+    def scp_recv(self, remote_file, local_file, recurse=False, sftp=None,
+                 encoding='utf-8'):
+        """Copy remote file to local host via SCP.
+
+        Note - Remote directory listings are gather via SFTP when
+        ``recurse`` is enabled - SCP lacks directory list support.
+        Enabling recursion therefore involves creating an extra SFTP channel
+        and requires SFTP support on the server.
+
+        :param remote_file: Remote filepath to copy from
+        :type remote_file: str
+        :param local_file: Local filepath where file(s) will be copied to
+        :type local_file: str
+        :param recurse: Whether or not to recursively copy directories
+        :type recurse: bool
+        :param encoding: Encoding to use for file paths when recursion is
+          enabled.
+        :type encoding: str
+
+        :raises: :py:class:`pssh.exceptions.SCPError` when a directory is
+          supplied to ``local_file`` and ``recurse`` is not set.
+        :raises: :py:class:`pssh.exceptions.SCPError` on errors copying file.
+        :raises: :py:class:`IOError` on local file IO errors.
+        :raises: :py:class:`OSError` on local OS errors like permission denied.
+        """
+        sftp = self._make_sftp() if (sftp is None and recurse) else sftp
+        if recurse:
+            try:
+                self._eagain(sftp.stat, remote_file)
+            except SFTPHandleError:
+                msg = "Remote file or directory %s does not exist"
+                logger.error(msg, remote_file)
+                raise SCPError(msg, remote_file)
+            try:
+                dir_h = self._sftp_openfh(sftp.opendir, remote_file)
+            except SFTPError:
+                pass
+            else:
+                file_list = self._sftp_readdir(dir_h)
+                return self._scp_recv_dir(file_list, remote_file,
+                                          local_file, sftp,
+                                          encoding=encoding)
+        destination = os.path.join(os.path.sep, os.path.sep.join(
+            [_dir for _dir in local_file.split('/')
+             if _dir][:-1]))
+        self._make_local_dir(destination)
+        self._scp_recv(remote_file, local_file)
+        logger.info("SCP local file %s from remote destination %s:%s",
+                    local_file, self.host, remote_file)
+
+    def _scp_recv(self, remote_file, local_file):
+        try:
+            (file_chan, fileinfo) = self._eagain(
+                self.session.scp_recv2, remote_file)
+        except Exception as ex:
+            msg = "Error copying file %s from host %s - %s"
+            logger.error(msg, remote_file, self.host, ex)
+            raise SCPError(msg, remote_file, self.host, ex)
+        local_fh = open(local_file, 'wb')
+        try:
+            total = 0
+            size, data = file_chan.read(size=fileinfo.st_size)
+            while size == LIBSSH2_ERROR_EAGAIN:
+                wait_select(self.session)
+                size, data = file_chan.read(size=fileinfo.st_size)
+            total += size
+            local_fh.write(data)
+            while total < fileinfo.st_size:
+                size, data = file_chan.read(size=fileinfo.st_size - total)
+                while size == LIBSSH2_ERROR_EAGAIN:
+                    wait_select(self.session)
+                    continue
+                total += size
+                local_fh.write(data)
+            if total != fileinfo.st_size:
+                msg = "Error copying data from remote file %s on host %s. " \
+                      "Copied %s out of %s total bytes"
+                raise SCPError(msg, remote_file, self.host, total,
+                               fileinfo.st_size)
+        finally:
+            local_fh.close()
+
+    def _scp_send_dir(self, local_dir, remote_dir, sftp):
+        file_list = os.listdir(local_dir)
+        for file_name in file_list:
+            local_path = os.path.join(local_dir, file_name)
+            remote_path = '/'.join([remote_dir, file_name])
+            self.scp_send(local_path, remote_path, recurse=True,
+                          sftp=sftp)
+
+    def _scp_recv_dir(self, file_list, remote_dir, local_dir, sftp,
+                      encoding='utf-8'):
+        for file_name in file_list:
+            file_name = file_name.decode(encoding)
+            if file_name in ('.', '..'):
+                continue
+            remote_path = os.path.join(remote_dir, file_name)
+            local_path = os.path.join(local_dir, file_name)
+            logger.debug("Attempting recursive copy from %s:%s to %s",
+                         self.host, remote_path, local_path)
+            self.scp_recv(remote_path, local_path, sftp=sftp,
+                          recurse=True)
+
+    def scp_send(self, local_file, remote_file, recurse=False, sftp=None):
+        """Copy local file to host via SCP.
+
+        Note - Directories are created via SFTP when ``recurse`` is enabled -
+        SCP lacks directory create support. Enabling recursion therefore
+        involves creating an extra SFTP channel and requires SFTP support on the
+        server.
+
+        :param local_file: Local filepath to copy to remote host
+        :type local_file: str
+        :param remote_file: Remote filepath on remote host to copy file to
+        :type remote_file: str
+        :param recurse: Whether or not to descend into directories recursively.
+        :type recurse: bool
+
+        :raises: :py:class:`ValueError` when a directory is supplied to
+          ``local_file`` and ``recurse`` is not set
+        :raises: :py:class:`pss.exceptions.SFTPError` on SFTP initialisation
+          errors
+        :raises: :py:class:`pssh.exceptions.SFTPIOError` on I/O errors writing
+          via SFTP
+        :raises: :py:class:`IOError` on local file IO errors
+        :raises: :py:class:`OSError` on local OS errors like permission denied
+        """
+        if os.path.isdir(local_file) and recurse:
+            sftp = self._make_sftp() if sftp is None else sftp
+            return self._scp_send_dir(local_file, remote_file, sftp)
+        elif os.path.isdir(local_file) and not recurse:
+            raise ValueError("Recurse must be True if local_file is a "
+                             "directory.")
+        destination = self._remote_paths_split(remote_file)
+        if destination is not None:
+            sftp = self._make_sftp() if sftp is None else sftp
+            try:
+                self._eagain(sftp.stat, destination)
+            except SFTPHandleError:
+                self.mkdir(sftp, destination)
+        self._scp_send(local_file, remote_file)
+        logger.info("SCP local file %s to remote destination %s:%s",
+                    local_file, self.host, remote_file)
+
+    def _scp_send(self, local_file, remote_file):
+        fileinfo = os.stat(local_file)
+        try:
+            chan = self._eagain(
+                self.session.scp_send64,
+                remote_file, fileinfo.st_mode & 777, fileinfo.st_size,
+                fileinfo.st_mtime, fileinfo.st_atime)
+        except Exception as ex:
+            msg = "Error opening remote file %s for writing on host %s - %s"
+            logger.error(msg, remote_file, self.host, ex)
+            raise SCPError(msg, remote_file, self.host, ex)
+        try:
+            with open(local_file, 'rb') as local_fh:
+                for data in local_fh:
+                    chan.write(data)
+        except Exception as ex:
+            msg = "Error writing to remote file %s on host %s - %s"
+            logger.error(msg, remote_file, self.host, ex)
+            raise SCPError(msg, remote_file, self.host, ex)
+
     def _sftp_readdir(self, dir_h):
         for size, buf, attrs in dir_h.readdir():
             for line in buf.splitlines():
@@ -597,18 +775,12 @@ class SSHClient(object):
             fh = open_func(remote_file, *args)
         except Exception as ex:
             raise SFTPError(ex)
-        errno = self.session.last_errno()
-        while (fh is None and errno == LIBSSH2_ERROR_EAGAIN) \
-                or fh == LIBSSH2_ERROR_EAGAIN:
+        while fh == LIBSSH2_ERROR_EAGAIN:
             wait_select(self.session, timeout=0.1)
             try:
                 fh = open_func(remote_file, *args)
             except Exception as ex:
                 raise SFTPError(ex)
-            errno = self.session.last_errno()
-        if fh is None and errno != LIBSSH2_ERROR_EAGAIN:
-            msg = "Error opening file handle for file %s - error no: %s"
-            raise SFTPError(msg, remote_file, errno)
         return fh
 
     def _sftp_get(self, remote_fh, local_file):
@@ -625,6 +797,9 @@ class SSHClient(object):
                 LIBSSH2_FXF_READ, LIBSSH2_SFTP_S_IRUSR) as remote_fh:
             try:
                 self._sftp_get(remote_fh, local_file)
+                # Running SFTP in a thread requires a new session
+                # as session handles or any handles created by a session
+                # cannot be used simultaneously in multiple threads.
                 # THREAD_POOL.apply(
                 #     sftp_get, args=(self.session, remote_fh, local_file))
             except SFTPIOError_ssh2 as ex:

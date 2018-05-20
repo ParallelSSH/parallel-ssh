@@ -38,7 +38,7 @@ import os
 import random, string
 import tempfile
 
-from .test_pssh_client import USER_KEY
+from .test_paramiko_parallel_client import USER_KEY
 
 
 try:

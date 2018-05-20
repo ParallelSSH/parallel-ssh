@@ -21,7 +21,7 @@ from gevent import sleep
 from ..base_pssh import BaseParallelSSHClient
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from .single import SSHClient
-from ...exceptions import ProxyError, Timeout
+from ...exceptions import ProxyError, Timeout, HostArgumentException
 from ...tunnel import Tunnel
 
 
@@ -446,3 +446,46 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, remote_file, local_file, recurse=recurse,
             suffix_separator=suffix_separator, copy_args=copy_args,
             encoding=encoding)
+
+    def _scp_send(self, host, local_file, remote_file, recurse=False):
+        self._make_ssh_client(host)
+        return self._handle_greenlet_exc(
+            self.host_clients[host].scp_send, host,
+            local_file, remote_file, recurse=recurse)
+
+    def _scp_recv(self, host, remote_file, local_file, recurse=False):
+        self._make_ssh_client(host)
+        return self._handle_greenlet_exc(
+            self.host_clients[host].scp_recv, host,
+            remote_file, local_file, recurse=recurse)
+
+    def scp_send(self, local_file, remote_file, recurse=False):
+        return [self.pool.spawn(self._scp_send, host, local_file,
+                                remote_file, recurse=recurse)
+                for host in self.hosts]
+
+    def scp_recv(self, remote_file, local_file, recurse=False, copy_args=None):
+        copy_args = [{'local_file': '_'.join([local_file, host]),
+                      'remote_file': remote_file}
+                     for i, host in enumerate(self.hosts)] \
+                         if copy_args is None else copy_args
+        local_file = "%(local_file)s"
+        remote_file = "%(remote_file)s"
+        try:
+            return [self.pool.spawn(
+                self._scp_recv, host,
+                remote_file % copy_args[host_i],
+                local_file % copy_args[host_i], recurse=recurse)
+                    for host_i, host in enumerate(self.hosts)]
+        except IndexError:
+            raise HostArgumentException(
+                "Number of per-host copy arguments provided does not match "
+                "number of hosts")
+
+    def _handle_greenlet_exc(self, func, host, *args, **kwargs):
+        try:
+            self._make_ssh_client(host)
+            return func(*args, **kwargs)
+        except Exception as ex:
+            ex.host = host
+            raise ex

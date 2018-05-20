@@ -19,7 +19,8 @@
 
 from warnings import warn
 
-warn("Importing from pssh.ssh2_client is deprecated. Please update to "
-     "from pssh.clients import SSHClient")
+msg = "Importing from pssh.ssh2_client is deprecated. Please update to " \
+      "from pssh.clients import SSHClient"
+warn(msg)
 
 from .clients.native import SSHClient, logger

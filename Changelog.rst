@@ -7,6 +7,12 @@ Change Log
 Changes
 --------
 
+* Added ``scp_send`` and ``scp_recv`` functions to native clients for sending and receiving files via SCP respectively.
+* Refactoring - clients moved to their own sub-package - ``pssh.clients`` - with backwards compatibility for imports from ``pssh.pssh_client`` and ``pssh.pssh2_client``.
+* Show underlying exception from native client library when raising ``parallel-ssh`` exceptions.
+* ``host`` parameter added to all exceptions raised by parallel clients - #116
+* Deprecation warning for client imports.
+* Deprecation warning for default client changing from paramiko to native client as of ``2.0.0``.
 * Upgrade embedded ``libssh2`` in binary wheels to latest version plus enhancements.
 * Adds support for ECDSA host keys for native client.
 * Adds support for SHA-256 host key fingerprints for native client.
@@ -19,7 +25,7 @@ Fixes
 
 * Windows native client could not connect to newer SSH servers - thanks Pavel.
 
-Note - changes apply to binary wheels only. See building from source instructions to make system packages.
+Note - libssh2 changes apply to binary wheels only. For building from source, `see documentation <http://parallel-ssh.readthedocs.io/en/latest/installation.html#building-from-source>`_.
 
 1.5.5
 ++++++

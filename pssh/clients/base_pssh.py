@@ -303,15 +303,13 @@ class BaseParallelSSHClient(object):
           host ``myhost``. ``suffix_separator`` has no meaning if
           ``copy_args`` is provided
         :type suffix_separator: str
-        :param copy_args: (Optional) format remote_file and local_file strings
-          with per-host arguments in ``copy_args``.   ``copy_args`` length must
+        :param copy_args: (Optional) Format remote_file and local_file strings
+          with per-host arguments in ``copy_args``. ``copy_args`` length must
           equal length of host list -
           :py:class:`pssh.exceptions.HostArgumentException` is raised otherwise
         :type copy_args: tuple or list
-
         :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy
           commands
-
         :raises: :py:class:`ValueError` when a directory is supplied to
           local_file and recurse is not set
         :raises: :py:class:`pssh.exceptions.HostArgumentException` on number of
@@ -320,7 +318,7 @@ class BaseParallelSSHClient(object):
         :raises: :py:class:`OSError` on OS errors like permission denied
 
         .. note ::
-          Local directories in `local_file` that do not exist will be
+          Local directories in ``local_file`` that do not exist will be
           created as long as permissions allow.
 
         .. note ::
@@ -333,8 +331,7 @@ class BaseParallelSSHClient(object):
                 return [self.pool.spawn(
                     self._copy_remote_file, host,
                     remote_file % copy_args[host_i],
-                    local_file % copy_args[host_i], {'recurse': recurse},
-                    **kwargs)
+                    local_file % copy_args[host_i], recurse=recurse, **kwargs)
                     for host_i, host in enumerate(self.hosts)]
             except IndexError:
                 raise HostArgumentException(
@@ -343,8 +340,7 @@ class BaseParallelSSHClient(object):
         else:
             return [self.pool.spawn(
                 self._copy_remote_file, host, remote_file,
-                suffix_separator.join([local_file, host]), recurse,
-                **kwargs)
+                suffix_separator.join([local_file, host]), recurse, **kwargs)
                 for host in self.hosts]
 
     def _copy_remote_file(self, host, remote_file, local_file, recurse,
@@ -353,8 +349,7 @@ class BaseParallelSSHClient(object):
         try:
             self._make_ssh_client(host)
             return self.host_clients[host].copy_remote_file(
-                remote_file, local_file, recurse=recurse,
-                **kwargs)
+                remote_file, local_file, recurse=recurse, **kwargs)
         except Exception as ex:
             ex.host = host
             raise ex

@@ -65,3 +65,7 @@ class ProxyError(Exception):
 
 class Timeout(Exception):
     """Raised on timeout requested and reached"""
+
+
+class SCPError(Exception):
+    """Raised on errors copying file via SCP"""
