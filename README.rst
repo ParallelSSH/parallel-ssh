@@ -81,7 +81,7 @@ To make use of this new client, ``ParallelSSHClient`` can be imported from ``pss
 
 The new client will become the default and will replace the current ``pssh.pssh_client`` in a new major version of the library - ``2.0.0``.
 
-The paramiko based client will remain available under ``pssh.clients.miko``.
+The paramiko based client will become an optional install via pip `extras`, available under ``pssh.clients.miko``.
 
 For example:
 
