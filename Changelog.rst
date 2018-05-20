@@ -19,6 +19,7 @@ Changes
 * Added SSH agent forwarding to native client, defaults to on as per paramiko client - ``forward_ssh_agent`` keyword parameter.
 * Windows wheels switched to OpenSSL back end for native client.
 * Windows wheels include zlib and have compression enabled for native client.
+* Added OSX 10.13 wheel build.
 
 Fixes
 ------

@@ -30,13 +30,15 @@ from pssh.pssh2_client import ParallelSSHClient, logger as pssh_logger
 pssh_logger.setLevel(logging.DEBUG)
 logging.basicConfig()
 
+
 class ForwardTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         _mask = int('0600') if version_info <= (2,) else 0o600
         os.chmod(PKEY_FILENAME, _mask)
-        call('ssh-add %s' % PKEY_FILENAME, shell=True)
+        if call('ssh-add %s' % PKEY_FILENAME, shell=True) != 1:
+            raise unittest.SkipTest("No agent available.")
         cls.server = OpenSSHServer()
         cls.server.start_server()
         cls.host = '127.0.0.1'
