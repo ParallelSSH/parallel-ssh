@@ -94,7 +94,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
           equivalent to `ssh -A` from the `ssh` command line utility.
           Defaults to True if not set.
         :type forward_ssh_agent: bool
-
         """
         BaseParallelSSHClient.__init__(
             self, hosts, user=user, password=password, port=port, pkey=pkey,

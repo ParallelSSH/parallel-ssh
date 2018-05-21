@@ -95,6 +95,15 @@ class BaseParallelSSHClient(object):
         self.cmds = cmds
         return output
 
+    def join_last(self):
+        """Convenience function for joining the last executed commands.
+
+        :rtype: Dictionary with host as key and
+          :py:class:`pssh.output.HostOutput` as value"""
+        output = self.get_last_output()
+        self.join(output)
+        return output
+
     def get_last_output(self, cmds=None):
         """Get output for last commands executed by ``run_command``
 

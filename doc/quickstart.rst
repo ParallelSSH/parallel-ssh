@@ -6,15 +6,15 @@ First, make sure that ``parallel-ssh`` is `installed <installation.html>`_.
 
 .. note::
 
-   ``parallel-ssh`` uses gevent's monkey patching to enable asynchronous use of the Python standard library's network I/O.
+   When using the paramiko based clients, ``parallel-ssh`` makes use of gevent's monkey patching to enable asynchronous use of the Python standard library's network I/O as paramiko does not and cannot natively support non-blocking mode.
 
-   Make sure that ParallelSSH imports come **before** any other imports in your code. Otherwise, patching may not be done before the standard library is loaded which will then cause ParallelSSH to block.
+   Monkey patching is only done for the clients under ``pssh.clients.miko`` and the deprecated imports ``pssh.pssh_client`` and ``pssh.ssh_client``.
+
+   Make sure that these imports come **before** any other imports in your code in this case. Otherwise, patching may not be done before the standard library is loaded which will then cause the (g)event loop to be blocked.
 
    If you are seeing messages like ``This operation would block forever``, this is the cause.
 
-   Monkey patching is only done for the clients under ``pssh.clients.miko``.
-
-   New native library based clients under ``pssh.clients.native`` **do not perform monkey patching** and are an option if monkey patching is not suitable. These clients will become the default, replacing the current ``pssh.pssh_client``, in a future major release - ``2.0.0``.
+   Native clients under ``pssh.clients.native`` **do not perform monkey patching** and are an option if monkey patching is not suitable. These clients will become the default, replacing the current ``pssh.pssh_client``, in a future major release - ``2.0.0``.
 
 Run a command on hosts in parallel
 ------------------------------------
@@ -28,7 +28,7 @@ Make a list or other iterable of the hosts to run on:
 .. code-block:: python
 
     from __future__ import print_function
-    from pssh.pssh_client import ParallelSSHClient
+    from pssh.clients import ParallelSSHClient
     
     hosts = ['host1', 'host2', 'host3', 'host4']
 
@@ -48,9 +48,13 @@ Now one or more commands can be run via the client:
 
     output = client.run_command('whoami')
 
-Once the call to ``run_command`` returns, the command has started executing in parallel.
+When the call to ``run_command`` returns, the commands are already executing in parallel.
 
-Output is keyed by host and contains a `host output <output.html>`_ object. From that, SSH output is available.
+Output is keyed by host name and contains a `host output <output.html>`_ object. From that, SSH output is available.
+
+.. note::
+
+   Multiple identical hosts will have their output key de-duplicated so that their output is not lost. The real host name used is available as ``host_output.host`` where ``host_output`` is a :py:class:`pssh.output.HostOutput` object.
 
 Standard Output
 ----------------
@@ -67,11 +71,13 @@ Standard output, aka ``stdout`` for ``host1``:
 
       <your username here>
 
-There is nothing special needed to ensure output is available.
+There is nothing special needed to ensure output is available. 
 
 Please note that retrieving all of a command's standard output by definition requires that the command has completed.
 
 Iterating over ``stdout`` for any host *to completion* will therefor *only complete* when that host's command has completed unless interrupted.
+
+The ``timeout`` keyword argument to ``run_command`` may be used to cause output generators to timeout if no output is received after the given number of seconds - see `join and output timeouts <advanced.html#join-and-output-timeouts>`_ (native clients only).
 
 ``stdout`` is a generator. Iterating over it will consume the remote standard output stream via the network as it becomes available. To retrieve all of stdout can wrap it with list, per below.
 
@@ -115,7 +121,7 @@ First, ensure that all commands have finished and exit codes gathered by joining
 Authentication
 ----------------
 
-By default ``parallel-ssh`` will use an available SSH agent's credentials to login to hosts via private key authentication.
+By default ``parallel-ssh`` will use an available SSH agent's credentials to login to hosts via public key authentication.
 
 User/Password authentication
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -126,26 +132,32 @@ User/password authentication can be used by providing user name and password cre
 
   client = ParallelSSHClient(hosts, user='my_user', password='my_pass')
 
+.. note::
+
+   On Posix platforms, user name defaults to the current user if not provided.
+
+   On Windows, user name is required.
+
 Programmatic Private Key authentication
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-It is also possible to programmatically use a private key for authentication.
+It is also possible to programmatically provide a private key for authentication.
 
 Native Client
 ______________
 
-For the native client (``pssh.pssh2_client``), only private key filepath is needed. The corresponding public key *must* be available in the same directory as ``my_pkey.pub`` where private key file is ``my_pkey``. Public key file name and path will be made configurable in a future version.
+For the native client - ``pssh.clients.ParallelSSHClient`` - only private key filepath is needed. The corresponding public key *must* be available in the same directory as ``my_pkey.pub`` where private key file is ``my_pkey``. Public key file name and path will be made configurable in a future version.
 
  .. code-block:: python
 
-   from pssh.clients.native import ParallelSSHClient
+   from pssh.clients import ParallelSSHClient
 
    client = ParallelSSHClient(hosts, pkey='my_pkey')
 
 Paramiko Client
 __________________
 
-For the paramiko based client only, the helper function :py:func:`load_private_key <pssh.utils.load_private_key>` is provided to easily load all possible key types. It takes either a file path or a file-like object.
+For the paramiko based client **only**, the helper function :py:func:`load_private_key <pssh.utils.load_private_key>` is provided to easily load all possible key types. It takes either a file path or a file-like object.
 
  :File path:
    .. code-block:: python
@@ -198,7 +210,7 @@ Commands last executed by ``run_command`` can also be retrieved from the ``cmds`
 Host Logger
 ------------
 
-There is a built in host logger that can be enabled to automatically log output from remote hosts. This requires the ``consume_output`` flag to be enabled on :py:func:`join <pssh.pssh_client.ParallelSSHClient.join>`.
+There is a built in host logger that can be enabled to automatically log output from remote hosts. This requires the ``consume_output`` flag to be enabled on :py:func:`join <pssh.clients.native.parallel.ParallelSSHClient.join>`.
 
 The helper function ``pssh.utils.enable_host_logger`` will enable host logging to standard output, for example:
 
@@ -247,7 +259,7 @@ Alternatively, the ``stop_on_errors`` flag is provided to tell the client to go 
 
   output = client.run_command('whoami', stop_on_errors=False)
 
-With this flag, the ``exception`` attribute will contain the exception on any failed hosts, or ``None``:
+With this flag, the ``exception`` output attribute will contain the exception on any failed hosts, or ``None``:
 
 .. code-block:: python
 
@@ -264,4 +276,4 @@ With this flag, the ``exception`` attribute will contain the exception on any fa
 
 .. seealso::
 
-   Exceptions raised by the library can be found in :mod:`pssh.exceptions` module.
+   Exceptions raised by the library can be found in the :mod:`pssh.exceptions` module.

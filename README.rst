@@ -2,7 +2,7 @@
 parallel-ssh
 ============
 
-Non-blocking, asynchronous parallel SSH client library.
+Asynchronous parallel SSH client library.
 
 Run SSH commands over many - hundreds/hundreds of thousands - number of servers asynchronously and with minimal system load on the client host.
 
@@ -50,7 +50,7 @@ Run ``uname`` on two remote hosts in parallel with ``sudo``.
 
   from __future__ import print_function
 
-  from pssh.pssh_client import ParallelSSHClient
+  from pssh.clients import ParallelSSHClient
 
   hosts = ['myhost1', 'myhost2']
   client = ParallelSSHClient(hosts)
@@ -275,7 +275,7 @@ Does not do parallelisation out of the box but can be made parallel via Python's
 
 In addition, ``parallel-ssh`` uses native threads to offload CPU blocked tasks like authentication in order to scale to multiple cores while still remaining non-blocking for network I/O.
 
-``pssh.ssh2_client.SSHClient`` is a single host natively non-blocking client for users that do not need parallel capabilities but still want a non-blocking client with native code performance.
+``pssh.clients.native.SSHClient`` is a single host natively non-blocking client for users that do not need parallel capabilities but still want a non-blocking client with native code performance.
 
 Out of all the available Python SSH libraries, ``libssh2`` and ``ssh2-python`` have been shown, see benchmarks above, to perform the best with the least resource utilisation and ironically for a native code extension the least amount of dependencies. Only ``libssh2`` C library and its dependencies which are included in binary wheels.
 

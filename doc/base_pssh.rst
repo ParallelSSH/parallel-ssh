@@ -3,5 +3,5 @@ BaseParallelSSHClient
 
 API documentation for common parallel client functionality.
 
-.. automodule:: pssh.base_pssh
+.. automodule:: pssh.clients.base_pssh
     :member-order: groupwise

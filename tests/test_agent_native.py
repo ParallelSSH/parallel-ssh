@@ -37,7 +37,7 @@ class ForwardTestCase(unittest.TestCase):
     def setUpClass(cls):
         _mask = int('0600') if version_info <= (2,) else 0o600
         os.chmod(PKEY_FILENAME, _mask)
-        if call('ssh-add %s' % PKEY_FILENAME, shell=True) != 1:
+        if call('ssh-add %s' % PKEY_FILENAME, shell=True) != 0:
             raise unittest.SkipTest("No agent available.")
         cls.server = OpenSSHServer()
         cls.server.start_server()

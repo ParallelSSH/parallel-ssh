@@ -3,11 +3,11 @@ API Documentation
 ******************
 
 .. toctree::
-   
-   pssh_client
-   ssh_client
-   pssh2_client
-   ssh2_client
+
+   native_parallel
+   native_single
+   paramiko_single
+   paramiko_parallel
    base_pssh
    output
    agent
