@@ -55,6 +55,7 @@ class Tunnel(Thread):
         self.retry_delay = retry_delay
         self.allow_agent = allow_agent
         self.timeout = timeout
+        self.exception = None
         self.tunnel_open = Event()
 
     def _read_forward_sock(self):
@@ -120,8 +121,13 @@ class Tunnel(Thread):
         self.session = self.client.session
 
     def run(self):
-        self._init_tunnel_client()
-        self._init_tunnel_sock()
+        try:
+            self._init_tunnel_client()
+            self._init_tunnel_sock()
+        except Exception as ex:
+            logger.error("Tunnel initilisation failed with %s", ex)
+            self.exception = ex
+            return
         logger.debug("Hub in run function: %s", get_hub())
         try:
             while True:

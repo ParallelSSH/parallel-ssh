@@ -39,7 +39,8 @@ import gevent
 from pssh.pssh2_client import ParallelSSHClient, logger as pssh_logger
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
-    HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError
+    HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
+    ProxyError
 
 from .embedded_server.embedded_server import make_socket
 from .embedded_server.openssh import OpenSSHServer
@@ -1387,6 +1388,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         try:
             cmds = self.client.scp_send(local_filename, remote_filename)
             gevent.joinall(cmds, raise_error=True)
+            time.sleep(.2)
             self.assertTrue(os.path.isdir(remote_test_dir_abspath))
             self.assertTrue(os.path.isfile(remote_file_abspath))
             remote_file_data = open(remote_file_abspath, 'r').read()
@@ -1507,8 +1509,22 @@ class ParallelSSHClientTest(unittest.TestCase):
             proxy_host=proxy_host, proxy_port=self.port, num_retries=1,
             proxy_pkey=self.user_key,
             timeout=2)
-        output = client.run_command('echo me', stop_on_errors=False)
+        output = client.run_command(self.cmd, stop_on_errors=False)
         self.assertEqual(self.host, list(output.keys())[0])
+        del client
+        server.stop()
+
+    def test_tunnel_init_failure(self):
+        proxy_host = '127.0.0.20'
+        client = ParallelSSHClient(
+            [self.host], port=self.port, pkey=self.user_key,
+            proxy_host=proxy_host, proxy_port=self.port, num_retries=1,
+            proxy_pkey=self.user_key,
+            timeout=2)
+        output = client.run_command(self.cmd, stop_on_errors=False)
+        exc = output[self.host].exception
+        self.assertIsInstance(exc, ProxyError)
+        self.assertIsInstance(exc.args[1], ConnectionErrorException)
 
 #     def test_proxy_remote_host_failure_timeout(self):
 #         """Test that timeout setting is passed on to proxy to be used for the

@@ -301,14 +301,15 @@ class ParallelSSHClient(BaseParallelSSHClient):
             allow_agent=self.allow_agent)
         tunnel.daemon = True
         tunnel.start()
-        self._tunnels[host] = tunnel
         while not tunnel.tunnel_open.is_set():
             logger.debug("Waiting for tunnel to become active")
             sleep(.1)
             if not tunnel.is_alive():
-                msg = "Proxy authentication failed"
-                logger.error(msg)
-                raise ProxyError(msg)
+                msg = "Proxy authentication failed. " \
+                      "Exception from tunnel client: %s"
+                logger.error(msg, tunnel.exception)
+                raise ProxyError(msg, tunnel.exception)
+        self._tunnels[host] = tunnel
         return tunnel
 
     def _make_ssh_client(self, host):

@@ -1,6 +1,14 @@
 Change Log
 ============
 
+1.6.2
+++++++
+
+Fixes
+------
+
+* Native client proxy initilisation failures were not caught by ``stop_on_errors=False`` - #121.
+
 1.6.1
 +++++++
 
