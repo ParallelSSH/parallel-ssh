@@ -28,8 +28,7 @@ from socket import gaierror as sock_gaierror, error as sock_error
 from gevent import sleep, socket, get_hub
 from gevent.hub import Hub
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
-from ssh2.exceptions import SFTPHandleError, \
-    SFTPIOError as SFTPIOError_ssh2
+from ssh2.exceptions import SFTPHandleError, SFTPProtocolError
 from ssh2.session import Session
 from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR, LIBSSH2_SFTP_S_IRGRP, \
@@ -416,18 +415,12 @@ class SSHClient(object):
             sftp = self.session.sftp_init()
         except Exception as ex:
             raise SFTPError(ex)
-        errno = self.session.last_errno()
-        while (sftp is None and errno == LIBSSH2_ERROR_EAGAIN) \
-                or sftp == LIBSSH2_ERROR_EAGAIN:
+        while sftp == LIBSSH2_ERROR_EAGAIN:
             wait_select(self.session)
             try:
                 sftp = self.session.sftp_init()
             except Exception as ex:
                 raise SFTPError(ex)
-            errno = self.session.last_errno()
-        if sftp is None and errno != LIBSSH2_ERROR_EAGAIN:
-            raise SFTPError("Error initialising SFTP - error code %s",
-                            errno)
         return sftp
 
     def _mkdir(self, sftp, directory):
@@ -449,7 +442,7 @@ class SSHClient(object):
             LIBSSH2_SFTP_S_IXOTH
         try:
             self._eagain(sftp.mkdir, directory, mode)
-        except SFTPIOError_ssh2 as error:
+        except SFTPProtocolError as error:
             msg = "Error occured creating directory %s on host %s - %s"
             logger.error(msg, directory, self.host, error)
             raise SFTPIOError(msg, directory, self.host, error)
@@ -485,7 +478,7 @@ class SSHClient(object):
         if destination is not None:
             try:
                 self._eagain(sftp.stat, destination)
-            except SFTPHandleError:
+            except (SFTPHandleError, SFTPProtocolError):
                 self.mkdir(sftp, destination)
         self.sftp_put(sftp, local_file, remote_file)
         logger.info("Copied local file %s to remote destination %s:%s",
@@ -508,7 +501,7 @@ class SSHClient(object):
                 self._sftp_put(remote_fh, local_file)
                 # THREAD_POOL.apply(
                 #     sftp_put, args=(self.session, remote_fh, local_file))
-            except SFTPIOError_ssh2 as ex:
+            except SFTPProtocolError as ex:
                 msg = "Error writing to remote file %s - %s"
                 logger.error(msg, remote_file, ex)
                 raise SFTPIOError(msg, remote_file, ex)
@@ -539,7 +532,7 @@ class SSHClient(object):
             _dir = '/'.join((_parent_path, _dir))
         try:
             self._eagain(sftp.stat, _dir)
-        except SFTPHandleError as ex:
+        except (SFTPHandleError, SFTPProtocolError) as ex:
             logger.debug("Stat for %s failed with %s", _dir, ex)
             self._mkdir(sftp, _dir)
         if sub_dirs is not None:
@@ -582,7 +575,7 @@ class SSHClient(object):
         sftp = self._make_sftp() if sftp is None else sftp
         try:
             self._eagain(sftp.stat, remote_file)
-        except SFTPHandleError:
+        except (SFTPHandleError, SFTPProtocolError):
             msg = "Remote file or directory %s does not exist"
             logger.error(msg, remote_file)
             raise SFTPIOError(msg, remote_file)
@@ -635,7 +628,7 @@ class SSHClient(object):
         if recurse:
             try:
                 self._eagain(sftp.stat, remote_file)
-            except SFTPHandleError:
+            except (SFTPHandleError, SFTPProtocolError):
                 msg = "Remote file or directory %s does not exist"
                 logger.error(msg, remote_file)
                 raise SCPError(msg, remote_file)
@@ -744,7 +737,7 @@ class SSHClient(object):
             sftp = self._make_sftp() if sftp is None else sftp
             try:
                 self._eagain(sftp.stat, destination)
-            except SFTPHandleError:
+            except (SFTPHandleError, SFTPProtocolError):
                 self.mkdir(sftp, destination)
         self._scp_send(local_file, remote_file)
         logger.info("SCP local file %s to remote destination %s:%s",
@@ -807,7 +800,7 @@ class SSHClient(object):
                 # cannot be used simultaneously in multiple threads.
                 # THREAD_POOL.apply(
                 #     sftp_get, args=(self.session, remote_fh, local_file))
-            except SFTPIOError_ssh2 as ex:
+            except SFTPProtocolError as ex:
                 msg = "Error reading from remote file %s - %s"
                 logger.error(msg, remote_file, ex)
                 raise SFTPIOError(msg, remote_file, ex)

@@ -7,7 +7,7 @@ from sys import version_info
 
 from .embedded_server.openssh import OpenSSHServer
 from ssh2.session import Session
-from pssh.ssh2_client import SSHClient, logger as ssh_logger
+from pssh.clients.native import SSHClient, logger as ssh_logger
 
 
 ssh_logger.setLevel(logging.DEBUG)

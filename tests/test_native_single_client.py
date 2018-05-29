@@ -8,7 +8,7 @@ from gevent import socket, sleep
 
 from .base_ssh2_test import SSH2TestCase
 from .embedded_server.openssh import OpenSSHServer
-from pssh.ssh2_client import SSHClient, logger as ssh_logger
+from pssh.clients.native import SSHClient, logger as ssh_logger
 from pssh.tunnel import Tunnel
 from ssh2.session import Session
 from pssh.exceptions import AuthenticationException, ConnectionErrorException, \

@@ -39,9 +39,13 @@ cython_directives = {'embedsignature': True,
                      'wraparound': False,
 }
 _embedded_lib = bool(int(os.environ.get('EMBEDDED_LIB', 1)))
+_have_agent_fwd = bool(int(os.environ.get('HAVE_AGENT_FWD', 1)))
 
 cython_args = {'cython_directives': cython_directives,
-               'cython_compile_time_env': {'EMBEDDED_LIB': _embedded_lib},
+               'cython_compile_time_env': {
+                   'EMBEDDED_LIB': _embedded_lib,
+                   'HAVE_AGENT_FWD': _have_agent_fwd,
+               },
 } if USING_CYTHON else {}
 
 _libs = ['ssh2'] if not ON_WINDOWS else [
@@ -90,7 +94,7 @@ setup(name='parallel-ssh',
                         'tests', 'tests.*',
                         '*.tests', '*.tests.*')
       ),
-      install_requires=['paramiko', gevent_req, 'ssh2-python>=0.12.0'],
+      install_requires=['paramiko', gevent_req, 'ssh2-python>=0.14.0'],
       classifiers=[
         'License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)',
         'Intended Audience :: Developers',

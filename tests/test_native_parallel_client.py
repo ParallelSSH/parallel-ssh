@@ -36,7 +36,7 @@ import time
 
 
 import gevent
-from pssh.pssh2_client import ParallelSSHClient, logger as pssh_logger
+from pssh.clients.native import ParallelSSHClient, logger as pssh_logger
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
@@ -470,8 +470,11 @@ class ParallelSSHClientTest(unittest.TestCase):
             for path in remote_file_paths:
                 self.assertTrue(os.path.isfile(path))
         finally:
-            shutil.rmtree(local_test_path)
-            shutil.rmtree(remote_test_path_abs)
+            try:
+                shutil.rmtree(local_test_path)
+                shutil.rmtree(remote_test_path_abs)
+            except Exception:
+                pass
 
     def test_pssh_client_directory_abs_path(self):
         client = ParallelSSHClient([self.host], port=self.port,

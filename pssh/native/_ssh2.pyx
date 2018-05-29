@@ -30,7 +30,7 @@ from ssh2.c_sftp cimport libssh2_sftp_read, libssh2_sftp_write, \
     LIBSSH2_SFTP_HANDLE
 from ssh2.session cimport Session
 from ssh2.sftp_handle cimport SFTPHandle
-from ssh2.exceptions import SFTPIOError
+from ssh2.exceptions import SFTPHandleError
 from ssh2.utils cimport to_bytes
 
 from ..exceptions import SessionError, Timeout
@@ -118,7 +118,7 @@ def sftp_put(Session session, SFTPHandle handle,
                     rc = libssh2_sftp_write(_handle, ptr, nread)
                 if rc < 0:
                     with gil:
-                        raise SFTPIOError(rc)
+                        raise SFTPHandleError(rc)
                 nread = fread(cbuf, 1, buffer_maxlen, local_fh)
         finally:
             free(cbuf)
@@ -160,7 +160,7 @@ def sftp_get(Session session, SFTPHandle handle,
             free(cbuf)
             fclose(local_fh)
     if rc < 0 and rc != LIBSSH2_ERROR_EAGAIN:
-        raise SFTPIOError(rc)
+        raise SFTPHandleError(rc)
 
 
 cdef int _wait_select(int _socket, LIBSSH2_SESSION *_session,

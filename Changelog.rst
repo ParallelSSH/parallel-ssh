@@ -1,13 +1,26 @@
 Change Log
 ============
 
+1.6.3
+++++++
+
+Changes
+--------
+
+* Re-generated C code with latest Cython release.
+
+Fixes
+------
+
+* ``ssh2-python`` >= 0.14.0 support.
+
 1.6.2
 ++++++
 
 Fixes
 ------
 
-* Native client proxy initilisation failures were not caught by ``stop_on_errors=False`` - #121.
+* Native client proxy initialisation failures were not caught by ``stop_on_errors=False`` - #121.
 
 1.6.1
 +++++++
