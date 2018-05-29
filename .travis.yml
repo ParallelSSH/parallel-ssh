@@ -38,103 +38,10 @@ after_success:
 
 jobs:
   include:
-    - stage: build wheels
-      os: osx
-      osx_image: xcode9.3
-      # if: tag IS present
-      before_install:
-        - brew update
-      install:
-        - brew upgrade openssl
-        - sudo ci/install-ssh2.sh
-        - sudo -H pip2 install -U delocate twine wheel pip setuptools
-        - cp /usr/local/lib/libssh2* .
-        - ls -lh
-        - pip2 install --user -r requirements.txt
-        - pip2 wheel --no-deps .
-      script:
-        - delocate-listdeps --all *.whl
-        - delocate-wheel -v *.whl
-        - delocate-listdeps --all *.whl
-        - ls -l *.whl
-        - rm -f *.dylib
-        - pip2 install --user -v *.whl
-        - pwd; mkdir temp; cd temp; pwd
-        - python -c "import pssh.clients"
-        - cd ..; pwd
-      after_success:
-        - if [[ ! -z "$TRAVIS_TAG" ]]; then
-              twine upload -u $PYPI_U -p $PYPI_P *.whl;
-          fi
-      language: generic
-      python: skip
 
-    - stage: build wheels
-      os: osx
-      osx_image: xcode8.3
-      # if: tag IS present
-      before_install:
-        - brew update
-      install:
-        - brew upgrade openssl
-        - sudo ci/install-ssh2.sh
-        - sudo -H pip2 install -U delocate twine wheel pip setuptools
-        - cp /usr/local/lib/libssh2* .
-        - ls -lh
-        - pip2 install --user -r requirements.txt
-        - pip2 wheel --no-deps .
-      script:
-        - delocate-listdeps --all *.whl
-        - delocate-wheel -v *.whl
-        - delocate-listdeps --all *.whl
-        - ls -l *.whl
-        - rm -f *.dylib
-        - pip2 install --user -v *.whl
-        - pwd; mkdir temp; cd temp; pwd
-        - python -c "import pssh.clients"
-        - cd ..; pwd
-      after_success:
-        - if [[ ! -z "$TRAVIS_TAG" ]]; then
-              twine upload -u $PYPI_U -p $PYPI_P *.whl;
-          fi
-      language: generic
-      python: skip
-
-    - stage: build wheels
-      os: osx
-      osx_image: xcode8
-      # if: tag IS present
-      before_install:
-        - brew update
-      install:
-        - brew upgrade openssl
-        - sudo ci/install-ssh2.sh
-        - sudo rm -f libssh2.1.dylib
-        - sudo pip2 install -U delocate twine wheel pip setuptools
-        - cp /usr/local/lib/libssh2* .
-        - pip2 install --user -r requirements.txt
-        - pip2 wheel --no-deps .
-      script:
-        - delocate-listdeps --all *.whl
-        - delocate-wheel -v *.whl
-        - delocate-listdeps --all *.whl
-        - ls -l *.whl
-        - rm -f *.dylib
-        - pip2 install --user -v *.whl
-        - pwd; mkdir temp; cd temp; pwd
-        - python -c "import pssh.clients"
-        - cd ..; pwd
-      after_success:
-        - if [[ ! -z "$TRAVIS_TAG" ]]; then
-              twine upload -u $PYPI_U -p $PYPI_P *.whl;
-          fi
-      language: generic
-      python: skip
-
-    - stage: build wheels
+    - stage: build packages
       os: osx
       osx_image: xcode6.4
-      # if: tag IS present
       before_install:
         - brew update
       install:
@@ -165,30 +72,122 @@ jobs:
           fi
       language: generic
       python: skip
-    # - os: linux
-    #   stage: build system packages
-    #   if: tag IS present
-    #   python: 3.6
-    #   before_install: skip
-    #   install: skip
-    #   # script: skip
-    #   after_success: skip
-    #   # before_deploy:
-    #   script:
-    #     - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-    #     - ./ci/docker/build-packages.sh
-    #   deploy:
-    #     - provider: releases
-    #       skip_cleanup: true
-    #       api_key:
-    #         secure: hKf+D9ZWRCJWNQtlOWeFh7z1a+VSz+GK5qOY0e1+iV/PrM0f41wy2yej0bxG1zS6CQAnJBK6/gmq5uXXhQhGNQeIQs7zElyKlrijQAn5UstPPJTRIk2oywRr2b+q0k3V42tto6WbhjqPRpOQl/pNTjKJCc/UPgd6kOVZEhCfAec=
-    #       file_glob: true
-    #       file: '*.{deb,rpm}'
-    #       on:
-    #         repo: ParallelSSH/parallel-ssh
-    #         tags: true
 
-    - stage: build wheels
+    - stage: build packages
+      os: osx
+      osx_image: xcode8.3
+      before_install:
+        - brew update
+      install:
+        - brew upgrade openssl
+        - sudo ci/install-ssh2.sh
+        - sudo -H pip2 install -U delocate twine wheel pip setuptools
+        - cp /usr/local/lib/libssh2* .
+        - ls -lh
+        - pip2 install --user -r requirements.txt
+        - pip2 wheel --no-deps .
+      script:
+        - delocate-listdeps --all *.whl
+        - delocate-wheel -v *.whl
+        - delocate-listdeps --all *.whl
+        - ls -l *.whl
+        - rm -f *.dylib
+        - pip2 install --user -v *.whl
+        - pwd; mkdir temp; cd temp; pwd
+        - python -c "import pssh.clients"
+        - cd ..; pwd
+      after_success:
+        - if [[ ! -z "$TRAVIS_TAG" ]]; then
+              twine upload -u $PYPI_U -p $PYPI_P *.whl;
+          fi
+      language: generic
+      python: skip
+
+    - stage: build packages
+      os: osx
+      osx_image: xcode8
+      before_install:
+        - brew update
+      install:
+        - brew upgrade openssl
+        - sudo ci/install-ssh2.sh
+        - sudo rm -f libssh2.1.dylib
+        - sudo pip2 install -U delocate twine wheel pip setuptools
+        - cp /usr/local/lib/libssh2* .
+        - pip2 install --user -r requirements.txt
+        - pip2 wheel --no-deps .
+      script:
+        - delocate-listdeps --all *.whl
+        - delocate-wheel -v *.whl
+        - delocate-listdeps --all *.whl
+        - ls -l *.whl
+        - rm -f *.dylib
+        - pip2 install --user -v *.whl
+        - pwd; mkdir temp; cd temp; pwd
+        - python -c "import pssh.clients"
+        - cd ..; pwd
+      after_success:
+        - if [[ ! -z "$TRAVIS_TAG" ]]; then
+              twine upload -u $PYPI_U -p $PYPI_P *.whl;
+          fi
+      language: generic
+      python: skip
+
+    - stage: build packages
+      os: osx
+      osx_image: xcode9.3
+      before_install:
+        - brew update
+      install:
+        - brew upgrade openssl
+        - sudo ci/install-ssh2.sh
+        - sudo -H pip2 install -U delocate twine wheel pip setuptools
+        - cp /usr/local/lib/libssh2* .
+        - ls -lh
+        - pip2 install --user -r requirements.txt
+        - pip2 wheel --no-deps .
+      script:
+        - delocate-listdeps --all *.whl
+        - delocate-wheel -v *.whl
+        - delocate-listdeps --all *.whl
+        - ls -l *.whl
+        - rm -f *.dylib
+        - pip2 install --user -v *.whl
+        - pwd; mkdir temp; cd temp; pwd
+        - python -c "import pssh.clients"
+        - cd ..; pwd
+      after_success:
+        - if [[ ! -z "$TRAVIS_TAG" ]]; then
+              twine upload -u $PYPI_U -p $PYPI_P *.whl;
+          fi
+      language: generic
+      python: skip
+
+    - os: linux
+      stage: build packages
+      env:
+        - SYSTEM_PACKAGES=1
+      python: 3.6
+      before_install: skip
+      install: skip
+      after_success: skip
+      script:
+        - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+        - ./ci/docker/build-packages.sh
+      deploy:
+        - provider: releases
+          skip_cleanup: true
+          api_key:
+            secure: hKf+D9ZWRCJWNQtlOWeFh7z1a+VSz+GK5qOY0e1+iV/PrM0f41wy2yej0bxG1zS6CQAnJBK6/gmq5uXXhQhGNQeIQs7zElyKlrijQAn5UstPPJTRIk2oywRr2b+q0k3V42tto6WbhjqPRpOQl/pNTjKJCc/UPgd6kOVZEhCfAec=
+          file_glob: true
+          file: '*.{deb,rpm}'
+          on:
+            repo: ParallelSSH/parallel-ssh
+            tags: true
+
+    - stage: build packages
+      env:
+        - WHEELS=1
       os: linux
       python: 3.6
       before_install: skip

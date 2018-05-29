@@ -1,4 +1,4 @@
-FROM cdrx/fpm-debian:8
+FROM cdrx/fpm-ubuntu:18.04
 
 RUN apt-get -y update && apt-get -y install python-setuptools python-dev libssh2-1-dev python-pip git
 RUN pip install -U setuptools
