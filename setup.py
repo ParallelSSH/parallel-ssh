@@ -17,7 +17,6 @@ import os
 import platform
 from setuptools import setup, find_packages
 from platform import python_version
-from glob import glob
 
 import versioneer
 
@@ -32,13 +31,6 @@ else:
 
 
 ON_WINDOWS = platform.system() == 'Windows'
-ON_RTD = os.environ.get('READTHEDOCS') == 'True'
-
-if ON_RTD:
-    files = glob('pssh/native/*.c')
-    for _file in files:
-        os.remove(_file)
-
 
 gevent_req = 'gevent<=1.1' if python_version() < '2.7' else 'gevent>=1.1'
 
@@ -48,9 +40,8 @@ cython_directives = {'embedsignature': True,
                      'wraparound': False,
 }
 
-_fwd_default = 0 if ON_RTD else 1
 _embedded_lib = bool(int(os.environ.get('EMBEDDED_LIB', 1)))
-_have_agent_fwd = bool(int(os.environ.get('HAVE_AGENT_FWD', _fwd_default)))
+_have_agent_fwd = bool(int(os.environ.get('HAVE_AGENT_FWD', 1)))
 
 cython_args = {'cython_directives': cython_directives,
                'cython_compile_time_env': {
