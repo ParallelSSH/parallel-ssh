@@ -11,5 +11,6 @@ API Documentation
    base_pssh
    output
    agent
+   tunnel
    utils
    exceptions

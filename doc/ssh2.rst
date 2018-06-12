@@ -8,7 +8,7 @@ Below is a comparison of feature support for the two client types.
 ===============================  ============== ======================
 Feature                          paramiko       ssh2-python (libssh2)
 ===============================  ============== ======================
-Agent forwarding                  Yes           Not supported (*PR Pending*)
+Agent forwarding                  Yes           Yes (binary wheels or from source builds only)
 Proxying/tunnelling               Yes           Yes
 Kerberos (GSS) authentication     Yes           Not supported
 Private key file authentication   Yes           Yes
@@ -20,8 +20,8 @@ Session timeout setting           Yes           Yes
 Per-channel timeout setting       Yes           Yes
 Programmatic SSH agent            Yes           Not supported
 OpenSSH config parsing            Yes           Not yet implemented
-ECSA keys support                 Yes           Not supported (*PR Pending*)
-SCP functionality                 Not supported Not yet implemented
+ECSA keys support                 Yes           Yes
+SCP functionality                 Not supported Yes
 ===============================  ============== ======================
 
 If any of missing features are required for a use case, then the paramiko based clients should be used instead.

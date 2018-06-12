@@ -30,6 +30,9 @@ class TestHostOutput(unittest.TestCase):
     def setUp(self):
         self.output = HostOutput(None, None, None, None, None, None)
 
+    def test_print(self):
+        self.assertTrue(str(self.output))
+
     def test_update(self):
         host, cmd, chan, stdout, stderr, \
           stdin, exit_code, exception = 'host', 'cmd', 'chan', 'stdout', \

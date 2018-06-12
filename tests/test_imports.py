@@ -7,6 +7,9 @@ class ImportTestCase(unittest.TestCase):
         from pssh.clients.native.parallel import ParallelSSHClient
         from pssh.pssh2_client import ParallelSSHClient as Client2
         self.assertEqual(ParallelSSHClient, Client2)
+        from pssh.ssh2_client import SSHClient as Client2
+        from pssh.clients.native.single import SSHClient
+        self.assertEqual(SSHClient, Client2)
 
     def test_deprecated_import(self):
         from pssh.pssh_client import ParallelSSHClient
@@ -38,3 +41,6 @@ class ImportTestCase(unittest.TestCase):
         import pssh.clients.miko
         import pssh.clients.native
         import pssh.clients
+
+    def test_tunnel_imports(self):
+        import pssh.tunnel

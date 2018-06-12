@@ -1,16 +1,16 @@
 # This file is part of parallel-ssh.
-
+#
 # Copyright (C) 2014-2018 Panos Kittenis.
-
+#
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation, version 2.1.
-
+#
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
-
+#
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
@@ -28,7 +28,8 @@ from socket import gaierror as sock_gaierror, error as sock_error
 from gevent import sleep, socket, get_hub
 from gevent.hub import Hub
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
-from ssh2.exceptions import SFTPHandleError, SFTPProtocolError
+from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
+    Timeout as SSH2Timeout
 from ssh2.session import Session
 from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR, LIBSSH2_SFTP_S_IRGRP, \
@@ -64,7 +65,8 @@ class SSHClient(object):
                  retry_delay=RETRY_DELAY,
                  allow_agent=True, timeout=None,
                  forward_ssh_agent=True,
-                 proxy_host=None):
+                 proxy_host=None,
+                 _auth_thread_pool=True):
         """:param host: Host name or IP to connect to.
         :type host: str
         :param user: User to connect as. Defaults to logged in user.
@@ -116,7 +118,10 @@ class SSHClient(object):
         self.session = None
         self._host = proxy_host if proxy_host else host
         self._connect(self._host, self.port)
-        THREAD_POOL.apply(self._init)
+        if _auth_thread_pool:
+            THREAD_POOL.apply(self._init)
+        else:
+            self._init()
 
     def disconnect(self):
         """Disconnect session, close socket if needed."""
@@ -156,7 +161,10 @@ class SSHClient(object):
             while retries < self.num_retries:
                 return self._connect_init_retry(retries)
             msg = "Error connecting to host %s:%s - %s"
-            raise SessionError(msg, self.host, self.port, ex)
+            logger.error(msg, self.host, self.port, ex)
+            if isinstance(ex, SSH2Timeout):
+                raise Timeout(msg, self.host, self.port, ex)
+            raise
         try:
             self.auth()
         except Exception as ex:
@@ -168,6 +176,7 @@ class SSHClient(object):
 
     def _connect(self, host, port, retries=1):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.settimeout(self.timeout)
         logger.debug("Connecting to %s:%s", host, port)
         try:
             self.sock.connect((host, port))

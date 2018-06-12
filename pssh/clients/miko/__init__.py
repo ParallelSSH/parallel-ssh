@@ -15,6 +15,5 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-# flake8: noqa: F401
-from .parallel import ParallelSSHClient
-from .single import SSHClient, logger
+from .parallel import ParallelSSHClient  # noqa: F401
+from .single import SSHClient, logger  # noqa: F401

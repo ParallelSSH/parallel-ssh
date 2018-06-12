@@ -1,6 +1,24 @@
 Change Log
 ============
 
+1.7.0
+++++++
+
+Changes
+--------
+
+* Better tunneling implementation for native clients that supports multiple tunnels over single SSH connection for connecting multiple hosts through single proxy.
+* Added ``greenlet_timeout`` setting to native client ``run_command`` to pass on to getting greenlet result to allow for greenlets to timeout.
+* Native client raises specific exceptions on non-authentication errors connecting to host instead of generic ``SessionError``.
+
+
+Fixes
+------
+
+* Native client tunneling would not work correctly - #123.
+* ``timeout`` setting was not applied to native client sockets.
+* Native client would have ``SessionError`` instead of ``Timeout`` exceptions on timeout errors connecting to hosts.
+
 1.6.3
 ++++++
 

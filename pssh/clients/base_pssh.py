@@ -67,6 +67,7 @@ class BaseParallelSSHClient(object):
                     host_args=None, use_pty=False, shell=None,
                     encoding='utf-8',
                     *args, **kwargs):
+        greenlet_timeout = kwargs.pop('greenlet_timeout', None)
         output = {}
         if host_args:
             try:
@@ -88,7 +89,7 @@ class BaseParallelSSHClient(object):
                     for host in self.hosts]
         for cmd in cmds:
             try:
-                self.get_output(cmd, output)
+                self.get_output(cmd, output, timeout=greenlet_timeout)
             except Exception:
                 if stop_on_errors:
                     raise
@@ -122,7 +123,7 @@ class BaseParallelSSHClient(object):
     def _run_command(self, host, command, *args, **kwargs):
         raise NotImplementedError
 
-    def get_output(self, cmd, output):
+    def get_output(self, cmd, output, timeout=None):
         """Get output from command.
 
         :param cmd: Command to get output from
@@ -133,7 +134,7 @@ class BaseParallelSSHClient(object):
         :type output: dict
         :rtype: None"""
         try:
-            (channel, host, stdout, stderr, stdin) = cmd.get()
+            (channel, host, stdout, stderr, stdin) = cmd.get(timeout=timeout)
         except Exception as ex:
             host = ex.host
             self._update_host_output(

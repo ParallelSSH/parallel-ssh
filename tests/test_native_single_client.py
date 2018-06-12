@@ -9,10 +9,10 @@ from gevent import socket, sleep
 from .base_ssh2_test import SSH2TestCase
 from .embedded_server.openssh import OpenSSHServer
 from pssh.clients.native import SSHClient, logger as ssh_logger
-from pssh.tunnel import Tunnel
 from ssh2.session import Session
+from ssh2.exceptions import SocketDisconnectError
 from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
-    SessionError
+    SessionError, SFTPIOError, SFTPError, SCPError
 
 
 ssh_logger.setLevel(logging.DEBUG)
@@ -20,6 +20,28 @@ logging.basicConfig()
 
 
 class SSH2ClientTest(SSH2TestCase):
+
+    def test_context_manager(self):
+        with SSHClient(self.host, port=self.port,
+                       pkey=self.user_key,
+                       num_retries=1) as client:
+            self.assertIsInstance(client, SSHClient)
+
+    def test_sftp_fail(self):
+        sftp = self.client._make_sftp()
+        self.assertRaises(SFTPIOError, self.client._mkdir, sftp, '/blah')
+        self.assertRaises(SFTPError, self.client.sftp_put, sftp, 'a file', '/blah')
+
+    def test_scp_fail(self):
+        self.assertRaises(SCPError, self.client.scp_recv, 'fakey', 'fake')
+        try:
+            os.mkdir('adir')
+        except OSError:
+            pass
+        try:
+            self.assertRaises(ValueError, self.client.scp_send, 'adir', 'fake')
+        finally:
+            os.rmdir('adir')
 
     def test_execute(self):
         channel, host, stdout, stderr, stdin = self.client.run_command(
@@ -74,7 +96,7 @@ class SSH2ClientTest(SSH2TestCase):
                            pkey=self.user_key,
                            num_retries=1)
         client.session.disconnect()
-        self.assertRaises(SessionError, client._init)
+        self.assertRaises(SocketDisconnectError, client._init)
 
     def test_stdout_parsing(self):
         dir_list = os.listdir(os.path.expanduser('~'))
@@ -114,24 +136,4 @@ class SSH2ClientTest(SSH2TestCase):
     def test_retry_failure(self):
         self.assertRaises(ConnectionErrorException,
                           SSHClient, self.host, port=12345,
-                          num_retries=2)
-
-    ## OpenSSHServer needs to run in its own thread for this test to work
-    ##  Race conditions otherwise.
-    #
-    # def test_direct_tcpip(self):
-    #     proxy_host = '127.0.0.9'
-    #     server = OpenSSHServer(listen_ip=proxy_host, port=self.port)
-    #     server.start_server()
-    #     t = Tunnel(self.host, proxy_host, self.port,
-    #                port=self.port,
-    #                pkey=self.user_key,
-    #                num_retries=1,
-    #                timeout=5)
-    #     t.daemon = True
-    #     t.start()
-    #     while not t.tunnel_open.is_set():
-    #         sleep(.1)
-    #     client = SSHClient('127.0.0.1', port=t.listen_port,
-    #                        pkey=self.user_key,
-    #                        timeout=2)
+                          num_retries=2, _auth_thread_pool=False)

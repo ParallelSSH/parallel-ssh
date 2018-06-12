@@ -32,17 +32,19 @@ It uses non-blocking asynchronous SSH sessions and is to date the only publicly 
    quickstart
    ssh2
    advanced
-   Changelog
    api
+   Changelog
 
 In a nutshell
 **************
+
+Client will attempt to use all available keys under ``~/.ssh`` as well as any keys in an SSH agent, if one is available.
 
 .. code-block:: python
 
    from __future__ import print_function
 
-   from pssh.pssh_client import ParallelSSHClient
+   from pssh.clients import ParallelSSHClient
 
    client = ParallelSSHClient(['localhost'])
    output = client.run_command('whoami')
@@ -54,31 +56,11 @@ In a nutshell
 
       <your username here>
 
-`ssh2-python` (`libssh2`) based clients
-******************************************
-
-As of version ``1.2.0``, new single host and parallel clients are available based on the ``libssh2`` C library via its ``ssh2-python`` wrapper.
-
-They offer significantly enhanced performance and stability, at much less overhead, with a native non-blocking mode meaning *no monkey patching of the Python standard library* when using them.
-
-To use them, import from ``pssh2_client`` or ``ssh2_client`` for the parallel and single clients respectively.
-
-.. code-block:: python
-
-   from __future__ import print_function
-
-   from pssh.pssh2_client import ParallelSSHClient
-
-   client = ParallelSSHClient(['localhost'])
-   output = client.run_command('whoami')
-   for line in output['localhost'].stdout:
-       print(line)
-
-The API is mostly identical to the current clients, though some features are not yet supported. See `client feature comparison <ssh2.html>`_ section for how feature support differs between the two clients.
-
 .. note::
 
-   From version ``2.x.x`` onwards, the ``ssh2-python`` based clients will *become the default*, replacing the current ``pssh_client.ParallelSSHClient``, with the current clients renamed.
+   There is also a now deprecated paramiko based client available under ``pssh.clients.miko`` that has much the same API. It supports some features not currently supported by the native client - see `feature comparison <ssh2.html>`_.
+
+   From version ``2.x.x`` onwards, the clients under ``pssh.clients.miko`` will be an optional ``extras`` install.
 
 
 Indices and tables

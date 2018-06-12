@@ -16,13 +16,15 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import logging
+from collections import deque
 from gevent import sleep
+from gevent.lock import RLock
 
 from ..base_pssh import BaseParallelSSHClient
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from .single import SSHClient
 from ...exceptions import ProxyError, Timeout, HostArgumentException
-from ...tunnel import Tunnel
+from .tunnel import Tunnel
 
 
 logger = logging.getLogger(__name__)
@@ -31,12 +33,12 @@ logger = logging.getLogger(__name__)
 class ParallelSSHClient(BaseParallelSSHClient):
     """ssh2-python based parallel client."""
 
-    def __init__(self, hosts, user=None, password=None, port=None, pkey=None,
+    def __init__(self, hosts, user=None, password=None, port=22, pkey=None,
                  num_retries=DEFAULT_RETRIES, timeout=None, pool_size=10,
                  allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
                  proxy_host=None, proxy_port=22,
                  proxy_user=None, proxy_password=None, proxy_pkey=None,
-                 forward_ssh_agent=True):
+                 forward_ssh_agent=True, tunnel_timeout=None):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -46,7 +48,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           no password
         :type password: str
         :param port: (Optional) Port number to use for SSH connection. Defaults
-          to ``None`` which uses SSH default (22)
+          to 22.
         :type port: int
         :param pkey: Private key file path to use. Note that the public key file
           pair *must* also exist in the same location with name ``<pkey>.pub``
@@ -57,9 +59,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param retry_delay: Number of seconds to wait between retries. Defaults
           to :py:class:`pssh.constants.RETRY_DELAY`
         :type retry_delay: int
-        :param timeout: SSH session timeout setting in seconds. This controls
-          timeout setting of authenticated SSH sessions.
-        :type timeout: int
+        :param timeout: (Optional) SSH session timeout setting in seconds.
+          This controls timeout setting of socket operations used for SSH
+          sessions. Defaults to OS default - usually 60 seconds.
+        :type timeout: float
         :param pool_size: (Optional) Greenlet pool size. Controls
           concurrency, on how many hosts to execute tasks in parallel.
           Defaults to 10. Overhead in event
@@ -94,6 +97,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
           equivalent to `ssh -A` from the `ssh` command line utility.
           Defaults to True if not set.
         :type forward_ssh_agent: bool
+        :param tunnel_timeout: (Optional) Timeout setting for proxy tunnel
+          connections.
+        :type tunnel_timeout: float
         """
         BaseParallelSSHClient.__init__(
             self, hosts, user=user, password=password, port=port, pkey=pkey,
@@ -106,11 +112,16 @@ class ParallelSSHClient(BaseParallelSSHClient):
         self.proxy_user = proxy_user
         self.proxy_password = proxy_password
         self.forward_ssh_agent = forward_ssh_agent
-        self._tunnels = {}
+        self._tunnel = None
+        self._tunnel_in_q = None
+        self._tunnel_out_q = None
+        self._tunnel_lock = None
+        self._tunnel_timeout = tunnel_timeout
+        self._clients_lock = RLock()
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8', timeout=None):
+                    encoding='utf-8', timeout=None, greenlet_timeout=None):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output dictionary.
 
@@ -160,9 +171,21 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type encoding: str
         :param timeout: (Optional) Timeout in seconds for reading from stdout
           or stderr. Defaults to no timeout. Reading from stdout/stderr will
-          timeout after this many seconds if remote output is not ready.
+          raise :py:class:`pssh.exceptions.Timeout`
+          after ``timeout`` number seconds if remote output is not ready.
         :type timeout: int
-
+        :param greenlet_timeout: (Optional) Greenlet timeout setting.
+          Defaults to no timeout. If set, this function will raise
+          :py:class:`gevent.Timeout` after ``greenlet_timeout`` seconds
+          if no result is available from greenlets.
+          In some cases, such as when using proxy hosts, connection timeout
+          is controlled by proxy server and getting result from greenlets may
+          hang indefinitely if remote server is unavailable. Use this setting
+          to avoid blocking in such circumstances.
+          Note that ``gevent.Timeout`` is a special class that inherits from
+          ``BaseException`` and thus **can not be caught** by
+          ``stop_on_errors=False``.
+        :type greenlet_timeout: float
         :rtype: Dictionary with host as key and
           :py:class:`pssh.output.HostOutput` as value as per
           :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
@@ -181,11 +204,17 @@ class ParallelSSHClient(BaseParallelSSHClient):
           dict for cmd string format
         :raises: :py:class:`pssh.exceptions.ProxyError` on errors connecting
           to proxy if a proxy host has been set.
+        :raises: :py:class:`gevent.Timeout` on greenlet timeout. Gevent timeout
+          can not be caught by ``stop_on_errors=False``.
+        :raises: Exceptions from :py:mod:`ssh2.exceptions` for all other
+          specific errors such as
+          :py:class:`ssh2.exceptions.SocketDisconnectError` et al.
         """
         return BaseParallelSSHClient.run_command(
             self, command, stop_on_errors=stop_on_errors, host_args=host_args,
             user=user, shell=shell, sudo=sudo,
-            encoding=encoding, use_pty=use_pty, timeout=timeout)
+            encoding=encoding, use_pty=use_pty, timeout=timeout,
+            greenlet_timeout=greenlet_timeout)
 
     def _run_command(self, host, command, sudo=False, user=None,
                      shell=None, use_pty=False,
@@ -198,7 +227,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 use_pty=use_pty, encoding=encoding, timeout=timeout)
         except Exception as ex:
             ex.host = host
-            logger.error("Failed to run on host %s", host)
+            logger.error("Failed to run on host %s - %s", host, ex)
             raise ex
 
     def join(self, output, consume_output=False, timeout=None):
@@ -290,40 +319,64 @@ class ParallelSSHClient(BaseParallelSSHClient):
             return
         return channel.get_exit_status()
 
-    def _start_tunnel(self, host):
-        if host in self._tunnels:
-            return self._tunnels[host]
-        tunnel = Tunnel(
-            self.proxy_host, host, self.port, user=self.proxy_user,
+    def _start_tunnel_thread(self):
+        self._tunnel_lock = RLock()
+        self._tunnel_in_q = deque()
+        self._tunnel_out_q = deque()
+        self._tunnel = Tunnel(
+            self.proxy_host, self._tunnel_in_q, self._tunnel_out_q,
+            user=self.proxy_user,
             password=self.proxy_password, port=self.proxy_port,
             pkey=self.proxy_pkey, num_retries=self.num_retries,
-            timeout=self.timeout, retry_delay=self.retry_delay,
+            timeout=self._tunnel_timeout, retry_delay=self.retry_delay,
             allow_agent=self.allow_agent)
-        tunnel.daemon = True
-        tunnel.start()
-        while not tunnel.tunnel_open.is_set():
+        self._tunnel.daemon = True
+        self._tunnel.start()
+        while not self._tunnel.tunnel_open.is_set():
             logger.debug("Waiting for tunnel to become active")
             sleep(.1)
-            if not tunnel.is_alive():
+            if not self._tunnel.is_alive():
                 msg = "Proxy authentication failed. " \
                       "Exception from tunnel client: %s"
-                logger.error(msg, tunnel.exception)
-                raise ProxyError(msg, tunnel.exception)
-        self._tunnels[host] = tunnel
-        return tunnel
+                logger.error(msg, self._tunnel.exception)
+                raise ProxyError(msg, self._tunnel.exception)
 
     def _make_ssh_client(self, host):
-        if host not in self.host_clients or self.host_clients[host] is None:
-            if self.proxy_host is not None:
-                tunnel = self._start_tunnel(host)
-            _user, _port, _password, _pkey = self._get_host_config_values(host)
-            proxy_host = None if self.proxy_host is None else '127.0.0.1'
-            _port = _port if self.proxy_host is None else tunnel.listen_port
-            self.host_clients[host] = SSHClient(
-                host, user=_user, password=_password, port=_port, pkey=_pkey,
-                num_retries=self.num_retries, timeout=self.timeout,
-                allow_agent=self.allow_agent, retry_delay=self.retry_delay,
-                proxy_host=proxy_host)
+        auth_thread_pool = True
+        if self.proxy_host is not None and self._tunnel is None:
+            self._start_tunnel_thread()
+        logger.debug("Make client request for host %s, host in clients: %s",
+                     host, host in self.host_clients)
+        with self._clients_lock:
+            if host not in self.host_clients or self.host_clients[host] is None:
+                _user, _port, _password, _pkey = self._get_host_config_values(
+                    host)
+                proxy_host = None if self.proxy_host is None else '127.0.0.1'
+                if proxy_host is not None:
+                    auth_thread_pool = False
+                    _wait = 0.0
+                    max_wait = self.timeout if self.timeout is not None else 60
+                    with self._tunnel_lock:
+                        self._tunnel_in_q.append((host, _port))
+                    while True:
+                        if _wait >= max_wait:
+                            raise Timeout("Timed out waiting on tunnel to "
+                                          "open listening port")
+                        try:
+                            _port = self._tunnel_out_q.pop()
+                        except IndexError:
+                            logger.debug(
+                                "Waiting on tunnel to open listening port")
+                            sleep(.5)
+                            _wait += .5
+                        else:
+                            break
+                self.host_clients[host] = SSHClient(
+                    host, user=_user, password=_password, port=_port,
+                    pkey=_pkey, num_retries=self.num_retries,
+                    timeout=self.timeout,
+                    allow_agent=self.allow_agent, retry_delay=self.retry_delay,
+                    proxy_host=proxy_host, _auth_thread_pool=auth_thread_pool)
 
     def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel

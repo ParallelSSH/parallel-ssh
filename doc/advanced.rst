@@ -111,7 +111,7 @@ To make use of this new client, ``ParallelSSHClient`` can be imported from ``pss
 
    `Feature comparison <ssh2.html>`_ for how the client features compare.
 
-   API documentation for `parallel <pssh2_client.html>`_ and `single <ssh2_client.html>`_ native clients.
+   API documentation for `parallel <native_parallel.html>`_ and `single <native_single.html>`_ native clients.
 
 Tunneling
 **********
