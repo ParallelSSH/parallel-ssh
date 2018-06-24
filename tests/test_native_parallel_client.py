@@ -39,7 +39,7 @@ from pssh.clients.native import ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
-    ProxyError
+    ProxyError, PKeyFileError
 from pssh import logger as pssh_logger
 
 from .embedded_server.embedded_server import make_socket
@@ -833,36 +833,19 @@ class ParallelSSHClientTest(unittest.TestCase):
         try:
             raise output[host]['exception']
         except ConnectionErrorException as ex:
-            self.assertEqual(ex.args[1], host,
+            self.assertEqual(ex.host, host,
                              msg="Exception host argument is %s, should be %s" % (
-                                 ex.args[1], host,))
+                                 ex.host, host,))
             self.assertEqual(ex.args[2], port,
                              msg="Exception port argument is %s, should be %s" % (
                                  ex.args[2], port,))
         else:
             raise Exception("Expected ConnectionErrorException")
 
-    def test_authentication_exception(self):
-        """Test that we get authentication exception in output with correct arguments"""
-        hosts = [self.host]
-        client = ParallelSSHClient(hosts, port=self.port,
-                                   pkey='A REALLY FAKE KEY',
-                                   num_retries=1)
-        output = client.run_command(self.cmd, stop_on_errors=False)
-        self.assertTrue('exception' in output[self.host],
-                        msg="Got no exception for host %s - expected connection error" % (
-                            self.host,))
-        try:
-            raise output[self.host]['exception']
-        except AuthenticationException as ex:
-            self.assertEqual(ex.args[1], self.host,
-                             msg="Exception host argument is %s, should be %s" % (
-                                 ex.args[1], self.host,))
-            self.assertEqual(ex.args[2], self.port,
-                             msg="Exception port argument is %s, should be %s" % (
-                                 ex.args[2], self.port,))
-        else:
-            raise Exception("Expected AuthenticationException")
+    def test_bad_pkey_path(self):
+        self.assertRaises(PKeyFileError, ParallelSSHClient, [self.host], port=self.port,
+                          pkey='A REALLY FAKE KEY',
+                          num_retries=1)
 
     def test_multiple_single_quotes_in_cmd(self):
         """Test that we can run a command with multiple single quotes"""
@@ -937,10 +920,10 @@ class ParallelSSHClientTest(unittest.TestCase):
             self.assertTrue(host in output)
         try:
             raise output[hosts[1][0]]['exception']
-        except AuthenticationException as ex:
-            pass
+        except PKeyFileError as ex:
+            self.assertEqual(ex.host, host)
         else:
-            raise AssertionError("Expected AutnenticationException on host %s",
+            raise AssertionError("Expected ValueError on host %s",
                                  hosts[0][0])
         self.assertTrue(output[hosts[1][0]].exit_code is None,
                         msg="Execution failed on host %s" % (hosts[1][0],))
@@ -1396,3 +1379,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         finally:
             shutil.rmtree(remote_test_path_abs)
             shutil.rmtree(local_copied_dir)
+
+    def test_bad_hosts_value(self):
+        self.assertRaises(TypeError, ParallelSSHClient, 'a host')
+        self.assertRaises(TypeError, ParallelSSHClient, b'a host')

@@ -47,6 +47,10 @@ class BaseParallelSSHClient(object):
                  num_retries=DEFAULT_RETRIES,
                  timeout=120, pool_size=10,
                  host_config=None, retry_delay=RETRY_DELAY):
+        if isinstance(hosts, str) or isinstance(hosts, bytes):
+            raise TypeError(
+                "Hosts must be list or other iterable, not string. "
+                "For example: ['localhost'] not 'localhost'.")
         self.allow_agent = allow_agent
         self.pool_size = pool_size
         self.pool = gevent.pool.Pool(size=self.pool_size)

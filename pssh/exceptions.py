@@ -69,3 +69,7 @@ class Timeout(Exception):
 
 class SCPError(Exception):
     """Raised on errors copying file via SCP"""
+
+
+class PKeyFileError(Exception):
+    """Raised on errors finding private key file"""

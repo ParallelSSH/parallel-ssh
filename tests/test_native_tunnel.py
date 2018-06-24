@@ -36,7 +36,7 @@ from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
     ProxyError
-from ssh2.exceptions import ChannelFailure
+from ssh2.exceptions import ChannelFailure, SocketSendError
 
 from .embedded_server.openssh import ThreadedOpenSSHServer, OpenSSHServer
 from .base_ssh2_test import PKEY_FILENAME, PUB_FILE
@@ -69,7 +69,12 @@ class TunnelTest(unittest.TestCase):
         t = Tunnel(self.proxy_host, deque(), deque(), port=self.port,
                    pkey=self.user_key, num_retries=2)
         t._init_tunnel_client()
-        self.assertRaises(ChannelFailure, t._open_channel_retries, fw_host, fw_port, local_port)
+        try:
+            t._open_channel_retries(fw_host, fw_port, local_port)
+        except (ChannelFailure, SocketSendError) as ex:
+            pass
+        else:
+            raise AssertionError(ex)
 
     def _connect_client(self, _socket):
         while True:

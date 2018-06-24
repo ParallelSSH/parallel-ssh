@@ -12,7 +12,7 @@ from pssh.clients.native import SSHClient, logger as ssh_logger
 from ssh2.session import Session
 from ssh2.exceptions import SocketDisconnectError
 from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
-    SessionError, SFTPIOError, SFTPError, SCPError
+    SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError
 
 
 ssh_logger.setLevel(logging.DEBUG)
@@ -90,6 +90,14 @@ class SSH2ClientTest(SSH2TestCase):
         client.session = Session()
         client.session.handshake(client.sock)
         self.assertRaises(AuthenticationException, client.auth)
+
+    def test_failed_auth(self):
+        self.assertRaises(PKeyFileError, SSHClient, self.host, port=self.port,
+                          pkey='client_pkey',
+                          num_retries=1)
+        self.assertRaises(PKeyFileError, SSHClient, self.host, port=self.port,
+                          pkey='~/fake_key',
+                          num_retries=1)
 
     def test_handshake_fail(self):
         client = SSHClient(self.host, port=self.port,

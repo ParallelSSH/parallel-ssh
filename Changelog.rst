@@ -1,6 +1,17 @@
 Change Log
 ============
 
+1.8.0
+++++++
+
+Changes
+--------
+
+* Native client no longer requires public key file for authentication.
+* Native clients raise ``pssh.exceptions.PKeyFileError`` on object initialisation if provided private key file paths cannot be found.
+* Native clients expand user directory (``~/<path>``) on provided private key paths.
+* Parallel clients raise ``TypeError`` when provided ``hosts`` is a string instead of list or other iterable.
+
 1.7.0
 ++++++
 

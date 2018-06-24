@@ -41,6 +41,7 @@ from ...exceptions import UnknownHostException, AuthenticationException, \
      SCPError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...native._ssh2 import wait_select, _read_output  # , sftp_get, sftp_put
+from .common import _validate_pkey_path
 
 
 Hub.NOT_ERROR = (Exception,)
@@ -75,9 +76,9 @@ class SSHClient(object):
         :type password: str
         :param port: SSH port to connect to. Defaults to SSH default (22)
         :type port: int
-        :param pkey: Private key file path to use for authentication.
-          Note that the public key file
-          pair *must* also exist in the same location with name ``<pkey>.pub``
+        :param pkey: Private key file path to use for authentication. Path must
+          be either absolute path or relative to user home directory
+          like ``~/<path>``.
         :type pkey: str
         :param num_retries: (Optional) Number of connection and authentication
           attempts before the client gives up. Defaults to 3.
@@ -98,6 +99,9 @@ class SSHClient(object):
         :param proxy_host: Connection to host is via provided proxy host
           and client should use self.proxy_host for connection attempts.
         :type proxy_host: str
+
+        :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
+          provided private key.
         """
         self.host = host
         self.user = user if user else None
@@ -107,7 +111,6 @@ class SSHClient(object):
             raise ValueError("Must provide user parameter on Windows")
         self.password = password
         self.port = port if port else 22
-        self.pkey = pkey
         self.num_retries = num_retries
         self.sock = None
         self.timeout = timeout * 1000 if timeout else None
@@ -117,6 +120,7 @@ class SSHClient(object):
         self._forward_requested = False
         self.session = None
         self._host = proxy_host if proxy_host else host
+        self.pkey = _validate_pkey_path(pkey, self.host)
         self._connect(self._host, self.port)
         if _auth_thread_pool:
             THREAD_POOL.apply(self._init)
@@ -130,7 +134,7 @@ class SSHClient(object):
                 self._eagain(self.session.disconnect)
             except Exception:
                 pass
-        if not self.sock.closed:
+        if self.sock is not None and not self.sock.closed:
             self.sock.close()
 
     def __del__(self):
@@ -202,29 +206,24 @@ class SSHClient(object):
                 self.num_retries,)
 
     def _pkey_auth(self):
-        pub_file = "%s.pub" % self.pkey
-        logger.debug("Attempting authentication with public key %s for user %s",
-                     pub_file, self.user)
         self.session.userauth_publickey_fromfile(
             self.user,
-            pub_file,
             self.pkey,
-            self.password if self.password is not None else '')
+            passphrase=self.password if self.password is not None else '')
 
     def _identity_auth(self):
+        passphrase = self.password if self.password is not None else ''
         for identity_file in self.IDENTITIES:
             if not os.path.isfile(identity_file):
                 continue
-            pub_file = "%s.pub" % (identity_file)
             logger.debug(
                 "Trying to authenticate with identity file %s",
                 identity_file)
             try:
                 self.session.userauth_publickey_fromfile(
                     self.user,
-                    pub_file,
                     identity_file,
-                    self.password if self.password is not None else '')
+                    passphrase=passphrase)
             except Exception:
                 logger.debug("Authentication with identity file %s failed, "
                              "continuing with other identities",
@@ -239,7 +238,7 @@ class SSHClient(object):
     def auth(self):
         if self.pkey is not None:
             logger.debug(
-                "Proceeding with public key file authentication")
+                "Proceeding with private key file authentication")
             return self._pkey_auth()
         if self.allow_agent:
             try:
@@ -256,11 +255,13 @@ class SSHClient(object):
         except AuthenticationException:
             if self.password is None:
                 raise
-            logger.debug("Public key auth failed, trying password")
+            logger.debug("Private key auth failed, trying password")
             self._password_auth()
 
     def _password_auth(self):
-        if self.session.userauth_password(self.user, self.password) != 0:
+        try:
+            self.session.userauth_password(self.user, self.password)
+        except Exception:
             raise AuthenticationException("Password authentication failed")
 
     def open_session(self):

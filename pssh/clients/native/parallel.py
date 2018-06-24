@@ -25,6 +25,7 @@ from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from .single import SSHClient
 from ...exceptions import ProxyError, Timeout, HostArgumentException
 from .tunnel import Tunnel
+from .common import _validate_pkey_path
 
 
 logger = logging.getLogger(__name__)
@@ -50,8 +51,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param port: (Optional) Port number to use for SSH connection. Defaults
           to 22.
         :type port: int
-        :param pkey: Private key file path to use. Note that the public key file
-          pair *must* also exist in the same location with name ``<pkey>.pub``
+        :param pkey: Private key file path to use. Path must be either absolute
+          path or relative to user home directory like ``~/<path>``.
         :type pkey: str
         :param num_retries: (Optional) Number of connection and authentication
           attempts before the client gives up. Defaults to 3.
@@ -90,9 +91,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param proxy_pkey: (Optional) Private key file to be used for
           authentication with ``proxy_host``. Defaults to available keys from
           SSHAgent and user's SSH identities.
-        :type proxy_pkey: Private key file path to use. Note that the public
-          key file pair *must* also exist in the same location with name
-          ``<pkey>.pub``.
+        :type proxy_pkey: Private key file path to use.
         :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
           equivalent to `ssh -A` from the `ssh` command line utility.
           Defaults to True if not set.
@@ -100,15 +99,19 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param tunnel_timeout: (Optional) Timeout setting for proxy tunnel
           connections.
         :type tunnel_timeout: float
+
+        :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
+          provided private key.
         """
         BaseParallelSSHClient.__init__(
             self, hosts, user=user, password=password, port=port, pkey=pkey,
             allow_agent=allow_agent, num_retries=num_retries,
             timeout=timeout, pool_size=pool_size,
             host_config=host_config, retry_delay=retry_delay)
+        self.pkey = _validate_pkey_path(pkey)
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
-        self.proxy_pkey = proxy_pkey
+        self.proxy_pkey = _validate_pkey_path(proxy_pkey)
         self.proxy_user = proxy_user
         self.proxy_password = proxy_password
         self.forward_ssh_agent = forward_ssh_agent
