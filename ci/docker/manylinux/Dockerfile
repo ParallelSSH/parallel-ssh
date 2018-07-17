@@ -1,7 +1,7 @@
 FROM quay.io/pypa/manylinux1_x86_64
 
 ENV CMAKE cmake-2.8.11.1-5.4.x86_64
-ENV OPENSSL openssl-1.0.2l
+ENV OPENSSL openssl-1.0.2o
 ENV LIBSSH2_VER agent_fwd
 
 RUN yum install zlib-devel -y

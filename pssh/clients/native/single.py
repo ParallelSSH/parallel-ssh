@@ -398,6 +398,8 @@ class SSHClient(object):
         :param encoding: Encoding to use for output. Must be valid
           `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
         :type encoding: str
+
+        :rtype: (channel, host, stdout, stderr, stdin) tuple.
         """
         # Fast path for no command substitution needed
         if not sudo and not user and not shell:

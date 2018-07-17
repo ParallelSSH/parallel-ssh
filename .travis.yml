@@ -1,5 +1,8 @@
 language: python
-cache: pip
+cache:
+  - pip
+  - directories:
+      - "$HOME/.pyenv"
 sudo: required
 notifications:
   email: false
@@ -41,84 +44,29 @@ after_success:
 jobs:
   include:
 
-    - stage: build packages
-      os: osx
-      osx_image: xcode6.4
-      before_install:
-        - brew update
-      install:
-        - brew upgrade openssl
-        - sudo ci/install-ssh2.sh
-        - ls -lh
-        - python --version
-        - wget --no-check-certificate https://bootstrap.pypa.io/get-pip.py
-        - sudo python get-pip.py
-        - sudo -H pip install -U pip
-        - sudo -H pip install -U delocate twine wheel pip setuptools
-        - cp /usr/local/lib/libssh2* .
-        - pip install --user -r requirements.txt
-        - pip wheel --no-deps .
-      script:
-        - delocate-listdeps --all *.whl
-        - delocate-wheel -v *.whl
-        - delocate-listdeps --all *.whl
-        - ls -l *.whl
-        - rm -f *.dylib
-        - pip install --user -v *.whl
-        - pwd; mkdir temp; cd temp; pwd
-        - python -c "import pssh.clients"
-        - cd ..; pwd
-      after_success:
-        - if [[ ! -z "$TRAVIS_TAG" ]]; then
-              twine upload -u $PYPI_U -p $PYPI_P *.whl;
-          fi
-      language: generic
-      python: skip
-
-    - stage: build packages
-      os: osx
-      osx_image: xcode8.3
-      before_install:
-        - brew update
-      install:
-        - brew upgrade openssl
-        - sudo ci/install-ssh2.sh
-        - sudo -H pip2 install -U delocate twine wheel pip setuptools
-        - cp /usr/local/lib/libssh2* .
-        - ls -lh
-        - pip2 install --user -r requirements.txt
-        - pip2 wheel --no-deps .
-      script:
-        - delocate-listdeps --all *.whl
-        - delocate-wheel -v *.whl
-        - delocate-listdeps --all *.whl
-        - ls -l *.whl
-        - rm -f *.dylib
-        - pip2 install --user -v *.whl
-        - pwd; mkdir temp; cd temp; pwd
-        - python -c "import pssh.clients"
-        - cd ..; pwd
-      after_success:
-        - if [[ ! -z "$TRAVIS_TAG" ]]; then
-              twine upload -u $PYPI_U -p $PYPI_P *.whl;
-          fi
-      language: generic
-      python: skip
-
-    - stage: build packages
+    - &osx-wheels
+      stage: build packages
       os: osx
       osx_image: xcode8
+      env:
+        - PYENV: 3.6.4
       before_install:
         - brew update
-      install:
-        - brew upgrade openssl
+        - brew outdated openssl || brew upgrade openssl
+        - brew link --overwrite python@2 || brew install python@2 || brew link --overwrite python@2
+        - which python2
+        - python2 -c "from __future__ import print_function; import ssl; from platform import python_version; print(ssl.OPENSSL_VERSION); print(python_version())"
+        - sudo -H pip2 install twine
+        - which twine
         - sudo ci/install-ssh2.sh
-        - sudo rm -f libssh2.1.dylib
-        - sudo pip2 install -U delocate twine wheel pip setuptools
         - cp /usr/local/lib/libssh2* .
+        - mkdir -p wheels
+      install:
+        - sudo -H pip2 install -U delocate wheel pip setuptools
+        - ls -lh
         - pip2 install --user -r requirements.txt
-        - pip2 wheel --no-deps .
       script:
+        - pip2 wheel --no-deps .
         - delocate-listdeps --all *.whl
         - delocate-wheel -v *.whl
         - delocate-listdeps --all *.whl
@@ -128,42 +76,55 @@ jobs:
         - pwd; mkdir temp; cd temp; pwd
         - python -c "import pssh.clients"
         - cd ..; pwd
+        - mv -f *.whl wheels/
+        - ./ci/travis/pyenv-wheel.sh
       after_success:
         - if [[ ! -z "$TRAVIS_TAG" ]]; then
-              twine upload -u $PYPI_U -p $PYPI_P *.whl;
+              twine upload --skip-existing -u $PYPI_U -p $PYPI_P wheels/*.whl;
           fi
       language: generic
       python: skip
 
-    - stage: build packages
-      os: osx
-      osx_image: xcode9.3
-      before_install:
-        - brew update
-      install:
-        - brew upgrade openssl
-        - sudo ci/install-ssh2.sh
-        - sudo -H pip2 install -U delocate twine wheel pip setuptools
-        - cp /usr/local/lib/libssh2* .
-        - ls -lh
-        - pip2 install --user -r requirements.txt
-        - pip2 wheel --no-deps .
+    - <<: *osx-wheels
+      osx_image: xcode6.4
+
+    - <<: *osx-wheels
+      osx_image: xcode6.4
+      env:
+        - PYENV: 3.7.0
+      install: skip
       script:
-        - delocate-listdeps --all *.whl
-        - delocate-wheel -v *.whl
-        - delocate-listdeps --all *.whl
-        - ls -l *.whl
-        - rm -f *.dylib
-        - pip2 install --user -v *.whl
-        - pwd; mkdir temp; cd temp; pwd
-        - python -c "import pssh.clients"
-        - cd ..; pwd
-      after_success:
-        - if [[ ! -z "$TRAVIS_TAG" ]]; then
-              twine upload -u $PYPI_U -p $PYPI_P *.whl;
-          fi
-      language: generic
-      python: skip
+        - ./ci/travis/pyenv-wheel.sh
+
+    - <<: *osx-wheels
+      osx_image: xcode8.3
+
+    - <<: *osx-wheels
+      osx_image: xcode9.3
+
+    - <<: *osx-wheels
+      osx_image: xcode8
+      env:
+        - PYENV: 3.7.0
+      install: skip
+      script:
+        - ./ci/travis/pyenv-wheel.sh
+
+    - <<: *osx-wheels
+      osx_image: xcode8.3
+      env:
+        - PYENV: 3.7.0
+      install: skip
+      script:
+        - ./ci/travis/pyenv-wheel.sh
+
+    - <<: *osx-wheels
+      osx_image: xcode9.3
+      env:
+        - PYENV: 3.7.0
+      install: skip
+      script:
+        - ./ci/travis/pyenv-wheel.sh
 
     - os: linux
       stage: build packages
@@ -190,6 +151,7 @@ jobs:
     - stage: build packages
       env:
         - WHEELS=1
+        - OPENSSL=openssl-1.0.2o
       os: linux
       python: 3.6
       before_install: skip
@@ -200,7 +162,7 @@ jobs:
           ./ci/travis/build-manylinux.sh;
       after_success:
         - if [[ ! -z "$TRAVIS_TAG" ]]; then
-            twine upload -u $PYPI_U -p $PYPI_P wheelhouse/*.whl;
+            twine upload --skip-existing -u $PYPI_U -p $PYPI_P wheelhouse/*.whl;
           fi
       deploy:
         - provider: pypi
