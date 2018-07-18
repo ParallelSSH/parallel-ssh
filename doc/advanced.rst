@@ -180,19 +180,34 @@ The native clients have timeout functionality on reading output and ``client.joi
 
 The client will raise a ``Timeout`` exception if remote commands have not finished within five seconds in the above examples.
 
+Reading Partial Output of Commands That Do Not Terminate
+----------------------------------------------------------
+
 In some cases, such as when the remote command never terminates unless interrupted, it is necessary to use PTY and to close the channel to force the process to be terminated before a ``join`` sans timeout can complete. For example:
 
 .. code-block:: python
 
-   output = client.run_command('tail -f /var/log/messages', use_pty=True)
-   client.join(output, timeout=1)
+   output = client.run_command('tail -f /var/log/messages', use_pty=True, timeout=1)
+
+   # Read as many lines of output as server has sent before the timeout
+   stdout = []
+   for host, host_out in output.items():
+       for host, host_out in output.items():
+           try:
+               for line in host_out.stdout:
+                   stdout.append(line)
+           except Timeout:
+               pass
+
    # Closing channel which has PTY has the effect of terminating
    # any running processes started on that channel.
-   for host, host_out in output:
+   for host, host_out in output.items():
        client.host_clients[host].close_channel(host_out.channel)
+   # Join is not strictly needed here as channel has already been closed and
+   # command has finished, but is safe to use regardless.
    client.join(output)
 
-Without a PTY, the ``join`` will complete but the remote process will be left running as per SSH protocol specifications.
+Without a PTY, a ``join`` call with a timeout will complete with timeout exception raised but the remote process will be left running as per SSH protocol specifications.
 
 Furthermore, once reading output has timed out, it is necessary to restart the output generators as by Python design they only iterate once. This can be done as follows:
 
@@ -205,7 +220,7 @@ Furthermore, once reading output has timed out, it is necessary to restart the o
        except Timeout:
            client.reset_output_generators(host_out)
 
-Generator reset shown above is also performed automatically by calls to ``join`` and does not need to be done manually ``join`` is used after output reading.
+Generator reset shown above is also performed automatically by calls to ``join`` and does not need to be done manually when ``join`` is used after output reading.
 
 .. note::
 

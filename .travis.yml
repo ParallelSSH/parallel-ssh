@@ -133,7 +133,6 @@ jobs:
       python: 3.6
       before_install: skip
       install: skip
-      after_success: skip
       script:
         - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
         - ./ci/docker/build-packages.sh
