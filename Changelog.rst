@@ -1,6 +1,19 @@
 Change Log
 ============
 
+1.8.1
+++++++
+
+Fixes
+------
+
+* Native client socket timeout setting would be longer than expected - #133
+
+Packaging
+---------
+
+* Added Windows 3.7 wheels
+
 1.8.0
 ++++++
 

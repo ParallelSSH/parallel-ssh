@@ -4,7 +4,7 @@ import logging
 import time
 import subprocess
 
-from gevent import socket, sleep
+from gevent import socket, sleep, spawn
 
 from .base_ssh2_test import SSH2TestCase
 from .embedded_server.openssh import OpenSSHServer
@@ -12,7 +12,7 @@ from pssh.clients.native import SSHClient, logger as ssh_logger
 from ssh2.session import Session
 from ssh2.exceptions import SocketDisconnectError
 from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
-    SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError
+    SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout
 
 
 ssh_logger.setLevel(logging.DEBUG)
@@ -145,3 +145,10 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertRaises(ConnectionErrorException,
                           SSHClient, self.host, port=12345,
                           num_retries=2, _auth_thread_pool=False)
+
+    def test_connection_timeout(self):
+        cmd = spawn(SSHClient, 'fakehost.com', port=12345,
+                    num_retries=1, timeout=1, _auth_thread_pool=False)
+        # Should fail within greenlet timeout, otherwise greenlet will
+        # raise timeout which will fail the test
+        self.assertRaises(ConnectionErrorException, cmd.get, timeout=1.1)

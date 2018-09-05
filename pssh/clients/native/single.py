@@ -113,7 +113,7 @@ class SSHClient(object):
         self.port = port if port else 22
         self.num_retries = num_retries
         self.sock = None
-        self.timeout = timeout * 1000 if timeout else None
+        self.timeout = timeout
         self.retry_delay = retry_delay
         self.allow_agent = allow_agent
         self.forward_ssh_agent = forward_ssh_agent
@@ -158,7 +158,8 @@ class SSHClient(object):
     def _init(self, retries=1):
         self.session = Session()
         if self.timeout:
-            self.session.set_timeout(self.timeout)
+            # libssh2 timeout is in ms
+            self.session.set_timeout(self.timeout * 1000)
         try:
             self.session.handshake(self.sock)
         except Exception as ex:
@@ -180,7 +181,8 @@ class SSHClient(object):
 
     def _connect(self, host, port, retries=1):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.settimeout(self.timeout)
+        if self.timeout:
+            self.sock.settimeout(self.timeout)
         logger.debug("Connecting to %s:%s", host, port)
         try:
             self.sock.connect((host, port))

@@ -59,6 +59,18 @@ environment:
       MSVC: "Visual Studio 14 Win64"
       ARCH: x64_86
 
+    - PYTHON: "C:\\Python37"
+      PYTHON_VERSION: "3.7"
+      PYTHON_ARCH: "32"
+      MSVC: "Visual Studio 14"
+      ARCH: i386
+
+    - PYTHON: "C:\\Python37-x64"
+      PYTHON_VERSION: "3.7"
+      PYTHON_ARCH: "64"
+      MSVC: "Visual Studio 14 Win64"
+      ARCH: x64_86
+
 install:
   # If there is a newer build queued for the same PR, cancel this one.
   # The AppVeyor 'rollout builds' option is supposed to serve the same

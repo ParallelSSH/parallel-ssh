@@ -34,7 +34,7 @@ import random
 import time
 
 
-from gevent import joinall
+from gevent import joinall, spawn
 from pssh.clients.native import ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
@@ -276,19 +276,29 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertIsInstance(output[self.host].exception,
                               Timeout)
 
-#     def test_pssh_client_run_command_password(self):
-#         """Test password authentication. Embedded server accepts any password
-#         even empty string"""
-#         client = ParallelSSHClient([self.host], port=self.listen_port,
-#                                    password='')
-#         output = client.run_command(self.fake_cmd)
-#         stdout = list(output[self.host]['stdout'])
-#         self.assertTrue(self.host in output,
-#                         msg="No output for host")
-#         self.assertTrue(output[self.host]['exit_code'] == 0,
-#                         msg="Expected exit code 0, got %s" % (
-#                             output[self.host]['exit_code'],))
-#         self.assertEqual(stdout, [self.fake_resp])
+    def test_connection_timeout(self):
+        client_timeout = .01
+        host = 'fakehost.com'
+        client = ParallelSSHClient([host], port=self.port,
+                                   pkey=self.user_key,
+                                   timeout=client_timeout,
+                                   num_retries=1)
+        cmd = spawn(client.run_command, 'sleep 1', stop_on_errors=False)
+        output = cmd.get(timeout=client_timeout * 200)
+        self.assertIsInstance(output[host].exception,
+                              ConnectionErrorException)
+
+    def test_zero_timeout(self):
+        host = '127.0.0.2'
+        server = OpenSSHServer(listen_ip=host, port=self.port)
+        server.start_server()
+        client = ParallelSSHClient([self.host, host],
+                                   port=self.port,
+                                   pkey=self.user_key,
+                                   timeout=0)
+        cmd = spawn(client.run_command, 'sleep 1', stop_on_errors=False)
+        output = cmd.get(timeout=3)
+        self.assertTrue(output[self.host].exception is None)
 
     def test_pssh_client_long_running_command_exit_codes(self):
         expected_lines = 2
