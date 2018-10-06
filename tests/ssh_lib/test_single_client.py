@@ -44,17 +44,12 @@ class SSHClientTest(SSHTestCase):
                        num_retries=1) as client:
             self.assertIsInstance(client, SSHClient)
 
-    # def test_auth(self):
-    #     client = SSHClient(self.host, port=self.port,
-    #                        pkey=PKEY_FILENAME,
-    #                        num_retries=1)
-
-    # def test_execute(self):
-    #     channel, host, stdout, stderr, stdin = self.client.run_command(
-    #         self.cmd)
-    #     output = list(stdout)
-    #     stderr = list(stderr)
-    #     expected = [self.resp]
-    #     exit_code = channel.get_exit_status()
-    #     self.assertEqual(exit_code, 0)
-    #     self.assertEqual(expected, output)
+    def test_execute(self):
+        channel, host, stdout, stderr, stdin = self.client.run_command(
+            self.cmd)
+        output = list(stdout)
+        stderr = list(stderr)
+        expected = [self.resp]
+        # exit_code = channel.get_exit_status()
+        # self.assertEqual(exit_code, 0)
+        self.assertEqual(expected, output)

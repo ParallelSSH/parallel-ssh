@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 THREAD_POOL = get_hub().threadpool
 
 
-class SSHClient(object):
+class BaseSSHClient(object):
 
     IDENTITIES = [
         os.path.expanduser('~/.ssh/id_rsa'),

@@ -27,6 +27,7 @@ from socket import gaierror as sock_gaierror, error as sock_error
 
 from gevent import sleep, socket, get_hub
 from gevent.hub import Hub
+from gevent.select import select
 from ssh import options
 from ssh.session import Session, SSH_CLOSED, SSH_READ_PENDING, \
     SSH_WRITE_PENDING, SSH_CLOSED_ERROR
@@ -34,7 +35,7 @@ from ssh.channel import Channel
 from ssh.key import SSHKey, import_pubkey_file, import_privkey_file
 from ssh.exceptions import KeyImportError
 
-from ..base_ssh_client import SSHClient
+from ..base_ssh_client import BaseSSHClient
 from ...exceptions import UnknownHostException, AuthenticationException, \
      ConnectionErrorException, SessionError, SFTPError, SFTPIOError, Timeout, \
      SCPError
@@ -47,7 +48,7 @@ logger = logging.getLogger(__name__)
 THREAD_POOL = get_hub().threadpool
 
 
-class SSHClient(SSHClient):
+class SSHClient(BaseSSHClient):
 
     def __init__(self, host,
                  user=None, password=None, port=None,
@@ -158,6 +159,54 @@ class SSHClient(SSHClient):
     def open_session(self):
         channel = self.session.channel_new()
         while not channel:
-            self.wait_select(self.session)
+            self.wait_select()
             channel = self.session.channel_new()
         return channel
+
+    def execute(self, cmd, use_pty=False, channel=None):
+        channel = self.open_session() if not channel else channel
+        if use_pty:
+            try:
+                rc = channel.request_pty()
+                if not rc:
+                    raise Exception("PTY request error - %s", rc)
+            except Exception:
+                raise
+        self.wait_select()
+        try:
+            rc = channel.request_exec(cmd)
+            # import ipdb; ipdb.set_trace()
+            if rc < 0:
+                raise Exception(rc)
+        except Exception:
+            raise
+
+    def read_stderr(self, channel, timeout=None):
+        self.wait_select()
+        size, data = channel.read_nonblocking(is_stderr=True)
+        while data:
+            yield data
+            self.wait_select()
+            size, data = channel.read_nonblocking(is_stderr=True)
+
+    def read_output(self, channel, timeout=None):
+        self.wait_select()
+        size, data = channel.read_nonblocking()
+        while size > 0:
+            yield data
+            self.wait_select()
+            size, data = channel.read_nonblocking()
+
+    def _eagain(self, func, *args, **kwargs):
+        self.wait_select()
+        return func(*args, **kwargs)
+
+    def wait_select(self, timeout=None):
+        directions = self.session.get_poll_flags()
+        if directions == 0:
+            return 0
+        readfds = (self.sock,) \
+            if (directions & SSH_READ_PENDING) else ()
+        writefds = (self.sock,) \
+            if (directions & SSH_WRITE_PENDING) else ()
+        select(readfds, writefds, (), timeout=timeout)
