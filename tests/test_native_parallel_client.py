@@ -1393,3 +1393,11 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_bad_hosts_value(self):
         self.assertRaises(TypeError, ParallelSSHClient, 'a host')
         self.assertRaises(TypeError, ParallelSSHClient, b'a host')
+
+    def test_disable_agent_forward(self):
+        client = ParallelSSHClient(
+            [self.host], port=self.port, pkey=self.user_key,
+            forward_ssh_agent=False,
+            num_retries=1)
+        client.join(client.run_command(self.cmd))
+        self.assertFalse(client.host_clients[self.host].forward_ssh_agent)

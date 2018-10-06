@@ -1,6 +1,14 @@
 Change Log
 ============
 
+1.8.2
+++++++
+
+Fixes
+------
+
+* Native parallel client ``forward_ssh_agent`` flag would not be applied correctly.
+
 1.8.1
 ++++++
 

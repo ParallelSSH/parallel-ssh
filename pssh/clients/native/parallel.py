@@ -379,7 +379,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     pkey=_pkey, num_retries=self.num_retries,
                     timeout=self.timeout,
                     allow_agent=self.allow_agent, retry_delay=self.retry_delay,
-                    proxy_host=proxy_host, _auth_thread_pool=auth_thread_pool)
+                    proxy_host=proxy_host, _auth_thread_pool=auth_thread_pool,
+                    forward_ssh_agent=self.forward_ssh_agent)
 
     def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel

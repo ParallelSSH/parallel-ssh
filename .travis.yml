@@ -52,7 +52,7 @@ jobs:
         - PYENV: 3.6.4
       before_install:
         - brew update
-        - brew outdated openssl || brew upgrade openssl
+        - brew outdated openssl || brew upgrade openssl || echo "y"
         - brew link --overwrite python@2 || brew install python@2 || brew link --overwrite python@2
         - which python2
         - python2 -c "from __future__ import print_function; import ssl; from platform import python_version; print(ssl.OPENSSL_VERSION); print(python_version())"
