@@ -155,4 +155,4 @@ class SSH2ClientTest(SSH2TestCase):
                     num_retries=1, timeout=1, _auth_thread_pool=False)
         # Should fail within greenlet timeout, otherwise greenlet will
         # raise timeout which will fail the test
-        self.assertRaises(ConnectionErrorException, cmd.get, timeout=1.1)
+        self.assertRaises(ConnectionErrorException, cmd.get, timeout=2)

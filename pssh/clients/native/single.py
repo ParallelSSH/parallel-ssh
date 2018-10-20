@@ -26,7 +26,7 @@ else:
 from socket import gaierror as sock_gaierror, error as sock_error
 from warnings import warn
 
-from gevent import sleep, socket, get_hub
+from gevent import sleep, socket, get_hub, spawn
 from gevent.hub import Hub
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
@@ -68,7 +68,7 @@ class SSHClient(object):
                  allow_agent=True, timeout=None,
                  forward_ssh_agent=False,
                  proxy_host=None,
-                 _auth_thread_pool=True):
+                 _auth_thread_pool=True, keepalive_seconds=60):
         """:param host: Host name or IP to connect to.
         :type host: str
         :param user: User to connect as. Defaults to logged in user.
@@ -100,6 +100,8 @@ class SSHClient(object):
         :param proxy_host: Connection to host is via provided proxy host
           and client should use self.proxy_host for connection attempts.
         :type proxy_host: str
+        :param keepalive_seconds: Interval of keep alive messages being sent to
+          server. Set to ``0`` or ``False`` to disable.
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
@@ -123,6 +125,8 @@ class SSHClient(object):
         self._host = proxy_host if proxy_host else host
         self.pkey = _validate_pkey_path(pkey, self.host)
         self._connect(self._host, self.port)
+        self.keepalive_seconds = keepalive_seconds
+        self._keepalive_greenlet = None
         if _auth_thread_pool:
             THREAD_POOL.apply(self._init)
         else:
@@ -146,6 +150,18 @@ class SSHClient(object):
 
     def __exit__(self, *args):
         self.disconnect()
+
+    def spawn_send_keepalive(self):
+        """Spawns a new greenlet that sends keep alive messages every
+        self.keepalive_seconds"""
+        return spawn(self._send_keepalive)
+
+    def _send_keepalive(self):
+        while True:
+            sleep(self._eagain(self.session.keepalive_send))
+
+    def configure_keepalive(self):
+        self.session.keepalive_config(False, self.keepalive_seconds)
 
     def _connect_init_retry(self, retries):
         retries += 1
@@ -179,6 +195,9 @@ class SSHClient(object):
             msg = "Authentication error while connecting to %s:%s - %s"
             raise AuthenticationException(msg, self.host, self.port, ex)
         self.session.set_blocking(0)
+        if self.keepalive_seconds:
+            self.configure_keepalive()
+            self._keepalive_greenlet = self.spawn_send_keepalive()
 
     def _connect(self, host, port, retries=1):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

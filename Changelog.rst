@@ -9,6 +9,7 @@ Changes
 
 * Removed libssh2 native library dependency in favour of bundled ssh2-python libssh2 library.
 * Changed native client forward agent default behaviour to off due to incompatibility with certain SSH server implementations.
+* Added keep-alive functionality to native client - defaults to ``60`` seconds. ``ParallelSSHClient.keepalive_seconds`` to configure interval, ``0`` to disable.
 
 
 1.8.2

@@ -1401,3 +1401,11 @@ class ParallelSSHClientTest(unittest.TestCase):
             num_retries=1)
         client.join(client.run_command(self.cmd))
         self.assertFalse(client.host_clients[self.host].forward_ssh_agent)
+
+    def test_keepalive_off(self):
+        client = ParallelSSHClient(
+            [self.host], port=self.port, pkey=self.user_key,
+            keepalive_seconds=0,
+            num_retries=1)
+        client.join(client.run_command(self.cmd))
+        self.assertFalse(client.host_clients[self.host].keepalive_seconds)

@@ -39,7 +39,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
                  allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
                  proxy_host=None, proxy_port=22,
                  proxy_user=None, proxy_password=None, proxy_pkey=None,
-                 forward_ssh_agent=False, tunnel_timeout=None):
+                 forward_ssh_agent=False, tunnel_timeout=None,
+                 keepalive_seconds=60):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -122,6 +123,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         self._tunnel_lock = None
         self._tunnel_timeout = tunnel_timeout
         self._clients_lock = RLock()
+        self.keepalive_seconds = keepalive_seconds
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
@@ -381,7 +383,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     timeout=self.timeout,
                     allow_agent=self.allow_agent, retry_delay=self.retry_delay,
                     proxy_host=proxy_host, _auth_thread_pool=auth_thread_pool,
-                    forward_ssh_agent=self.forward_ssh_agent)
+                    forward_ssh_agent=self.forward_ssh_agent,
+                    keepalive_seconds=self.keepalive_seconds)
 
     def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel
