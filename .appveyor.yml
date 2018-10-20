@@ -5,7 +5,6 @@ environment:
     # See: http://stackoverflow.com/a/13751649/163740
     CMD_IN_ENV: "cmd /E:ON /V:ON /C %APPVEYOR_BUILD_FOLDER%\\ci\\appveyor\\run_with_env.cmd"
     PYTHONUNBUFFERED: 1
-    OPENSSL_VER: 1.0.2o
     PYPI_USER:
       secure: 2m0jy6JD/R9RExIosOT6YA==
     PYPI_PASS:
@@ -96,18 +95,11 @@ install:
   - "python -m pip install -U pip"
   - "python -m pip install -U setuptools"
 
-  - git submodule update --init --recursive
-  - 7z x ci\appveyor\zlib1211.zip
-  - 7z x ci\appveyor\openssl-%OPENSSL_VER%-win%PYTHON_ARCH%.zip
-  - cp ssleay32.dll pssh\native\
-  - cp libeay32.dll pssh\native\
   - ps: ls pssh\native
   - "%CMD_IN_ENV% pip install -r requirements.txt"
   - "%CMD_IN_ENV% pip install -U wheel twine"
 
 build_script:
-  - "%CMD_IN_ENV% ci\\appveyor\\build_zlib.bat"
-  - "%CMD_IN_ENV% ci\\appveyor\\build_ssh2.bat"
   - "%CMD_IN_ENV% python setup.py build_ext -i"
 
 test_script:

@@ -14,5 +14,5 @@ done
 # Install packages and test
 for PYBIN in `ls -1d /opt/python/cp*/bin`; do
     "${PYBIN}/pip" install parallel-ssh --no-index -f /io/wheelhouse
-    (cd "$HOME"; "${PYBIN}/python" -c 'import pssh.native._ssh2')
+    (cd "$HOME"; "${PYBIN}/python" -c 'import pssh.native._ssh2'; "${PYBIN}/python" -c 'import pssh.clients')
 done

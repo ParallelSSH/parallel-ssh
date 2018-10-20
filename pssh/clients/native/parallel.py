@@ -39,7 +39,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                  allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
                  proxy_host=None, proxy_port=22,
                  proxy_user=None, proxy_password=None, proxy_pkey=None,
-                 forward_ssh_agent=True, tunnel_timeout=None):
+                 forward_ssh_agent=False, tunnel_timeout=None):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -94,7 +94,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type proxy_pkey: Private key file path to use.
         :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
           equivalent to `ssh -A` from the `ssh` command line utility.
-          Defaults to True if not set.
+          Defaults to False if not set.
+          Requires agent forwarding implementation in libssh2 version used.
         :type forward_ssh_agent: bool
         :param tunnel_timeout: (Optional) Timeout setting for proxy tunnel
           connections.

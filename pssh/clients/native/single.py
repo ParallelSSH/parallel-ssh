@@ -24,6 +24,7 @@ except ImportError:
 else:
     WIN_PLATFORM = False
 from socket import gaierror as sock_gaierror, error as sock_error
+from warnings import warn
 
 from gevent import sleep, socket, get_hub
 from gevent.hub import Hub
@@ -40,7 +41,7 @@ from ...exceptions import UnknownHostException, AuthenticationException, \
      ConnectionErrorException, SessionError, SFTPError, SFTPIOError, Timeout, \
      SCPError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-from ...native._ssh2 import wait_select, _read_output  # , sftp_get, sftp_put
+from ...native._ssh2 import wait_select, _read_output
 from .common import _validate_pkey_path
 
 
@@ -65,7 +66,7 @@ class SSHClient(object):
                  num_retries=DEFAULT_RETRIES,
                  retry_delay=RETRY_DELAY,
                  allow_agent=True, timeout=None,
-                 forward_ssh_agent=True,
+                 forward_ssh_agent=False,
                  proxy_host=None,
                  _auth_thread_pool=True):
         """:param host: Host name or IP to connect to.
@@ -281,6 +282,10 @@ class SSHClient(object):
         # Multiple forward requests result in ChannelRequestDenied
         # errors, flag is used to avoid this.
         if self.forward_ssh_agent and not self._forward_requested:
+            if not hasattr(chan, 'request_auth_agent'):
+                warn("Requested SSH Agent forwarding but libssh2 version used "
+                     "does not support it - ignoring")
+                return chan
             self._eagain(chan.request_auth_agent)
             self._forward_requested = True
         return chan

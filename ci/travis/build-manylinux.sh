@@ -4,8 +4,7 @@ docker_tag="parallelssh/parallelssh-manylinux"
 
 rm -rf build dist
 
-docker pull $docker_tag || echo
-docker build --cache-from $docker_tag ci/docker/manylinux -t $docker_tag
-docker push $docker_tag
-docker run --rm -v `pwd`:/io $docker_tag /io/ci/travis/build-wheels.sh
+docker pull quay.io/pypa/manylinux1_x86_64
+docker tag quay.io/pypa/manylinux1_x86_64 manylinux
+docker run --rm -v `pwd`:/io manylinux /io/ci/travis/build-wheels.sh
 ls wheelhouse/

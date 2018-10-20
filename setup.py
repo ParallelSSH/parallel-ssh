@@ -40,25 +40,7 @@ cython_directives = {'embedsignature': True,
                      'wraparound': False,
 }
 
-_embedded_lib = bool(int(os.environ.get('EMBEDDED_LIB', 1)))
-_have_agent_fwd = bool(int(os.environ.get('HAVE_AGENT_FWD', 1)))
-
-cython_args = {'cython_directives': cython_directives,
-               'cython_compile_time_env': {
-                   'EMBEDDED_LIB': _embedded_lib,
-                   'HAVE_AGENT_FWD': _have_agent_fwd,
-               },
-} if USING_CYTHON else {}
-
-_libs = ['ssh2'] if not ON_WINDOWS else [
-    # For libssh2 OpenSSL backend on Windows.
-    # Windows native WinCNG is used by default.
-    # 'libeay32', 'ssleay32',
-    'Ws2_32', 'libssh2', 'user32',
-    'libeay32MD', 'ssleay32MD',
-    'zlibstatic',
-]
-
+cython_args = {'cython_directives': cython_directives} if USING_CYTHON else {}
 
 ext = 'pyx' if USING_CYTHON else 'c'
 _comp_args = ["-O3"] if not ON_WINDOWS else None
@@ -66,18 +48,9 @@ _comp_args = ["-O3"] if not ON_WINDOWS else None
 extensions = [
     Extension('pssh.native._ssh2',
               sources=['pssh/native/_ssh2.%s' % ext],
-              include_dirs=["libssh2/include"],
-              libraries=_libs,
               extra_compile_args=_comp_args,
               **cython_args
     )]
-
-package_data = {}
-
-if ON_WINDOWS:
-    package_data['pssh.native'] = [
-        'libeay32.dll', 'ssleay32.dll',
-    ]
 
 cmdclass = versioneer.get_cmdclass()
 if USING_CYTHON:
@@ -96,7 +69,7 @@ setup(name='parallel-ssh',
                         'tests', 'tests.*',
                         '*.tests', '*.tests.*')
       ),
-      install_requires=['paramiko', gevent_req, 'ssh2-python>=0.15.0'],
+      install_requires=['paramiko', gevent_req, 'ssh2-python>=0.16.0'],
       classifiers=[
           'Development Status :: 5 - Production/Stable',
           'License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)',
@@ -120,5 +93,4 @@ setup(name='parallel-ssh',
           'Operating System :: MacOS :: MacOS X',
       ],
       ext_modules=extensions,
-      package_data=package_data,
 )

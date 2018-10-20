@@ -10,7 +10,7 @@ for x in `ls -1d ci/docker/{fedora,centos}*`; do
 	dist="el${dist_num}"
     fi
     docker pull $docker_tag || echo
-    docker build --cache-from $docker_tag $x -t $name
+    docker build --pull --cache-from $docker_tag $x -t $name
     docker tag $name $docker_tag
     docker push $docker_tag
     sudo rm -rf build dist
@@ -26,7 +26,7 @@ for x in `ls -1d ci/docker/{debian,ubuntu}*`; do
     name=`echo "$x" | awk -F/ '{print $3}' | awk -F. '{print $1}'`
     docker_tag="parallelssh/parallel-ssh-pkgs:$name"
     docker pull $docker_tag || echo
-    docker build --cache-from $docker_tag $x -t $name
+    docker build --pull --cache-from $docker_tag $x -t $name
     docker tag $name $docker_tag
     docker push $docker_tag
     sudo rm -rf build dist

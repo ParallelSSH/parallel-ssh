@@ -1,6 +1,16 @@
 Change Log
 ============
 
+1.9.0
+++++++
+
+Changes
+--------
+
+* Removed libssh2 native library dependency in favour of bundled ssh2-python libssh2 library.
+* Changed native client forward agent default behaviour to off due to incompatibility with certain SSH server implementations.
+
+
 1.8.2
 ++++++
 

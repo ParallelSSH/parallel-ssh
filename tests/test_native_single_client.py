@@ -10,7 +10,8 @@ from .base_ssh2_test import SSH2TestCase
 from .embedded_server.openssh import OpenSSHServer
 from pssh.clients.native import SSHClient, logger as ssh_logger
 from ssh2.session import Session
-from ssh2.exceptions import SocketDisconnectError
+from ssh2.channel import Channel
+from ssh2.exceptions import SocketDisconnectError, BannerRecvError
 from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
     SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout
 
@@ -73,7 +74,8 @@ class SSH2ClientTest(SSH2TestCase):
     def test_manual_auth(self):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
-                           num_retries=1)
+                           num_retries=1,
+                           allow_agent=False)
         client.session.disconnect()
         del client.session
         del client.sock
@@ -104,7 +106,7 @@ class SSH2ClientTest(SSH2TestCase):
                            pkey=self.user_key,
                            num_retries=1)
         client.session.disconnect()
-        self.assertRaises(SocketDisconnectError, client._init)
+        self.assertRaises((SocketDisconnectError, BannerRecvError), client._init)
 
     def test_stdout_parsing(self):
         dir_list = os.listdir(os.path.expanduser('~'))
@@ -130,6 +132,8 @@ class SSH2ClientTest(SSH2TestCase):
                           SSHClient, self.host, port=self.port, num_retries=1,
                           allow_agent=False)
 
+    @unittest.skipUnless(bool(os.getenv('TRAVIS')),
+                         "Not on Travis-CI - skipping agent auth failure test")
     def test_agent_auth_failure(self):
         self.assertRaises(AuthenticationException,
                           SSHClient, self.host, port=self.port, num_retries=1,
