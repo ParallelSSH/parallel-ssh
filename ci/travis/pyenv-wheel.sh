@@ -26,13 +26,11 @@ python -m pip install -U setuptools pip
 pip install -U delocate wheel
 pip install -r requirements.txt
 pip wheel --no-deps .
-cp /usr/local/lib/libssh2* .
 delocate-listdeps --all *.whl
 delocate-wheel -v *.whl
 delocate-listdeps --all *.whl
 
 ls -l *.whl
-rm -f *.dylib
 pip install -v *.whl
 pwd; mkdir -p temp; cd temp; pwd
 python -c "import pssh.clients" && echo "Import successfull"

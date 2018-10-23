@@ -54,11 +54,12 @@ THREAD_POOL = get_hub().threadpool
 class SSHClient(object):
     """ssh2-python (libssh2) based non-blocking SSH client."""
 
-    IDENTITIES = [
+    IDENTITIES = (
         os.path.expanduser('~/.ssh/id_rsa'),
         os.path.expanduser('~/.ssh/id_dsa'),
-        os.path.expanduser('~/.ssh/identity')
-    ]
+        os.path.expanduser('~/.ssh/identity'),
+        os.path.expanduser('~/.ssh/id_ecdsa'),
+    )
 
     def __init__(self, host,
                  user=None, password=None, port=None,
@@ -122,11 +123,11 @@ class SSHClient(object):
         self.forward_ssh_agent = forward_ssh_agent
         self._forward_requested = False
         self.session = None
+        self.keepalive_seconds = keepalive_seconds
+        self._keepalive_greenlet = None
         self._host = proxy_host if proxy_host else host
         self.pkey = _validate_pkey_path(pkey, self.host)
         self._connect(self._host, self.port)
-        self.keepalive_seconds = keepalive_seconds
-        self._keepalive_greenlet = None
         if _auth_thread_pool:
             THREAD_POOL.apply(self._init)
         else:

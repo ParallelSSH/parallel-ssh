@@ -58,11 +58,12 @@ environment:
       MSVC: "Visual Studio 14 Win64"
       ARCH: x64_86
 
-    - PYTHON: "C:\\Python37"
-      PYTHON_VERSION: "3.7"
-      PYTHON_ARCH: "32"
-      MSVC: "Visual Studio 14"
-      ARCH: i386
+    # No gevent 3.7 32-bit wheel available, source build fails.
+    # - PYTHON: "C:\\Python37"
+    #   PYTHON_VERSION: "3.7"
+    #   PYTHON_ARCH: "32"
+    #   MSVC: "Visual Studio 14"
+    #   ARCH: i386
 
     - PYTHON: "C:\\Python37-x64"
       PYTHON_VERSION: "3.7"

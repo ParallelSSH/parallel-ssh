@@ -25,10 +25,9 @@ before_install:
 install:
   - pip install -r requirements_dev.txt
 script:
-  - export LD_LIBRARY_PATH=/usr/local/lib/x86_64-linux-gnu
   # For testing SSH agent related functionality
   - eval `ssh-agent -s`
-  - nosetests --with-coverage --cover-package=pssh tests/test_native_tunnel.py
+  - nosetests --with-coverage --cover-package=pssh --nologcapture tests/test_native_tunnel.py
   - nosetests --with-coverage --cover-package=pssh tests/test_native_*_client.py
   - nosetests --with-coverage --cover-package=pssh tests/test_paramiko*.py
   - flake8 pssh

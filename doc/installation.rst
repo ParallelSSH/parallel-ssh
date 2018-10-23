@@ -17,35 +17,20 @@ Pip Install
 
 If ``pip`` is not available on your Python platform, `see this installation guide <http://docs.python-guide.org/en/latest/starting/installation/>`_.
 
-Old Python Versions
----------------------
-
-``1.1.x`` and above releases are not guaranteed to be compatible with Python ``2.6``.
-
-If you are running a deprecated Python version such as ``2.6`` you may need to install an older version of ``parallel-ssh`` that is compatible with that Python platform.
-
-For example, to install the ``1.0.0`` version, run the following.
-
-.. code-block:: shell
-
-  pip install parallel-ssh==1.0.0
-
-``1.0.0`` is compatible with all Python versions over or equal to ``2.6``, including all of the ``3.x`` series.
-
-Older versions such as `0.70.x` are compatible with Python ``2.5`` and ``2.x`` but not the ``3.x`` series.
-
 Dependencies
 --------------
 
-When installing from source, it is responsibility of user to satisfy dependencies. For pre-built binary wheel packages with dependencies included, see `Pip Install`_.
+When installing from source, dependencies must be satisfied by ``pip install -r requirements.txt``. For pre-built binary wheel packages with dependencies included, see `Pip Install`_.
 
-============ ================
-Dependency   Minimum Version
-============ ================
-``libssh2``      ``1.6``
-``gevent``       ``1.1``
-``paramiko``     ``1.15.3``
-============ ================
+From ``2.0.0`` onwards, paramiko will become an _optional_ extra, with ``libssh2``, and for a limited set of functionality, ``libssh`` native library based clients via ``ssh2-python`` and ``ssh-python`` bindings respectively replacing it.
+
+===============    ================
+Dependency         Minimum Version
+===============    ================
+``ssh2-python``    ``0.16.0``
+``gevent``         ``1.1``
+``paramiko``       ``1.15.3``
+===============    ================
 
 
 Building from Source
@@ -106,7 +91,7 @@ Debian based
 
 .. code-block:: shell
 
-   docker build --cache-from parallelssh/ssh2-python:debian7 ci/docker/debian7 -t debian7
+   docker build --cache-from parallelssh/parallel-ssh-pkgs:debian7 ci/docker/debian7 -t debian7
    docker run -v "$(pwd):/src/" debian7 --iteration debian7 -s python -t deb setup.py
 
 
@@ -115,5 +100,26 @@ RPM based
 
 .. code-block:: shell
 
-   docker build --cache-from parallelssh/ssh2-python:centos7 ci/docker/centos7 -t centos7
+   docker build --cache-from parallelssh/parallel-ssh-pkgs:centos7 ci/docker/centos7 -t centos7
    docker run -v "$(pwd):/src/" centos7 --rpm-dist el7 -s python -t rpm setup.py
+
+
+See `fpm <http://fpm.readthedocs.io/en/latest/>`_ for making system packages of various types.
+
+
+Deprecated Python Versions
+---------------------------
+
+``1.1.x`` and above releases are not compatible with Python ``2.6``.
+
+If you are running a deprecated Python version such as ``2.6`` you may need to install an older version of ``parallel-ssh`` that is compatible with that Python platform.
+
+For example, to install the ``1.0.0`` version, run the following.
+
+.. code-block:: shell
+
+  pip install parallel-ssh==1.0.0
+
+``1.0.0`` is compatible with all Python versions over or equal to ``2.6``, including all of the ``3.x`` series.
+
+Older versions such as `0.70.x` are compatible with Python ``2.5`` and ``2.x`` but not the ``3.x`` series.

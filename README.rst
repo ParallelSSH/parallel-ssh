@@ -233,7 +233,7 @@ The default SSH client library in ``parallel-ssh`` ``1.x.x`` series.
 
 Pure Python code, while having native extensions as dependencies, with poor performance and numerous bugs compared to both OpenSSH binaries and the ``libssh2`` based native clients in ``parallel-ssh`` ``1.2.x`` and above. Recent versions have regressed in performance and have `blocker issues <https://github.com/ParallelSSH/parallel-ssh/issues/83>`_.
 
-It does not support non-blocking mode, so to make it non-blocking monkey patching must be used which affects all other uses of the Python standard library. However, some functionality like Kerberos (GSS-API) authentication is not provided by other libraries.
+It does not support non-blocking mode, so to make it non-blocking monkey patching must be used which affects all other uses of the Python standard library. However, some functionality like Kerberos (GSS-API) authentication is not currently provided by other libraries.
 
 asyncssh
 ________
