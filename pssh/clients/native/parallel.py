@@ -387,7 +387,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     keepalive_seconds=self.keepalive_seconds)
 
     def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
-        """Copy local file to remote file in parallel
+        """Copy local file to remote file in parallel via SFTP.
 
         This function returns a list of greenlets which can be
         `join`-ed on to wait for completion.
@@ -440,7 +440,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
     def copy_remote_file(self, remote_file, local_file, recurse=False,
                          suffix_separator='_', copy_args=None,
                          encoding='utf-8'):
-        """Copy remote file(s) in parallel as
+        """Copy remote file(s) in parallel via SFTP as
         <local_file><suffix_separator><host>
 
         With a ``local_file`` value of ``myfile`` and default separator ``_``
@@ -522,15 +522,109 @@ class ParallelSSHClient(BaseParallelSSHClient):
             remote_file, local_file, recurse=recurse)
 
     def scp_send(self, local_file, remote_file, recurse=False):
+        """Copy local file to remote file in parallel via SCP.
+
+        This function returns a list of greenlets which can be
+        `join`-ed on to wait for completion.
+
+        :py:func:`gevent.joinall` function may be used to join on all greenlets
+        and will also raise exceptions from them if called with
+        ``raise_error=True`` - default is `False`.
+
+        Alternatively call `.get()` on each greenlet to raise any exceptions
+        from it.
+
+        .. note::
+          Creating remote directories when either ``remote_file`` contains
+          directory paths or ``recurse`` is enabled requires SFTP support on
+          the server as libssh2 SCP implementation lacks directory creation
+          support.
+
+        :param local_file: Local filepath to copy to remote host
+        :type local_file: str
+        :param remote_file: Remote filepath on remote host to copy file to
+        :type remote_file: str
+        :param recurse: Whether or not to descend into directories recursively.
+        :type recurse: bool
+
+        :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy
+          commands.
+
+        :raises: :py:class:`pss.exceptions.SCPError` on errors copying file.
+        :raises: :py:class:`OSError` on local OS errors like permission denied.
+        """
         return [self.pool.spawn(self._scp_send, host, local_file,
                                 remote_file, recurse=recurse)
                 for host in self.hosts]
 
-    def scp_recv(self, remote_file, local_file, recurse=False, copy_args=None):
-        copy_args = [{'local_file': '_'.join([local_file, host]),
+    def scp_recv(self, remote_file, local_file, recurse=False, copy_args=None,
+                 suffix_separator='_'):
+        """Copy remote file(s) in parallel via SCP as
+        <local_file><suffix_separator><host> or as per ``copy_args`` argument.
+
+        With a ``local_file`` value of ``myfile`` and default separator ``_``
+        the resulting filename will be ``myfile_myhost`` for the file from host
+        ``myhost``.
+
+        De-duplication behaviour is configurable by providing ``copy_args``
+        argument, see below.
+
+        This function, like :py:func:`ParallelSSHClient.scp_send`, returns a
+        list of greenlets which can be `join`-ed on to wait for completion.
+
+        :py:func:`gevent.joinall` function may be used to join on all greenlets
+        and will also raise exceptions if called with ``raise_error=True`` -
+        default is `False`.
+
+        Alternatively call `.get` on each greenlet to raise any exceptions from
+        it.
+
+        Exceptions listed here are raised when
+        either ``gevent.joinall(<greenlets>, raise_error=True)`` is called
+        or ``.get`` is called on each greenlet, not this function itself.
+
+        :param remote_file: remote filepath to copy to local host
+        :type remote_file: str
+        :param local_file: local filepath on local host to copy file to
+        :type local_file: str
+        :param recurse: whether or not to recurse
+        :type recurse: bool
+        :param suffix_separator: (Optional) Separator string between
+          filename and host, defaults to ``_``. For example, for a
+          ``local_file`` value of ``myfile`` and default separator the
+          resulting filename will be ``myfile_myhost`` for the file from
+          host ``myhost``. ``suffix_separator`` has no meaning if
+          ``copy_args`` is provided
+        :type suffix_separator: str
+        :param copy_args: (Optional) format remote_file and local_file strings
+          with per-host arguments in ``copy_args``. ``copy_args`` length *must*
+          equal length of host list -
+          :py:class:`pssh.exceptions.HostArgumentException` is raised otherwise
+        :type copy_args: tuple or list
+
+        :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy
+          commands.
+
+        :raises: :py:class:`ValueError` when a directory is supplied to
+          local_file and recurse is not set.
+        :raises: :py:class:`pssh.exceptions.HostArgumentException` on number of
+          per-host copy arguments not equal to number of hosts.
+        :raises: :py:class:`pss.exceptions.SCPError` on errors copying file.
+        :raises: :py:class:`OSError` on local OS errors like permission denied.
+
+        .. note ::
+          Local directories in ``local_file`` that do not exist will be
+          created as long as permissions allow.
+
+        .. note ::
+          File names will be de-duplicated by appending the hostname to the
+          filepath separated by ``suffix_separator`` or as per ``copy_args``
+          argument if provided.
+        """
+        copy_args = [{'local_file': suffix_separator.join([local_file, host]),
                       'remote_file': remote_file}
                      for i, host in enumerate(self.hosts)] \
-                         if copy_args is None else copy_args
+            if copy_args is None else copy_args
         local_file = "%(local_file)s"
         remote_file = "%(remote_file)s"
         try:

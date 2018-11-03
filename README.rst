@@ -116,7 +116,7 @@ Native Code Client Features
 Exit codes
 ***********
 
-Once either standard output is iterated on *to completion*, or ``client.join(output)`` is called, exit codes become available in host output. Iteration ends *only when remote command has completed*, though it may be interrupted and resumed at any point.
+Once *either* standard output is iterated on *to completion*, or ``client.join(output)`` is called, exit codes become available in host output. Iteration ends *only when remote command has completed*, though it may be interrupted and resumed at any point.
 
 .. code-block:: python
 
@@ -178,10 +178,35 @@ To log output without having to iterate over output generators, the ``consume_ou
       [localhost]	Linux
 
 
-SFTP
-******
+SCP
+****
 
-SFTP is supported natively.
+SCP is supported - native clients only - and provides the best performance for file copying.
+
+Unlike with the SFTP functionality, remote files that already exist are *not* overwritten and an exception is raised instead.
+
+Note that enabling recursion with SCP requires server SFTP support for creating remote directories.
+
+To copy a local file to remote hosts in parallel with SCP:
+
+.. code-block:: python
+
+  from pssh.clients import ParallelSSHClient
+  from gevent import joinall
+
+  hosts = ['myhost1', 'myhost2']
+  client = ParallelSSHClient(hosts)
+  cmds = client.scp_send('../test', 'test_dir/test')
+  joinall(cmds, raise_error=True)
+
+
+See also documentation for SCP recv.
+
+
+SFTP
+*****
+
+SFTP is supported natively. Performance is much slower than SCP due to underlying library limitations and SCP should be preferred where possible. In the case of the deprecated paramiko clients, several bugs exist with SFTP performance and behaviour - avoid if at all possible.
 
 To copy a local file to remote hosts in parallel:
 

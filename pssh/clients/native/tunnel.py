@@ -31,7 +31,6 @@ logger = logging.getLogger(__name__)
 
 
 class Tunnel(Thread):
-
     """SSH proxy implementation with direct TCP/IP tunnels.
 
     Each tunnel object runs in its own thread and can open any number of
@@ -121,25 +120,14 @@ class Tunnel(Thread):
             data_written = 0
             while data_written < data_len:
                 try:
-                    rc = channel.write(data)
+                    rc, bytes_written = channel.write(data[data_written:])
                 except Exception:
                     logger.exception("Channel write error:")
                     sleep(1)
                     continue
+                data_written += bytes_written
                 if rc == LIBSSH2_ERROR_EAGAIN:
                     select((), ((self.client.sock,)), (), timeout=0.001)
-                    try:
-                        rc = channel.write(data[data_written:])
-                    except Exception:
-                        logger.exception("Channel write error:")
-                        sleep(1)
-                    continue
-                data_written += rc
-                try:
-                    rc = channel.write(data[data_written:])
-                except Exception:
-                    logger.exception("Channel write error:")
-                    sleep(1)
 
     def _read_channel(self, forward_sock, channel):
         while True:
@@ -197,6 +185,8 @@ class Tunnel(Thread):
 
     def cleanup(self):
         for _sock in self._sockets:
+            if not _sock:
+                continue
             try:
                 _sock.close()
             except Exception as ex:

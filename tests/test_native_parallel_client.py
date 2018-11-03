@@ -55,7 +55,7 @@ class ParallelSSHClientTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        _mask = int('0600') if version_info <= (2,) else 0o600
+        _mask = 0o600
         os.chmod(PKEY_FILENAME, _mask)
         cls.host = '127.0.0.1'
         cls.port = 2223
@@ -531,7 +531,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         dir_name = os.path.dirname(__file__)
         remote_test_path_abs = os.sep.join((dir_name, remote_test_path))
         for path in [local_test_path, remote_test_path_abs]:
-            mask = int('0700') if sys.version_info <= (2,) else 0o700
+            mask = 0o700
             if os.path.isdir(path):
                 os.chmod(path, mask)
             for root, dirs, files in os.walk(path):
@@ -551,7 +551,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         test_file.write('testing\n')
         test_file.close()
         # Permission errors on writing into dir
-        mask = int('0111') if sys.version_info <= (2,) else 0o111
+        mask = 0o111
         os.chmod(remote_test_path_abs, mask)
         cmds = self.client.copy_file(local_test_path, remote_test_path_abs, recurse=True)
         try:
@@ -572,7 +572,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         except SFTPError:
             pass
         self.assertFalse(os.path.isfile(remote_test_path_abs))
-        mask = int('0600') if sys.version_info <= (2,) else 0o600
+        mask = 0o600
         os.chmod(remote_test_path_abs, mask)
         for path in [local_test_path, remote_test_path_abs]:
             shutil.rmtree(path)

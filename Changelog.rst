@@ -1,6 +1,19 @@
 Change Log
 ============
 
+
+1.9.1
+++++++
+
+Fixes
+-----
+
+* Native client SCP and SFTP uploads would not handle partial writes from waiting on socket correctly.
+* Native client ``copy_file`` SFTP upload would get stuck repeating same writes until killed when copying multi-MB files from Windows clients - #148
+* Native client ``scp_send`` would not correctly preserve file mask of local file on the remote.
+* Native client tunnel, used for proxy implementation, would not handle partial writes from waiting on socket correctly.
+
+
 1.9.0
 ++++++
 
@@ -9,7 +22,7 @@ Changes
 
 * Removed libssh2 native library dependency in favour of bundled ``ssh2-python`` libssh2 library.
 * Changed native client forward agent default behaviour to off due to incompatibility with certain SSH server implementations.
-* Added keep-alive functionality to native client - defaults to ``60`` seconds. ``ParallelSSHClient(<..>, keepalive_seconds=<interval>)`` to configure interval, Set to ``0`` to disable.
+* Added keep-alive functionality to native client - defaults to ``60`` seconds. ``ParallelSSHClient(<..>, keepalive_seconds=<interval>)`` to configure interval. Set to ``0`` to disable.
 * Added ``~/.ssh/id_ecdsa`` default identity location to native client.
 
 

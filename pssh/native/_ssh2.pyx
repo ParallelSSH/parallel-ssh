@@ -169,3 +169,19 @@ def wait_select(session, timeout=None):
     writefds = (_socket,) \
         if (directions & LIBSSH2_SESSION_BLOCK_OUTBOUND) else ()
     select(readfds, writefds, (), timeout=timeout)
+
+
+def eagain_write(write_func, data, session, timeout=None):
+    """Write data with given write_func for an SSH2 session while handling
+    EAGAIN and resuming writes from last written byte on each call to
+    write_func.
+    """
+    cdef Py_ssize_t data_len = len(data)
+    cdef size_t total_written = 0
+    cdef int rc
+    cdef size_t bytes_written
+    while total_written < data_len:
+        rc, bytes_written = write_func(data[total_written:])
+        total_written += bytes_written
+        if rc == LIBSSH2_ERROR_EAGAIN:
+            wait_select(session, timeout=timeout)

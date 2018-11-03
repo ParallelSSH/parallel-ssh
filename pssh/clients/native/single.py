@@ -41,7 +41,7 @@ from ...exceptions import UnknownHostException, AuthenticationException, \
      ConnectionErrorException, SessionError, SFTPError, SFTPIOError, Timeout, \
      SCPError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-from ...native._ssh2 import wait_select, _read_output
+from ...native._ssh2 import wait_select, eagain_write, _read_output
 from .common import _validate_pkey_path
 
 
@@ -524,9 +524,9 @@ class SSHClient(object):
                     local_file, self.host, remote_file)
 
     def _sftp_put(self, remote_fh, local_file):
-        with open(local_file, 'rb') as local_fh:
+        with open(local_file, 'rb', 2097152) as local_fh:
             for data in local_fh:
-                self._eagain(remote_fh.write, data)
+                eagain_write(remote_fh.write, data, self.session)
 
     def sftp_put(self, sftp, local_file, remote_file):
         mode = LIBSSH2_SFTP_S_IRUSR | \
@@ -787,16 +787,16 @@ class SSHClient(object):
         try:
             chan = self._eagain(
                 self.session.scp_send64,
-                remote_file, fileinfo.st_mode & 777, fileinfo.st_size,
+                remote_file, fileinfo.st_mode & 0o777, fileinfo.st_size,
                 fileinfo.st_mtime, fileinfo.st_atime)
         except Exception as ex:
             msg = "Error opening remote file %s for writing on host %s - %s"
             logger.error(msg, remote_file, self.host, ex)
             raise SCPError(msg, remote_file, self.host, ex)
         try:
-            with open(local_file, 'rb') as local_fh:
+            with open(local_file, 'rb', 2097152) as local_fh:
                 for data in local_fh:
-                    chan.write(data)
+                    eagain_write(chan.write, data, self.session)
         except Exception as ex:
             msg = "Error writing to remote file %s on host %s - %s"
             logger.error(msg, remote_file, self.host, ex)

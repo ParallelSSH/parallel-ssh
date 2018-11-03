@@ -223,7 +223,7 @@ class SSHClient(object):
                 "Error connecting to host '%s:%s' - %s - retry %s/%s",
                 host, self.port, str(error_type), retries,
                 self.num_retries,)
-        except paramiko.AuthenticationException as ex:
+        except paramiko.AuthenticationException:
             msg = "Authentication error while connecting to %s:%s."
             raise AuthenticationException(msg, host, port)
         # SSHException is more general so should be below other types
