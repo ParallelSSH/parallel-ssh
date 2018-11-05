@@ -3,7 +3,6 @@ cache:
   - pip
   - directories:
       - "$HOME/.pyenv"
-sudo: required
 notifications:
   email: false
 services:
@@ -105,17 +104,6 @@ jobs:
           fi
       language: generic
       python: skip
-
-    - <<: *osx-wheels
-      osx_image: xcode6.4
-
-    - <<: *osx-wheels
-      osx_image: xcode6.4
-      env:
-        - PYENV: 3.7.0
-      install: skip
-      script:
-        - ./ci/travis/pyenv-wheel.sh
 
     - <<: *osx-wheels
       osx_image: xcode9.2
