@@ -43,11 +43,12 @@ THREAD_POOL = get_hub().threadpool
 
 class BaseSSHClient(object):
 
-    IDENTITIES = [
+    IDENTITIES = (
         os.path.expanduser('~/.ssh/id_rsa'),
         os.path.expanduser('~/.ssh/id_dsa'),
-        os.path.expanduser('~/.ssh/identity')
-    ]
+        os.path.expanduser('~/.ssh/identity'),
+        os.path.expanduser('~/.ssh/id_ecdsa'),
+    )
 
     def __init__(self, host,
                  user=None, password=None, port=None,

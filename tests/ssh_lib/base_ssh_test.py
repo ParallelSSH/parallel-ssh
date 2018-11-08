@@ -37,8 +37,7 @@ class SSHTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        _mask = int('0600') if version_info <= (2,) else 0o600
-        os.chmod(PKEY_FILENAME, _mask)
+        os.chmod(PKEY_FILENAME, 0o600)
         cls.server = OpenSSHServer()
         cls.server.start_server()
         cls.host = '127.0.0.1'
@@ -54,5 +53,6 @@ class SSHTestCase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        del cls.client
         cls.server.stop()
         del cls.server

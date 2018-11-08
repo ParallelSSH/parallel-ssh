@@ -49,7 +49,7 @@ class SSHClientTest(SSHTestCase):
             self.cmd)
         output = list(stdout)
         stderr = list(stderr)
-        expected = [self.resp]
+        expected = [self.resp + '\n']
         # exit_code = channel.get_exit_status()
         # self.assertEqual(exit_code, 0)
         self.assertEqual(expected, output)

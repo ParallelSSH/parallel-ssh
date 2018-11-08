@@ -25,15 +25,15 @@ else:
     WIN_PLATFORM = False
 from socket import gaierror as sock_gaierror, error as sock_error
 
-from gevent import sleep, socket, get_hub
-from gevent.hub import Hub
+from gevent import sleep, socket
 from gevent.select import select
 from ssh import options
 from ssh.session import Session, SSH_CLOSED, SSH_READ_PENDING, \
     SSH_WRITE_PENDING, SSH_CLOSED_ERROR
 from ssh.channel import Channel
 from ssh.key import SSHKey, import_pubkey_file, import_privkey_file
-from ssh.exceptions import KeyImportError
+from ssh.exceptions import KeyImportError, EOF
+from ssh.error_codes import SSH_AGAIN
 
 from ..base_ssh_client import BaseSSHClient
 from ...exceptions import UnknownHostException, AuthenticationException, \
@@ -42,10 +42,7 @@ from ...exceptions import UnknownHostException, AuthenticationException, \
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 
-Hub.NOT_ERROR = (Exception,)
-host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
-THREAD_POOL = get_hub().threadpool
 
 
 class SSHClient(BaseSSHClient):
@@ -56,7 +53,7 @@ class SSHClient(BaseSSHClient):
                  num_retries=DEFAULT_RETRIES,
                  retry_delay=RETRY_DELAY,
                  allow_agent=True, timeout=None,
-                 _auth_thread_pool=True):
+                 _auth_thread_pool=False):
         """:param host: Host name or IP to connect to.
         :type host: str
         :param user: User to connect as. Defaults to logged in user.
@@ -93,6 +90,7 @@ class SSHClient(BaseSSHClient):
     def disconnect(self):
         """Close socket if needed."""
         if self.sock is not None and not self.sock.closed:
+            logger.debug("Closing socket")
             self.sock.close()
 
     def _init(self, retries=1):
@@ -118,34 +116,6 @@ class SSHClient(BaseSSHClient):
             raise AuthenticationException(msg, self.host, self.port, ex)
         self.session.set_blocking(0)
 
-    def _connect(self, host, port, retries=1):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if self.timeout:
-            self.sock.settimeout(self.timeout)
-        logger.debug("Connecting to %s:%s", host, port)
-        try:
-            self.sock.connect((host, port))
-        except sock_gaierror as ex:
-            logger.error("Could not resolve host '%s' - retry %s/%s",
-                         host, retries, self.num_retries)
-            while retries < self.num_retries:
-                sleep(self.retry_delay)
-                return self._connect(host, port, retries=retries+1)
-            raise UnknownHostException("Unknown host %s - %s - retry %s/%s",
-                                       host, str(ex.args[1]), retries,
-                                       self.num_retries)
-        except sock_error as ex:
-            logger.error("Error connecting to host '%s:%s' - retry %s/%s",
-                         host, port, retries, self.num_retries)
-            while retries < self.num_retries:
-                sleep(self.retry_delay)
-                return self._connect(host, port, retries=retries+1)
-            error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
-            raise ConnectionErrorException(
-                "Error connecting to host '%s:%s' - %s - retry %s/%s",
-                host, port, str(error_type), retries,
-                self.num_retries,)
-
     def _password_auth(self):
         try:
             self.session.userauth_password(self.password)
@@ -158,44 +128,36 @@ class SSHClient(BaseSSHClient):
 
     def open_session(self):
         channel = self.session.channel_new()
-        while not channel:
+        while channel == SSH_AGAIN:
             self.wait_select()
             channel = self.session.channel_new()
+        channel.set_blocking(0)
+        while channel.open_session() == SSH_AGAIN:
+            self.wait_select()
         return channel
 
     def execute(self, cmd, use_pty=False, channel=None):
         channel = self.open_session() if not channel else channel
         if use_pty:
-            try:
-                rc = channel.request_pty()
-                if not rc:
-                    raise Exception("PTY request error - %s", rc)
-            except Exception:
-                raise
-        self.wait_select()
+            self._eagain(channel.request_pty)
         try:
-            rc = channel.request_exec(cmd)
-            # import ipdb; ipdb.set_trace()
-            if rc < 0:
-                raise Exception(rc)
+            self._eagain(channel.request_exec, cmd)
         except Exception:
             raise
+        return channel
 
     def read_stderr(self, channel, timeout=None):
-        self.wait_select()
-        size, data = channel.read_nonblocking(is_stderr=True)
-        while data:
-            yield data
-            self.wait_select()
-            size, data = channel.read_nonblocking(is_stderr=True)
+        return self.read_output(channel, timeout=timeout, is_stderr=True)
 
-    def read_output(self, channel, timeout=None):
-        self.wait_select()
-        size, data = channel.read_nonblocking()
-        while size > 0:
-            yield data
+    def read_output(self, channel, timeout=None, is_stderr=False):
+        while True:
             self.wait_select()
-            size, data = channel.read_nonblocking()
+            try:
+                size, data = channel.read_nonblocking(is_stderr=is_stderr)
+            except EOF:
+                raise StopIteration
+            if size > 0:
+                yield data
 
     def _eagain(self, func, *args, **kwargs):
         self.wait_select()
