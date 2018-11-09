@@ -200,9 +200,9 @@ class BaseSSHClient(object):
 
     def close_channel(self, channel):
         logger.debug("Closing channel")
-        self._eagain(channel.close)
+        self.eagain(channel.close, timeout=self.timeout)
 
-    def _eagain(self, func, *args, **kwargs):
+    def eagain(self, func, *args, **kwargs):
         raise NotImplementedError
 
     def read_output_buffer(self, output_buffer, prefix=None,

@@ -85,7 +85,8 @@ class SSHClient(BaseSSHClient):
         super(SSHClient, self).__init__(
             host, user=user, password=password, port=port, pkey=pkey,
             num_retries=num_retries, retry_delay=retry_delay,
-            allow_agent=allow_agent, _auth_thread_pool=_auth_thread_pool)
+            allow_agent=allow_agent, _auth_thread_pool=_auth_thread_pool,
+            timeout=timeout)
 
     def disconnect(self):
         """Close socket if needed."""
@@ -94,11 +95,14 @@ class SSHClient(BaseSSHClient):
             self.sock.close()
 
     def _init(self, retries=1):
+        logger.debug("Starting new session for %s@%s:%s",
+                     self.user, self.host, self.port)
         self.session = Session()
         self.session.options_set(options.USER, self.user)
         self.session.options_set(options.HOST, self.host)
         self.session.options_set_port(self.port)
         self.session.set_socket(self.sock)
+        logger.debug("Session started, connecting with existing socket")
         try:
             self.session.connect()
         except Exception as ex:
@@ -114,6 +118,8 @@ class SSHClient(BaseSSHClient):
                 return self._connect_init_retry(retries)
             msg = "Authentication error while connecting to %s:%s - %s"
             raise AuthenticationException(msg, self.host, self.port, ex)
+        logger.debug("Authentication completed successfully - "
+                     "setting session to non-blocking mode")
         self.session.set_blocking(0)
 
     def _password_auth(self):
@@ -127,41 +133,95 @@ class SSHClient(BaseSSHClient):
         self.session.userauth_publickey(pkey)
 
     def open_session(self):
-        channel = self.session.channel_new()
-        while channel == SSH_AGAIN:
-            self.wait_select()
+        logger.debug("Opening new channel on %s", self.host)
+        try:
             channel = self.session.channel_new()
-        channel.set_blocking(0)
-        while channel.open_session() == SSH_AGAIN:
-            self.wait_select()
+            while channel == SSH_AGAIN:
+                self.wait_select()
+                channel = self.session.channel_new()
+            logger.debug("Channel %s created, opening session", channel)
+            channel.set_blocking(0)
+            while channel.open_session() == SSH_AGAIN:
+                logger.debug("Channel open session blocked, waiting on socket..")
+                self.wait_select()
+                # Select on open session can dead lock without
+                # yielding event loop
+                sleep(.1)
+        except Exception as ex:
+            raise SessionError(ex)
         return channel
 
     def execute(self, cmd, use_pty=False, channel=None):
         channel = self.open_session() if not channel else channel
         if use_pty:
-            self._eagain(channel.request_pty)
-        try:
-            self._eagain(channel.request_exec, cmd)
-        except Exception:
-            raise
+            self.eagain(channel.request_pty, timeout=self.timeout)
+        self.eagain(channel.request_exec, cmd, timeout=self.timeout)
         return channel
 
     def read_stderr(self, channel, timeout=None):
         return self.read_output(channel, timeout=timeout, is_stderr=True)
 
     def read_output(self, channel, timeout=None, is_stderr=False):
+        logger.debug("Starting output generator on channel %s for %s",
+                     channel, 'stderr' if is_stderr else 'stdout')
         while True:
-            self.wait_select()
+            try:
+                if channel.poll():
+                    self.wait_select()
+                    logger.debug(
+                        "Socket no longer blocked - reading data from channel "
+                        "%s", channel)
+            except EOF:
+                pass
             try:
                 size, data = channel.read_nonblocking(is_stderr=is_stderr)
             except EOF:
+                sleep()
                 raise StopIteration
             if size > 0:
                 yield data
+            else:
+                # Yield event loop to other greenlets if we have no data to
+                # send back, meaning the generator does not yield and can there
+                # for block other generators/greenlets from running.
+                sleep(1)
+
+    def wait_finished(self, channel, timeout=None):
+        """Wait for EOF from channel and close channel.
+
+        Used to wait for remote command completion and be able to gather
+        exit code.
+
+        :param channel: The channel to use.
+        :type channel: :py:class:`ssh.channel.Channel`
+        """
+        if channel is None:
+            return
+        logger.debug("Sending EOF on channel %s", channel)
+        self.eagain(channel.send_eof, timeout=timeout)
+        # import ipdb; ipdb.set_trace()
+        for _ in self.read_output(channel, timeout=timeout):
+            pass
+        for _ in self.read_output(channel, timeout=timeout, is_stderr=True):
+            pass
+        # Close channel
+        self.close_channel(channel)
 
     def _eagain(self, func, *args, **kwargs):
         self.wait_select()
         return func(*args, **kwargs)
+
+    def eagain(self, func, *args, **kwargs):
+        """Run function given EAGAIN"""
+        timeout = kwargs.pop('timeout', self.timeout)
+        ret = func(*args, **kwargs)
+        while ret == SSH_AGAIN:
+            self.wait_select(timeout=timeout)
+            ret = func(*args, **kwargs)
+            if ret == SSH_AGAIN and timeout is not None:
+                raise Timeout
+        sleep()
+        return ret
 
     def wait_select(self, timeout=None):
         directions = self.session.get_poll_flags()

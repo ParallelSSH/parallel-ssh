@@ -50,6 +50,23 @@ class SSHClientTest(SSHTestCase):
         output = list(stdout)
         stderr = list(stderr)
         expected = [self.resp + '\n']
-        # exit_code = channel.get_exit_status()
-        # self.assertEqual(exit_code, 0)
         self.assertEqual(expected, output)
+        exit_code = channel.get_exit_status()
+        self.assertEqual(exit_code, 0)
+
+    def test_stderr(self):
+        channel, host, stdout, stderr, stdin = self.client.run_command(
+            'echo "me" >&2')
+        output = list(stdout)
+        stderr = list(stderr)
+        self.client.wait_finished(channel)
+        expected = ['me' + '\n']
+        self.assertListEqual(expected, stderr)
+        self.assertTrue(len(output) == 0)
+
+    def test_long_running_cmd(self):
+        channel, host, stdout, stderr, stdin = self.client.run_command(
+            'sleep 2; exit 2')
+        self.client.wait_finished(channel)
+        exit_code = channel.get_exit_status()
+        self.assertEqual(exit_code, 2)
