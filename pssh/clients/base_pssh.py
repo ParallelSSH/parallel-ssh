@@ -100,6 +100,20 @@ class BaseParallelSSHClient(object):
         self.cmds = cmds
         return output
 
+    def _run_command(self, host, command, sudo=False, user=None,
+                     shell=None, use_pty=False,
+                     encoding='utf-8', timeout=None):
+        """Make SSHClient if needed, run command on host"""
+        try:
+            self._make_ssh_client(host)
+            return self.host_clients[host].run_command(
+                command, sudo=sudo, user=user, shell=shell,
+                use_pty=use_pty, encoding=encoding, timeout=timeout)
+        except Exception as ex:
+            ex.host = host
+            logger.error("Failed to run on host %s - %s", host, ex)
+            raise ex
+
     def get_last_output(self, cmds=None):
         """Get output for last commands executed by ``run_command``
 
@@ -116,6 +130,36 @@ class BaseParallelSSHClient(object):
             self.get_output(cmd, output)
         return output
 
+    def reset_output_generators(self, host_out, timeout=None,
+                                client=None, channel=None,
+                                encoding='utf-8'):
+        """Reset output generators for host output.
+
+        :param host_out: Host output
+        :type host_out: :py:class:`pssh.output.HostOutput`
+        :param client: (Optional) SSH client
+        :type client: :py:class:`pssh.ssh2_client.SSHClient`
+        :param channel: (Optional) SSH channel
+        :type channel: :py:class:`ssh2.channel.Channel`
+        :param timeout: (Optional) Timeout setting
+        :type timeout: int
+        :param encoding: (Optional) Encoding to use for output. Must be valid
+          `Python codec <https://docs.python.org/library/codecs.html>`_
+        :type encoding: str
+
+        :rtype: tuple(stdout, stderr)
+        """
+        channel = host_out.channel if channel is None else channel
+        client = self.host_clients[host_out.host] if client is None else client
+        stdout = client.read_output_buffer(
+            client.read_output(channel, timeout=timeout), encoding=encoding)
+        stderr = client.read_output_buffer(
+            client.read_stderr(channel, timeout=timeout),
+            prefix='\t[err]', encoding=encoding)
+        host_out.stdout = stdout
+        host_out.stderr = stderr
+        return stdout, stderr
+
     def _get_host_config_values(self, host):
         _user = self.host_config.get(host, {}).get('user', self.user)
         _port = self.host_config.get(host, {}).get('port', self.port)
@@ -123,9 +167,6 @@ class BaseParallelSSHClient(object):
             'password', self.password)
         _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
         return _user, _port, _password, _pkey
-
-    def _run_command(self, host, command, *args, **kwargs):
-        raise NotImplementedError
 
     def get_output(self, cmd, output, timeout=None):
         """Get output from command.
@@ -146,6 +187,18 @@ class BaseParallelSSHClient(object):
             raise
         self._update_host_output(output, host, self._get_exit_code(channel),
                                  channel, stdout, stderr, stdin, cmd)
+
+    def _consume_output(self, stdout, stderr):
+        for line in stdout:
+            pass
+        for line in stderr:
+            pass
+
+    def _get_exit_code(self, channel):
+        """Get exit code from channel if ready"""
+        if channel is None:
+            return
+        return channel.get_exit_status()
 
     def _update_host_output(self, output, host, exit_code, channel, stdout,
                             stderr, stdin, cmd, exception=None):
@@ -355,6 +408,14 @@ class BaseParallelSSHClient(object):
             self._make_ssh_client(host)
             return self.host_clients[host].copy_remote_file(
                 remote_file, local_file, recurse=recurse, **kwargs)
+        except Exception as ex:
+            ex.host = host
+            raise ex
+
+    def _handle_greenlet_exc(self, func, host, *args, **kwargs):
+        try:
+            self._make_ssh_client(host)
+            return func(*args, **kwargs)
         except Exception as ex:
             ex.host = host
             raise ex

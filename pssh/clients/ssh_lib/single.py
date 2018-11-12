@@ -199,7 +199,6 @@ class SSHClient(BaseSSHClient):
             return
         logger.debug("Sending EOF on channel %s", channel)
         self.eagain(channel.send_eof, timeout=timeout)
-        # import ipdb; ipdb.set_trace()
         for _ in self.read_output(channel, timeout=timeout):
             pass
         for _ in self.read_output(channel, timeout=timeout, is_stderr=True):
