@@ -17,17 +17,9 @@
 
 import logging
 import os
-try:
-    import pwd
-except ImportError:
-    WIN_PLATFORM = True
-else:
-    WIN_PLATFORM = False
-from socket import gaierror as sock_gaierror, error as sock_error
 from warnings import warn
 
-from gevent import sleep, socket, get_hub, spawn
-from gevent.hub import Hub
+from gevent import sleep, spawn
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
     Timeout as SSH2Timeout
@@ -37,29 +29,18 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_SFTP_S_IWUSR, LIBSSH2_SFTP_S_IXUSR, LIBSSH2_SFTP_S_IROTH, \
     LIBSSH2_SFTP_S_IXGRP, LIBSSH2_SFTP_S_IXOTH
 
-from ...exceptions import UnknownHostException, AuthenticationException, \
-     ConnectionErrorException, SessionError, SFTPError, SFTPIOError, Timeout, \
-     SCPError
+from ..base_ssh_client import BaseSSHClient
+from ...exceptions import AuthenticationException, SessionError, SFTPError, \
+    SFTPIOError, Timeout, SCPError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...native._ssh2 import wait_select, eagain_write, _read_output
-from .common import _validate_pkey_path
 
 
-Hub.NOT_ERROR = (Exception,)
-host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
-THREAD_POOL = get_hub().threadpool
 
 
-class SSHClient(object):
+class SSHClient(BaseSSHClient):
     """ssh2-python (libssh2) based non-blocking SSH client."""
-
-    IDENTITIES = (
-        os.path.expanduser('~/.ssh/id_rsa'),
-        os.path.expanduser('~/.ssh/id_dsa'),
-        os.path.expanduser('~/.ssh/identity'),
-        os.path.expanduser('~/.ssh/id_ecdsa'),
-    )
 
     def __init__(self, host,
                  user=None, password=None, port=None,
@@ -107,31 +88,15 @@ class SSHClient(object):
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
         """
-        self.host = host
-        self.user = user if user else None
-        if self.user is None and not WIN_PLATFORM:
-            self.user = pwd.getpwuid(os.geteuid()).pw_name
-        elif self.user is None and WIN_PLATFORM:
-            raise ValueError("Must provide user parameter on Windows")
-        self.password = password
-        self.port = port if port else 22
-        self.num_retries = num_retries
-        self.sock = None
-        self.timeout = timeout
-        self.retry_delay = retry_delay
-        self.allow_agent = allow_agent
         self.forward_ssh_agent = forward_ssh_agent
         self._forward_requested = False
-        self.session = None
         self.keepalive_seconds = keepalive_seconds
         self._keepalive_greenlet = None
-        self._host = proxy_host if proxy_host else host
-        self.pkey = _validate_pkey_path(pkey, self.host)
-        self._connect(self._host, self.port)
-        if _auth_thread_pool:
-            THREAD_POOL.apply(self._init)
-        else:
-            self._init()
+        super(SSHClient, self).__init__(
+            host, user=user, password=password, port=port, pkey=pkey,
+            num_retries=num_retries, retry_delay=retry_delay,
+            allow_agent=allow_agent, _auth_thread_pool=_auth_thread_pool,
+            timeout=timeout)
 
     def disconnect(self):
         """Disconnect session, close socket if needed."""
@@ -142,15 +107,6 @@ class SSHClient(object):
                 pass
         if self.sock is not None and not self.sock.closed:
             self.sock.close()
-
-    def __del__(self):
-        self.disconnect()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        self.disconnect()
 
     def spawn_send_keepalive(self):
         """Spawns a new greenlet that sends keep alive messages every
@@ -163,15 +119,6 @@ class SSHClient(object):
 
     def configure_keepalive(self):
         self.session.keepalive_config(False, self.keepalive_seconds)
-
-    def _connect_init_retry(self, retries):
-        retries += 1
-        self.session = None
-        if not self.sock.closed:
-            self.sock.close()
-        sleep(self.retry_delay)
-        self._connect(self._host, self.port, retries=retries)
-        return self._init(retries=retries)
 
     def _init(self, retries=1):
         self.session = Session()
@@ -200,86 +147,11 @@ class SSHClient(object):
             self.configure_keepalive()
             self._keepalive_greenlet = self.spawn_send_keepalive()
 
-    def _connect(self, host, port, retries=1):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if self.timeout:
-            self.sock.settimeout(self.timeout)
-        logger.debug("Connecting to %s:%s", host, port)
-        try:
-            self.sock.connect((host, port))
-        except sock_gaierror as ex:
-            logger.error("Could not resolve host '%s' - retry %s/%s",
-                         host, retries, self.num_retries)
-            while retries < self.num_retries:
-                sleep(self.retry_delay)
-                return self._connect(host, port, retries=retries+1)
-            raise UnknownHostException("Unknown host %s - %s - retry %s/%s",
-                                       host, str(ex.args[1]), retries,
-                                       self.num_retries)
-        except sock_error as ex:
-            logger.error("Error connecting to host '%s:%s' - retry %s/%s",
-                         host, port, retries, self.num_retries)
-            while retries < self.num_retries:
-                sleep(self.retry_delay)
-                return self._connect(host, port, retries=retries+1)
-            error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
-            raise ConnectionErrorException(
-                "Error connecting to host '%s:%s' - %s - retry %s/%s",
-                host, port, str(error_type), retries,
-                self.num_retries,)
-
-    def _pkey_auth(self):
+    def _pkey_auth(self, pkey, password=None):
         self.session.userauth_publickey_fromfile(
             self.user,
-            self.pkey,
-            passphrase=self.password if self.password is not None else '')
-
-    def _identity_auth(self):
-        passphrase = self.password if self.password is not None else ''
-        for identity_file in self.IDENTITIES:
-            if not os.path.isfile(identity_file):
-                continue
-            logger.debug(
-                "Trying to authenticate with identity file %s",
-                identity_file)
-            try:
-                self.session.userauth_publickey_fromfile(
-                    self.user,
-                    identity_file,
-                    passphrase=passphrase)
-            except Exception:
-                logger.debug("Authentication with identity file %s failed, "
-                             "continuing with other identities",
-                             identity_file)
-                continue
-            else:
-                logger.debug("Authentication succeeded with identity file %s",
-                             identity_file)
-                return
-        raise AuthenticationException("No authentication methods succeeded")
-
-    def auth(self):
-        if self.pkey is not None:
-            logger.debug(
-                "Proceeding with private key file authentication")
-            return self._pkey_auth()
-        if self.allow_agent:
-            try:
-                self.session.agent_auth(self.user)
-            except Exception as ex:
-                logger.debug("Agent auth failed with %s, "
-                             "continuing with other authentication methods",
-                             ex)
-            else:
-                logger.debug("Authentication with SSH Agent succeeded")
-                return
-        try:
-            self._identity_auth()
-        except AuthenticationException:
-            if self.password is None:
-                raise
-            logger.debug("Private key auth failed, trying password")
-            self._password_auth()
+            pkey,
+            passphrase=password if password is not None else '')
 
     def _password_auth(self):
         try:
@@ -381,29 +253,6 @@ class SSHClient(object):
             wait_select(self.session)
             ret = func(*args, **kwargs)
         return ret
-
-    def read_output_buffer(self, output_buffer, prefix=None,
-                           callback=None,
-                           callback_args=None,
-                           encoding='utf-8'):
-        """Read from output buffers and log to ``host_logger``.
-
-        :param output_buffer: Iterator containing buffer
-        :type output_buffer: iterator
-        :param prefix: String to prefix log output to ``host_logger`` with
-        :type prefix: str
-        :param callback: Function to call back once buffer is depleted:
-        :type callback: function
-        :param callback_args: Arguments for call back function
-        :type callback_args: tuple
-        """
-        prefix = '' if prefix is None else prefix
-        for line in output_buffer:
-            output = line.decode(encoding)
-            host_logger.info("[%s]%s\t%s", self.host, prefix, output)
-            yield output
-        if callback:
-            callback(*callback_args)
 
     def run_command(self, command, sudo=False, user=None,
                     use_pty=False, shell=None,
@@ -579,16 +428,6 @@ class SSHClient(object):
                 _dir = ''.join(('/', _dir))
             return self.mkdir(sftp, sub_dirs, _parent_path=_dir)
 
-    def _copy_dir(self, local_dir, remote_dir, sftp):
-        """Call copy_file on every file in the specified directory, copying
-        them to the specified remote directory."""
-        file_list = os.listdir(local_dir)
-        for file_name in file_list:
-            local_path = os.path.join(local_dir, file_name)
-            remote_path = '/'.join([remote_dir, file_name])
-            self.copy_file(local_path, remote_path, recurse=True,
-                           sftp=sftp)
-
     def copy_remote_file(self, remote_file, local_file, recurse=False,
                          sftp=None, encoding='utf-8'):
         """Copy remote file to local host via SFTP.
@@ -720,27 +559,6 @@ class SSHClient(object):
         finally:
             local_fh.close()
 
-    def _scp_send_dir(self, local_dir, remote_dir, sftp):
-        file_list = os.listdir(local_dir)
-        for file_name in file_list:
-            local_path = os.path.join(local_dir, file_name)
-            remote_path = '/'.join([remote_dir, file_name])
-            self.scp_send(local_path, remote_path, recurse=True,
-                          sftp=sftp)
-
-    def _scp_recv_dir(self, file_list, remote_dir, local_dir, sftp,
-                      encoding='utf-8'):
-        for file_name in file_list:
-            file_name = file_name.decode(encoding)
-            if file_name in ('.', '..'):
-                continue
-            remote_path = os.path.join(remote_dir, file_name)
-            local_path = os.path.join(local_dir, file_name)
-            logger.debug("Attempting recursive copy from %s:%s to %s",
-                         self.host, remote_path, local_path)
-            self.scp_recv(remote_path, local_path, sftp=sftp,
-                          recurse=True)
-
     def scp_send(self, local_file, remote_file, recurse=False, sftp=None):
         """Copy local file to host via SCP.
 
@@ -802,11 +620,6 @@ class SSHClient(object):
             logger.error(msg, remote_file, self.host, ex)
             raise SCPError(msg, remote_file, self.host, ex)
 
-    def _sftp_readdir(self, dir_h):
-        for size, buf, attrs in dir_h.readdir():
-            for line in buf.splitlines():
-                yield line
-
     def _sftp_openfh(self, open_func, remote_file, *args):
         try:
             fh = open_func(remote_file, *args)
@@ -843,30 +656,3 @@ class SSHClient(object):
                 msg = "Error reading from remote file %s - %s"
                 logger.error(msg, remote_file, ex)
                 raise SFTPIOError(msg, remote_file, ex)
-
-    def _copy_remote_dir(self, file_list, remote_dir, local_dir, sftp,
-                         encoding='utf-8'):
-        for file_name in file_list:
-            file_name = file_name.decode(encoding)
-            if file_name in ('.', '..'):
-                continue
-            remote_path = os.path.join(remote_dir, file_name)
-            local_path = os.path.join(local_dir, file_name)
-            self.copy_remote_file(remote_path, local_path, sftp=sftp,
-                                  recurse=True)
-
-    def _make_local_dir(self, dirpath):
-        if os.path.exists(dirpath):
-            return
-        try:
-            os.makedirs(dirpath)
-        except OSError:
-            logger.error("Unable to create local directory structure for "
-                         "directory %s", dirpath)
-            raise
-
-    def _remote_paths_split(self, file_path):
-        _sep = file_path.rfind('/')
-        if _sep > 0:
-            return file_path[:_sep]
-        return

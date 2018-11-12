@@ -379,4 +379,3 @@ class BaseSSHClient(object):
         _sep = file_path.rfind('/')
         if _sep > 0:
             return file_path[:_sep]
-        return
