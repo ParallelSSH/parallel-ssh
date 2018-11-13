@@ -17,15 +17,9 @@
 
 import logging
 import os
-try:
-    import pwd
-except ImportError:
-    WIN_PLATFORM = True
-else:
-    WIN_PLATFORM = False
-from socket import gaierror as sock_gaierror, error as sock_error
+from cStringIO import StringIO
 
-from gevent import sleep, socket
+from gevent import sleep, spawn
 from gevent.select import select
 from ssh import options
 from ssh.session import Session, SSH_CLOSED, SSH_READ_PENDING, \
@@ -87,6 +81,12 @@ class SSHClient(BaseSSHClient):
             num_retries=num_retries, retry_delay=retry_delay,
             allow_agent=allow_agent, _auth_thread_pool=_auth_thread_pool,
             timeout=timeout)
+        self._stdout_buffer = StringIO()
+        self._stderr_buffer = StringIO()
+        self._stdout_reader = None
+        self._stderr_reader = None
+        self._stdout_read = False
+        self._stderr_read = False
 
     def disconnect(self):
         """Close socket if needed."""
@@ -134,6 +134,8 @@ class SSHClient(BaseSSHClient):
 
     def open_session(self):
         logger.debug("Opening new channel on %s", self.host)
+        self._stdout_buffer.flush()
+        self._stderr_buffer.flush()
         try:
             channel = self.session.channel_new()
             while channel == SSH_AGAIN:
@@ -156,18 +158,38 @@ class SSHClient(BaseSSHClient):
         if use_pty:
             self.eagain(channel.request_pty, timeout=self.timeout)
         self.eagain(channel.request_exec, cmd, timeout=self.timeout)
+        self._stdout_reader = spawn(
+            self._read_output_to_buffer, channel, timeout=self.timeout)
+        self._stderr_reader = spawn(
+            self._read_output_to_buffer, channel, timeout=self.timeout,
+            is_stderr=True)
+        self._stdout_reader.start()
+        self._stderr_reader.start()
         return channel
 
     def read_stderr(self, channel, timeout=None):
         return self.read_output(channel, timeout=timeout, is_stderr=True)
 
     def read_output(self, channel, timeout=None, is_stderr=False):
+        _buffer = self._stderr_buffer if is_stderr else self._stdout_buffer
+        _flag = self._stderr_read if is_stderr else self._stdout_read
+        if _flag is True:
+            raise StopIteration
+        while _buffer.getvalue() == '':
+            logger.debug("Buffer empty for %s, waiting", 'stderr' if is_stderr else 'stdout')
+            sleep(1)
+        for line in _buffer.getvalue().splitlines():
+            yield line
+        _flag = True
+
+    def _read_output_to_buffer(self, channel, timeout=None, is_stderr=False):
         logger.debug("Starting output generator on channel %s for %s",
                      channel, 'stderr' if is_stderr else 'stdout')
         while True:
             try:
                 if channel.poll():
-                    self.wait_select()
+                    logger.debug("Socket blocked, waiting")
+                    self.wait_select(timeout=timeout if timeout else self.timeout)
                     logger.debug(
                         "Socket no longer blocked - reading data from channel "
                         "%s", channel)
@@ -177,9 +199,11 @@ class SSHClient(BaseSSHClient):
                 size, data = channel.read_nonblocking(is_stderr=is_stderr)
             except EOF:
                 sleep()
-                raise StopIteration
+                return
+            import ipdb; ipdb.set_trace()
             if size > 0:
-                yield data
+                _buffer = self._stderr_buffer if is_stderr else self._stdout_buffer
+                _buffer.write(data)
             else:
                 # Yield event loop to other greenlets if we have no data to
                 # send back, meaning the generator does not yield and can there

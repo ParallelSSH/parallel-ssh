@@ -50,7 +50,7 @@ class LibSSHParallelTest(unittest.TestCase):
         cls.server = OpenSSHServer(listen_ip=cls.host, port=cls.port)
         cls.server.start_server()
         cls.cmd = 'echo me'
-        cls.resp = u'me\n'
+        cls.resp = u'me'
         cls.user_key = PKEY_FILENAME
         cls.user_pub_key = PUB_FILE
         cls.user = pwd.getpwuid(os.geteuid()).pw_name
