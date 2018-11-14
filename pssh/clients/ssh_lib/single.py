@@ -16,23 +16,18 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import logging
-import os
 from cStringIO import StringIO
 
-from gevent import sleep, spawn
+from gevent import sleep, spawn, joinall
 from gevent.select import select
 from ssh import options
-from ssh.session import Session, SSH_CLOSED, SSH_READ_PENDING, \
-    SSH_WRITE_PENDING, SSH_CLOSED_ERROR
-from ssh.channel import Channel
-from ssh.key import SSHKey, import_pubkey_file, import_privkey_file
-from ssh.exceptions import KeyImportError, EOF
+from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
+from ssh.key import import_privkey_file
+from ssh.exceptions import EOF
 from ssh.error_codes import SSH_AGAIN
 
 from ..base_ssh_client import BaseSSHClient
-from ...exceptions import UnknownHostException, AuthenticationException, \
-     ConnectionErrorException, SessionError, SFTPError, SFTPIOError, Timeout, \
-     SCPError
+from ...exceptions import AuthenticationException, SessionError, Timeout
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 
@@ -40,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 class SSHClient(BaseSSHClient):
+    """ssh-python based non-blocking client."""
 
     def __init__(self, host,
                  user=None, password=None, port=None,
@@ -126,7 +122,8 @@ class SSHClient(BaseSSHClient):
         try:
             self.session.userauth_password(self.password)
         except Exception as ex:
-            raise AuthenticationException("Password authentication failed - %s", ex)
+            raise AuthenticationException(
+                "Password authentication failed - %s", ex)
 
     def _pkey_auth(self, pkey, password=None):
         pkey = import_privkey_file(pkey, password)
@@ -134,8 +131,6 @@ class SSHClient(BaseSSHClient):
 
     def open_session(self):
         logger.debug("Opening new channel on %s", self.host)
-        self._stdout_buffer.flush()
-        self._stderr_buffer.flush()
         try:
             channel = self.session.channel_new()
             while channel == SSH_AGAIN:
@@ -144,7 +139,8 @@ class SSHClient(BaseSSHClient):
             logger.debug("Channel %s created, opening session", channel)
             channel.set_blocking(0)
             while channel.open_session() == SSH_AGAIN:
-                logger.debug("Channel open session blocked, waiting on socket..")
+                logger.debug(
+                    "Channel open session blocked, waiting on socket..")
                 self.wait_select()
                 # Select on open session can dead lock without
                 # yielding event loop
@@ -154,42 +150,72 @@ class SSHClient(BaseSSHClient):
         return channel
 
     def execute(self, cmd, use_pty=False, channel=None):
+        """Execute command on remote host.
+
+        :param cmd: The command string to execute.
+        :type cmd: str
+        :param use_pty: Whether or not to request a PTY on the channel executing
+          command.
+        :type use_pty: bool
+        :param channel: Channel to use. New channel is created if not provided.
+        :type channel: :py:class:`ssh.channel.Channel`"""
         channel = self.open_session() if not channel else channel
         if use_pty:
-            self.eagain(channel.request_pty, timeout=self.timeout)
-        self.eagain(channel.request_exec, cmd, timeout=self.timeout)
+            self.eagain(channel.request_pty)
+        self.eagain(channel.request_exec, cmd)
+        self._stderr_read = False
+        self._stdout_read = False
+        self._stdout_buffer = StringIO()
+        self._stderr_buffer = StringIO()
         self._stdout_reader = spawn(
-            self._read_output_to_buffer, channel, timeout=self.timeout)
+            self._read_output_to_buffer, channel)
         self._stderr_reader = spawn(
-            self._read_output_to_buffer, channel, timeout=self.timeout,
-            is_stderr=True)
+            self._read_output_to_buffer, channel, is_stderr=True)
         self._stdout_reader.start()
         self._stderr_reader.start()
         return channel
 
     def read_stderr(self, channel, timeout=None):
-        return self.read_output(channel, timeout=timeout, is_stderr=True)
+        return self.read_output(channel, is_stderr=True)
 
     def read_output(self, channel, timeout=None, is_stderr=False):
-        _buffer = self._stderr_buffer if is_stderr else self._stdout_buffer
-        _flag = self._stderr_read if is_stderr else self._stdout_read
+        if is_stderr:
+            _buffer_name = 'stderr'
+            _buffer = self._stderr_buffer
+            _flag = self._stderr_read
+            _reader = self._stderr_reader
+        else:
+            _buffer_name = 'stdout'
+            _buffer = self._stdout_buffer
+            _flag = self._stdout_read
+            _reader = self._stdout_reader
         if _flag is True:
+            logger.debug("Output for %s has already been read", _buffer_name)
             raise StopIteration
-        while _buffer.getvalue() == '':
-            logger.debug("Buffer empty for %s, waiting", 'stderr' if is_stderr else 'stdout')
-            sleep(1)
+        logger.debug("Waiting for %s reader", _buffer_name)
+        _reader.get()
+        if _buffer.getvalue() == '':
+            logger.debug("Reader finished and output empty for %s",
+                         _buffer_name)
+            raise StopIteration
+        logger.debug("Reading from %s buffer", _buffer_name)
         for line in _buffer.getvalue().splitlines():
             yield line
-        _flag = True
+        if is_stderr:
+            self._stderr_read = True
+        else:
+            self._stdout_read = True
 
-    def _read_output_to_buffer(self, channel, timeout=None, is_stderr=False):
+    def _read_output_to_buffer(self, channel, is_stderr=False):
+        _buffer_name = 'stderr' if is_stderr else 'stdout'
+        _buffer = self._stderr_buffer if is_stderr else self._stdout_buffer
         logger.debug("Starting output generator on channel %s for %s",
-                     channel, 'stderr' if is_stderr else 'stdout')
+                     channel, _buffer_name)
         while True:
             try:
                 if channel.poll():
                     logger.debug("Socket blocked, waiting")
-                    self.wait_select(timeout=timeout if timeout else self.timeout)
+                    self.wait_select()
                     logger.debug(
                         "Socket no longer blocked - reading data from channel "
                         "%s", channel)
@@ -198,17 +224,20 @@ class SSHClient(BaseSSHClient):
             try:
                 size, data = channel.read_nonblocking(is_stderr=is_stderr)
             except EOF:
+                logger.debug("Channel is at EOF trying to read %s - "
+                             "reader exiting", _buffer_name)
                 sleep()
                 return
-            import ipdb; ipdb.set_trace()
             if size > 0:
-                _buffer = self._stderr_buffer if is_stderr else self._stdout_buffer
+                logger.debug("Writing %s bytes to %s buffer",
+                             size, _buffer_name)
                 _buffer.write(data)
             else:
                 # Yield event loop to other greenlets if we have no data to
                 # send back, meaning the generator does not yield and can there
                 # for block other generators/greenlets from running.
-                sleep(1)
+                logger.debug("No data for %s, waiting", _buffer_name)
+                sleep(.1)
 
     def wait_finished(self, channel, timeout=None):
         """Wait for EOF from channel and close channel.
@@ -223,19 +252,22 @@ class SSHClient(BaseSSHClient):
             return
         logger.debug("Sending EOF on channel %s", channel)
         self.eagain(channel.send_eof, timeout=timeout)
-        for _ in self.read_output(channel, timeout=timeout):
-            pass
-        for _ in self.read_output(channel, timeout=timeout, is_stderr=True):
-            pass
+        joinall((self._stdout_reader, self._stderr_reader))
+        logger.debug("Readers finished, closing channel")
         # Close channel
         self.close_channel(channel)
+
+    def get_exit_status(self, channel):
+        if not channel.is_eof():
+            return
+        return channel.get_exit_status()
 
     def _eagain(self, func, *args, **kwargs):
         self.wait_select()
         return func(*args, **kwargs)
 
     def eagain(self, func, *args, **kwargs):
-        """Run function given EAGAIN"""
+        """Run function given and handle EAGAIN"""
         timeout = kwargs.pop('timeout', self.timeout)
         ret = func(*args, **kwargs)
         while ret == SSH_AGAIN:
@@ -254,4 +286,5 @@ class SSHClient(BaseSSHClient):
             if (directions & SSH_READ_PENDING) else ()
         writefds = (self.sock,) \
             if (directions & SSH_WRITE_PENDING) else ()
-        select(readfds, writefds, (), timeout=timeout)
+        select(readfds, writefds, (),
+               timeout=timeout if timeout else self.timeout)

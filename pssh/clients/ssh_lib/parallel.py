@@ -16,14 +16,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import logging
-from gevent import sleep
 from gevent.lock import RLock
 
 from .single import SSHClient
 from ..native.common import _validate_pkey_path
 from ..base_pssh import BaseParallelSSHClient
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-from ...exceptions import ProxyError, Timeout, HostArgumentException
+from ...exceptions import Timeout
 
 
 logger = logging.getLogger(__name__)
@@ -242,7 +241,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             if timeout:
                 # Must consume buffers prior to EOF check
                 self._consume_output(stdout, stderr)
-                if not channel.eof():
+                if not channel.is_eof():
                     raise Timeout(
                         "Timeout of %s sec(s) reached on host %s with command "
                         "still running", timeout, host)
@@ -262,5 +261,18 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     pkey=_pkey, num_retries=self.num_retries,
                     timeout=self.timeout,
                     allow_agent=self.allow_agent, retry_delay=self.retry_delay)
-                    # TODO - Add forward agent functionality
-                    # forward_ssh_agent=self.forward_ssh_agent)
+                # TODO - Add forward agent functionality
+                # forward_ssh_agent=self.forward_ssh_agent)
+
+    def finished(self, output):
+        """Check if commands have finished without blocking
+
+        :param output: As returned by
+          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
+        :rtype: bool
+        """
+        for host in output:
+            chan = output[host].channel
+            if chan is not None and not chan.is_eof():
+                return False
+        return True

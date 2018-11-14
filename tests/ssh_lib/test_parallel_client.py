@@ -91,7 +91,7 @@ class LibSSHParallelTest(unittest.TestCase):
                          msg="Got unexpected stderr - %s, expected %s" %
                          (stderr, expected_stderr,))
         self.client.join(output)
-        exit_code = output[self.host]['exit_code']
+        exit_code = output[self.host].exit_code
         self.assertEqual(expected_exit_code, exit_code,
                          msg="Got unexpected exit code - %s, expected %s" %
                          (exit_code, expected_exit_code,))
@@ -108,12 +108,241 @@ class LibSSHParallelTest(unittest.TestCase):
         for host in output:
             self.assertTrue(host in _output)
 
+    def test_get_last_output(self):
+        host = '127.0.0.9'
+        server = OpenSSHServer(listen_ip=host, port=self.port)
+        server.start_server()
+        try:
+            hosts = [self.host, host]
+            client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key)
+            self.assertTrue(client.cmds is None)
+            self.assertTrue(client.get_last_output() is None)
+            client.run_command(self.cmd)
+            self.assertTrue(client.cmds is not None)
+            self.assertEqual(len(client.cmds), len(hosts))
+            output = client.get_last_output()
+            self.assertTrue(len(output), len(hosts))
+            client.join(output)
+            for host in hosts:
+                self.assertTrue(host in output)
+                exit_code = output[host].exit_code
+                self.assertTrue(exit_code == 0)
+        finally:
+            server.stop()
+
+    def test_pssh_client_no_stdout_non_zero_exit_code_immediate_exit(self):
+        output = self.client.run_command('exit 1')
+        expected_exit_code = 1
+        self.client.join(output)
+        exit_code = output[self.host].exit_code
+        self.assertEqual(expected_exit_code, exit_code,
+                         msg="Got unexpected exit code - %s, expected %s" %
+                         (exit_code,
+                          expected_exit_code,))
+
+    def test_pssh_client_run_command_get_output(self):
+        output = self.client.run_command(self.cmd)
+        expected_exit_code = 0
+        expected_stdout = [self.resp]
+        expected_stderr = []
+        stdout = list(output[self.host].stdout)
+        stderr = list(output[self.host].stderr)
+        exit_code = output[self.host].exit_code
+        self.assertEqual(expected_exit_code, exit_code,
+                         msg="Got unexpected exit code - %s, expected %s" %
+                         (exit_code,
+                          expected_exit_code,))
+        self.assertEqual(expected_stdout, stdout,
+                         msg="Got unexpected stdout - %s, expected %s" %
+                         (stdout,
+                          expected_stdout,))
+        self.assertEqual(expected_stderr, stderr,
+                         msg="Got unexpected stderr - %s, expected %s" %
+                         (stderr,
+                          expected_stderr,))
+
+    def test_pssh_client_run_command_get_output_explicit(self):
+        out = self.client.run_command(self.cmd)
+        cmds = [cmd for host in out for cmd in [out[host]['cmd']]]
+        output = {}
+        for cmd in cmds:
+            self.client.get_output(cmd, output)
+        expected_exit_code = 0
+        expected_stdout = [self.resp]
+        expected_stderr = []
+        stdout = list(output[self.host].stdout)
+        stderr = list(output[self.host].stderr)
+        exit_code = output[self.host].exit_code
+        self.assertEqual(expected_exit_code, exit_code,
+                         msg="Got unexpected exit code - %s, expected %s" %
+                         (exit_code,
+                          expected_exit_code,))
+        self.assertEqual(expected_stdout, stdout,
+                         msg="Got unexpected stdout - %s, expected %s" %
+                         (stdout,
+                          expected_stdout,))
+        self.assertEqual(expected_stderr, stderr,
+                         msg="Got unexpected stderr - %s, expected %s" %
+                         (stderr,
+                          expected_stderr,))
+
     def test_pssh_client_run_long_command(self):
         expected_lines = 5
         output = self.client.run_command(self.long_cmd(expected_lines))
         self.assertTrue(self.host in output, msg="Got no output for command")
-        stdout = list(output[self.host]['stdout'])
+        stdout = list(output[self.host].stdout)
         self.client.join(output)
         self.assertTrue(len(stdout) == expected_lines,
                         msg="Expected %s lines of response, got %s" % (
                             expected_lines, len(stdout)))
+
+    def test_pssh_client_auth_failure(self):
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   user='FAKE USER',
+                                   pkey=self.user_key)
+        self.assertRaises(
+            AuthenticationException, client.run_command, self.cmd)
+
+    def test_pssh_client_hosts_list_part_failure(self):
+        """Test getting output for remainder of host list in the case where one
+        host in the host list has a failure"""
+        hosts = [self.host, '127.1.1.100']
+        client = ParallelSSHClient(hosts,
+                                   port=self.port,
+                                   pkey=self.user_key,
+                                   num_retries=1)
+        output = client.run_command(self.cmd, stop_on_errors=False)
+        self.assertFalse(client.finished(output))
+        client.join(output, consume_output=True)
+        self.assertTrue(client.finished(output))
+        self.assertTrue(hosts[0] in output,
+                        msg="Successful host does not exist in output - output is %s" % (output,))
+        self.assertTrue(hosts[1] in output,
+                        msg="Failed host does not exist in output - output is %s" % (output,))
+        self.assertTrue('exception' in output[hosts[1]],
+                        msg="Failed host %s has no exception in output - %s" % (hosts[1], output,))
+        self.assertTrue(output[hosts[1]].exception is not None)
+        self.assertEqual(output[hosts[1]].exception.host, hosts[1])
+        try:
+            raise output[hosts[1]]['exception']
+        except ConnectionErrorException:
+            pass
+        else:
+            raise Exception("Expected ConnectionError, got %s instead" % (
+                output[hosts[1]]['exception'],))
+
+    def test_pssh_client_timeout(self):
+        # 1ms timeout
+        client_timeout = 0.001
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.user_key,
+                                   timeout=client_timeout,
+                                   num_retries=1)
+        output = client.run_command('sleep 1', stop_on_errors=False)
+        self.assertIsInstance(output[self.host].exception,
+                              Timeout)
+
+    def test_connection_timeout(self):
+        client_timeout = .01
+        host = 'fakehost.com'
+        client = ParallelSSHClient([host], port=self.port,
+                                   pkey=self.user_key,
+                                   timeout=client_timeout,
+                                   num_retries=1)
+        cmd = spawn(client.run_command, 'sleep 1', stop_on_errors=False)
+        output = cmd.get(timeout=client_timeout * 200)
+        self.assertIsInstance(output[host].exception,
+                              ConnectionErrorException)
+
+    def test_zero_timeout(self):
+        host = '127.0.0.2'
+        server = OpenSSHServer(listen_ip=host, port=self.port)
+        server.start_server()
+        client = ParallelSSHClient([self.host, host],
+                                   port=self.port,
+                                   pkey=self.user_key,
+                                   timeout=0)
+        cmd = spawn(client.run_command, 'sleep 1', stop_on_errors=False)
+        output = cmd.get(timeout=3)
+        self.assertTrue(output[self.host].exception is None)
+
+    def test_pssh_client_long_running_command_exit_codes(self):
+        expected_lines = 2
+        output = self.client.run_command(self.long_cmd(expected_lines))
+        self.assertTrue(self.host in output, msg="Got no output for command")
+        self.assertTrue(not output[self.host].exit_code,
+                        msg="Got exit code %s for still running cmd.." % (
+                            output[self.host].exit_code,))
+        self.assertFalse(self.client.finished(output))
+        self.client.join(output, consume_output=True)
+        self.assertTrue(self.client.finished(output))
+        self.assertEqual(output[self.host].exit_code, 0)
+
+    def test_connection_error_exception(self):
+        """Test that we get connection error exception in output with correct arguments"""
+        # Make port with no server listening on it on separate ip
+        host = '127.0.0.3'
+        port = self.make_random_port(host=host)
+        hosts = [host]
+        client = ParallelSSHClient(hosts, port=port,
+                                   pkey=self.user_key,
+                                   num_retries=1)
+        output = client.run_command(self.cmd, stop_on_errors=False)
+        client.join(output)
+        self.assertTrue('exception' in output[host],
+                        msg="Got no exception for host %s - expected connection error" % (
+                            host,))
+        try:
+            raise output[host]['exception']
+        except ConnectionErrorException as ex:
+            self.assertEqual(ex.host, host,
+                             msg="Exception host argument is %s, should be %s" % (
+                                 ex.host, host,))
+            self.assertEqual(ex.args[2], port,
+                             msg="Exception port argument is %s, should be %s" % (
+                                 ex.args[2], port,))
+        else:
+            raise Exception("Expected ConnectionErrorException")
+
+    def test_bad_pkey_path(self):
+        self.assertRaises(PKeyFileError, ParallelSSHClient, [self.host], port=self.port,
+                          pkey='A REALLY FAKE KEY',
+                          num_retries=1)
+
+    def test_multiple_single_quotes_in_cmd(self):
+        """Test that we can run a command with multiple single quotes"""
+        output = self.client.run_command("echo 'me' 'and me'")
+        stdout = list(output[self.host].stdout)
+        expected = 'me and me'
+        self.assertTrue(len(stdout)==1,
+                        msg="Got incorrect number of lines in output - %s" % (stdout,))
+        self.assertEqual(output[self.host].exit_code, 0)
+        self.assertEqual(expected, stdout[0],
+                         msg="Got unexpected output. Expected %s, got %s" % (
+                             expected, stdout[0],))
+
+    def test_backtics_in_cmd(self):
+        """Test running command with backtics in it"""
+        output = self.client.run_command("out=`ls` && echo $out")
+        self.client.join(output)
+        self.assertEqual(output[self.host].exit_code, 0)
+
+    def test_multiple_shell_commands(self):
+        """Test running multiple shell commands in one go"""
+        output = self.client.run_command("echo me; echo and; echo me")
+        stdout = list(output[self.host]['stdout'])
+        expected = ["me", "and", "me"]
+        self.assertEqual(output[self.host].exit_code, 0)
+        self.assertEqual(expected, stdout,
+                         msg="Got unexpected output. Expected %s, got %s" % (
+                             expected, stdout,))
+
+    def test_escaped_quotes(self):
+        """Test escaped quotes in shell variable are handled correctly"""
+        output = self.client.run_command('t="--flags=\\"this\\""; echo $t')
+        stdout = list(output[self.host]['stdout'])
+        expected = ['--flags="this"']
+        self.assertEqual(output[self.host].exit_code, 0)
+        self.assertEqual(expected, stdout,
+                         msg="Got unexpected output. Expected %s, got %s" % (
+                             expected, stdout,))

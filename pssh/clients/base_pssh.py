@@ -1,16 +1,16 @@
 # This file is part of parallel-ssh.
-
+#
 # Copyright (C) 2014-2018 Panos Kittenis and contributors.
-
+#
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation, version 2.1.
-
+#
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
-
+#
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
@@ -39,7 +39,6 @@ except NameError:
 
 
 class BaseParallelSSHClient(object):
-
     """Parallel client base class."""
 
     def __init__(self, hosts, user=None, password=None, port=None, pkey=None,
@@ -66,6 +65,7 @@ class BaseParallelSSHClient(object):
         self.host_config = host_config if host_config else {}
         self.retry_delay = retry_delay
         self.cmds = None
+        self._status_code_lets = None
 
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
@@ -183,10 +183,11 @@ class BaseParallelSSHClient(object):
         except Exception as ex:
             host = ex.host
             self._update_host_output(
-                output, host, None, None, None, None, None, cmd, exception=ex)
+                output, host, None, None, None, None, cmd, None, exception=ex)
             raise
-        self._update_host_output(output, host, self._get_exit_code(channel),
-                                 channel, stdout, stderr, stdin, cmd)
+        self._update_host_output(
+            output, host, channel, stdout, stderr, stdin, cmd,
+            self.host_clients.get(host))
 
     def _consume_output(self, stdout, stderr):
         for line in stdout:
@@ -194,14 +195,8 @@ class BaseParallelSSHClient(object):
         for line in stderr:
             pass
 
-    def _get_exit_code(self, channel):
-        """Get exit code from channel if ready"""
-        if channel is None:
-            return
-        return channel.get_exit_status()
-
-    def _update_host_output(self, output, host, exit_code, channel, stdout,
-                            stderr, stdin, cmd, exception=None):
+    def _update_host_output(self, output, host, channel, stdout,
+                            stderr, stdin, cmd, client, exception=None):
         """Update host output with given data"""
         if host in output:
             new_host = "_".join([host,
@@ -212,7 +207,7 @@ class BaseParallelSSHClient(object):
                            "key for %s to %s", host, host, new_host)
             host = new_host
         output[host] = HostOutput(host, cmd, channel, stdout, stderr, stdin,
-                                  exit_code=exit_code, exception=exception)
+                                  client, exception=exception)
 
     def join(self, output, consume_output=False):
         raise NotImplementedError
@@ -231,28 +226,20 @@ class BaseParallelSSHClient(object):
         return True
 
     def get_exit_codes(self, output):
-        """Get exit code for all hosts in output *if available*.
-        Output parameter is modified in-place.
+        """This function is now a no-op.
 
-        :param output: As returned by
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
-        :rtype: None
+        Exit code is gathered, if available, by ``.exit_code`` on a
+        :py:class:`pssh.output.HostOutput` object instead.
         """
-        for host in output:
-            if output[host] is None:
-                continue
-            output[host].exit_code = self.get_exit_code(output[host])
+        pass
 
     def get_exit_code(self, host_output):
-        """Get exit code from host output *if available*.
+        """This function is now a no-op.
 
-        :param host_output: Per host output as returned by
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
-        :rtype: int or None if exit code not ready"""
-        if not hasattr(host_output, 'channel'):
-            logger.error("%s does not look like host output..", host_output,)
-            return
-        return self._get_exit_code(host_output.channel)
+        Exit code is gathered, if available, by ``.exit_code`` on a
+        :py:class:`pssh.output.HostOutput` object instead.
+        """
+        pass
 
     def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel

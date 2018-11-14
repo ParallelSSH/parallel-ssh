@@ -57,12 +57,12 @@ class SSHClientTest(SSHTestCase):
     def test_stderr(self):
         channel, host, stdout, stderr, stdin = self.client.run_command(
             'echo "me" >&2')
+        self.client.wait_finished(channel)
         output = list(stdout)
         stderr = list(stderr)
-        self.client.wait_finished(channel)
         expected = ['me']
         self.assertListEqual(expected, stderr)
-        self.assertTrue(len(output) == 0)
+        self.assertEqual(len(output), 0)
 
     def test_long_running_cmd(self):
         channel, host, stdout, stderr, stdin = self.client.run_command(

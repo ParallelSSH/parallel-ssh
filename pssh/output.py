@@ -1,16 +1,16 @@
 # This file is part of parallel-ssh.
-
+#
 # Copyright (C) 2014-2018 Panos Kittenis and contributors.
-
+#
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation, version 2.1.
-
+#
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
-
+#
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
@@ -25,10 +25,10 @@ class HostOutput(dict):
     """Class to hold host output"""
 
     __slots__ = ('host', 'cmd', 'channel', 'stdout', 'stderr', 'stdin',
-                 'exit_code', 'exception')
+                 'exception', 'client')
 
-    def __init__(self, host, cmd, channel, stdout, stderr, stdin,
-                 exit_code=None, exception=None):
+    def __init__(self, host, cmd, channel, stdout, stderr, stdin, client,
+                 exception=None):
         """
         :param host: Host name output is for
         :type host: str
@@ -42,23 +42,29 @@ class HostOutput(dict):
         :type stderr: generator
         :param stdin: Standard input buffer
         :type stdin: :py:func:`file`-like object
-        :param exit_code: Exit code of command
-        :type exit_code: int or None
+        :param client: `SSHClient` output is coming from.
+        :type client: :py:class:`pssh.clients.base_ssh_client.SSHClient`
         :param exception: Exception from host if any
         :type exception: :py:class:`Exception` or ``None``
         """
-        dict.__init__(self, (('host', host), ('cmd', cmd), ('channel', channel),
-                             ('stdout', stdout), ('stderr', stderr),
-                             ('stdin', stdin), ('exit_code', exit_code),
-                             ('exception', exception)))
         self.host = host
         self.cmd = cmd
         self.channel = channel
         self.stdout = stdout
         self.stderr = stderr
         self.stdin = stdin
+        self.client = client
         self.exception = exception
-        self.exit_code = exit_code
+        dict.__init__(self, (('host', host), ('cmd', cmd), ('channel', channel),
+                             ('stdout', stdout), ('stderr', stderr),
+                             ('client', client),
+                             ('stdin', stdin), ('exit_code', self.exit_code),
+                             ('exception', exception)))
+
+    @property
+    def exit_code(self):
+        return self.client.get_exit_status(self.channel) \
+            if self.client else None
 
     def __setattr__(self, name, value):
         object.__setattr__(self, name, value)

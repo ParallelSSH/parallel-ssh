@@ -29,8 +29,7 @@ from gevent import sleep, socket, get_hub
 from gevent.hub import Hub
 
 from ..exceptions import UnknownHostException, AuthenticationException, \
-    ConnectionErrorException, SessionError, SFTPError, SFTPIOError, Timeout, \
-    SCPError
+    ConnectionErrorException
 from ..constants import DEFAULT_RETRIES, RETRY_DELAY
 from .native.common import _validate_pkey_path
 
@@ -67,7 +66,7 @@ class BaseSSHClient(object):
         self.port = port if port else 22
         self.num_retries = num_retries
         self.sock = None
-        self.timeout = timeout
+        self.timeout = timeout if timeout else None
         self.retry_delay = retry_delay
         self.allow_agent = allow_agent
         self.session = None
@@ -205,6 +204,11 @@ class BaseSSHClient(object):
     def eagain(self, func, *args, **kwargs):
         raise NotImplementedError
 
+    def get_exit_status(self, channel):
+        if not channel.eof():
+            return
+        return channel.get_exit_status()
+
     def read_output_buffer(self, output_buffer, prefix=None,
                            callback=None,
                            callback_args=None,
@@ -276,7 +280,7 @@ class BaseSSHClient(object):
 
     def _mkdir(self, sftp, directory):
         raise NotImplementedError
-        
+
     def copy_file(self, local_file, remote_file, recurse=False,
                   sftp=None, _dir=None):
         raise NotImplementedError
