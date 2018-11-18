@@ -69,7 +69,8 @@ setup(name='parallel-ssh',
                         'tests', 'tests.*',
                         '*.tests', '*.tests.*')
       ),
-      install_requires=['paramiko', gevent_req, 'ssh2-python>=0.17.0'],
+      install_requires=[
+          'paramiko', gevent_req, 'ssh2-python>=0.17.0', 'ssh-python>=0.4.0'],
       classifiers=[
           'Development Status :: 5 - Production/Stable',
           'License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)',
@@ -77,7 +78,6 @@ setup(name='parallel-ssh',
           'Operating System :: OS Independent',
           'Programming Language :: C',
           'Programming Language :: Python :: 2',
-          'Programming Language :: Python :: 2.6',
           'Programming Language :: Python :: 2.7',
           'Programming Language :: Python :: 3',
           'Programming Language :: Python :: 3.4',

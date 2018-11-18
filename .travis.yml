@@ -29,6 +29,7 @@ script:
   - eval `ssh-agent -s`
   - nosetests --with-coverage --cover-package=pssh --nologcapture tests/test_native_tunnel.py
   - nosetests --with-coverage --cover-package=pssh tests/test_native_*_client.py
+  - nosetests --with-coverage --cover-package=pssh tests/ssh_lib
   - nosetests --with-coverage --cover-package=pssh tests/test_paramiko*.py
   - flake8 pssh
   - cd doc; make html; cd ..

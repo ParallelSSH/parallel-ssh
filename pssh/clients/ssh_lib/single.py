@@ -19,16 +19,16 @@ import logging
 from cStringIO import StringIO
 
 from gevent import sleep, spawn, joinall
-from gevent.select import select
 from ssh import options
-from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
+from ssh.session import Session
 from ssh.key import import_privkey_file
 from ssh.exceptions import EOF
 from ssh.error_codes import SSH_AGAIN
 
 from ..base_ssh_client import BaseSSHClient
-from ...exceptions import AuthenticationException, SessionError, Timeout
+from ...exceptions import AuthenticationException, SessionError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
+from ...native._ssh2 import wait_select_ssh as wait_select, eagain_ssh as eagain
 
 
 logger = logging.getLogger(__name__)
@@ -134,14 +134,14 @@ class SSHClient(BaseSSHClient):
         try:
             channel = self.session.channel_new()
             while channel == SSH_AGAIN:
-                self.wait_select()
+                wait_select(self.session, timeout=self.timeout)
                 channel = self.session.channel_new()
             logger.debug("Channel %s created, opening session", channel)
             channel.set_blocking(0)
             while channel.open_session() == SSH_AGAIN:
                 logger.debug(
                     "Channel open session blocked, waiting on socket..")
-                self.wait_select()
+                wait_select(self.session, timeout=self.timeout)
                 # Select on open session can dead lock without
                 # yielding event loop
                 sleep(.1)
@@ -161,8 +161,8 @@ class SSHClient(BaseSSHClient):
         :type channel: :py:class:`ssh.channel.Channel`"""
         channel = self.open_session() if not channel else channel
         if use_pty:
-            self.eagain(channel.request_pty)
-        self.eagain(channel.request_exec, cmd)
+            eagain(self.session, channel.request_pty, timeout=self.timeout)
+        eagain(self.session, channel.request_exec, cmd, timeout=self.timeout)
         self._stderr_read = False
         self._stdout_read = False
         self._stdout_buffer = StringIO()
@@ -215,7 +215,7 @@ class SSHClient(BaseSSHClient):
             try:
                 if channel.poll():
                     logger.debug("Socket blocked, waiting")
-                    self.wait_select()
+                    wait_select(self.session, timeout=self.timeout)
                     logger.debug(
                         "Socket no longer blocked - reading data from channel "
                         "%s", channel)
@@ -251,7 +251,8 @@ class SSHClient(BaseSSHClient):
         if channel is None:
             return
         logger.debug("Sending EOF on channel %s", channel)
-        self.eagain(channel.send_eof, timeout=timeout)
+        eagain(self.session, channel.send_eof,
+               timeout=timeout if timeout else self.timeout)
         joinall((self._stdout_reader, self._stderr_reader))
         logger.debug("Readers finished, closing channel")
         # Close channel
@@ -262,29 +263,6 @@ class SSHClient(BaseSSHClient):
             return
         return channel.get_exit_status()
 
-    def _eagain(self, func, *args, **kwargs):
-        self.wait_select()
-        return func(*args, **kwargs)
-
-    def eagain(self, func, *args, **kwargs):
-        """Run function given and handle EAGAIN"""
-        timeout = kwargs.pop('timeout', self.timeout)
-        ret = func(*args, **kwargs)
-        while ret == SSH_AGAIN:
-            self.wait_select(timeout=timeout)
-            ret = func(*args, **kwargs)
-            if ret == SSH_AGAIN and timeout is not None:
-                raise Timeout
-        sleep()
-        return ret
-
-    def wait_select(self, timeout=None):
-        directions = self.session.get_poll_flags()
-        if directions == 0:
-            return 0
-        readfds = (self.sock,) \
-            if (directions & SSH_READ_PENDING) else ()
-        writefds = (self.sock,) \
-            if (directions & SSH_WRITE_PENDING) else ()
-        select(readfds, writefds, (),
-               timeout=timeout if timeout else self.timeout)
+    def close_channel(self, channel):
+        logger.debug("Closing channel")
+        eagain(self.session, channel.close, timeout=self.timeout)

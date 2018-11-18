@@ -656,3 +656,8 @@ class SSHClient(BaseSSHClient):
                 msg = "Error reading from remote file %s - %s"
                 logger.error(msg, remote_file, ex)
                 raise SFTPIOError(msg, remote_file, ex)
+
+    def get_exit_status(self, channel):
+        if not channel.eof():
+            return
+        return channel.get_exit_status()

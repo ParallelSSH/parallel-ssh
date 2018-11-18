@@ -281,7 +281,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
                         "still running", timeout, host)
             elif consume_output:
                 self._consume_output(stdout, stderr)
-        self.get_exit_codes(output)
 
     def reset_output_generators(self, host_out, timeout=None,
                                 client=None, channel=None,
@@ -312,18 +311,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
         host_out.stdout = stdout
         host_out.stderr = stderr
         return stdout, stderr
-
-    def _consume_output(self, stdout, stderr):
-        for line in stdout:
-            pass
-        for line in stderr:
-            pass
-
-    def _get_exit_code(self, channel):
-        """Get exit code from channel if ready"""
-        if channel is None:
-            return
-        return channel.get_exit_status()
 
     def _start_tunnel_thread(self):
         self._tunnel_lock = RLock()

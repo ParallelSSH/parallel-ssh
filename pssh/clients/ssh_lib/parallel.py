@@ -239,14 +239,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     "Timeout of %s sec(s) reached on host %s with command "
                     "still running", timeout, host)
             if timeout:
-                # Must consume buffers prior to EOF check
-                self._consume_output(stdout, stderr)
                 if not channel.is_eof():
                     raise Timeout(
                         "Timeout of %s sec(s) reached on host %s with command "
                         "still running", timeout, host)
-            elif consume_output:
-                self._consume_output(stdout, stderr)
         self.get_exit_codes(output)
 
     def _make_ssh_client(self, host):

@@ -1,6 +1,33 @@
 Change Log
 ============
 
+1.10.0
++++++++
+
+Changes
+--------
+
+* Added ``ssh-python`` (libssh) based native client with ``run_command`` implementation.
+* ``HostOutput.exit_code`` is now a dynamic property that returns exit code for command if available, or ``None``. ``ParallelSSHClient.get_exit_codes`` and ``ParallelSSHClient.get_exit_code`` functions are now no-ops.
+* Deprecated since ``1.0.0`` dictionary-like access to ``HostOutput['exit_code']`` now always returns ``None``.
+
+
+Fixes
+------
+
+* ssh2-python client exit codes are now more explicit and return ``None`` if no exit code is ready. Would previously return ``0`` by default.
+
+.. note::
+
+   ``ssh-python`` client is experimental. Please report any issues.
+
+
+This release adds (yet another) native non-blocking client, this one based on `libssh <https://libssh.org>`_. Key features of this client are more supported key types for authentication (ED2252) as well as certificate authentication.
+
+Future releases will also enable GSS-API (Kerberos) authentication for the ssh-python client. 
+
+Between the ``ssh-python`` and ``ssh2-python`` clients, ``parallel-ssh`` now has feature parity with paramiko using entirely native clients, all non-blocking with the performance and scalability that brings, and one step closer to removing the paramiko dependency entirely in ``2.0.0``. Please migrate to one of the two native clients if have not already as paramiko is very quickly accumulating (more) bugs and the client based on it will no longer be supported.
+
 
 1.9.1
 ++++++
