@@ -65,7 +65,6 @@ class BaseParallelSSHClient(object):
         self.host_config = host_config if host_config else {}
         self.retry_delay = retry_delay
         self.cmds = None
-        self._status_code_lets = None
 
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,

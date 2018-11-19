@@ -17,7 +17,7 @@
 
 import logging
 from collections import deque
-from gevent import sleep
+from gevent import sleep, Timeout as GeventTimeout
 from gevent.lock import RLock
 
 from ..base_pssh import BaseParallelSSHClient
@@ -268,7 +268,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 host_out, client=client, channel=channel, timeout=timeout)
             try:
                 client.wait_finished(channel, timeout=timeout)
-            except Timeout:
+            except (Timeout, GeventTimeout):
                 raise Timeout(
                     "Timeout of %s sec(s) reached on host %s with command "
                     "still running", timeout, host)

@@ -346,3 +346,61 @@ class LibSSHParallelTest(unittest.TestCase):
         self.assertEqual(expected, stdout,
                          msg="Got unexpected output. Expected %s, got %s" % (
                              expected, stdout,))
+
+    def test_read_timeout(self):
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.user_key)
+        output = client.run_command('sleep 2; echo me; echo me; echo me', timeout=1)
+        for host, host_out in output.items():
+            self.assertRaises(Timeout, list, host_out.stdout)
+        self.assertFalse(output[self.host].channel.is_eof())
+        client.join(output)
+        for host, host_out in output.items():
+            stdout = list(output[self.host].stdout)
+            self.assertEqual(len(stdout), 3)
+        self.assertTrue(output[self.host].channel.is_eof())
+
+    def test_timeout_file_read(self):
+        dir_name = os.path.dirname(__file__)
+        _file = os.sep.join((dir_name, 'file_to_read'))
+        contents = [b'a line\n' for _ in range(50)]
+        with open(_file, 'wb') as fh:
+            fh.writelines(contents)
+        # import ipdb; ipdb.set_trace()
+        try:
+            output = self.client.run_command(
+                'tail -f %s' % (_file,), use_pty=True, timeout=5)
+            self.assertRaises(Timeout, self.client.join, output, timeout=1)
+            for host, host_out in output.items():
+                try:
+                    for line in host_out.stdout:
+                        pass
+                except Timeout:
+                    pass
+                else:
+                    raise Exception("Timeout should have been raised")
+            self.assertRaises(Timeout, self.client.join, output, timeout=1)
+            channel = output[self.host].channel
+            self.client.host_clients[self.host].close_channel(channel)
+            self.client.join(output)
+        finally:
+            os.unlink(_file)
+
+    def test_file_read_no_timeout(self):
+        try:
+            xrange
+        except NameError:
+            xrange = range
+        dir_name = os.path.dirname(__file__)
+        _file = os.sep.join((dir_name, 'file_to_read'))
+        contents = [b'a line\n' for _ in xrange(10000)]
+        with open(_file, 'wb') as fh:
+            fh.writelines(contents)
+        output = self.client.run_command('cat %s' % (_file,), timeout=10)
+        try:
+            _out = list(output[self.client.hosts[0]].stdout)
+        finally:
+            os.unlink(_file)
+        _contents = [c.decode('utf-8').strip() for c in contents]
+        self.assertEqual(len(contents), len(_out))
+        self.assertListEqual(_contents, _out)
