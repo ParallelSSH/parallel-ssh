@@ -16,7 +16,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import logging
-from cStringIO import StringIO
+try:
+    from cStringIO import StringIO as BytesIO
+except ImportError:
+    from io import BytesIO
 
 from gevent import sleep, spawn, Timeout as GeventTimeout
 from ssh import options
@@ -77,8 +80,8 @@ class SSHClient(BaseSSHClient):
             num_retries=num_retries, retry_delay=retry_delay,
             allow_agent=allow_agent, _auth_thread_pool=_auth_thread_pool,
             timeout=timeout)
-        self._stdout_buffer = StringIO()
-        self._stderr_buffer = StringIO()
+        self._stdout_buffer = BytesIO()
+        self._stderr_buffer = BytesIO()
         self._stdout_reader = None
         self._stderr_reader = None
         self._stdout_read = False
