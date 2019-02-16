@@ -17,7 +17,7 @@
 
 import logging
 from collections import deque
-from gevent import sleep
+from gevent import sleep, joinall
 from gevent.lock import RLock
 
 from ..base_pssh import BaseParallelSSHClient
@@ -127,7 +127,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8', timeout=None, greenlet_timeout=None):
+                    encoding='utf-8', timeout=None, greenlet_timeout=None,
+                    return_list=False):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output dictionary.
 
@@ -220,7 +221,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, command, stop_on_errors=stop_on_errors, host_args=host_args,
             user=user, shell=shell, sudo=sudo,
             encoding=encoding, use_pty=use_pty, timeout=timeout,
-            greenlet_timeout=greenlet_timeout)
+            greenlet_timeout=greenlet_timeout, return_list=return_list)
 
     def _run_command(self, host, command, sudo=False, user=None,
                      shell=None, use_pty=False,

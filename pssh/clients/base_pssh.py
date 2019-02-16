@@ -22,6 +22,7 @@ import random
 import logging
 
 import gevent.pool
+from gevent import joinall
 from gevent.hub import Hub
 
 from ..exceptions import HostArgumentException
@@ -69,10 +70,9 @@ class BaseParallelSSHClient(object):
 
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
-                    encoding='utf-8',
+                    encoding='utf-8', return_list=False,
                     *args, **kwargs):
         greenlet_timeout = kwargs.pop('greenlet_timeout', None)
-        output = {}
         if host_args:
             try:
                 cmds = [self.pool.spawn(self._run_command, host,
@@ -91,9 +91,27 @@ class BaseParallelSSHClient(object):
                 user=user, encoding=encoding, use_pty=use_pty, shell=shell,
                 *args, **kwargs)
                     for host in self.hosts]
+        joinall(cmds, raise_error=False)
+        if not return_list:
+            output = {}
+            return self._get_output_dict(
+                cmds, output, stop_on_errors=stop_on_errors, timeout=greenlet_timeout)
+        return [self._get_output_from_greenlet(cmd, timeout=greenlet_timeout) for cmd in cmds]
+
+    def _get_output_from_greenlet(self, cmd, timeout=None):
+        try:
+            (channel, host, stdout, stderr, stdin) = cmd.get(timeout=timeout)
+        except Exception as ex:
+            host = ex.host
+            return HostOutput(host, cmd, None, None, None, None, exception=ex)
+        return HostOutput(
+            host, cmd, channel, stdout, stderr, stdin,
+            exit_code=self._get_exit_code(channel))
+
+    def _get_output_dict(self, cmds, output, timeout=None, stop_on_errors=False):
         for cmd in cmds:
             try:
-                self.get_output(cmd, output, timeout=greenlet_timeout)
+                self.get_output(cmd, output, timeout=timeout)
             except Exception:
                 if stop_on_errors:
                     raise
@@ -130,13 +148,12 @@ class BaseParallelSSHClient(object):
     def get_output(self, cmd, output, timeout=None):
         """Get output from command.
 
-        :param cmd: Command to get output from
-        :type cmd: :py:class:`gevent.Greenlet`
         :param output: Dictionary containing
           :py:class:`pssh.output.HostOutput` values to be updated with output
           from cmd
         :type output: dict
-        :rtype: None"""
+        :rtype: None
+        """
         try:
             (channel, host, stdout, stderr, stdin) = cmd.get(timeout=timeout)
         except Exception as ex:

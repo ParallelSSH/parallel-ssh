@@ -34,12 +34,13 @@ import random
 import time
 
 
-from gevent import joinall, spawn
+from gevent import joinall, spawn, Greenlet
 from pssh.clients.native import ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
     ProxyError, PKeyFileError
+from pssh.output import HostOutput
 from pssh import logger as pssh_logger
 
 from .embedded_server.embedded_server import make_socket
@@ -1146,6 +1147,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue(self.host in output)
         self.assertTrue(output[self.host].channel is not None)
 
+    @unittest.skipUnless(bool(os.getenv('TRAVIS')), "Not on Travis CI - skipping")
     def test_run_command_sudo_var(self):
         command = """for i in 1 2 3; do echo $i; done"""
         output = list(self.client.run_command(
@@ -1409,3 +1411,7 @@ class ParallelSSHClientTest(unittest.TestCase):
             num_retries=1)
         client.join(client.run_command(self.cmd))
         self.assertFalse(client.host_clients[self.host].keepalive_seconds)
+
+    def test_return_list(self):
+        cmds = self.client.run_command(self.cmd, return_list=True)
+        self.assertIsInstance(cmds[0], HostOutput)
