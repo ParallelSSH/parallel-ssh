@@ -236,7 +236,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             logger.error("Failed to run on host %s - %s", host, ex)
             raise ex
 
-    def join(self, output, consume_output=False, timeout=None):
+    def join(self, output, consume_output=False, timeout=None, encoding='utf-8'):
         """Wait until all remote commands in output have finished
         and retrieve exit codes. Does *not* block other commands from
         running in parallel.
@@ -265,7 +265,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             client = self.host_clients[host]
             channel = host_out.channel
             stdout, stderr = self.reset_output_generators(
-                host_out, client=client, channel=channel, timeout=timeout)
+                host_out, client=client, channel=channel, timeout=timeout, encoding=encoding)
             try:
                 client.wait_finished(channel, timeout=timeout)
             except Timeout:
