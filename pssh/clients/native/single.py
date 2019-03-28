@@ -382,7 +382,7 @@ class SSHClient(object):
         tri = 0
         ret = func(*args, **kwargs)
         while tri < self.max_tries and ret == LIBSSH2_ERROR_EAGAIN:
-            logger.info('got LIBSSH2_ERROR_EAGAIN')
+            logger.debug('got LIBSSH2_ERROR_EAGAIN')
             sleep(self.eagain_sleep)
             wait_select(self.session)
             ret = func(*args, **kwargs)
