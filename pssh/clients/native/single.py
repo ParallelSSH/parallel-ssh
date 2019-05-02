@@ -24,6 +24,7 @@ except ImportError:
 else:
     WIN_PLATFORM = False
 from socket import gaierror as sock_gaierror, error as sock_error
+from time import sleep
 from warnings import warn
 
 from gevent import sleep, socket, get_hub, spawn
@@ -69,7 +70,7 @@ class SSHClient(object):
                  allow_agent=True, timeout=None,
                  forward_ssh_agent=False,
                  proxy_host=None,
-                 _auth_thread_pool=True, keepalive_seconds=60):
+                 _auth_thread_pool=True, keepalive_seconds=60, eagain_sleep=0.1, max_tries=30):
         """:param host: Host name or IP to connect to.
         :type host: str
         :param user: User to connect as. Defaults to logged in user.
@@ -116,9 +117,11 @@ class SSHClient(object):
         self.password = password
         self.port = port if port else 22
         self.num_retries = num_retries
+        self.eagain_sleep = eagain_sleep
         self.sock = None
         self.timeout = timeout
         self.retry_delay = retry_delay
+        self.max_tries = max_tries
         self.allow_agent = allow_agent
         self.forward_ssh_agent = forward_ssh_agent
         self._forward_requested = False
@@ -376,10 +379,14 @@ class SSHClient(object):
         self._eagain(channel.close)
 
     def _eagain(self, func, *args, **kwargs):
+        tri = 0
         ret = func(*args, **kwargs)
-        while ret == LIBSSH2_ERROR_EAGAIN:
+        while tri < self.max_tries and ret == LIBSSH2_ERROR_EAGAIN:
+            logger.debug('got LIBSSH2_ERROR_EAGAIN')
+            sleep(self.eagain_sleep)
             wait_select(self.session)
             ret = func(*args, **kwargs)
+            tri = tri + 1
         return ret
 
     def read_output_buffer(self, output_buffer, prefix=None,
@@ -771,13 +778,14 @@ class SSHClient(object):
         elif os.path.isdir(local_file) and not recurse:
             raise ValueError("Recurse must be True if local_file is a "
                              "directory.")
-        destination = self._remote_paths_split(remote_file)
-        if destination is not None:
-            sftp = self._make_sftp() if sftp is None else sftp
-            try:
-                self._eagain(sftp.stat, destination)
-            except (SFTPHandleError, SFTPProtocolError):
-                self.mkdir(sftp, destination)
+        if recurse:
+            destination = self._remote_paths_split(remote_file)
+            if destination is not None:
+                sftp = self._make_sftp() if sftp is None else sftp
+                try:
+                    self._eagain(sftp.stat, destination)
+                except (SFTPHandleError, SFTPProtocolError):
+                    self.mkdir(sftp, destination)
         self._scp_send(local_file, remote_file)
         logger.info("SCP local file %s to remote destination %s:%s",
                     local_file, self.host, remote_file)
