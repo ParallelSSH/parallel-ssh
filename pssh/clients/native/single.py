@@ -33,6 +33,10 @@ from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
     Timeout as SSH2Timeout
 from ssh2.session import Session
+from ssh2.session import LIBSSH2_METHOD_KEX, LIBSSH2_METHOD_HOSTKEY, \
+    LIBSSH2_METHOD_CRYPT_CS, LIBSSH2_METHOD_CRYPT_SC, LIBSSH2_METHOD_MAC_CS, \
+    LIBSSH2_METHOD_MAC_SC, LIBSSH2_METHOD_COMP_CS, LIBSSH2_METHOD_COMP_SC, \
+    LIBSSH2_METHOD_LANG_CS, LIBSSH2_METHOD_LANG_SC
 from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR, LIBSSH2_SFTP_S_IRGRP, \
     LIBSSH2_SFTP_S_IWUSR, LIBSSH2_SFTP_S_IXUSR, LIBSSH2_SFTP_S_IROTH, \
@@ -70,6 +74,9 @@ class SSHClient(object):
                  allow_agent=True, timeout=None,
                  forward_ssh_agent=False,
                  proxy_host=None,
+                 kex_algorithms=None,
+                 ciphers=None,
+                 MACs=None,
                  _auth_thread_pool=True, keepalive_seconds=60, eagain_sleep=0.1, max_tries=30):
         """:param host: Host name or IP to connect to.
         :type host: str
@@ -102,6 +109,12 @@ class SSHClient(object):
         :param proxy_host: Connection to host is via provided proxy host
           and client should use self.proxy_host for connection attempts.
         :type proxy_host: str
+        :param kex_algorithms: (Optional) Preferred key exchange algorithms.
+        :type kex_algorithms: str
+        :param ciphers: (Optional) Preferred data encryption algorithms.
+        :type ciphers: str
+        :param MACs: (Optional) Preferred message authentication codes.
+        :type MACs: str
         :param keepalive_seconds: Interval of keep alive messages being sent to
           server. Set to ``0`` or ``False`` to disable.
 
@@ -126,6 +139,9 @@ class SSHClient(object):
         self.forward_ssh_agent = forward_ssh_agent
         self._forward_requested = False
         self.session = None
+        self.kex_algorithms = kex_algorithms
+        self.ciphers = ciphers
+        self.MACs = MACs
         self.keepalive_seconds = keepalive_seconds
         self._keepalive_greenlet = None
         self._host = proxy_host if proxy_host else host
@@ -178,6 +194,14 @@ class SSHClient(object):
 
     def _init(self, retries=1):
         self.session = Session()
+        if self.kex_algorithms is not None:
+            self.session.method_pref(LIBSSH2_METHOD_KEX, self.kex_algorithms)
+        if self.ciphers is not None:
+            self.session.method_pref(LIBSSH2_METHOD_CRYPT_CS, self.ciphers)
+            self.session.method_pref(LIBSSH2_METHOD_CRYPT_SC, self.ciphers)
+        if self.MACs is not None:
+            self.session.method_pref(LIBSSH2_METHOD_MAC_CS, self.MACs)
+            self.session.method_pref(LIBSSH2_METHOD_MAC_SC, self.MACs)
         if self.timeout:
             # libssh2 timeout is in ms
             self.session.set_timeout(self.timeout * 1000)
