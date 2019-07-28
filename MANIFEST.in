@@ -3,3 +3,5 @@ include pssh/_version.py
 recursive-exclude tests *
 include pssh/native/*.c
 include pssh/native/*.pyx
+include COPYING
+include LICENSE.txt
