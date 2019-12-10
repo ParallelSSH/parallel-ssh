@@ -707,7 +707,7 @@ class SSHClient(object):
             local_fh.write(data)
             while total < fileinfo.st_size:
                 size, data = file_chan.read(size=fileinfo.st_size - total)
-                while size == LIBSSH2_ERROR_EAGAIN:
+                if size == LIBSSH2_ERROR_EAGAIN:
                     wait_select(self.session)
                     continue
                 total += size
