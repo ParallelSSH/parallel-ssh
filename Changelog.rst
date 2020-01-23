@@ -1,6 +1,15 @@
 Change Log
 ============
 
+1.10.0
++++++++
+
+Changes
+--------
+
+* Added ``return_list`` optional argument to ``run_command`` to return list of ``HostOutput`` objects as output rather than dictionary - defaults to ``False``. List output will become default starting from ``2.0.0``.
+* Updated native clients for new version of ``ssh2-python``.
+
 
 1.9.1
 ++++++

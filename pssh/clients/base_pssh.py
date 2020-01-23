@@ -22,6 +22,8 @@ import random
 import logging
 
 import gevent.pool
+
+from warnings import warn
 from gevent import joinall
 from gevent.hub import Hub
 
@@ -32,6 +34,9 @@ from ..output import HostOutput
 
 Hub.NOT_ERROR = (Exception,)
 logger = logging.getLogger(__name__)
+_output_depr_notice = "run_command output will change to a list rather than " \
+                      "dictionary in 2.0.0 - Please use return_list=True " \
+                      "to avoid client code breaking on upgrading to 2.0.0"
 
 try:
     xrange
@@ -93,10 +98,13 @@ class BaseParallelSSHClient(object):
                     for host in self.hosts]
         joinall(cmds, raise_error=False)
         if not return_list:
+            warn(_output_depr_notice)
             output = {}
             return self._get_output_dict(
-                cmds, output, stop_on_errors=stop_on_errors, timeout=greenlet_timeout)
-        return [self._get_output_from_greenlet(cmd, timeout=greenlet_timeout) for cmd in cmds]
+                cmds, output, stop_on_errors=stop_on_errors,
+                timeout=greenlet_timeout)
+        return [self._get_output_from_greenlet(cmd, timeout=greenlet_timeout)
+                for cmd in cmds]
 
     def _get_output_from_greenlet(self, cmd, timeout=None):
         try:
@@ -108,7 +116,8 @@ class BaseParallelSSHClient(object):
             host, cmd, channel, stdout, stderr, stdin,
             exit_code=self._get_exit_code(channel))
 
-    def _get_output_dict(self, cmds, output, timeout=None, stop_on_errors=False):
+    def _get_output_dict(self, cmds, output, timeout=None,
+                         stop_on_errors=False):
         for cmd in cmds:
             try:
                 self.get_output(cmd, output, timeout=timeout)
@@ -118,21 +127,43 @@ class BaseParallelSSHClient(object):
         self.cmds = cmds
         return output
 
-    def get_last_output(self, cmds=None):
+    def get_last_output(self, cmds=None, greenlet_timeout=None,
+                        return_list=False):
         """Get output for last commands executed by ``run_command``
 
         :param cmds: Commands to get output for. Defaults to ``client.cmds``
         :type cmds: list(:py:class:`gevent.Greenlet`)
+        :param greenlet_timeout: (Optional) Greenlet timeout setting.
+          Defaults to no timeout. If set, this function will raise
+          :py:class:`gevent.Timeout` after ``greenlet_timeout`` seconds
+          if no result is available from greenlets.
+          In some cases, such as when using proxy hosts, connection timeout
+          is controlled by proxy server and getting result from greenlets may
+          hang indefinitely if remote server is unavailable. Use this setting
+          to avoid blocking in such circumstances.
+          Note that ``gevent.Timeout`` is a special class that inherits from
+          ``BaseException`` and thus **can not be caught** by
+          ``stop_on_errors=False``.
+        :type greenlet_timeout: float
+        :param return_list: (Optional) Return a list of ``HostOutput`` objects
+          instead of dictionary. ``run_command`` will return a list starting
+          from 2.0.0 - enable this flag to avoid client code breaking on
+          upgrading to 2.0.0.
+        :type return_list: bool
 
-        :rtype: dict
+        :rtype: dict or list
         """
         cmds = self.cmds if cmds is None else cmds
         if cmds is None:
             return
-        output = {}
-        for cmd in self.cmds:
-            self.get_output(cmd, output)
-        return output
+        if not return_list:
+            warn(_output_depr_notice)
+            output = {}
+            for cmd in self.cmds:
+                self.get_output(cmd, output, timeout=greenlet_timeout)
+            return output
+        return [self._get_output_from_greenlet(cmd, timeout=greenlet_timeout)
+                for cmd in cmds]
 
     def _get_host_config_values(self, host):
         _user = self.host_config.get(host, {}).get('user', self.user)

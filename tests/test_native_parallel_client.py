@@ -162,6 +162,10 @@ class ParallelSSHClientTest(unittest.TestCase):
                 self.assertTrue(host in output)
                 exit_code = output[host].exit_code
                 self.assertTrue(exit_code == 0)
+            output = client.get_last_output(return_list=True)
+            self.assertTrue(len(output), len(hosts))
+            for i, host_output in enumerate(output):
+                self.assertEqual(host_output.host, hosts[i])
         finally:
             server.stop()
 

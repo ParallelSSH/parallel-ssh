@@ -17,7 +17,7 @@
 
 import logging
 from collections import deque
-from gevent import sleep, joinall
+from gevent import sleep
 from gevent.lock import RLock
 
 from ..base_pssh import BaseParallelSSHClient
@@ -193,10 +193,15 @@ class ParallelSSHClient(BaseParallelSSHClient):
           ``BaseException`` and thus **can not be caught** by
           ``stop_on_errors=False``.
         :type greenlet_timeout: float
+        :param return_list: (Optional) Return a list of ``HostOutput`` objects
+          instead of dictionary. ``run_command`` will return a list starting
+          from 2.0.0 - enable this flag to avoid client code breaking on
+          upgrading to 2.0.0.
+        :type return_list: bool
         :rtype: Dictionary with host as key and
-          :py:class:`pssh.output.HostOutput` as value as per
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
-
+          :py:class:`pssh.output.HostOutput` as value
+          *or* list(:py:class:`pssh.output.HostOutput`) when
+          ``return_list=True``
         :raises: :py:class:`pssh.exceptions.AuthenticationException` on
           authentication error
         :raises: :py:class:`pssh.exceptions.UnknownHostException` on DNS
@@ -287,7 +292,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
     def reset_output_generators(self, host_out, timeout=None,
                                 client=None, channel=None,
                                 encoding='utf-8'):
-        """Reset output generators for host output.
+        """Reset output generators for host output. This creates new
+        generators for stdout and stderr for the provided host output, useful
+        in cases where the previous generators have raised a Timeout but the
+        remote command is still running.
 
         :param host_out: Host output
         :type host_out: :py:class:`pssh.output.HostOutput`
