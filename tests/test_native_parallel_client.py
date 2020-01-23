@@ -1414,4 +1414,14 @@ class ParallelSSHClientTest(unittest.TestCase):
 
     def test_return_list(self):
         cmds = self.client.run_command(self.cmd, return_list=True)
+        expected_exit_code = 0
+        expected_stdout = [self.resp]
+        expected_stderr = []
         self.assertIsInstance(cmds[0], HostOutput)
+        for host_output in cmds:
+            self.assertEqual(host_output.host, self.client.hosts[0])
+            self.assertEqual(host_output.exit_code, expected_exit_code)
+            _stdout = list(host_output.stdout)
+            _stderr = list(host_output.stderr)
+            self.assertListEqual(expected_stdout, _stdout)
+            self.assertListEqual(expected_stderr, _stderr)
