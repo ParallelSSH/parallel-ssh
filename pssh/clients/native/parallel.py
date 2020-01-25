@@ -383,7 +383,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
         logger.debug("Make client request for host %s, host in clients: %s",
                      host, host in self.host_clients)
         with self._clients_lock:
-            # if host not in self.host_clients or self.host_clients[host] is None:
             if (host_i, host) not in self._host_clients \
                or self._host_clients[(host_i, host)] is None:
                 _user, _port, _password, _pkey = self._get_host_config_values(

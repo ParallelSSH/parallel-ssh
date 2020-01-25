@@ -97,7 +97,7 @@ class BaseParallelSSHClient(object):
                 user=user, encoding=encoding, use_pty=use_pty, shell=shell,
                 *args, **kwargs)
                     for host_i, host in enumerate(self.hosts)]
-        joinall(cmds, raise_error=False)
+        joinall(cmds, raise_error=False, timeout=greenlet_timeout)
         if not return_list:
             warn(_output_depr_notice)
             output = {}
