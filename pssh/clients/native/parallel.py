@@ -17,7 +17,7 @@
 
 import logging
 from collections import deque
-from gevent import sleep
+from gevent import sleep, joinall
 from gevent.lock import RLock
 
 from ..base_pssh import BaseParallelSSHClient
@@ -228,13 +228,13 @@ class ParallelSSHClient(BaseParallelSSHClient):
             encoding=encoding, use_pty=use_pty, timeout=timeout,
             greenlet_timeout=greenlet_timeout, return_list=return_list)
 
-    def _run_command(self, host, command, sudo=False, user=None,
+    def _run_command(self, host_i, host, command, sudo=False, user=None,
                      shell=None, use_pty=False,
                      encoding='utf-8', timeout=None):
         """Make SSHClient if needed, run command on host"""
         try:
-            self._make_ssh_client(host)
-            return self.host_clients[host].run_command(
+            self._make_ssh_client(host_i, host)
+            return self._host_clients[(host_i, host)].run_command(
                 command, sudo=sudo, user=user, shell=shell,
                 use_pty=use_pty, encoding=encoding, timeout=timeout)
         except Exception as ex:
@@ -265,29 +265,49 @@ class ParallelSSHClient(BaseParallelSSHClient):
           reached with commands still running.
 
         :rtype: ``None``"""
-        for host, host_out in output.items():
-            if host not in self.host_clients or self.host_clients[host] is None:
-                continue
-            client = self.host_clients[host]
-            channel = host_out.channel
-            stdout, stderr = self.reset_output_generators(
-                host_out, client=client, channel=channel, timeout=timeout)
-            try:
-                client.wait_finished(channel, timeout=timeout)
-            except Timeout:
+        cmds = []
+        if isinstance(output, list):
+            for host_i, host_out in enumerate(output):
+                host = self.hosts[host_i]
+                cmds.append(self.pool.spawn(
+                    self._join, host_i, host, host_out,
+                    consume_output=consume_output, timeout=timeout))
+        elif isinstance(output, dict):
+            cmds = []
+            for host_i, (host, host_out) in enumerate(output.items()):
+                cmds.append(self.pool.spawn(
+                    self._join, host_i, host, host_out,
+                    consume_output=consume_output, timeout=timeout))
+        else:
+            raise ValueError("Unexpected output object type")
+        # Errors raised by self._join should be propagated.
+        # Timeouts are handled by self._join itself.
+        joinall(cmds, raise_error=True)
+        self.get_exit_codes(output)
+
+    def _join(self, host_i, host, host_out, consume_output=False, timeout=None):
+        if (host_i, host) not in self._host_clients or \
+           self._host_clients[(host_i, host)] is None:
+            return
+        client = self._host_clients[(host_i, host)]
+        channel = host_out.channel
+        stdout, stderr = self.reset_output_generators(
+            host_out, client=client, channel=channel, timeout=timeout)
+        try:
+            client.wait_finished(channel, timeout=timeout)
+        except Timeout:
+            raise Timeout(
+                "Timeout of %s sec(s) reached on host %s with command "
+                "still running", timeout, host)
+        if timeout:
+            # Must consume buffers prior to EOF check
+            self._consume_output(stdout, stderr)
+            if not channel.eof():
                 raise Timeout(
                     "Timeout of %s sec(s) reached on host %s with command "
                     "still running", timeout, host)
-            if timeout:
-                # Must consume buffers prior to EOF check
-                self._consume_output(stdout, stderr)
-                if not channel.eof():
-                    raise Timeout(
-                        "Timeout of %s sec(s) reached on host %s with command "
-                        "still running", timeout, host)
-            elif consume_output:
-                self._consume_output(stdout, stderr)
-        self.get_exit_codes(output)
+        elif consume_output:
+            self._consume_output(stdout, stderr)
 
     def reset_output_generators(self, host_out, timeout=None,
                                 client=None, channel=None,
@@ -356,14 +376,16 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 logger.error(msg, self._tunnel.exception)
                 raise ProxyError(msg, self._tunnel.exception)
 
-    def _make_ssh_client(self, host):
+    def _make_ssh_client(self, host_i, host):
         auth_thread_pool = True
         if self.proxy_host is not None and self._tunnel is None:
             self._start_tunnel_thread()
         logger.debug("Make client request for host %s, host in clients: %s",
                      host, host in self.host_clients)
         with self._clients_lock:
-            if host not in self.host_clients or self.host_clients[host] is None:
+            # if host not in self.host_clients or self.host_clients[host] is None:
+            if (host_i, host) not in self._host_clients \
+               or self._host_clients[(host_i, host)] is None:
                 _user, _port, _password, _pkey = self._get_host_config_values(
                     host)
                 proxy_host = None if self.proxy_host is None else '127.0.0.1'
@@ -386,7 +408,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                             _wait += .5
                         else:
                             break
-                self.host_clients[host] = SSHClient(
+                _client = SSHClient(
                     host, user=_user, password=_password, port=_port,
                     pkey=_pkey, num_retries=self.num_retries,
                     timeout=self.timeout,
@@ -394,6 +416,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     proxy_host=proxy_host, _auth_thread_pool=auth_thread_pool,
                     forward_ssh_agent=self.forward_ssh_agent,
                     keepalive_seconds=self.keepalive_seconds)
+                self.host_clients[host] = _client
+                self._host_clients[(host_i, host)] = _client
 
     def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel via SFTP.
@@ -518,16 +542,16 @@ class ParallelSSHClient(BaseParallelSSHClient):
             suffix_separator=suffix_separator, copy_args=copy_args,
             encoding=encoding)
 
-    def _scp_send(self, host, local_file, remote_file, recurse=False):
-        self._make_ssh_client(host)
+    def _scp_send(self, host_i, host, local_file, remote_file, recurse=False):
+        self._make_ssh_client(host_i, host)
         return self._handle_greenlet_exc(
-            self.host_clients[host].scp_send, host,
+            self._host_clients[(host_i, host)].scp_send, host,
             local_file, remote_file, recurse=recurse)
 
-    def _scp_recv(self, host, remote_file, local_file, recurse=False):
-        self._make_ssh_client(host)
+    def _scp_recv(self, host_i, host, remote_file, local_file, recurse=False):
+        self._make_ssh_client(host_i, host)
         return self._handle_greenlet_exc(
-            self.host_clients[host].scp_recv, host,
+            self._host_clients[(host_i, host)].scp_recv, host,
             remote_file, local_file, recurse=recurse)
 
     def scp_send(self, local_file, remote_file, recurse=False):
@@ -562,9 +586,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :raises: :py:class:`pss.exceptions.SCPError` on errors copying file.
         :raises: :py:class:`OSError` on local OS errors like permission denied.
         """
-        return [self.pool.spawn(self._scp_send, host, local_file,
+        return [self.pool.spawn(self._scp_send, host_i, host, local_file,
                                 remote_file, recurse=recurse)
-                for host in self.hosts]
+                for host_i, host in enumerate(self.hosts)]
 
     def scp_recv(self, remote_file, local_file, recurse=False, copy_args=None,
                  suffix_separator='_'):
@@ -638,7 +662,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         remote_file = "%(remote_file)s"
         try:
             return [self.pool.spawn(
-                self._scp_recv, host,
+                self._scp_recv, host_i, host,
                 remote_file % copy_args[host_i],
                 local_file % copy_args[host_i], recurse=recurse)
                     for host_i, host in enumerate(self.hosts)]
@@ -649,7 +673,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
     def _handle_greenlet_exc(self, func, host, *args, **kwargs):
         try:
-            self._make_ssh_client(host)
             return func(*args, **kwargs)
         except Exception as ex:
             ex.host = host

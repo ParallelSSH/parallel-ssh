@@ -69,6 +69,7 @@ class BaseParallelSSHClient(object):
         self.timeout = timeout
         # To hold host clients
         self.host_clients = {}
+        self._host_clients = {}
         self.host_config = host_config if host_config else {}
         self.retry_delay = retry_delay
         self.cmds = None
@@ -80,7 +81,7 @@ class BaseParallelSSHClient(object):
         greenlet_timeout = kwargs.pop('greenlet_timeout', None)
         if host_args:
             try:
-                cmds = [self.pool.spawn(self._run_command, host,
+                cmds = [self.pool.spawn(self._run_command, host_i, host,
                                         command % host_args[host_i],
                                         user=user, encoding=encoding,
                                         use_pty=use_pty, shell=shell,
@@ -92,10 +93,10 @@ class BaseParallelSSHClient(object):
                     "number of hosts ")
         else:
             cmds = [self.pool.spawn(
-                self._run_command, host, command,
+                self._run_command, host_i, host, command,
                 user=user, encoding=encoding, use_pty=use_pty, shell=shell,
                 *args, **kwargs)
-                    for host in self.hosts]
+                    for host_i, host in enumerate(self.hosts)]
         joinall(cmds, raise_error=False)
         if not return_list:
             warn(_output_depr_notice)
@@ -173,7 +174,7 @@ class BaseParallelSSHClient(object):
         _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
         return _user, _port, _password, _pkey
 
-    def _run_command(self, host, command, *args, **kwargs):
+    def _run_command(self, host_i, host, command, *args, **kwargs):
         raise NotImplementedError
 
     def get_output(self, cmd, output, timeout=None):
@@ -233,10 +234,19 @@ class BaseParallelSSHClient(object):
           :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
         :rtype: None
         """
-        for host in output:
-            if output[host] is None:
-                continue
-            output[host].exit_code = self.get_exit_code(output[host])
+        if isinstance(output, list):
+            for host_out in output:
+                if host_out is None:
+                    continue
+            host_out.exit_code = self.get_exit_code(host_out)
+        elif isinstance(output, dict):
+            for host in output:
+                host_out = output[host]
+                if output[host] is None:
+                    continue
+                host_out.exit_code = self.get_exit_code(host_out)
+        else:
+            raise ValueError("Unexpected output object type")
 
     def get_exit_code(self, host_output):
         """Get exit code from host output *if available*.
@@ -296,7 +306,7 @@ class BaseParallelSSHClient(object):
         """
         if copy_args:
             try:
-                return [self.pool.spawn(self._copy_file, host,
+                return [self.pool.spawn(self._copy_file, host_i, host,
                                         local_file % copy_args[host_i],
                                         remote_file % copy_args[host_i],
                                         {'recurse': recurse})
@@ -306,16 +316,16 @@ class BaseParallelSSHClient(object):
                     "Number of per-host copy arguments provided does not match "
                     "number of hosts")
         else:
-            return [self.pool.spawn(self._copy_file, host, local_file,
+            return [self.pool.spawn(self._copy_file, host_i, host, local_file,
                                     remote_file, {'recurse': recurse})
-                    for host in self.hosts]
+                    for host_i, host in enumerate(self.hosts)]
 
-    def _copy_file(self, host, local_file, remote_file, recurse=False):
+    def _copy_file(self, host_i, host, local_file, remote_file, recurse=False):
         """Make sftp client, copy file"""
         try:
-            self._make_ssh_client(host)
-            return self.host_clients[host].copy_file(local_file, remote_file,
-                                                     recurse=recurse)
+            self._make_ssh_client(host_i, host)
+            return self._host_clients[(host_i, host)].copy_file(
+                local_file, remote_file, recurse=recurse)
         except Exception as ex:
             ex.host = host
             raise ex
@@ -382,7 +392,7 @@ class BaseParallelSSHClient(object):
         if copy_args:
             try:
                 return [self.pool.spawn(
-                    self._copy_remote_file, host,
+                    self._copy_remote_file, host_i, host,
                     remote_file % copy_args[host_i],
                     local_file % copy_args[host_i], recurse=recurse, **kwargs)
                     for host_i, host in enumerate(self.hosts)]
@@ -392,16 +402,16 @@ class BaseParallelSSHClient(object):
                     "number of hosts")
         else:
             return [self.pool.spawn(
-                self._copy_remote_file, host, remote_file,
+                self._copy_remote_file, host_i, host, remote_file,
                 suffix_separator.join([local_file, host]), recurse, **kwargs)
-                for host in self.hosts]
+                    for host_i, host in enumerate(self.hosts)]
 
-    def _copy_remote_file(self, host, remote_file, local_file, recurse,
+    def _copy_remote_file(self, host_i, host, remote_file, local_file, recurse,
                           **kwargs):
         """Make sftp client, copy file to local"""
         try:
-            self._make_ssh_client(host)
-            return self.host_clients[host].copy_remote_file(
+            self._make_ssh_client(host_i, host)
+            return self._host_clients[(host_i, host)].copy_remote_file(
                 remote_file, local_file, recurse=recurse, **kwargs)
         except Exception as ex:
             ex.host = host

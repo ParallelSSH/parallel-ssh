@@ -97,8 +97,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         exit_code = output[self.host].exit_code
         stdout = list(output[self.host]['stdout'])
         stderr = list(output[self.host]['stderr'])
-        self.assertTrue(len(stdout) == 0)
-        self.assertTrue(len(stderr) == 0)
+        self.assertEqual(len(stdout), 0)
+        self.assertEqual(len(stderr), 0)
         self.assertEqual(expected_exit_code, exit_code)
         output = self.client.run_command('echo "me" >&2', use_pty=False)
         self.client.join(output, consume_output=True)
@@ -830,6 +830,28 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(len(hosts), len(output.keys()),
                          msg="Host list contains %s identical hosts, only got output for %s" % (
                              len(hosts), len(output.keys())))
+
+    def test_identical_hosts_in_host_list(self):
+        """Test that we can handle identical hosts in host list"""
+        host2 = '127.0.0.2'
+        hosts = [self.host, host2, self.host, self.host]
+        _server2 = OpenSSHServer(listen_ip=host2, port=self.port)
+        _server2.start_server()
+        client = ParallelSSHClient(hosts, port=self.port,
+                                   pkey=self.user_key,
+                                   num_retries=1)
+        output = client.run_command(self.cmd, stop_on_errors=False, return_list=True)
+        client.join(output)
+        self.assertEqual(len(hosts), len(output),
+                         msg="Host list contains %s identical hosts, only got output for %s" % (
+                             len(hosts), len(output)))
+        for host_i, host in enumerate(hosts):
+            single_client = client._host_clients[(host_i, host)]
+            self.assertEqual(single_client.host, host)
+        expected_stdout = [self.resp]
+        for host_out in output:
+            _host_stdout = list(host_out.stdout)
+            self.assertListEqual(_host_stdout, expected_stdout)
 
     def test_connection_error_exception(self):
         """Test that we get connection error exception in output with correct arguments"""
