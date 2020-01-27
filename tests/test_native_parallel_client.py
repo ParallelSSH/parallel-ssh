@@ -1439,13 +1439,41 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertFalse(client.host_clients[self.host].keepalive_seconds)
 
     def test_return_list(self):
-        cmds = self.client.run_command(self.cmd, return_list=True)
+        output = self.client.run_command(self.cmd, return_list=True)
         expected_exit_code = 0
         expected_stdout = [self.resp]
         expected_stderr = []
-        self.assertIsInstance(cmds[0], HostOutput)
-        for host_output in cmds:
+        self.assertIsInstance(output, list)
+        self.assertIsInstance(output[0], HostOutput)
+        for host_output in output:
             self.assertEqual(host_output.host, self.client.hosts[0])
+            self.assertEqual(host_output.exit_code, expected_exit_code)
+            _stdout = list(host_output.stdout)
+            _stderr = list(host_output.stderr)
+            self.assertListEqual(expected_stdout, _stdout)
+            self.assertListEqual(expected_stderr, _stderr)
+
+    def test_return_list_last_output_multi_host(self):
+        host2, host3 = '127.0.0.2', '127.0.0.3'
+        server2 = OpenSSHServer(host2, port=self.port)
+        server3 = OpenSSHServer(host3, port=self.port)
+        servers = [server2, server3]
+        for server in servers:
+            server.start_server()
+        hosts = [self.host, host2, host3]
+        client = ParallelSSHClient(hosts, port=self.port,
+                                   pkey=self.user_key,
+                                   num_retries=1)
+        client.run_command(self.cmd)
+        expected_exit_code = 0
+        expected_stdout = [self.resp]
+        expected_stderr = []
+        last_out = client.get_last_output(return_list=True)
+        self.assertIsInstance(last_out, list)
+        self.assertEqual(len(last_out), len(hosts))
+        self.assertIsInstance(last_out[0], HostOutput)
+        for host_i, host_output in enumerate(last_out):
+            self.assertEqual(host_output.host, client.hosts[host_i])
             self.assertEqual(host_output.exit_code, expected_exit_code)
             _stdout = list(host_output.stdout)
             _stderr = list(host_output.stderr)
