@@ -22,18 +22,6 @@ environment:
       MSVC: "Visual Studio 9"
       ARCH: x64_86
 
-    - PYTHON: "C:\\Python34"
-      PYTHON_VERSION: "3.4"
-      PYTHON_ARCH: "32"
-      MSVC: "Visual Studio 10"
-      ARCH: i386
-
-    - PYTHON: "C:\\Python34-x64"
-      PYTHON_VERSION: "3.4"
-      PYTHON_ARCH: "64"
-      MSVC: "Visual Studio 10 Win64"
-      ARCH: x64_86
-
     - PYTHON: "C:\\Python35"
       PYTHON_VERSION: "3.5"
       PYTHON_ARCH: "32"
@@ -70,6 +58,13 @@ environment:
       PYTHON_ARCH: "64"
       MSVC: "Visual Studio 14 Win64"
       ARCH: x64_86
+
+    - PYTHON: "C:\\Python38-x64"
+      PYTHON_VERSION: "3.8"
+      PYTHON_ARCH: "64"
+      MSVC: "Visual Studio 14 Win64"
+      ARCH: x64_86
+
 
 install:
   # If there is a newer build queued for the same PR, cancel this one.
