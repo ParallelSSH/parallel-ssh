@@ -345,6 +345,10 @@ While not best practice and password-less ``sudo`` is best configured for a limi
        stdin.write('my_password\n')
        stdin.flush()
    client.join(output)
+   
+.. note::
+
+   Note the inclusion of the new line ``\n`` when using sudo with a password.
 
 Output encoding
 -----------------
