@@ -94,7 +94,7 @@ class BaseParallelSSHClient(object):
         for cmd in cmds:
             try:
                 self.get_output(cmd, output, timeout=greenlet_timeout)
-            except Exception:
+            except (Exception, gevent.timeout.Timeout):
                 if stop_on_errors:
                     raise
         self.cmds = cmds
@@ -139,7 +139,7 @@ class BaseParallelSSHClient(object):
         :rtype: None"""
         try:
             (channel, host, stdout, stderr, stdin) = cmd.get(timeout=timeout)
-        except Exception as ex:
+        except (Exception, gevent.timeout.Timeout) as ex:
             host = ex.host
             self._update_host_output(
                 output, host, None, None, None, None, None, cmd, exception=ex)

@@ -236,7 +236,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             logger.error("Failed to run on host %s - %s", host, ex)
             raise ex
 
-    def join(self, output, consume_output=False, timeout=None, encoding='utf-8'):
+    def _join(self, output, consume_output=False, timeout=None, encoding='utf-8'):
         """Wait until all remote commands in output have finished
         and retrieve exit codes. Does *not* block other commands from
         running in parallel.
@@ -259,28 +259,32 @@ class ParallelSSHClient(BaseParallelSSHClient):
           reached with commands still running.
 
         :rtype: ``None``"""
-        for host, host_out in output.items():
-            if host not in self.host_clients or self.host_clients[host] is None:
-                continue
-            client = self.host_clients[host]
-            channel = host_out.channel
-            stdout, stderr = self.reset_output_generators(
-                host_out, client=client, channel=channel, timeout=timeout, encoding=encoding)
-            try:
-                client.wait_finished(channel, timeout=timeout)
-            except Timeout:
+        if host not in self.host_clients or self.host_clients[host] is None:
+            return
+        client = self.host_clients[host]
+        channel = host_out.channel
+        stdout, stderr = self.reset_output_generators(
+            host_out, client=client, channel=channel, timeout=timeout, encoding=encoding)
+        try:
+            client.wait_finished(channel, timeout=timeout)
+        except Timeout:
+            raise Timeout(
+                "Timeout of %s sec(s) reached on host %s with command "
+                "still running", timeout, host)
+        if timeout:
+            # Must consume buffers prior to EOF check
+            self._consume_output(stdout, stderr)
+            if not channel.eof():
                 raise Timeout(
                     "Timeout of %s sec(s) reached on host %s with command "
                     "still running", timeout, host)
-            if timeout:
-                # Must consume buffers prior to EOF check
-                self._consume_output(stdout, stderr)
-                if not channel.eof():
-                    raise Timeout(
-                        "Timeout of %s sec(s) reached on host %s with command "
-                        "still running", timeout, host)
-            elif consume_output:
-                self._consume_output(stdout, stderr)
+        elif consume_output:
+            self._consume_output(stdout, stderr)
+
+    def join(self, output, consume_output=False, timeout=None, encoding='utf-8'):
+        for host, host_output in output.items():
+            self.pool.spawn(self._join, host, host_output, output, consume_output, timeout, encoding)
+        self.pool.join(timeout = timeout)
         self.get_exit_codes(output)
 
     def reset_output_generators(self, host_out, timeout=None,
