@@ -228,6 +228,16 @@ class ParallelSSHClient(BaseParallelSSHClient):
             encoding=encoding, use_pty=use_pty, timeout=timeout,
             greenlet_timeout=greenlet_timeout, return_list=return_list)
 
+    def __del__(self):
+        logger.debug("Disconnecting clients")
+        for s_client in self._host_clients.values():
+            try:
+                s_client.disconnect()
+            except Exception as ex:
+                logger.debug("Client disconnect failed with %s", ex)
+                pass
+            del s_client
+
     def _run_command(self, host_i, host, command, sudo=False, user=None,
                      shell=None, use_pty=False,
                      encoding='utf-8', timeout=None):

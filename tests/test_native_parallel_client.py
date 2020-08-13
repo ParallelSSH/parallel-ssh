@@ -179,6 +179,20 @@ class ParallelSSHClientTest(unittest.TestCase):
                          (exit_code,
                           expected_exit_code,))
 
+    def test_pssh_client_no_stdout_non_zero_exit_code_immediate_exit_no_join(self):
+        output = self.client.run_command('echo me; exit 1', return_list=True)
+        expected_exit_code = 1
+        for host_out in output:
+            for line in host_out.stdout:
+                pass
+        # self.client.join(output)
+        exit_code = output[0].exit_code
+        self.client.join(output)
+        self.assertEqual(expected_exit_code, exit_code,
+                         msg="Got unexpected exit code - %s, expected %s" %
+                         (exit_code,
+                          expected_exit_code,))
+
     def test_pssh_client_run_command_get_output(self):
         output = self.client.run_command(self.cmd)
         expected_exit_code = 0
@@ -1479,3 +1493,16 @@ class ParallelSSHClientTest(unittest.TestCase):
             _stderr = list(host_output.stderr)
             self.assertListEqual(expected_stdout, _stdout)
             self.assertListEqual(expected_stderr, _stderr)
+
+    def test_client_disconnect(self):
+        client = ParallelSSHClient([self.host],
+                                   port=self.port,
+                                   pkey=self.user_key,
+                                   num_retries=1)
+        output = client.run_command(self.cmd,
+                                    return_list=True)
+        client.join(output, consume_output=True)
+        single_client = list(client._host_clients.values())[0]
+        self.assertFalse(single_client.sock.closed)
+        del client
+        self.assertTrue(single_client.sock.closed)
