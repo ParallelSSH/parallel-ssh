@@ -30,6 +30,7 @@ import sys
 import string
 from socket import timeout as socket_timeout
 from sys import version_info
+from platform import python_version
 import random
 import time
 
@@ -256,6 +257,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertRaises(
             AuthenticationException, client.run_command, self.cmd)
 
+    @unittest.skipIf(python_version() < '3', "Inconsistent results on python2")
     def test_pssh_client_hosts_list_part_failure(self):
         """Test getting output for remainder of host list in the case where one
         host in the host list has a failure"""
