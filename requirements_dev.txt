@@ -4,6 +4,7 @@ flake8
 sphinx
 sphinx_rtd_theme
 pytest
+pytest-cov
 pytest-rerunfailures
 python-gssapi
 jinja2
