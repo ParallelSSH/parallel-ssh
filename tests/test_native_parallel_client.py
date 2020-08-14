@@ -1468,6 +1468,9 @@ class ParallelSSHClientTest(unittest.TestCase):
             _stderr = list(host_output.stderr)
             self.assertListEqual(expected_stdout, _stdout)
             self.assertListEqual(expected_stderr, _stderr)
+        # self.client.cmds should be set
+        for cmd in self.client.cmds:
+            self.assertRaises(ValueError, self.client.get_output, cmd, output)
 
     def test_return_list_last_output_multi_host(self):
         host2, host3 = '127.0.0.2', '127.0.0.3'

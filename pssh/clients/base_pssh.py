@@ -97,6 +97,7 @@ class BaseParallelSSHClient(object):
                 user=user, encoding=encoding, use_pty=use_pty, shell=shell,
                 *args, **kwargs)
                     for host_i, host in enumerate(self.hosts)]
+        self.cmds = cmds
         joinall(cmds, raise_error=False, timeout=greenlet_timeout)
         if not return_list:
             warn(_output_depr_notice)
@@ -125,7 +126,6 @@ class BaseParallelSSHClient(object):
             except Exception:
                 if stop_on_errors:
                     raise
-        self.cmds = cmds
         return output
 
     def get_last_output(self, cmds=None, greenlet_timeout=None,
@@ -186,6 +186,10 @@ class BaseParallelSSHClient(object):
         :type output: dict
         :rtype: None
         """
+        if not isinstance(output, dict):
+            raise ValueError(
+                "get_output is for the deprecated dictionary output only. " \
+                "To be removed in 2.0.0")
         try:
             (channel, host, stdout, stderr, stdin) = cmd.get(timeout=timeout)
         except Exception as ex:
