@@ -229,6 +229,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
             greenlet_timeout=greenlet_timeout, return_list=return_list)
 
     def __del__(self):
+        if not hasattr(self, '_host_clients'):
+            return
         logger.debug("Disconnecting clients")
         for s_client in self._host_clients.values():
             try:
