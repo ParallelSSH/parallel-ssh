@@ -822,7 +822,7 @@ static const char *__pyx_f[] = {
 /*--- Type declarations ---*/
 struct __pyx_obj_4pssh_6native_5_ssh2___pyx_scope_struct___read_output;
 
-/* "pssh/native/_ssh2.pyx":33
+/* "pssh/native/_ssh2.pyx":34
  * 
  * 
  * def _read_output(session, read_func, timeout=None):             # <<<<<<<<<<<<<<
@@ -1297,24 +1297,29 @@ static const char __pyx_k_data[] = "data";
 static const char __pyx_k_find[] = "find";
 static const char __pyx_k_main[] = "__main__";
 static const char __pyx_k_name[] = "__name__";
+static const char __pyx_k_poll[] = "poll";
 static const char __pyx_k_send[] = "send";
 static const char __pyx_k_size[] = "_size";
 static const char __pyx_k_sock[] = "sock";
 static const char __pyx_k_test[] = "__test__";
 static const char __pyx_k_close[] = "close";
 static const char __pyx_k_throw[] = "throw";
+static const char __pyx_k_POLLIN[] = "POLLIN";
 static const char __pyx_k_data_2[] = "_data";
+static const char __pyx_k_events[] = "events";
 static const char __pyx_k_import[] = "__import__";
+static const char __pyx_k_poller[] = "poller";
 static const char __pyx_k_rstrip[] = "rstrip";
-static const char __pyx_k_select[] = "select";
 static const char __pyx_k_socket[] = "_socket";
+static const char __pyx_k_POLLOUT[] = "POLLOUT";
 static const char __pyx_k_Timeout[] = "Timeout";
 static const char __pyx_k_linesep[] = "linesep";
-static const char __pyx_k_readfds[] = "readfds";
 static const char __pyx_k_session[] = "session";
 static const char __pyx_k_timeout[] = "timeout";
 static const char __pyx_k_data_len[] = "data_len";
-static const char __pyx_k_writefds[] = "writefds";
+static const char __pyx_k_datetime[] = "datetime";
+static const char __pyx_k_register[] = "register";
+static const char __pyx_k_eventmask[] = "eventmask";
 static const char __pyx_k_read_func[] = "read_func";
 static const char __pyx_k_remainder[] = "remainder";
 static const char __pyx_k_directions[] = "directions";
@@ -1341,6 +1346,8 @@ static const char __pyx_k_Cython_functions_for_interfacing[] = "Cython functions
 static PyObject *__pyx_n_s_LIBSSH2_ERROR_EAGAIN;
 static PyObject *__pyx_n_s_LIBSSH2_SESSION_BLOCK_INBOUND;
 static PyObject *__pyx_n_s_LIBSSH2_SESSION_BLOCK_OUTBOUND;
+static PyObject *__pyx_n_s_POLLIN;
+static PyObject *__pyx_n_s_POLLOUT;
 static PyObject *__pyx_n_s_SessionError;
 static PyObject *__pyx_n_s_Timeout;
 static PyObject *__pyx_kp_b__2;
@@ -1353,8 +1360,11 @@ static PyObject *__pyx_n_s_close;
 static PyObject *__pyx_n_s_data;
 static PyObject *__pyx_n_s_data_2;
 static PyObject *__pyx_n_s_data_len;
+static PyObject *__pyx_n_s_datetime;
 static PyObject *__pyx_n_s_directions;
 static PyObject *__pyx_n_s_eagain_write;
+static PyObject *__pyx_n_s_eventmask;
+static PyObject *__pyx_n_s_events;
 static PyObject *__pyx_n_s_exceptions;
 static PyObject *__pyx_n_s_find;
 static PyObject *__pyx_n_s_gevent_select;
@@ -1362,17 +1372,18 @@ static PyObject *__pyx_n_s_import;
 static PyObject *__pyx_n_s_linesep;
 static PyObject *__pyx_n_s_main;
 static PyObject *__pyx_n_s_name;
+static PyObject *__pyx_n_s_poll;
+static PyObject *__pyx_n_s_poller;
 static PyObject *__pyx_n_s_pos;
 static PyObject *__pyx_n_s_pssh_native__ssh2;
 static PyObject *__pyx_kp_s_pssh_native__ssh2_pyx;
 static PyObject *__pyx_n_s_rc;
 static PyObject *__pyx_n_s_read_func;
 static PyObject *__pyx_n_s_read_output;
-static PyObject *__pyx_n_s_readfds;
+static PyObject *__pyx_n_s_register;
 static PyObject *__pyx_n_s_remainder;
 static PyObject *__pyx_n_s_remainder_len;
 static PyObject *__pyx_n_s_rstrip;
-static PyObject *__pyx_n_s_select;
 static PyObject *__pyx_n_s_send;
 static PyObject *__pyx_n_s_session;
 static PyObject *__pyx_n_s_size;
@@ -1386,12 +1397,12 @@ static PyObject *__pyx_n_s_timeout;
 static PyObject *__pyx_n_s_total_written;
 static PyObject *__pyx_n_s_wait_select;
 static PyObject *__pyx_n_s_write_func;
-static PyObject *__pyx_n_s_writefds;
 static PyObject *__pyx_pf_4pssh_6native_5_ssh2__read_output(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_session, PyObject *__pyx_v_read_func, PyObject *__pyx_v_timeout); /* proto */
 static PyObject *__pyx_pf_4pssh_6native_5_ssh2_3wait_select(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_session, PyObject *__pyx_v_timeout); /* proto */
 static PyObject *__pyx_pf_4pssh_6native_5_ssh2_5eagain_write(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_write_func, PyObject *__pyx_v_data, PyObject *__pyx_v_session, PyObject *__pyx_v_timeout); /* proto */
 static PyObject *__pyx_tp_new_4pssh_6native_5_ssh2___pyx_scope_struct___read_output(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_int_0;
+static PyObject *__pyx_int_1000;
 static PyObject *__pyx_codeobj_;
 static PyObject *__pyx_tuple__4;
 static PyObject *__pyx_tuple__5;
@@ -1401,7 +1412,7 @@ static PyObject *__pyx_codeobj__8;
 /* Late includes */
 static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject *__pyx_generator, CYTHON_UNUSED PyThreadState *__pyx_tstate, PyObject *__pyx_sent_value); /* proto */
 
-/* "pssh/native/_ssh2.pyx":33
+/* "pssh/native/_ssh2.pyx":34
  * 
  * 
  * def _read_output(session, read_func, timeout=None):             # <<<<<<<<<<<<<<
@@ -1449,7 +1460,7 @@ static PyObject *__pyx_pw_4pssh_6native_5_ssh2_1_read_output(PyObject *__pyx_sel
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_read_func)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("_read_output", 0, 2, 3, 1); __PYX_ERR(0, 33, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("_read_output", 0, 2, 3, 1); __PYX_ERR(0, 34, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  2:
@@ -1459,7 +1470,7 @@ static PyObject *__pyx_pw_4pssh_6native_5_ssh2_1_read_output(PyObject *__pyx_sel
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "_read_output") < 0)) __PYX_ERR(0, 33, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "_read_output") < 0)) __PYX_ERR(0, 34, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -1477,7 +1488,7 @@ static PyObject *__pyx_pw_4pssh_6native_5_ssh2_1_read_output(PyObject *__pyx_sel
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("_read_output", 0, 2, 3, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 33, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("_read_output", 0, 2, 3, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 34, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("pssh.native._ssh2._read_output", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -1502,7 +1513,7 @@ static PyObject *__pyx_pf_4pssh_6native_5_ssh2__read_output(CYTHON_UNUSED PyObje
   if (unlikely(!__pyx_cur_scope)) {
     __pyx_cur_scope = ((struct __pyx_obj_4pssh_6native_5_ssh2___pyx_scope_struct___read_output *)Py_None);
     __Pyx_INCREF(Py_None);
-    __PYX_ERR(0, 33, __pyx_L1_error)
+    __PYX_ERR(0, 34, __pyx_L1_error)
   } else {
     __Pyx_GOTREF(__pyx_cur_scope);
   }
@@ -1516,7 +1527,7 @@ static PyObject *__pyx_pf_4pssh_6native_5_ssh2__read_output(CYTHON_UNUSED PyObje
   __Pyx_INCREF(__pyx_cur_scope->__pyx_v_timeout);
   __Pyx_GIVEREF(__pyx_cur_scope->__pyx_v_timeout);
   {
-    __pyx_CoroutineObject *gen = __Pyx_Generator_New((__pyx_coroutine_body_t) __pyx_gb_4pssh_6native_5_ssh2_2generator, __pyx_codeobj_, (PyObject *) __pyx_cur_scope, __pyx_n_s_read_output, __pyx_n_s_read_output, __pyx_n_s_pssh_native__ssh2); if (unlikely(!gen)) __PYX_ERR(0, 33, __pyx_L1_error)
+    __pyx_CoroutineObject *gen = __Pyx_Generator_New((__pyx_coroutine_body_t) __pyx_gb_4pssh_6native_5_ssh2_2generator, __pyx_codeobj_, (PyObject *) __pyx_cur_scope, __pyx_n_s_read_output, __pyx_n_s_read_output, __pyx_n_s_pssh_native__ssh2); if (unlikely(!gen)) __PYX_ERR(0, 34, __pyx_L1_error)
     __Pyx_DECREF(__pyx_cur_scope);
     __Pyx_RefNannyFinishContext();
     return (PyObject *) gen;
@@ -1562,9 +1573,9 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
     return NULL;
   }
   __pyx_L3_first_run:;
-  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 33, __pyx_L1_error)
+  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 34, __pyx_L1_error)
 
-  /* "pssh/native/_ssh2.pyx":36
+  /* "pssh/native/_ssh2.pyx":37
  *     cdef Py_ssize_t _size
  *     cdef bytes _data
  *     cdef bytes remainder = b""             # <<<<<<<<<<<<<<
@@ -1575,7 +1586,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
   __Pyx_GIVEREF(__pyx_kp_b__2);
   __pyx_cur_scope->__pyx_v_remainder = __pyx_kp_b__2;
 
-  /* "pssh/native/_ssh2.pyx":37
+  /* "pssh/native/_ssh2.pyx":38
  *     cdef bytes _data
  *     cdef bytes remainder = b""
  *     cdef Py_ssize_t remainder_len = 0             # <<<<<<<<<<<<<<
@@ -1584,20 +1595,20 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
  */
   __pyx_cur_scope->__pyx_v_remainder_len = 0;
 
-  /* "pssh/native/_ssh2.pyx":38
+  /* "pssh/native/_ssh2.pyx":39
  *     cdef bytes remainder = b""
  *     cdef Py_ssize_t remainder_len = 0
  *     sock = session.sock             # <<<<<<<<<<<<<<
  *     cdef size_t _pos = 0
  *     cdef Py_ssize_t linesep
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_cur_scope->__pyx_v_session, __pyx_n_s_sock); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 38, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_cur_scope->__pyx_v_session, __pyx_n_s_sock); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 39, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_1);
   __pyx_cur_scope->__pyx_v_sock = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "pssh/native/_ssh2.pyx":39
+  /* "pssh/native/_ssh2.pyx":40
  *     cdef Py_ssize_t remainder_len = 0
  *     sock = session.sock
  *     cdef size_t _pos = 0             # <<<<<<<<<<<<<<
@@ -1606,7 +1617,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
  */
   __pyx_cur_scope->__pyx_v__pos = 0;
 
-  /* "pssh/native/_ssh2.pyx":41
+  /* "pssh/native/_ssh2.pyx":42
  *     cdef size_t _pos = 0
  *     cdef Py_ssize_t linesep
  *     _size, _data = read_func()             # <<<<<<<<<<<<<<
@@ -1626,7 +1637,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
   }
   __pyx_t_1 = (__pyx_t_3) ? __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3) : __Pyx_PyObject_CallNoArg(__pyx_t_2);
   __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-  if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 41, __pyx_L1_error)
+  if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 42, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   if ((likely(PyTuple_CheckExact(__pyx_t_1))) || (PyList_CheckExact(__pyx_t_1))) {
@@ -1635,7 +1646,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
     if (unlikely(size != 2)) {
       if (size > 2) __Pyx_RaiseTooManyValuesError(2);
       else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
-      __PYX_ERR(0, 41, __pyx_L1_error)
+      __PYX_ERR(0, 42, __pyx_L1_error)
     }
     #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
     if (likely(PyTuple_CheckExact(sequence))) {
@@ -1648,15 +1659,15 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
     __Pyx_INCREF(__pyx_t_2);
     __Pyx_INCREF(__pyx_t_3);
     #else
-    __pyx_t_2 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 41, __pyx_L1_error)
+    __pyx_t_2 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 42, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_3 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 41, __pyx_L1_error)
+    __pyx_t_3 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 42, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     #endif
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   } else {
     Py_ssize_t index = -1;
-    __pyx_t_4 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 41, __pyx_L1_error)
+    __pyx_t_4 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 42, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __pyx_t_5 = Py_TYPE(__pyx_t_4)->tp_iternext;
@@ -1664,7 +1675,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
     __Pyx_GOTREF(__pyx_t_2);
     index = 1; __pyx_t_3 = __pyx_t_5(__pyx_t_4); if (unlikely(!__pyx_t_3)) goto __pyx_L4_unpacking_failed;
     __Pyx_GOTREF(__pyx_t_3);
-    if (__Pyx_IternextUnpackEndCheck(__pyx_t_5(__pyx_t_4), 2) < 0) __PYX_ERR(0, 41, __pyx_L1_error)
+    if (__Pyx_IternextUnpackEndCheck(__pyx_t_5(__pyx_t_4), 2) < 0) __PYX_ERR(0, 42, __pyx_L1_error)
     __pyx_t_5 = NULL;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     goto __pyx_L5_unpacking_done;
@@ -1672,18 +1683,18 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __pyx_t_5 = NULL;
     if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
-    __PYX_ERR(0, 41, __pyx_L1_error)
+    __PYX_ERR(0, 42, __pyx_L1_error)
     __pyx_L5_unpacking_done:;
   }
-  __pyx_t_6 = __Pyx_PyIndex_AsSsize_t(__pyx_t_2); if (unlikely((__pyx_t_6 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 41, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_PyIndex_AsSsize_t(__pyx_t_2); if (unlikely((__pyx_t_6 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 42, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  if (!(likely(PyBytes_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "bytes", Py_TYPE(__pyx_t_3)->tp_name), 0))) __PYX_ERR(0, 41, __pyx_L1_error)
+  if (!(likely(PyBytes_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "bytes", Py_TYPE(__pyx_t_3)->tp_name), 0))) __PYX_ERR(0, 42, __pyx_L1_error)
   __pyx_cur_scope->__pyx_v__size = __pyx_t_6;
   __Pyx_GIVEREF(__pyx_t_3);
   __pyx_cur_scope->__pyx_v__data = ((PyObject*)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "pssh/native/_ssh2.pyx":42
+  /* "pssh/native/_ssh2.pyx":43
  *     cdef Py_ssize_t linesep
  *     _size, _data = read_func()
  *     while _size == LIBSSH2_ERROR_EAGAIN or _size > 0:             # <<<<<<<<<<<<<<
@@ -1691,14 +1702,14 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
  *             wait_select(session, timeout)
  */
   while (1) {
-    __pyx_t_1 = PyInt_FromSsize_t(__pyx_cur_scope->__pyx_v__size); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 42, __pyx_L1_error)
+    __pyx_t_1 = PyInt_FromSsize_t(__pyx_cur_scope->__pyx_v__size); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 43, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_LIBSSH2_ERROR_EAGAIN); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 42, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_LIBSSH2_ERROR_EAGAIN); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 43, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_2 = PyObject_RichCompare(__pyx_t_1, __pyx_t_3, Py_EQ); __Pyx_XGOTREF(__pyx_t_2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 42, __pyx_L1_error)
+    __pyx_t_2 = PyObject_RichCompare(__pyx_t_1, __pyx_t_3, Py_EQ); __Pyx_XGOTREF(__pyx_t_2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 43, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __pyx_t_8 = __Pyx_PyObject_IsTrue(__pyx_t_2); if (unlikely(__pyx_t_8 < 0)) __PYX_ERR(0, 42, __pyx_L1_error)
+    __pyx_t_8 = __Pyx_PyObject_IsTrue(__pyx_t_2); if (unlikely(__pyx_t_8 < 0)) __PYX_ERR(0, 43, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     if (!__pyx_t_8) {
     } else {
@@ -1710,32 +1721,32 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
     __pyx_L8_bool_binop_done:;
     if (!__pyx_t_7) break;
 
-    /* "pssh/native/_ssh2.pyx":43
+    /* "pssh/native/_ssh2.pyx":44
  *     _size, _data = read_func()
  *     while _size == LIBSSH2_ERROR_EAGAIN or _size > 0:
  *         if _size == LIBSSH2_ERROR_EAGAIN:             # <<<<<<<<<<<<<<
  *             wait_select(session, timeout)
  *             _size, _data = read_func()
  */
-    __pyx_t_2 = PyInt_FromSsize_t(__pyx_cur_scope->__pyx_v__size); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 43, __pyx_L1_error)
+    __pyx_t_2 = PyInt_FromSsize_t(__pyx_cur_scope->__pyx_v__size); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 44, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_LIBSSH2_ERROR_EAGAIN); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 43, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_LIBSSH2_ERROR_EAGAIN); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 44, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_1 = PyObject_RichCompare(__pyx_t_2, __pyx_t_3, Py_EQ); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 43, __pyx_L1_error)
+    __pyx_t_1 = PyObject_RichCompare(__pyx_t_2, __pyx_t_3, Py_EQ); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 44, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __pyx_t_7 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_7 < 0)) __PYX_ERR(0, 43, __pyx_L1_error)
+    __pyx_t_7 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_7 < 0)) __PYX_ERR(0, 44, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     if (__pyx_t_7) {
 
-      /* "pssh/native/_ssh2.pyx":44
+      /* "pssh/native/_ssh2.pyx":45
  *     while _size == LIBSSH2_ERROR_EAGAIN or _size > 0:
  *         if _size == LIBSSH2_ERROR_EAGAIN:
  *             wait_select(session, timeout)             # <<<<<<<<<<<<<<
  *             _size, _data = read_func()
  *             if timeout is not None and _size == LIBSSH2_ERROR_EAGAIN:
  */
-      __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_wait_select); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 44, __pyx_L1_error)
+      __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_wait_select); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 45, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
       __pyx_t_2 = NULL;
       __pyx_t_9 = 0;
@@ -1752,7 +1763,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[3] = {__pyx_t_2, __pyx_cur_scope->__pyx_v_session, __pyx_cur_scope->__pyx_v_timeout};
-        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-__pyx_t_9, 2+__pyx_t_9); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 44, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-__pyx_t_9, 2+__pyx_t_9); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 45, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
         __Pyx_GOTREF(__pyx_t_1);
       } else
@@ -1760,13 +1771,13 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[3] = {__pyx_t_2, __pyx_cur_scope->__pyx_v_session, __pyx_cur_scope->__pyx_v_timeout};
-        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-__pyx_t_9, 2+__pyx_t_9); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 44, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-__pyx_t_9, 2+__pyx_t_9); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 45, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
         __Pyx_GOTREF(__pyx_t_1);
       } else
       #endif
       {
-        __pyx_t_4 = PyTuple_New(2+__pyx_t_9); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 44, __pyx_L1_error)
+        __pyx_t_4 = PyTuple_New(2+__pyx_t_9); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 45, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_4);
         if (__pyx_t_2) {
           __Pyx_GIVEREF(__pyx_t_2); PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_2); __pyx_t_2 = NULL;
@@ -1777,14 +1788,14 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
         __Pyx_INCREF(__pyx_cur_scope->__pyx_v_timeout);
         __Pyx_GIVEREF(__pyx_cur_scope->__pyx_v_timeout);
         PyTuple_SET_ITEM(__pyx_t_4, 1+__pyx_t_9, __pyx_cur_scope->__pyx_v_timeout);
-        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 44, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 45, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       }
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "pssh/native/_ssh2.pyx":45
+      /* "pssh/native/_ssh2.pyx":46
  *         if _size == LIBSSH2_ERROR_EAGAIN:
  *             wait_select(session, timeout)
  *             _size, _data = read_func()             # <<<<<<<<<<<<<<
@@ -1804,7 +1815,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
       }
       __pyx_t_1 = (__pyx_t_4) ? __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4) : __Pyx_PyObject_CallNoArg(__pyx_t_3);
       __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
-      if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 45, __pyx_L1_error)
+      if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 46, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       if ((likely(PyTuple_CheckExact(__pyx_t_1))) || (PyList_CheckExact(__pyx_t_1))) {
@@ -1813,7 +1824,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
         if (unlikely(size != 2)) {
           if (size > 2) __Pyx_RaiseTooManyValuesError(2);
           else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
-          __PYX_ERR(0, 45, __pyx_L1_error)
+          __PYX_ERR(0, 46, __pyx_L1_error)
         }
         #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
         if (likely(PyTuple_CheckExact(sequence))) {
@@ -1826,15 +1837,15 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
         __Pyx_INCREF(__pyx_t_3);
         __Pyx_INCREF(__pyx_t_4);
         #else
-        __pyx_t_3 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 45, __pyx_L1_error)
+        __pyx_t_3 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 46, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_3);
-        __pyx_t_4 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 45, __pyx_L1_error)
+        __pyx_t_4 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 46, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_4);
         #endif
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       } else {
         Py_ssize_t index = -1;
-        __pyx_t_2 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 45, __pyx_L1_error)
+        __pyx_t_2 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 46, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_2);
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
         __pyx_t_5 = Py_TYPE(__pyx_t_2)->tp_iternext;
@@ -1842,7 +1853,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
         __Pyx_GOTREF(__pyx_t_3);
         index = 1; __pyx_t_4 = __pyx_t_5(__pyx_t_2); if (unlikely(!__pyx_t_4)) goto __pyx_L11_unpacking_failed;
         __Pyx_GOTREF(__pyx_t_4);
-        if (__Pyx_IternextUnpackEndCheck(__pyx_t_5(__pyx_t_2), 2) < 0) __PYX_ERR(0, 45, __pyx_L1_error)
+        if (__Pyx_IternextUnpackEndCheck(__pyx_t_5(__pyx_t_2), 2) < 0) __PYX_ERR(0, 46, __pyx_L1_error)
         __pyx_t_5 = NULL;
         __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
         goto __pyx_L12_unpacking_done;
@@ -1850,19 +1861,19 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
         __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
         __pyx_t_5 = NULL;
         if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
-        __PYX_ERR(0, 45, __pyx_L1_error)
+        __PYX_ERR(0, 46, __pyx_L1_error)
         __pyx_L12_unpacking_done:;
       }
-      __pyx_t_6 = __Pyx_PyIndex_AsSsize_t(__pyx_t_3); if (unlikely((__pyx_t_6 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 45, __pyx_L1_error)
+      __pyx_t_6 = __Pyx_PyIndex_AsSsize_t(__pyx_t_3); if (unlikely((__pyx_t_6 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 46, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-      if (!(likely(PyBytes_CheckExact(__pyx_t_4))||((__pyx_t_4) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "bytes", Py_TYPE(__pyx_t_4)->tp_name), 0))) __PYX_ERR(0, 45, __pyx_L1_error)
+      if (!(likely(PyBytes_CheckExact(__pyx_t_4))||((__pyx_t_4) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "bytes", Py_TYPE(__pyx_t_4)->tp_name), 0))) __PYX_ERR(0, 46, __pyx_L1_error)
       __pyx_cur_scope->__pyx_v__size = __pyx_t_6;
       __Pyx_GOTREF(__pyx_cur_scope->__pyx_v__data);
       __Pyx_DECREF_SET(__pyx_cur_scope->__pyx_v__data, ((PyObject*)__pyx_t_4));
       __Pyx_GIVEREF(__pyx_t_4);
       __pyx_t_4 = 0;
 
-      /* "pssh/native/_ssh2.pyx":46
+      /* "pssh/native/_ssh2.pyx":47
  *             wait_select(session, timeout)
  *             _size, _data = read_func()
  *             if timeout is not None and _size == LIBSSH2_ERROR_EAGAIN:             # <<<<<<<<<<<<<<
@@ -1876,33 +1887,33 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
         __pyx_t_7 = __pyx_t_10;
         goto __pyx_L14_bool_binop_done;
       }
-      __pyx_t_1 = PyInt_FromSsize_t(__pyx_cur_scope->__pyx_v__size); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 46, __pyx_L1_error)
+      __pyx_t_1 = PyInt_FromSsize_t(__pyx_cur_scope->__pyx_v__size); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 47, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_n_s_LIBSSH2_ERROR_EAGAIN); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 46, __pyx_L1_error)
+      __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_n_s_LIBSSH2_ERROR_EAGAIN); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 47, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
-      __pyx_t_3 = PyObject_RichCompare(__pyx_t_1, __pyx_t_4, Py_EQ); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 46, __pyx_L1_error)
+      __pyx_t_3 = PyObject_RichCompare(__pyx_t_1, __pyx_t_4, Py_EQ); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 47, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-      __pyx_t_10 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_10 < 0)) __PYX_ERR(0, 46, __pyx_L1_error)
+      __pyx_t_10 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_10 < 0)) __PYX_ERR(0, 47, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       __pyx_t_7 = __pyx_t_10;
       __pyx_L14_bool_binop_done:;
       if (unlikely(__pyx_t_7)) {
 
-        /* "pssh/native/_ssh2.pyx":47
+        /* "pssh/native/_ssh2.pyx":48
  *             _size, _data = read_func()
  *             if timeout is not None and _size == LIBSSH2_ERROR_EAGAIN:
  *                 raise Timeout             # <<<<<<<<<<<<<<
  *         while _size > 0:
  *             while _pos < _size:
  */
-        __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_Timeout); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 47, __pyx_L1_error)
+        __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_Timeout); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 48, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_3);
         __Pyx_Raise(__pyx_t_3, 0, 0, 0);
         __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-        __PYX_ERR(0, 47, __pyx_L1_error)
+        __PYX_ERR(0, 48, __pyx_L1_error)
 
-        /* "pssh/native/_ssh2.pyx":46
+        /* "pssh/native/_ssh2.pyx":47
  *             wait_select(session, timeout)
  *             _size, _data = read_func()
  *             if timeout is not None and _size == LIBSSH2_ERROR_EAGAIN:             # <<<<<<<<<<<<<<
@@ -1911,7 +1922,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
  */
       }
 
-      /* "pssh/native/_ssh2.pyx":43
+      /* "pssh/native/_ssh2.pyx":44
  *     _size, _data = read_func()
  *     while _size == LIBSSH2_ERROR_EAGAIN or _size > 0:
  *         if _size == LIBSSH2_ERROR_EAGAIN:             # <<<<<<<<<<<<<<
@@ -1920,7 +1931,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
  */
     }
 
-    /* "pssh/native/_ssh2.pyx":48
+    /* "pssh/native/_ssh2.pyx":49
  *             if timeout is not None and _size == LIBSSH2_ERROR_EAGAIN:
  *                 raise Timeout
  *         while _size > 0:             # <<<<<<<<<<<<<<
@@ -1931,7 +1942,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
       __pyx_t_7 = ((__pyx_cur_scope->__pyx_v__size > 0) != 0);
       if (!__pyx_t_7) break;
 
-      /* "pssh/native/_ssh2.pyx":49
+      /* "pssh/native/_ssh2.pyx":50
  *                 raise Timeout
  *         while _size > 0:
  *             while _pos < _size:             # <<<<<<<<<<<<<<
@@ -1942,7 +1953,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
         __pyx_t_7 = ((__pyx_cur_scope->__pyx_v__pos < __pyx_cur_scope->__pyx_v__size) != 0);
         if (!__pyx_t_7) break;
 
-        /* "pssh/native/_ssh2.pyx":50
+        /* "pssh/native/_ssh2.pyx":51
  *         while _size > 0:
  *             while _pos < _size:
  *                 linesep = _data[:_size].find(LINESEP, _pos)             # <<<<<<<<<<<<<<
@@ -1951,14 +1962,14 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
  */
         if (unlikely(__pyx_cur_scope->__pyx_v__data == Py_None)) {
           PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-          __PYX_ERR(0, 50, __pyx_L1_error)
+          __PYX_ERR(0, 51, __pyx_L1_error)
         }
-        __pyx_t_4 = PySequence_GetSlice(__pyx_cur_scope->__pyx_v__data, 0, __pyx_cur_scope->__pyx_v__size); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 50, __pyx_L1_error)
+        __pyx_t_4 = PySequence_GetSlice(__pyx_cur_scope->__pyx_v__data, 0, __pyx_cur_scope->__pyx_v__size); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 51, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_4);
-        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_find); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 50, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_find); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 51, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-        __pyx_t_4 = __Pyx_PyInt_FromSize_t(__pyx_cur_scope->__pyx_v__pos); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 50, __pyx_L1_error)
+        __pyx_t_4 = __Pyx_PyInt_FromSize_t(__pyx_cur_scope->__pyx_v__pos); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 51, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_4);
         __pyx_t_2 = NULL;
         __pyx_t_9 = 0;
@@ -1975,7 +1986,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
         #if CYTHON_FAST_PYCALL
         if (PyFunction_Check(__pyx_t_1)) {
           PyObject *__pyx_temp[3] = {__pyx_t_2, __pyx_v_4pssh_6native_5_ssh2_LINESEP, __pyx_t_4};
-          __pyx_t_3 = __Pyx_PyFunction_FastCall(__pyx_t_1, __pyx_temp+1-__pyx_t_9, 2+__pyx_t_9); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 50, __pyx_L1_error)
+          __pyx_t_3 = __Pyx_PyFunction_FastCall(__pyx_t_1, __pyx_temp+1-__pyx_t_9, 2+__pyx_t_9); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 51, __pyx_L1_error)
           __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
           __Pyx_GOTREF(__pyx_t_3);
           __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
@@ -1984,14 +1995,14 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
         #if CYTHON_FAST_PYCCALL
         if (__Pyx_PyFastCFunction_Check(__pyx_t_1)) {
           PyObject *__pyx_temp[3] = {__pyx_t_2, __pyx_v_4pssh_6native_5_ssh2_LINESEP, __pyx_t_4};
-          __pyx_t_3 = __Pyx_PyCFunction_FastCall(__pyx_t_1, __pyx_temp+1-__pyx_t_9, 2+__pyx_t_9); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 50, __pyx_L1_error)
+          __pyx_t_3 = __Pyx_PyCFunction_FastCall(__pyx_t_1, __pyx_temp+1-__pyx_t_9, 2+__pyx_t_9); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 51, __pyx_L1_error)
           __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
           __Pyx_GOTREF(__pyx_t_3);
           __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
         } else
         #endif
         {
-          __pyx_t_11 = PyTuple_New(2+__pyx_t_9); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 50, __pyx_L1_error)
+          __pyx_t_11 = PyTuple_New(2+__pyx_t_9); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 51, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_11);
           if (__pyx_t_2) {
             __Pyx_GIVEREF(__pyx_t_2); PyTuple_SET_ITEM(__pyx_t_11, 0, __pyx_t_2); __pyx_t_2 = NULL;
@@ -2002,16 +2013,16 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
           __Pyx_GIVEREF(__pyx_t_4);
           PyTuple_SET_ITEM(__pyx_t_11, 1+__pyx_t_9, __pyx_t_4);
           __pyx_t_4 = 0;
-          __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_11, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 50, __pyx_L1_error)
+          __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_11, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 51, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_3);
           __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
         }
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-        __pyx_t_6 = __Pyx_PyIndex_AsSsize_t(__pyx_t_3); if (unlikely((__pyx_t_6 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 50, __pyx_L1_error)
+        __pyx_t_6 = __Pyx_PyIndex_AsSsize_t(__pyx_t_3); if (unlikely((__pyx_t_6 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 51, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
         __pyx_cur_scope->__pyx_v_linesep = __pyx_t_6;
 
-        /* "pssh/native/_ssh2.pyx":51
+        /* "pssh/native/_ssh2.pyx":52
  *             while _pos < _size:
  *                 linesep = _data[:_size].find(LINESEP, _pos)
  *                 if linesep >= 0:             # <<<<<<<<<<<<<<
@@ -2021,7 +2032,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
         __pyx_t_7 = ((__pyx_cur_scope->__pyx_v_linesep >= 0) != 0);
         if (__pyx_t_7) {
 
-          /* "pssh/native/_ssh2.pyx":52
+          /* "pssh/native/_ssh2.pyx":53
  *                 linesep = _data[:_size].find(LINESEP, _pos)
  *                 if linesep >= 0:
  *                     if remainder_len > 0:             # <<<<<<<<<<<<<<
@@ -2031,7 +2042,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
           __pyx_t_7 = ((__pyx_cur_scope->__pyx_v_remainder_len > 0) != 0);
           if (__pyx_t_7) {
 
-            /* "pssh/native/_ssh2.pyx":53
+            /* "pssh/native/_ssh2.pyx":54
  *                 if linesep >= 0:
  *                     if remainder_len > 0:
  *                         yield remainder + _data[_pos:linesep].rstrip()             # <<<<<<<<<<<<<<
@@ -2040,11 +2051,11 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
  */
             if (unlikely(__pyx_cur_scope->__pyx_v__data == Py_None)) {
               PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-              __PYX_ERR(0, 53, __pyx_L1_error)
+              __PYX_ERR(0, 54, __pyx_L1_error)
             }
-            __pyx_t_1 = PySequence_GetSlice(__pyx_cur_scope->__pyx_v__data, __pyx_cur_scope->__pyx_v__pos, __pyx_cur_scope->__pyx_v_linesep); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 53, __pyx_L1_error)
+            __pyx_t_1 = PySequence_GetSlice(__pyx_cur_scope->__pyx_v__data, __pyx_cur_scope->__pyx_v__pos, __pyx_cur_scope->__pyx_v_linesep); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 54, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_1);
-            __pyx_t_11 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_rstrip); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 53, __pyx_L1_error)
+            __pyx_t_11 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_rstrip); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 54, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_11);
             __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
             __pyx_t_1 = NULL;
@@ -2059,10 +2070,10 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
             }
             __pyx_t_3 = (__pyx_t_1) ? __Pyx_PyObject_CallOneArg(__pyx_t_11, __pyx_t_1) : __Pyx_PyObject_CallNoArg(__pyx_t_11);
             __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
-            if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 53, __pyx_L1_error)
+            if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 54, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_3);
             __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
-            __pyx_t_11 = PyNumber_Add(__pyx_cur_scope->__pyx_v_remainder, __pyx_t_3); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 53, __pyx_L1_error)
+            __pyx_t_11 = PyNumber_Add(__pyx_cur_scope->__pyx_v_remainder, __pyx_t_3); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 54, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_11);
             __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
             __pyx_r = __pyx_t_11;
@@ -2074,9 +2085,9 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
             __pyx_generator->resume_label = 1;
             return __pyx_r;
             __pyx_L22_resume_from_yield:;
-            if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 53, __pyx_L1_error)
+            if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 54, __pyx_L1_error)
 
-            /* "pssh/native/_ssh2.pyx":54
+            /* "pssh/native/_ssh2.pyx":55
  *                     if remainder_len > 0:
  *                         yield remainder + _data[_pos:linesep].rstrip()
  *                         remainder = b""             # <<<<<<<<<<<<<<
@@ -2088,7 +2099,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
             __Pyx_DECREF_SET(__pyx_cur_scope->__pyx_v_remainder, __pyx_kp_b__2);
             __Pyx_GIVEREF(__pyx_kp_b__2);
 
-            /* "pssh/native/_ssh2.pyx":55
+            /* "pssh/native/_ssh2.pyx":56
  *                         yield remainder + _data[_pos:linesep].rstrip()
  *                         remainder = b""
  *                         remainder_len = 0             # <<<<<<<<<<<<<<
@@ -2097,7 +2108,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
  */
             __pyx_cur_scope->__pyx_v_remainder_len = 0;
 
-            /* "pssh/native/_ssh2.pyx":52
+            /* "pssh/native/_ssh2.pyx":53
  *                 linesep = _data[:_size].find(LINESEP, _pos)
  *                 if linesep >= 0:
  *                     if remainder_len > 0:             # <<<<<<<<<<<<<<
@@ -2107,7 +2118,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
             goto __pyx_L21;
           }
 
-          /* "pssh/native/_ssh2.pyx":57
+          /* "pssh/native/_ssh2.pyx":58
  *                         remainder_len = 0
  *                     else:
  *                         yield _data[_pos:linesep].rstrip()             # <<<<<<<<<<<<<<
@@ -2117,11 +2128,11 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
           /*else*/ {
             if (unlikely(__pyx_cur_scope->__pyx_v__data == Py_None)) {
               PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-              __PYX_ERR(0, 57, __pyx_L1_error)
+              __PYX_ERR(0, 58, __pyx_L1_error)
             }
-            __pyx_t_3 = PySequence_GetSlice(__pyx_cur_scope->__pyx_v__data, __pyx_cur_scope->__pyx_v__pos, __pyx_cur_scope->__pyx_v_linesep); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 57, __pyx_L1_error)
+            __pyx_t_3 = PySequence_GetSlice(__pyx_cur_scope->__pyx_v__data, __pyx_cur_scope->__pyx_v__pos, __pyx_cur_scope->__pyx_v_linesep); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 58, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_3);
-            __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_rstrip); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 57, __pyx_L1_error)
+            __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_rstrip); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 58, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_1);
             __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
             __pyx_t_3 = NULL;
@@ -2136,7 +2147,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
             }
             __pyx_t_11 = (__pyx_t_3) ? __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_3) : __Pyx_PyObject_CallNoArg(__pyx_t_1);
             __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-            if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 57, __pyx_L1_error)
+            if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 58, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_11);
             __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
             __pyx_r = __pyx_t_11;
@@ -2148,11 +2159,11 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
             __pyx_generator->resume_label = 2;
             return __pyx_r;
             __pyx_L23_resume_from_yield:;
-            if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 57, __pyx_L1_error)
+            if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 58, __pyx_L1_error)
           }
           __pyx_L21:;
 
-          /* "pssh/native/_ssh2.pyx":58
+          /* "pssh/native/_ssh2.pyx":59
  *                     else:
  *                         yield _data[_pos:linesep].rstrip()
  *                     _pos = linesep + 1             # <<<<<<<<<<<<<<
@@ -2161,7 +2172,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
  */
           __pyx_cur_scope->__pyx_v__pos = (__pyx_cur_scope->__pyx_v_linesep + 1);
 
-          /* "pssh/native/_ssh2.pyx":51
+          /* "pssh/native/_ssh2.pyx":52
  *             while _pos < _size:
  *                 linesep = _data[:_size].find(LINESEP, _pos)
  *                 if linesep >= 0:             # <<<<<<<<<<<<<<
@@ -2171,7 +2182,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
           goto __pyx_L20;
         }
 
-        /* "pssh/native/_ssh2.pyx":60
+        /* "pssh/native/_ssh2.pyx":61
  *                     _pos = linesep + 1
  *                 else:
  *                     remainder += _data[_pos:]             # <<<<<<<<<<<<<<
@@ -2181,11 +2192,11 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
         /*else*/ {
           if (unlikely(__pyx_cur_scope->__pyx_v__data == Py_None)) {
             PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-            __PYX_ERR(0, 60, __pyx_L1_error)
+            __PYX_ERR(0, 61, __pyx_L1_error)
           }
-          __pyx_t_11 = PySequence_GetSlice(__pyx_cur_scope->__pyx_v__data, __pyx_cur_scope->__pyx_v__pos, PY_SSIZE_T_MAX); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 60, __pyx_L1_error)
+          __pyx_t_11 = PySequence_GetSlice(__pyx_cur_scope->__pyx_v__data, __pyx_cur_scope->__pyx_v__pos, PY_SSIZE_T_MAX); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 61, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_11);
-          __pyx_t_1 = PyNumber_InPlaceAdd(__pyx_cur_scope->__pyx_v_remainder, __pyx_t_11); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 60, __pyx_L1_error)
+          __pyx_t_1 = PyNumber_InPlaceAdd(__pyx_cur_scope->__pyx_v_remainder, __pyx_t_11); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 61, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_1);
           __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
           __Pyx_GOTREF(__pyx_cur_scope->__pyx_v_remainder);
@@ -2193,17 +2204,17 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
           __Pyx_GIVEREF(__pyx_t_1);
           __pyx_t_1 = 0;
 
-          /* "pssh/native/_ssh2.pyx":61
+          /* "pssh/native/_ssh2.pyx":62
  *                 else:
  *                     remainder += _data[_pos:]
  *                     remainder_len = len(remainder)             # <<<<<<<<<<<<<<
  *                     break
  *             _size, _data = read_func()
  */
-          __pyx_t_6 = PyBytes_GET_SIZE(__pyx_cur_scope->__pyx_v_remainder); if (unlikely(__pyx_t_6 == ((Py_ssize_t)-1))) __PYX_ERR(0, 61, __pyx_L1_error)
+          __pyx_t_6 = PyBytes_GET_SIZE(__pyx_cur_scope->__pyx_v_remainder); if (unlikely(__pyx_t_6 == ((Py_ssize_t)-1))) __PYX_ERR(0, 62, __pyx_L1_error)
           __pyx_cur_scope->__pyx_v_remainder_len = __pyx_t_6;
 
-          /* "pssh/native/_ssh2.pyx":62
+          /* "pssh/native/_ssh2.pyx":63
  *                     remainder += _data[_pos:]
  *                     remainder_len = len(remainder)
  *                     break             # <<<<<<<<<<<<<<
@@ -2216,7 +2227,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
       }
       __pyx_L19_break:;
 
-      /* "pssh/native/_ssh2.pyx":63
+      /* "pssh/native/_ssh2.pyx":64
  *                     remainder_len = len(remainder)
  *                     break
  *             _size, _data = read_func()             # <<<<<<<<<<<<<<
@@ -2236,7 +2247,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
       }
       __pyx_t_1 = (__pyx_t_3) ? __Pyx_PyObject_CallOneArg(__pyx_t_11, __pyx_t_3) : __Pyx_PyObject_CallNoArg(__pyx_t_11);
       __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-      if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 63, __pyx_L1_error)
+      if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 64, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
       if ((likely(PyTuple_CheckExact(__pyx_t_1))) || (PyList_CheckExact(__pyx_t_1))) {
@@ -2245,7 +2256,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
         if (unlikely(size != 2)) {
           if (size > 2) __Pyx_RaiseTooManyValuesError(2);
           else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
-          __PYX_ERR(0, 63, __pyx_L1_error)
+          __PYX_ERR(0, 64, __pyx_L1_error)
         }
         #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
         if (likely(PyTuple_CheckExact(sequence))) {
@@ -2258,15 +2269,15 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
         __Pyx_INCREF(__pyx_t_11);
         __Pyx_INCREF(__pyx_t_3);
         #else
-        __pyx_t_11 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 63, __pyx_L1_error)
+        __pyx_t_11 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 64, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_11);
-        __pyx_t_3 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 63, __pyx_L1_error)
+        __pyx_t_3 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 64, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_3);
         #endif
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       } else {
         Py_ssize_t index = -1;
-        __pyx_t_4 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 63, __pyx_L1_error)
+        __pyx_t_4 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 64, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_4);
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
         __pyx_t_5 = Py_TYPE(__pyx_t_4)->tp_iternext;
@@ -2274,7 +2285,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
         __Pyx_GOTREF(__pyx_t_11);
         index = 1; __pyx_t_3 = __pyx_t_5(__pyx_t_4); if (unlikely(!__pyx_t_3)) goto __pyx_L24_unpacking_failed;
         __Pyx_GOTREF(__pyx_t_3);
-        if (__Pyx_IternextUnpackEndCheck(__pyx_t_5(__pyx_t_4), 2) < 0) __PYX_ERR(0, 63, __pyx_L1_error)
+        if (__Pyx_IternextUnpackEndCheck(__pyx_t_5(__pyx_t_4), 2) < 0) __PYX_ERR(0, 64, __pyx_L1_error)
         __pyx_t_5 = NULL;
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
         goto __pyx_L25_unpacking_done;
@@ -2282,19 +2293,19 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
         __pyx_t_5 = NULL;
         if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
-        __PYX_ERR(0, 63, __pyx_L1_error)
+        __PYX_ERR(0, 64, __pyx_L1_error)
         __pyx_L25_unpacking_done:;
       }
-      __pyx_t_6 = __Pyx_PyIndex_AsSsize_t(__pyx_t_11); if (unlikely((__pyx_t_6 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 63, __pyx_L1_error)
+      __pyx_t_6 = __Pyx_PyIndex_AsSsize_t(__pyx_t_11); if (unlikely((__pyx_t_6 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 64, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
-      if (!(likely(PyBytes_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "bytes", Py_TYPE(__pyx_t_3)->tp_name), 0))) __PYX_ERR(0, 63, __pyx_L1_error)
+      if (!(likely(PyBytes_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "bytes", Py_TYPE(__pyx_t_3)->tp_name), 0))) __PYX_ERR(0, 64, __pyx_L1_error)
       __pyx_cur_scope->__pyx_v__size = __pyx_t_6;
       __Pyx_GOTREF(__pyx_cur_scope->__pyx_v__data);
       __Pyx_DECREF_SET(__pyx_cur_scope->__pyx_v__data, ((PyObject*)__pyx_t_3));
       __Pyx_GIVEREF(__pyx_t_3);
       __pyx_t_3 = 0;
 
-      /* "pssh/native/_ssh2.pyx":64
+      /* "pssh/native/_ssh2.pyx":65
  *                     break
  *             _size, _data = read_func()
  *             _pos = 0             # <<<<<<<<<<<<<<
@@ -2305,7 +2316,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
     }
   }
 
-  /* "pssh/native/_ssh2.pyx":65
+  /* "pssh/native/_ssh2.pyx":66
  *             _size, _data = read_func()
  *             _pos = 0
  *     if remainder_len > 0:             # <<<<<<<<<<<<<<
@@ -2315,7 +2326,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
   __pyx_t_7 = ((__pyx_cur_scope->__pyx_v_remainder_len > 0) != 0);
   if (__pyx_t_7) {
 
-    /* "pssh/native/_ssh2.pyx":67
+    /* "pssh/native/_ssh2.pyx":68
  *     if remainder_len > 0:
  *         # Finished reading without finding ending linesep
  *         yield remainder             # <<<<<<<<<<<<<<
@@ -2331,9 +2342,9 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
     __pyx_generator->resume_label = 3;
     return __pyx_r;
     __pyx_L27_resume_from_yield:;
-    if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 67, __pyx_L1_error)
+    if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 68, __pyx_L1_error)
 
-    /* "pssh/native/_ssh2.pyx":65
+    /* "pssh/native/_ssh2.pyx":66
  *             _size, _data = read_func()
  *             _pos = 0
  *     if remainder_len > 0:             # <<<<<<<<<<<<<<
@@ -2343,7 +2354,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
   }
   CYTHON_MAYBE_UNUSED_VAR(__pyx_cur_scope);
 
-  /* "pssh/native/_ssh2.pyx":33
+  /* "pssh/native/_ssh2.pyx":34
  * 
  * 
  * def _read_output(session, read_func, timeout=None):             # <<<<<<<<<<<<<<
@@ -2372,7 +2383,7 @@ static PyObject *__pyx_gb_4pssh_6native_5_ssh2_2generator(__pyx_CoroutineObject 
   return __pyx_r;
 }
 
-/* "pssh/native/_ssh2.pyx":156
+/* "pssh/native/_ssh2.pyx":157
  * 
  * 
  * def wait_select(session, timeout=None):             # <<<<<<<<<<<<<<
@@ -2421,7 +2432,7 @@ static PyObject *__pyx_pw_4pssh_6native_5_ssh2_4wait_select(PyObject *__pyx_self
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "wait_select") < 0)) __PYX_ERR(0, 156, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "wait_select") < 0)) __PYX_ERR(0, 157, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -2437,7 +2448,7 @@ static PyObject *__pyx_pw_4pssh_6native_5_ssh2_4wait_select(PyObject *__pyx_self
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("wait_select", 0, 1, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 156, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("wait_select", 0, 1, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 157, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("pssh.native._ssh2.wait_select", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -2453,8 +2464,8 @@ static PyObject *__pyx_pw_4pssh_6native_5_ssh2_4wait_select(PyObject *__pyx_self
 static PyObject *__pyx_pf_4pssh_6native_5_ssh2_3wait_select(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_session, PyObject *__pyx_v_timeout) {
   PyObject *__pyx_v__socket = NULL;
   int __pyx_v_directions;
-  PyObject *__pyx_v_readfds = 0;
-  PyObject *__pyx_v_writefds = 0;
+  PyObject *__pyx_v_events = NULL;
+  PyObject *__pyx_v_poller = NULL;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -2467,27 +2478,28 @@ static PyObject *__pyx_pf_4pssh_6native_5_ssh2_3wait_select(CYTHON_UNUSED PyObje
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("wait_select", 0);
+  __Pyx_INCREF(__pyx_v_timeout);
 
-  /* "pssh/native/_ssh2.pyx":162
+  /* "pssh/native/_ssh2.pyx":163
  *     in the appropriate direction.
  *     """
  *     _socket = session.sock             # <<<<<<<<<<<<<<
  *     cdef int directions = session.block_directions()
- *     cdef tuple readfds, writefds
+ *     if directions == 0:
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_session, __pyx_n_s_sock); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 162, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_session, __pyx_n_s_sock); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 163, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v__socket = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "pssh/native/_ssh2.pyx":163
+  /* "pssh/native/_ssh2.pyx":164
  *     """
  *     _socket = session.sock
  *     cdef int directions = session.block_directions()             # <<<<<<<<<<<<<<
- *     cdef tuple readfds, writefds
  *     if directions == 0:
+ *         return 0
  */
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_session, __pyx_n_s_block_directions); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 163, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_session, __pyx_n_s_block_directions); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 164, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_3 = NULL;
   if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_2))) {
@@ -2501,29 +2513,29 @@ static PyObject *__pyx_pf_4pssh_6native_5_ssh2_3wait_select(CYTHON_UNUSED PyObje
   }
   __pyx_t_1 = (__pyx_t_3) ? __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3) : __Pyx_PyObject_CallNoArg(__pyx_t_2);
   __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-  if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 163, __pyx_L1_error)
+  if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 164, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_4 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_4 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 163, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_4 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 164, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_directions = __pyx_t_4;
 
   /* "pssh/native/_ssh2.pyx":165
+ *     _socket = session.sock
  *     cdef int directions = session.block_directions()
- *     cdef tuple readfds, writefds
  *     if directions == 0:             # <<<<<<<<<<<<<<
  *         return 0
- *     readfds = (_socket,) \
+ *     # gevent.select.poll converts seconds to miliseconds to match python socket
  */
   __pyx_t_5 = ((__pyx_v_directions == 0) != 0);
   if (__pyx_t_5) {
 
     /* "pssh/native/_ssh2.pyx":166
- *     cdef tuple readfds, writefds
+ *     cdef int directions = session.block_directions()
  *     if directions == 0:
  *         return 0             # <<<<<<<<<<<<<<
- *     readfds = (_socket,) \
- *         if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()
+ *     # gevent.select.poll converts seconds to miliseconds to match python socket
+ *     # implementation
  */
     __Pyx_XDECREF(__pyx_r);
     __Pyx_INCREF(__pyx_int_0);
@@ -2531,141 +2543,197 @@ static PyObject *__pyx_pf_4pssh_6native_5_ssh2_3wait_select(CYTHON_UNUSED PyObje
     goto __pyx_L0;
 
     /* "pssh/native/_ssh2.pyx":165
+ *     _socket = session.sock
  *     cdef int directions = session.block_directions()
- *     cdef tuple readfds, writefds
  *     if directions == 0:             # <<<<<<<<<<<<<<
  *         return 0
- *     readfds = (_socket,) \
+ *     # gevent.select.poll converts seconds to miliseconds to match python socket
  */
   }
 
-  /* "pssh/native/_ssh2.pyx":168
- *         return 0
- *     readfds = (_socket,) \
- *         if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()             # <<<<<<<<<<<<<<
- *     writefds = (_socket,) \
- *         if (directions & LIBSSH2_SESSION_BLOCK_OUTBOUND) else ()
+  /* "pssh/native/_ssh2.pyx":169
+ *     # gevent.select.poll converts seconds to miliseconds to match python socket
+ *     # implementation
+ *     timeout = timeout * 1000 if timeout is not None else None             # <<<<<<<<<<<<<<
+ *     events = 0
+ *     if directions & LIBSSH2_SESSION_BLOCK_INBOUND:
  */
-  __pyx_t_2 = __Pyx_PyInt_From_int(__pyx_v_directions); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 168, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_LIBSSH2_SESSION_BLOCK_INBOUND); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 168, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_6 = PyNumber_And(__pyx_t_2, __pyx_t_3); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 168, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_6);
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_5 = __Pyx_PyObject_IsTrue(__pyx_t_6); if (unlikely(__pyx_t_5 < 0)) __PYX_ERR(0, 168, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-  if (__pyx_t_5) {
-
-    /* "pssh/native/_ssh2.pyx":167
- *     if directions == 0:
- *         return 0
- *     readfds = (_socket,) \             # <<<<<<<<<<<<<<
- *         if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()
- *     writefds = (_socket,) \
- */
-    __pyx_t_6 = PyTuple_New(1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 167, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_6);
-    __Pyx_INCREF(__pyx_v__socket);
-    __Pyx_GIVEREF(__pyx_v__socket);
-    PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_v__socket);
-    __pyx_t_1 = __pyx_t_6;
-    __pyx_t_6 = 0;
-  } else {
-
-    /* "pssh/native/_ssh2.pyx":168
- *         return 0
- *     readfds = (_socket,) \
- *         if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()             # <<<<<<<<<<<<<<
- *     writefds = (_socket,) \
- *         if (directions & LIBSSH2_SESSION_BLOCK_OUTBOUND) else ()
- */
-    __Pyx_INCREF(__pyx_empty_tuple);
-    __pyx_t_1 = __pyx_empty_tuple;
-  }
-  __pyx_v_readfds = ((PyObject*)__pyx_t_1);
-  __pyx_t_1 = 0;
-
-  /* "pssh/native/_ssh2.pyx":170
- *         if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()
- *     writefds = (_socket,) \
- *         if (directions & LIBSSH2_SESSION_BLOCK_OUTBOUND) else ()             # <<<<<<<<<<<<<<
- *     select(readfds, writefds, (), timeout=timeout)
- * 
- */
-  __pyx_t_6 = __Pyx_PyInt_From_int(__pyx_v_directions); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 170, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_6);
-  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_LIBSSH2_SESSION_BLOCK_OUTBOUND); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 170, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_2 = PyNumber_And(__pyx_t_6, __pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 170, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_5 = __Pyx_PyObject_IsTrue(__pyx_t_2); if (unlikely(__pyx_t_5 < 0)) __PYX_ERR(0, 170, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  if (__pyx_t_5) {
-
-    /* "pssh/native/_ssh2.pyx":169
- *     readfds = (_socket,) \
- *         if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()
- *     writefds = (_socket,) \             # <<<<<<<<<<<<<<
- *         if (directions & LIBSSH2_SESSION_BLOCK_OUTBOUND) else ()
- *     select(readfds, writefds, (), timeout=timeout)
- */
-    __pyx_t_2 = PyTuple_New(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 169, __pyx_L1_error)
+  __pyx_t_5 = (__pyx_v_timeout != Py_None);
+  if ((__pyx_t_5 != 0)) {
+    __pyx_t_2 = PyNumber_Multiply(__pyx_v_timeout, __pyx_int_1000); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 169, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __Pyx_INCREF(__pyx_v__socket);
-    __Pyx_GIVEREF(__pyx_v__socket);
-    PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_v__socket);
     __pyx_t_1 = __pyx_t_2;
     __pyx_t_2 = 0;
   } else {
-
-    /* "pssh/native/_ssh2.pyx":170
- *         if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()
- *     writefds = (_socket,) \
- *         if (directions & LIBSSH2_SESSION_BLOCK_OUTBOUND) else ()             # <<<<<<<<<<<<<<
- *     select(readfds, writefds, (), timeout=timeout)
- * 
- */
-    __Pyx_INCREF(__pyx_empty_tuple);
-    __pyx_t_1 = __pyx_empty_tuple;
+    __Pyx_INCREF(Py_None);
+    __pyx_t_1 = Py_None;
   }
-  __pyx_v_writefds = ((PyObject*)__pyx_t_1);
+  __Pyx_DECREF_SET(__pyx_v_timeout, __pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "pssh/native/_ssh2.pyx":171
- *     writefds = (_socket,) \
- *         if (directions & LIBSSH2_SESSION_BLOCK_OUTBOUND) else ()
- *     select(readfds, writefds, (), timeout=timeout)             # <<<<<<<<<<<<<<
- * 
- * 
+  /* "pssh/native/_ssh2.pyx":170
+ *     # implementation
+ *     timeout = timeout * 1000 if timeout is not None else None
+ *     events = 0             # <<<<<<<<<<<<<<
+ *     if directions & LIBSSH2_SESSION_BLOCK_INBOUND:
+ *         events = POLLIN
  */
-  __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_n_s_select); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 171, __pyx_L1_error)
+  __Pyx_INCREF(__pyx_int_0);
+  __pyx_v_events = __pyx_int_0;
+
+  /* "pssh/native/_ssh2.pyx":171
+ *     timeout = timeout * 1000 if timeout is not None else None
+ *     events = 0
+ *     if directions & LIBSSH2_SESSION_BLOCK_INBOUND:             # <<<<<<<<<<<<<<
+ *         events = POLLIN
+ *     if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:
+ */
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_directions); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 171, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PyTuple_New(3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 171, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_LIBSSH2_SESSION_BLOCK_INBOUND); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 171, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_INCREF(__pyx_v_readfds);
-  __Pyx_GIVEREF(__pyx_v_readfds);
-  PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_v_readfds);
-  __Pyx_INCREF(__pyx_v_writefds);
-  __Pyx_GIVEREF(__pyx_v_writefds);
-  PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_v_writefds);
-  __Pyx_INCREF(__pyx_empty_tuple);
-  __Pyx_GIVEREF(__pyx_empty_tuple);
-  PyTuple_SET_ITEM(__pyx_t_2, 2, __pyx_empty_tuple);
-  __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 171, __pyx_L1_error)
+  __pyx_t_3 = PyNumber_And(__pyx_t_1, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 171, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_timeout, __pyx_v_timeout) < 0) __PYX_ERR(0, 171, __pyx_L1_error)
-  __pyx_t_6 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_2, __pyx_t_3); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 171, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_5 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_5 < 0)) __PYX_ERR(0, 171, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  if (__pyx_t_5) {
+
+    /* "pssh/native/_ssh2.pyx":172
+ *     events = 0
+ *     if directions & LIBSSH2_SESSION_BLOCK_INBOUND:
+ *         events = POLLIN             # <<<<<<<<<<<<<<
+ *     if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:
+ *         events |= POLLOUT
+ */
+    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_POLLIN); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 172, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_DECREF_SET(__pyx_v_events, __pyx_t_3);
+    __pyx_t_3 = 0;
+
+    /* "pssh/native/_ssh2.pyx":171
+ *     timeout = timeout * 1000 if timeout is not None else None
+ *     events = 0
+ *     if directions & LIBSSH2_SESSION_BLOCK_INBOUND:             # <<<<<<<<<<<<<<
+ *         events = POLLIN
+ *     if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:
+ */
+  }
+
+  /* "pssh/native/_ssh2.pyx":173
+ *     if directions & LIBSSH2_SESSION_BLOCK_INBOUND:
+ *         events = POLLIN
+ *     if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:             # <<<<<<<<<<<<<<
+ *         events |= POLLOUT
+ *     poller = poll()
+ */
+  __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_directions); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 173, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_LIBSSH2_SESSION_BLOCK_OUTBOUND); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 173, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_1 = PyNumber_And(__pyx_t_3, __pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 173, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_5 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_5 < 0)) __PYX_ERR(0, 173, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  if (__pyx_t_5) {
+
+    /* "pssh/native/_ssh2.pyx":174
+ *         events = POLLIN
+ *     if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:
+ *         events |= POLLOUT             # <<<<<<<<<<<<<<
+ *     poller = poll()
+ *     poller.register(_socket, eventmask=events)
+ */
+    __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_n_s_POLLOUT); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 174, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+    __pyx_t_2 = PyNumber_InPlaceOr(__pyx_v_events, __pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 174, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    __Pyx_DECREF_SET(__pyx_v_events, __pyx_t_2);
+    __pyx_t_2 = 0;
+
+    /* "pssh/native/_ssh2.pyx":173
+ *     if directions & LIBSSH2_SESSION_BLOCK_INBOUND:
+ *         events = POLLIN
+ *     if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:             # <<<<<<<<<<<<<<
+ *         events |= POLLOUT
+ *     poller = poll()
+ */
+  }
+
+  /* "pssh/native/_ssh2.pyx":175
+ *     if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:
+ *         events |= POLLOUT
+ *     poller = poll()             # <<<<<<<<<<<<<<
+ *     poller.register(_socket, eventmask=events)
+ *     poller.poll(timeout=timeout)
+ */
+  __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_n_s_poll); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 175, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_3 = NULL;
+  if (CYTHON_UNPACK_METHODS && unlikely(PyMethod_Check(__pyx_t_1))) {
+    __pyx_t_3 = PyMethod_GET_SELF(__pyx_t_1);
+    if (likely(__pyx_t_3)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_1);
+      __Pyx_INCREF(__pyx_t_3);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_1, function);
+    }
+  }
+  __pyx_t_2 = (__pyx_t_3) ? __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_3) : __Pyx_PyObject_CallNoArg(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
+  if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 175, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_v_poller = __pyx_t_2;
+  __pyx_t_2 = 0;
+
+  /* "pssh/native/_ssh2.pyx":176
+ *         events |= POLLOUT
+ *     poller = poll()
+ *     poller.register(_socket, eventmask=events)             # <<<<<<<<<<<<<<
+ *     poller.poll(timeout=timeout)
+ * 
+ */
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_poller, __pyx_n_s_register); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 176, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 176, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_INCREF(__pyx_v__socket);
+  __Pyx_GIVEREF(__pyx_v__socket);
+  PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v__socket);
+  __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 176, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_eventmask, __pyx_v_events) < 0) __PYX_ERR(0, 176, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_1, __pyx_t_3); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 176, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-  /* "pssh/native/_ssh2.pyx":156
+  /* "pssh/native/_ssh2.pyx":177
+ *     poller = poll()
+ *     poller.register(_socket, eventmask=events)
+ *     poller.poll(timeout=timeout)             # <<<<<<<<<<<<<<
+ * 
+ * 
+ */
+  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_poller, __pyx_n_s_poll); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 177, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
+  __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 177, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_timeout, __pyx_v_timeout) < 0) __PYX_ERR(0, 177, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_6, __pyx_empty_tuple, __pyx_t_3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 177, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "pssh/native/_ssh2.pyx":157
  * 
  * 
  * def wait_select(session, timeout=None):             # <<<<<<<<<<<<<<
@@ -2685,14 +2753,15 @@ static PyObject *__pyx_pf_4pssh_6native_5_ssh2_3wait_select(CYTHON_UNUSED PyObje
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v__socket);
-  __Pyx_XDECREF(__pyx_v_readfds);
-  __Pyx_XDECREF(__pyx_v_writefds);
+  __Pyx_XDECREF(__pyx_v_events);
+  __Pyx_XDECREF(__pyx_v_poller);
+  __Pyx_XDECREF(__pyx_v_timeout);
   __Pyx_XGIVEREF(__pyx_r);
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-/* "pssh/native/_ssh2.pyx":174
+/* "pssh/native/_ssh2.pyx":180
  * 
  * 
  * def eagain_write(write_func, data, session, timeout=None):             # <<<<<<<<<<<<<<
@@ -2743,13 +2812,13 @@ static PyObject *__pyx_pw_4pssh_6native_5_ssh2_6eagain_write(PyObject *__pyx_sel
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_data)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("eagain_write", 0, 3, 4, 1); __PYX_ERR(0, 174, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("eagain_write", 0, 3, 4, 1); __PYX_ERR(0, 180, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  2:
         if (likely((values[2] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_session)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("eagain_write", 0, 3, 4, 2); __PYX_ERR(0, 174, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("eagain_write", 0, 3, 4, 2); __PYX_ERR(0, 180, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  3:
@@ -2759,7 +2828,7 @@ static PyObject *__pyx_pw_4pssh_6native_5_ssh2_6eagain_write(PyObject *__pyx_sel
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "eagain_write") < 0)) __PYX_ERR(0, 174, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "eagain_write") < 0)) __PYX_ERR(0, 180, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -2779,7 +2848,7 @@ static PyObject *__pyx_pw_4pssh_6native_5_ssh2_6eagain_write(PyObject *__pyx_sel
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("eagain_write", 0, 3, 4, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 174, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("eagain_write", 0, 3, 4, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 180, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("pssh.native._ssh2.eagain_write", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -2813,17 +2882,17 @@ static PyObject *__pyx_pf_4pssh_6native_5_ssh2_5eagain_write(CYTHON_UNUSED PyObj
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("eagain_write", 0);
 
-  /* "pssh/native/_ssh2.pyx":179
+  /* "pssh/native/_ssh2.pyx":185
  *     write_func.
  *     """
  *     cdef Py_ssize_t data_len = len(data)             # <<<<<<<<<<<<<<
  *     cdef size_t total_written = 0
  *     cdef int rc
  */
-  __pyx_t_1 = PyObject_Length(__pyx_v_data); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 179, __pyx_L1_error)
+  __pyx_t_1 = PyObject_Length(__pyx_v_data); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 185, __pyx_L1_error)
   __pyx_v_data_len = __pyx_t_1;
 
-  /* "pssh/native/_ssh2.pyx":180
+  /* "pssh/native/_ssh2.pyx":186
  *     """
  *     cdef Py_ssize_t data_len = len(data)
  *     cdef size_t total_written = 0             # <<<<<<<<<<<<<<
@@ -2832,7 +2901,7 @@ static PyObject *__pyx_pf_4pssh_6native_5_ssh2_5eagain_write(CYTHON_UNUSED PyObj
  */
   __pyx_v_total_written = 0;
 
-  /* "pssh/native/_ssh2.pyx":183
+  /* "pssh/native/_ssh2.pyx":189
  *     cdef int rc
  *     cdef size_t bytes_written
  *     while total_written < data_len:             # <<<<<<<<<<<<<<
@@ -2843,14 +2912,14 @@ static PyObject *__pyx_pf_4pssh_6native_5_ssh2_5eagain_write(CYTHON_UNUSED PyObj
     __pyx_t_2 = ((__pyx_v_total_written < __pyx_v_data_len) != 0);
     if (!__pyx_t_2) break;
 
-    /* "pssh/native/_ssh2.pyx":184
+    /* "pssh/native/_ssh2.pyx":190
  *     cdef size_t bytes_written
  *     while total_written < data_len:
  *         rc, bytes_written = write_func(data[total_written:])             # <<<<<<<<<<<<<<
  *         total_written += bytes_written
  *         if rc == LIBSSH2_ERROR_EAGAIN:
  */
-    __pyx_t_4 = __Pyx_PyObject_GetSlice(__pyx_v_data, __pyx_v_total_written, 0, NULL, NULL, NULL, 1, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 184, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_GetSlice(__pyx_v_data, __pyx_v_total_written, 0, NULL, NULL, NULL, 1, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 190, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_INCREF(__pyx_v_write_func);
     __pyx_t_5 = __pyx_v_write_func; __pyx_t_6 = NULL;
@@ -2866,7 +2935,7 @@ static PyObject *__pyx_pf_4pssh_6native_5_ssh2_5eagain_write(CYTHON_UNUSED PyObj
     __pyx_t_3 = (__pyx_t_6) ? __Pyx_PyObject_Call2Args(__pyx_t_5, __pyx_t_6, __pyx_t_4) : __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_4);
     __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 184, __pyx_L1_error)
+    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 190, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     if ((likely(PyTuple_CheckExact(__pyx_t_3))) || (PyList_CheckExact(__pyx_t_3))) {
@@ -2875,7 +2944,7 @@ static PyObject *__pyx_pf_4pssh_6native_5_ssh2_5eagain_write(CYTHON_UNUSED PyObj
       if (unlikely(size != 2)) {
         if (size > 2) __Pyx_RaiseTooManyValuesError(2);
         else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
-        __PYX_ERR(0, 184, __pyx_L1_error)
+        __PYX_ERR(0, 190, __pyx_L1_error)
       }
       #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
       if (likely(PyTuple_CheckExact(sequence))) {
@@ -2888,15 +2957,15 @@ static PyObject *__pyx_pf_4pssh_6native_5_ssh2_5eagain_write(CYTHON_UNUSED PyObj
       __Pyx_INCREF(__pyx_t_5);
       __Pyx_INCREF(__pyx_t_4);
       #else
-      __pyx_t_5 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 184, __pyx_L1_error)
+      __pyx_t_5 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 190, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
-      __pyx_t_4 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 184, __pyx_L1_error)
+      __pyx_t_4 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 190, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
       #endif
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     } else {
       Py_ssize_t index = -1;
-      __pyx_t_6 = PyObject_GetIter(__pyx_t_3); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 184, __pyx_L1_error)
+      __pyx_t_6 = PyObject_GetIter(__pyx_t_3); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 190, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       __pyx_t_7 = Py_TYPE(__pyx_t_6)->tp_iternext;
@@ -2904,7 +2973,7 @@ static PyObject *__pyx_pf_4pssh_6native_5_ssh2_5eagain_write(CYTHON_UNUSED PyObj
       __Pyx_GOTREF(__pyx_t_5);
       index = 1; __pyx_t_4 = __pyx_t_7(__pyx_t_6); if (unlikely(!__pyx_t_4)) goto __pyx_L5_unpacking_failed;
       __Pyx_GOTREF(__pyx_t_4);
-      if (__Pyx_IternextUnpackEndCheck(__pyx_t_7(__pyx_t_6), 2) < 0) __PYX_ERR(0, 184, __pyx_L1_error)
+      if (__Pyx_IternextUnpackEndCheck(__pyx_t_7(__pyx_t_6), 2) < 0) __PYX_ERR(0, 190, __pyx_L1_error)
       __pyx_t_7 = NULL;
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       goto __pyx_L6_unpacking_done;
@@ -2912,17 +2981,17 @@ static PyObject *__pyx_pf_4pssh_6native_5_ssh2_5eagain_write(CYTHON_UNUSED PyObj
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       __pyx_t_7 = NULL;
       if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
-      __PYX_ERR(0, 184, __pyx_L1_error)
+      __PYX_ERR(0, 190, __pyx_L1_error)
       __pyx_L6_unpacking_done:;
     }
-    __pyx_t_8 = __Pyx_PyInt_As_int(__pyx_t_5); if (unlikely((__pyx_t_8 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 184, __pyx_L1_error)
+    __pyx_t_8 = __Pyx_PyInt_As_int(__pyx_t_5); if (unlikely((__pyx_t_8 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 190, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-    __pyx_t_9 = __Pyx_PyInt_As_size_t(__pyx_t_4); if (unlikely((__pyx_t_9 == (size_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 184, __pyx_L1_error)
+    __pyx_t_9 = __Pyx_PyInt_As_size_t(__pyx_t_4); if (unlikely((__pyx_t_9 == (size_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 190, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __pyx_v_rc = __pyx_t_8;
     __pyx_v_bytes_written = __pyx_t_9;
 
-    /* "pssh/native/_ssh2.pyx":185
+    /* "pssh/native/_ssh2.pyx":191
  *     while total_written < data_len:
  *         rc, bytes_written = write_func(data[total_written:])
  *         total_written += bytes_written             # <<<<<<<<<<<<<<
@@ -2931,46 +3000,46 @@ static PyObject *__pyx_pf_4pssh_6native_5_ssh2_5eagain_write(CYTHON_UNUSED PyObj
  */
     __pyx_v_total_written = (__pyx_v_total_written + __pyx_v_bytes_written);
 
-    /* "pssh/native/_ssh2.pyx":186
+    /* "pssh/native/_ssh2.pyx":192
  *         rc, bytes_written = write_func(data[total_written:])
  *         total_written += bytes_written
  *         if rc == LIBSSH2_ERROR_EAGAIN:             # <<<<<<<<<<<<<<
  *             wait_select(session, timeout=timeout)
  */
-    __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_rc); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 186, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_rc); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 192, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_n_s_LIBSSH2_ERROR_EAGAIN); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 186, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_n_s_LIBSSH2_ERROR_EAGAIN); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 192, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
-    __pyx_t_5 = PyObject_RichCompare(__pyx_t_3, __pyx_t_4, Py_EQ); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 186, __pyx_L1_error)
+    __pyx_t_5 = PyObject_RichCompare(__pyx_t_3, __pyx_t_4, Py_EQ); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 192, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_5); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 186, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_5); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 192, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     if (__pyx_t_2) {
 
-      /* "pssh/native/_ssh2.pyx":187
+      /* "pssh/native/_ssh2.pyx":193
  *         total_written += bytes_written
  *         if rc == LIBSSH2_ERROR_EAGAIN:
  *             wait_select(session, timeout=timeout)             # <<<<<<<<<<<<<<
  */
-      __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_n_s_wait_select); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 187, __pyx_L1_error)
+      __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_n_s_wait_select); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 193, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
-      __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 187, __pyx_L1_error)
+      __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 193, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
       __Pyx_INCREF(__pyx_v_session);
       __Pyx_GIVEREF(__pyx_v_session);
       PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_v_session);
-      __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 187, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 193, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
-      if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_timeout, __pyx_v_timeout) < 0) __PYX_ERR(0, 187, __pyx_L1_error)
-      __pyx_t_6 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_4, __pyx_t_3); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 187, __pyx_L1_error)
+      if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_timeout, __pyx_v_timeout) < 0) __PYX_ERR(0, 193, __pyx_L1_error)
+      __pyx_t_6 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_4, __pyx_t_3); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 193, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-      /* "pssh/native/_ssh2.pyx":186
+      /* "pssh/native/_ssh2.pyx":192
  *         rc, bytes_written = write_func(data[total_written:])
  *         total_written += bytes_written
  *         if rc == LIBSSH2_ERROR_EAGAIN:             # <<<<<<<<<<<<<<
@@ -2979,7 +3048,7 @@ static PyObject *__pyx_pf_4pssh_6native_5_ssh2_5eagain_write(CYTHON_UNUSED PyObj
     }
   }
 
-  /* "pssh/native/_ssh2.pyx":174
+  /* "pssh/native/_ssh2.pyx":180
  * 
  * 
  * def eagain_write(write_func, data, session, timeout=None):             # <<<<<<<<<<<<<<
@@ -3172,6 +3241,8 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_LIBSSH2_ERROR_EAGAIN, __pyx_k_LIBSSH2_ERROR_EAGAIN, sizeof(__pyx_k_LIBSSH2_ERROR_EAGAIN), 0, 0, 1, 1},
   {&__pyx_n_s_LIBSSH2_SESSION_BLOCK_INBOUND, __pyx_k_LIBSSH2_SESSION_BLOCK_INBOUND, sizeof(__pyx_k_LIBSSH2_SESSION_BLOCK_INBOUND), 0, 0, 1, 1},
   {&__pyx_n_s_LIBSSH2_SESSION_BLOCK_OUTBOUND, __pyx_k_LIBSSH2_SESSION_BLOCK_OUTBOUND, sizeof(__pyx_k_LIBSSH2_SESSION_BLOCK_OUTBOUND), 0, 0, 1, 1},
+  {&__pyx_n_s_POLLIN, __pyx_k_POLLIN, sizeof(__pyx_k_POLLIN), 0, 0, 1, 1},
+  {&__pyx_n_s_POLLOUT, __pyx_k_POLLOUT, sizeof(__pyx_k_POLLOUT), 0, 0, 1, 1},
   {&__pyx_n_s_SessionError, __pyx_k_SessionError, sizeof(__pyx_k_SessionError), 0, 0, 1, 1},
   {&__pyx_n_s_Timeout, __pyx_k_Timeout, sizeof(__pyx_k_Timeout), 0, 0, 1, 1},
   {&__pyx_kp_b__2, __pyx_k__2, sizeof(__pyx_k__2), 0, 0, 0, 0},
@@ -3184,8 +3255,11 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_data, __pyx_k_data, sizeof(__pyx_k_data), 0, 0, 1, 1},
   {&__pyx_n_s_data_2, __pyx_k_data_2, sizeof(__pyx_k_data_2), 0, 0, 1, 1},
   {&__pyx_n_s_data_len, __pyx_k_data_len, sizeof(__pyx_k_data_len), 0, 0, 1, 1},
+  {&__pyx_n_s_datetime, __pyx_k_datetime, sizeof(__pyx_k_datetime), 0, 0, 1, 1},
   {&__pyx_n_s_directions, __pyx_k_directions, sizeof(__pyx_k_directions), 0, 0, 1, 1},
   {&__pyx_n_s_eagain_write, __pyx_k_eagain_write, sizeof(__pyx_k_eagain_write), 0, 0, 1, 1},
+  {&__pyx_n_s_eventmask, __pyx_k_eventmask, sizeof(__pyx_k_eventmask), 0, 0, 1, 1},
+  {&__pyx_n_s_events, __pyx_k_events, sizeof(__pyx_k_events), 0, 0, 1, 1},
   {&__pyx_n_s_exceptions, __pyx_k_exceptions, sizeof(__pyx_k_exceptions), 0, 0, 1, 1},
   {&__pyx_n_s_find, __pyx_k_find, sizeof(__pyx_k_find), 0, 0, 1, 1},
   {&__pyx_n_s_gevent_select, __pyx_k_gevent_select, sizeof(__pyx_k_gevent_select), 0, 0, 1, 1},
@@ -3193,17 +3267,18 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_linesep, __pyx_k_linesep, sizeof(__pyx_k_linesep), 0, 0, 1, 1},
   {&__pyx_n_s_main, __pyx_k_main, sizeof(__pyx_k_main), 0, 0, 1, 1},
   {&__pyx_n_s_name, __pyx_k_name, sizeof(__pyx_k_name), 0, 0, 1, 1},
+  {&__pyx_n_s_poll, __pyx_k_poll, sizeof(__pyx_k_poll), 0, 0, 1, 1},
+  {&__pyx_n_s_poller, __pyx_k_poller, sizeof(__pyx_k_poller), 0, 0, 1, 1},
   {&__pyx_n_s_pos, __pyx_k_pos, sizeof(__pyx_k_pos), 0, 0, 1, 1},
   {&__pyx_n_s_pssh_native__ssh2, __pyx_k_pssh_native__ssh2, sizeof(__pyx_k_pssh_native__ssh2), 0, 0, 1, 1},
   {&__pyx_kp_s_pssh_native__ssh2_pyx, __pyx_k_pssh_native__ssh2_pyx, sizeof(__pyx_k_pssh_native__ssh2_pyx), 0, 0, 1, 0},
   {&__pyx_n_s_rc, __pyx_k_rc, sizeof(__pyx_k_rc), 0, 0, 1, 1},
   {&__pyx_n_s_read_func, __pyx_k_read_func, sizeof(__pyx_k_read_func), 0, 0, 1, 1},
   {&__pyx_n_s_read_output, __pyx_k_read_output, sizeof(__pyx_k_read_output), 0, 0, 1, 1},
-  {&__pyx_n_s_readfds, __pyx_k_readfds, sizeof(__pyx_k_readfds), 0, 0, 1, 1},
+  {&__pyx_n_s_register, __pyx_k_register, sizeof(__pyx_k_register), 0, 0, 1, 1},
   {&__pyx_n_s_remainder, __pyx_k_remainder, sizeof(__pyx_k_remainder), 0, 0, 1, 1},
   {&__pyx_n_s_remainder_len, __pyx_k_remainder_len, sizeof(__pyx_k_remainder_len), 0, 0, 1, 1},
   {&__pyx_n_s_rstrip, __pyx_k_rstrip, sizeof(__pyx_k_rstrip), 0, 0, 1, 1},
-  {&__pyx_n_s_select, __pyx_k_select, sizeof(__pyx_k_select), 0, 0, 1, 1},
   {&__pyx_n_s_send, __pyx_k_send, sizeof(__pyx_k_send), 0, 0, 1, 1},
   {&__pyx_n_s_session, __pyx_k_session, sizeof(__pyx_k_session), 0, 0, 1, 1},
   {&__pyx_n_s_size, __pyx_k_size, sizeof(__pyx_k_size), 0, 0, 1, 1},
@@ -3217,7 +3292,6 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_total_written, __pyx_k_total_written, sizeof(__pyx_k_total_written), 0, 0, 1, 1},
   {&__pyx_n_s_wait_select, __pyx_k_wait_select, sizeof(__pyx_k_wait_select), 0, 0, 1, 1},
   {&__pyx_n_s_write_func, __pyx_k_write_func, sizeof(__pyx_k_write_func), 0, 0, 1, 1},
-  {&__pyx_n_s_writefds, __pyx_k_writefds, sizeof(__pyx_k_writefds), 0, 0, 1, 1},
   {0, 0, 0, 0, 0, 0, 0}
 };
 static CYTHON_SMALL_CODE int __Pyx_InitCachedBuiltins(void) {
@@ -3228,41 +3302,41 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
 
-  /* "pssh/native/_ssh2.pyx":33
+  /* "pssh/native/_ssh2.pyx":34
  * 
  * 
  * def _read_output(session, read_func, timeout=None):             # <<<<<<<<<<<<<<
  *     cdef Py_ssize_t _size
  *     cdef bytes _data
  */
-  __pyx_tuple__4 = PyTuple_Pack(10, __pyx_n_s_session, __pyx_n_s_read_func, __pyx_n_s_timeout, __pyx_n_s_size, __pyx_n_s_data_2, __pyx_n_s_remainder, __pyx_n_s_remainder_len, __pyx_n_s_sock, __pyx_n_s_pos, __pyx_n_s_linesep); if (unlikely(!__pyx_tuple__4)) __PYX_ERR(0, 33, __pyx_L1_error)
+  __pyx_tuple__4 = PyTuple_Pack(10, __pyx_n_s_session, __pyx_n_s_read_func, __pyx_n_s_timeout, __pyx_n_s_size, __pyx_n_s_data_2, __pyx_n_s_remainder, __pyx_n_s_remainder_len, __pyx_n_s_sock, __pyx_n_s_pos, __pyx_n_s_linesep); if (unlikely(!__pyx_tuple__4)) __PYX_ERR(0, 34, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__4);
   __Pyx_GIVEREF(__pyx_tuple__4);
-  __pyx_codeobj_ = (PyObject*)__Pyx_PyCode_New(3, 0, 10, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__4, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_pssh_native__ssh2_pyx, __pyx_n_s_read_output, 33, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj_)) __PYX_ERR(0, 33, __pyx_L1_error)
+  __pyx_codeobj_ = (PyObject*)__Pyx_PyCode_New(3, 0, 10, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__4, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_pssh_native__ssh2_pyx, __pyx_n_s_read_output, 34, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj_)) __PYX_ERR(0, 34, __pyx_L1_error)
 
-  /* "pssh/native/_ssh2.pyx":156
+  /* "pssh/native/_ssh2.pyx":157
  * 
  * 
  * def wait_select(session, timeout=None):             # <<<<<<<<<<<<<<
  *     """Perform co-operative gevent select on ssh2 session socket.
  * 
  */
-  __pyx_tuple__5 = PyTuple_Pack(6, __pyx_n_s_session, __pyx_n_s_timeout, __pyx_n_s_socket, __pyx_n_s_directions, __pyx_n_s_readfds, __pyx_n_s_writefds); if (unlikely(!__pyx_tuple__5)) __PYX_ERR(0, 156, __pyx_L1_error)
+  __pyx_tuple__5 = PyTuple_Pack(6, __pyx_n_s_session, __pyx_n_s_timeout, __pyx_n_s_socket, __pyx_n_s_directions, __pyx_n_s_events, __pyx_n_s_poller); if (unlikely(!__pyx_tuple__5)) __PYX_ERR(0, 157, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__5);
   __Pyx_GIVEREF(__pyx_tuple__5);
-  __pyx_codeobj__6 = (PyObject*)__Pyx_PyCode_New(2, 0, 6, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__5, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_pssh_native__ssh2_pyx, __pyx_n_s_wait_select, 156, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__6)) __PYX_ERR(0, 156, __pyx_L1_error)
+  __pyx_codeobj__6 = (PyObject*)__Pyx_PyCode_New(2, 0, 6, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__5, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_pssh_native__ssh2_pyx, __pyx_n_s_wait_select, 157, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__6)) __PYX_ERR(0, 157, __pyx_L1_error)
 
-  /* "pssh/native/_ssh2.pyx":174
+  /* "pssh/native/_ssh2.pyx":180
  * 
  * 
  * def eagain_write(write_func, data, session, timeout=None):             # <<<<<<<<<<<<<<
  *     """Write data with given write_func for an SSH2 session while handling
  *     EAGAIN and resuming writes from last written byte on each call to
  */
-  __pyx_tuple__7 = PyTuple_Pack(8, __pyx_n_s_write_func, __pyx_n_s_data, __pyx_n_s_session, __pyx_n_s_timeout, __pyx_n_s_data_len, __pyx_n_s_total_written, __pyx_n_s_rc, __pyx_n_s_bytes_written); if (unlikely(!__pyx_tuple__7)) __PYX_ERR(0, 174, __pyx_L1_error)
+  __pyx_tuple__7 = PyTuple_Pack(8, __pyx_n_s_write_func, __pyx_n_s_data, __pyx_n_s_session, __pyx_n_s_timeout, __pyx_n_s_data_len, __pyx_n_s_total_written, __pyx_n_s_rc, __pyx_n_s_bytes_written); if (unlikely(!__pyx_tuple__7)) __PYX_ERR(0, 180, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__7);
   __Pyx_GIVEREF(__pyx_tuple__7);
-  __pyx_codeobj__8 = (PyObject*)__Pyx_PyCode_New(4, 0, 8, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__7, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_pssh_native__ssh2_pyx, __pyx_n_s_eagain_write, 174, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__8)) __PYX_ERR(0, 174, __pyx_L1_error)
+  __pyx_codeobj__8 = (PyObject*)__Pyx_PyCode_New(4, 0, 8, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__7, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_pssh_native__ssh2_pyx, __pyx_n_s_eagain_write, 180, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__8)) __PYX_ERR(0, 180, __pyx_L1_error)
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -3273,6 +3347,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
 static CYTHON_SMALL_CODE int __Pyx_InitGlobals(void) {
   if (__Pyx_InitStrings(__pyx_string_tab) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
   __pyx_int_0 = PyInt_FromLong(0); if (unlikely(!__pyx_int_0)) __PYX_ERR(0, 1, __pyx_L1_error)
+  __pyx_int_1000 = PyInt_FromLong(1000); if (unlikely(!__pyx_int_1000)) __PYX_ERR(0, 1, __pyx_L1_error)
   return 0;
   __pyx_L1_error:;
   return -1;
@@ -3318,7 +3393,7 @@ static int __Pyx_modinit_type_init_code(void) {
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__Pyx_modinit_type_init_code", 0);
   /*--- Type init code ---*/
-  if (PyType_Ready(&__pyx_type_4pssh_6native_5_ssh2___pyx_scope_struct___read_output) < 0) __PYX_ERR(0, 33, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_4pssh_6native_5_ssh2___pyx_scope_struct___read_output) < 0) __PYX_ERR(0, 34, __pyx_L1_error)
   #if PY_VERSION_HEX < 0x030800B1
   __pyx_type_4pssh_6native_5_ssh2___pyx_scope_struct___read_output.tp_print = 0;
   #endif
@@ -3560,105 +3635,140 @@ if (!__Pyx_RefNanny) {
   if (__Pyx_patch_abc() < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   #endif
 
-  /* "pssh/native/_ssh2.pyx":23
- * from libc.stdio cimport fopen, fclose, fwrite, fread, FILE
+  /* "pssh/native/_ssh2.pyx":20
+ * """Cython functions for interfacing with ssh2-python"""
  * 
- * from gevent.select import select             # <<<<<<<<<<<<<<
- * from ssh2.session import LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND
- * from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
+ * from datetime import datetime             # <<<<<<<<<<<<<<
+ * from libc.stdlib cimport malloc, free
+ * from libc.stdio cimport fopen, fclose, fwrite, fread, FILE
  */
-  __pyx_t_1 = PyList_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 23, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 20, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __Pyx_INCREF(__pyx_n_s_select);
-  __Pyx_GIVEREF(__pyx_n_s_select);
-  PyList_SET_ITEM(__pyx_t_1, 0, __pyx_n_s_select);
-  __pyx_t_2 = __Pyx_Import(__pyx_n_s_gevent_select, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 23, __pyx_L1_error)
+  __Pyx_INCREF(__pyx_n_s_datetime);
+  __Pyx_GIVEREF(__pyx_n_s_datetime);
+  PyList_SET_ITEM(__pyx_t_1, 0, __pyx_n_s_datetime);
+  __pyx_t_2 = __Pyx_Import(__pyx_n_s_datetime, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 20, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_select); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 23, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_datetime); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 20, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_select, __pyx_t_1) < 0) __PYX_ERR(0, 23, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_datetime, __pyx_t_1) < 0) __PYX_ERR(0, 20, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "pssh/native/_ssh2.pyx":24
+ * from libc.stdio cimport fopen, fclose, fwrite, fread, FILE
  * 
- * from gevent.select import select
- * from ssh2.session import LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND             # <<<<<<<<<<<<<<
+ * from gevent.select import poll, POLLIN, POLLOUT             # <<<<<<<<<<<<<<
+ * from ssh2.session import LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND
  * from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
- * 
  */
-  __pyx_t_2 = PyList_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 24, __pyx_L1_error)
+  __pyx_t_2 = PyList_New(3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 24, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_INCREF(__pyx_n_s_LIBSSH2_SESSION_BLOCK_INBOUND);
-  __Pyx_GIVEREF(__pyx_n_s_LIBSSH2_SESSION_BLOCK_INBOUND);
-  PyList_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_LIBSSH2_SESSION_BLOCK_INBOUND);
-  __Pyx_INCREF(__pyx_n_s_LIBSSH2_SESSION_BLOCK_OUTBOUND);
-  __Pyx_GIVEREF(__pyx_n_s_LIBSSH2_SESSION_BLOCK_OUTBOUND);
-  PyList_SET_ITEM(__pyx_t_2, 1, __pyx_n_s_LIBSSH2_SESSION_BLOCK_OUTBOUND);
-  __pyx_t_1 = __Pyx_Import(__pyx_n_s_ssh2_session, __pyx_t_2, -1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 24, __pyx_L1_error)
+  __Pyx_INCREF(__pyx_n_s_poll);
+  __Pyx_GIVEREF(__pyx_n_s_poll);
+  PyList_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_poll);
+  __Pyx_INCREF(__pyx_n_s_POLLIN);
+  __Pyx_GIVEREF(__pyx_n_s_POLLIN);
+  PyList_SET_ITEM(__pyx_t_2, 1, __pyx_n_s_POLLIN);
+  __Pyx_INCREF(__pyx_n_s_POLLOUT);
+  __Pyx_GIVEREF(__pyx_n_s_POLLOUT);
+  PyList_SET_ITEM(__pyx_t_2, 2, __pyx_n_s_POLLOUT);
+  __pyx_t_1 = __Pyx_Import(__pyx_n_s_gevent_select, __pyx_t_2, -1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 24, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_ImportFrom(__pyx_t_1, __pyx_n_s_LIBSSH2_SESSION_BLOCK_INBOUND); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 24, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_ImportFrom(__pyx_t_1, __pyx_n_s_poll); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 24, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_LIBSSH2_SESSION_BLOCK_INBOUND, __pyx_t_2) < 0) __PYX_ERR(0, 24, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_poll, __pyx_t_2) < 0) __PYX_ERR(0, 24, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_ImportFrom(__pyx_t_1, __pyx_n_s_LIBSSH2_SESSION_BLOCK_OUTBOUND); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 24, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_ImportFrom(__pyx_t_1, __pyx_n_s_POLLIN); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 24, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_LIBSSH2_SESSION_BLOCK_OUTBOUND, __pyx_t_2) < 0) __PYX_ERR(0, 24, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_POLLIN, __pyx_t_2) < 0) __PYX_ERR(0, 24, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_2 = __Pyx_ImportFrom(__pyx_t_1, __pyx_n_s_POLLOUT); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 24, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_POLLOUT, __pyx_t_2) < 0) __PYX_ERR(0, 24, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
   /* "pssh/native/_ssh2.pyx":25
- * from gevent.select import select
+ * 
+ * from gevent.select import poll, POLLIN, POLLOUT
+ * from ssh2.session import LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND             # <<<<<<<<<<<<<<
+ * from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
+ * 
+ */
+  __pyx_t_1 = PyList_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 25, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_INCREF(__pyx_n_s_LIBSSH2_SESSION_BLOCK_INBOUND);
+  __Pyx_GIVEREF(__pyx_n_s_LIBSSH2_SESSION_BLOCK_INBOUND);
+  PyList_SET_ITEM(__pyx_t_1, 0, __pyx_n_s_LIBSSH2_SESSION_BLOCK_INBOUND);
+  __Pyx_INCREF(__pyx_n_s_LIBSSH2_SESSION_BLOCK_OUTBOUND);
+  __Pyx_GIVEREF(__pyx_n_s_LIBSSH2_SESSION_BLOCK_OUTBOUND);
+  PyList_SET_ITEM(__pyx_t_1, 1, __pyx_n_s_LIBSSH2_SESSION_BLOCK_OUTBOUND);
+  __pyx_t_2 = __Pyx_Import(__pyx_n_s_ssh2_session, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 25, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_LIBSSH2_SESSION_BLOCK_INBOUND); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 25, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_LIBSSH2_SESSION_BLOCK_INBOUND, __pyx_t_1) < 0) __PYX_ERR(0, 25, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_LIBSSH2_SESSION_BLOCK_OUTBOUND); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 25, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_LIBSSH2_SESSION_BLOCK_OUTBOUND, __pyx_t_1) < 0) __PYX_ERR(0, 25, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+
+  /* "pssh/native/_ssh2.pyx":26
+ * from gevent.select import poll, POLLIN, POLLOUT
  * from ssh2.session import LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND
  * from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN             # <<<<<<<<<<<<<<
  * 
  * from ..exceptions import SessionError, Timeout
  */
-  __pyx_t_1 = PyList_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 25, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_2 = PyList_New(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 26, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
   __Pyx_INCREF(__pyx_n_s_LIBSSH2_ERROR_EAGAIN);
   __Pyx_GIVEREF(__pyx_n_s_LIBSSH2_ERROR_EAGAIN);
-  PyList_SET_ITEM(__pyx_t_1, 0, __pyx_n_s_LIBSSH2_ERROR_EAGAIN);
-  __pyx_t_2 = __Pyx_Import(__pyx_n_s_ssh2_error_codes, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 25, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_LIBSSH2_ERROR_EAGAIN); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 25, __pyx_L1_error)
+  PyList_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_LIBSSH2_ERROR_EAGAIN);
+  __pyx_t_1 = __Pyx_Import(__pyx_n_s_ssh2_error_codes, __pyx_t_2, -1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 26, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_LIBSSH2_ERROR_EAGAIN, __pyx_t_1) < 0) __PYX_ERR(0, 25, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_2 = __Pyx_ImportFrom(__pyx_t_1, __pyx_n_s_LIBSSH2_ERROR_EAGAIN); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 26, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_LIBSSH2_ERROR_EAGAIN, __pyx_t_2) < 0) __PYX_ERR(0, 26, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "pssh/native/_ssh2.pyx":27
+  /* "pssh/native/_ssh2.pyx":28
  * from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
  * 
  * from ..exceptions import SessionError, Timeout             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_t_2 = PyList_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 27, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_1 = PyList_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 28, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_n_s_SessionError);
   __Pyx_GIVEREF(__pyx_n_s_SessionError);
-  PyList_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_SessionError);
+  PyList_SET_ITEM(__pyx_t_1, 0, __pyx_n_s_SessionError);
   __Pyx_INCREF(__pyx_n_s_Timeout);
   __Pyx_GIVEREF(__pyx_n_s_Timeout);
-  PyList_SET_ITEM(__pyx_t_2, 1, __pyx_n_s_Timeout);
-  __pyx_t_1 = __Pyx_Import(__pyx_n_s_exceptions, __pyx_t_2, 2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 27, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_ImportFrom(__pyx_t_1, __pyx_n_s_SessionError); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 27, __pyx_L1_error)
+  PyList_SET_ITEM(__pyx_t_1, 1, __pyx_n_s_Timeout);
+  __pyx_t_2 = __Pyx_Import(__pyx_n_s_exceptions, __pyx_t_1, 2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 28, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_SessionError, __pyx_t_2) < 0) __PYX_ERR(0, 27, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_ImportFrom(__pyx_t_1, __pyx_n_s_Timeout); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 27, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_Timeout, __pyx_t_2) < 0) __PYX_ERR(0, 27, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_SessionError); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 28, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_SessionError, __pyx_t_1) < 0) __PYX_ERR(0, 28, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_Timeout); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 28, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_Timeout, __pyx_t_1) < 0) __PYX_ERR(0, 28, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "pssh/native/_ssh2.pyx":30
+  /* "pssh/native/_ssh2.pyx":31
  * 
  * 
  * cdef bytes LINESEP = b'\n'             # <<<<<<<<<<<<<<
@@ -3670,51 +3780,51 @@ if (!__Pyx_RefNanny) {
   __Pyx_DECREF_SET(__pyx_v_4pssh_6native_5_ssh2_LINESEP, __pyx_kp_b__3);
   __Pyx_GIVEREF(__pyx_kp_b__3);
 
-  /* "pssh/native/_ssh2.pyx":33
+  /* "pssh/native/_ssh2.pyx":34
  * 
  * 
  * def _read_output(session, read_func, timeout=None):             # <<<<<<<<<<<<<<
  *     cdef Py_ssize_t _size
  *     cdef bytes _data
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_4pssh_6native_5_ssh2_1_read_output, NULL, __pyx_n_s_pssh_native__ssh2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 33, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_read_output, __pyx_t_1) < 0) __PYX_ERR(0, 33, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_2 = PyCFunction_NewEx(&__pyx_mdef_4pssh_6native_5_ssh2_1_read_output, NULL, __pyx_n_s_pssh_native__ssh2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 34, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_read_output, __pyx_t_2) < 0) __PYX_ERR(0, 34, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "pssh/native/_ssh2.pyx":156
+  /* "pssh/native/_ssh2.pyx":157
  * 
  * 
  * def wait_select(session, timeout=None):             # <<<<<<<<<<<<<<
  *     """Perform co-operative gevent select on ssh2 session socket.
  * 
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_4pssh_6native_5_ssh2_4wait_select, NULL, __pyx_n_s_pssh_native__ssh2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 156, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_wait_select, __pyx_t_1) < 0) __PYX_ERR(0, 156, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_2 = PyCFunction_NewEx(&__pyx_mdef_4pssh_6native_5_ssh2_4wait_select, NULL, __pyx_n_s_pssh_native__ssh2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 157, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_wait_select, __pyx_t_2) < 0) __PYX_ERR(0, 157, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "pssh/native/_ssh2.pyx":174
+  /* "pssh/native/_ssh2.pyx":180
  * 
  * 
  * def eagain_write(write_func, data, session, timeout=None):             # <<<<<<<<<<<<<<
  *     """Write data with given write_func for an SSH2 session while handling
  *     EAGAIN and resuming writes from last written byte on each call to
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_4pssh_6native_5_ssh2_6eagain_write, NULL, __pyx_n_s_pssh_native__ssh2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 174, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_eagain_write, __pyx_t_1) < 0) __PYX_ERR(0, 174, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_2 = PyCFunction_NewEx(&__pyx_mdef_4pssh_6native_5_ssh2_6eagain_write, NULL, __pyx_n_s_pssh_native__ssh2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 180, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_eagain_write, __pyx_t_2) < 0) __PYX_ERR(0, 180, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "pssh/native/_ssh2.pyx":1
  * # This file is part of parallel-ssh.             # <<<<<<<<<<<<<<
  * #
  * # Copyright (C) 2014-2018 Panos Kittenis.
  */
-  __pyx_t_1 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 1, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_test, __pyx_t_1) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_2 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_test, __pyx_t_2) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /*--- Wrapped vars code ---*/
 
