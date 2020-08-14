@@ -28,9 +28,9 @@ install:
 script:
   # For testing SSH agent related functionality
   - eval `ssh-agent -s`
-  - nosetests --with-coverage --cover-package=pssh --nologcapture tests/test_native_tunnel.py
-  - nosetests --with-coverage --cover-package=pssh tests/test_native_*_client.py
-  - nosetests --with-coverage --cover-package=pssh tests/test_paramiko*.py
+  - pytest --reruns 5 --cov-append --cov=pssh -s tests/test_native_tunnel.py
+  - pytest --reruns 5 --cov-append --cov=pssh -s tests/test_native_*_client.py
+  - pytest --reruns 5 --cov-append --cov=pssh -s tests/test_paramiko*.py
   - flake8 pssh
   - cd doc; make html; cd ..
   # Test building from source distribution
