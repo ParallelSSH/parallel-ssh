@@ -188,7 +188,7 @@ class BaseParallelSSHClient(object):
         """
         if not isinstance(output, dict):
             raise ValueError(
-                "get_output is for the deprecated dictionary output only. " \
+                "get_output is for the deprecated dictionary output only. "
                 "To be removed in 2.0.0")
         try:
             (channel, host, stdout, stderr, stdin) = cmd.get(timeout=timeout)
