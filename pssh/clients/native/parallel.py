@@ -254,7 +254,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
             logger.error("Failed to run on host %s - %s", host, ex)
             raise ex
 
-    def join(self, output, consume_output=False, timeout=None):
+    def join(self, output, consume_output=False, timeout=None,
+             encoding='utf-8'):
         """Wait until all remote commands in output have finished
         and retrieve exit codes. Does *not* block other commands from
         running in parallel.
@@ -272,6 +273,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
           otherwise the channel output pending to be consumed always results
           in the channel not being finished.
         :type timeout: int
+        :param encoding: Encoding to use for output. Must be valid
+          `Python codec <https://docs.python.org/library/codecs.html>`_
+        :type encoding: str
 
         :raises: :py:class:`pssh.exceptions.Timeout` on timeout requested and
           reached with commands still running.
@@ -285,7 +289,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     self._join, host_i, host, host_out,
                     consume_output=consume_output, timeout=timeout))
         elif isinstance(output, dict):
-            cmds = []
             for host_i, (host, host_out) in enumerate(output.items()):
                 cmds.append(self.pool.spawn(
                     self._join, host_i, host, host_out,
@@ -304,7 +307,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
         client = self._host_clients[(host_i, host)]
         channel = host_out.channel
         stdout, stderr = self.reset_output_generators(
-            host_out, client=client, channel=channel, timeout=timeout)
+            host_out, client=client, channel=channel, timeout=timeout,
+            encoding=encoding)
         try:
             client.wait_finished(channel, timeout=timeout)
         except Timeout:
