@@ -1,5 +1,6 @@
 *~
 *.py[cod]
+.idea
 
 # C extensions
 *.so
@@ -34,3 +35,12 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# Virtual Environments
+env
+env_2
+env_3
+pypy
+
+# Documentation builds
+doc/_build

@@ -135,6 +135,7 @@ class SSHClient(object):
 
     def disconnect(self):
         """Disconnect session, close socket if needed."""
+        logger.debug("Disconnecting client for host %s", self.host)
         if self.session is not None:
             try:
                 self._eagain(self.session.disconnect)
@@ -142,6 +143,7 @@ class SSHClient(object):
                 pass
         if self.sock is not None and not self.sock.closed:
             self.sock.close()
+            logger.debug("Client socket closed for host %s", self.host)
 
     def __del__(self):
         self.disconnect()
@@ -187,6 +189,8 @@ class SSHClient(object):
             logger.error(msg, self.host, self.port, ex)
             if isinstance(ex, SSH2Timeout):
                 raise Timeout(msg, self.host, self.port, ex)
+            ex.host = self.host
+            ex.port = self.port
             raise
         try:
             self.auth()

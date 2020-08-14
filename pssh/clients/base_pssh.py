@@ -22,6 +22,9 @@ import random
 import logging
 
 import gevent.pool
+
+from warnings import warn
+from gevent import joinall
 from gevent.hub import Hub
 
 from ..exceptions import HostArgumentException
@@ -31,6 +34,10 @@ from ..output import HostOutput
 
 Hub.NOT_ERROR = (Exception,)
 logger = logging.getLogger(__name__)
+_output_depr_notice = "run_command output will change to a list rather than " \
+                      "dictionary in 2.0.0 - Please use return_list=True " \
+                      "to avoid client code breaking on upgrading to 2.0.0"
+_get_output_depr_notice = "get_output is scheduled to be removed in 2.0.0."
 
 try:
     xrange
@@ -63,19 +70,19 @@ class BaseParallelSSHClient(object):
         self.timeout = timeout
         # To hold host clients
         self.host_clients = {}
+        self._host_clients = {}
         self.host_config = host_config if host_config else {}
         self.retry_delay = retry_delay
         self.cmds = None
 
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
-                    encoding='utf-8',
+                    encoding='utf-8', return_list=False,
                     *args, **kwargs):
         greenlet_timeout = kwargs.pop('greenlet_timeout', None)
-        output = {}
         if host_args:
             try:
-                cmds = [self.pool.spawn(self._run_command, host,
+                cmds = [self.pool.spawn(self._run_command, host_i, host,
                                         command % host_args[host_i],
                                         user=user, encoding=encoding,
                                         use_pty=use_pty, shell=shell,
@@ -87,34 +94,78 @@ class BaseParallelSSHClient(object):
                     "number of hosts ")
         else:
             cmds = [self.pool.spawn(
-                self._run_command, host, command,
+                self._run_command, host_i, host, command,
                 user=user, encoding=encoding, use_pty=use_pty, shell=shell,
                 *args, **kwargs)
-                    for host in self.hosts]
+                    for host_i, host in enumerate(self.hosts)]
+        self.cmds = cmds
+        joinall(cmds, raise_error=False, timeout=greenlet_timeout)
+        if not return_list:
+            warn(_output_depr_notice)
+            output = {}
+            return self._get_output_dict(
+                cmds, output, stop_on_errors=stop_on_errors,
+                timeout=greenlet_timeout)
+        return [self._get_output_from_greenlet(cmd, timeout=greenlet_timeout)
+                for cmd in cmds]
+
+    def _get_output_from_greenlet(self, cmd, timeout=None):
+        try:
+            (channel, host, stdout, stderr, stdin) = cmd.get(timeout=timeout)
+        except Exception as ex:
+            host = ex.host
+            return HostOutput(host, cmd, None, None, None, None, exception=ex)
+        return HostOutput(
+            host, cmd, channel, stdout, stderr, stdin,
+            exit_code=self._get_exit_code(channel))
+
+    def _get_output_dict(self, cmds, output, timeout=None,
+                         stop_on_errors=False):
         for cmd in cmds:
             try:
-                self.get_output(cmd, output, timeout=greenlet_timeout)
+                self.get_output(cmd, output, timeout=timeout)
             except Exception:
                 if stop_on_errors:
                     raise
-        self.cmds = cmds
         return output
 
-    def get_last_output(self, cmds=None):
+    def get_last_output(self, cmds=None, greenlet_timeout=None,
+                        return_list=False):
         """Get output for last commands executed by ``run_command``
 
         :param cmds: Commands to get output for. Defaults to ``client.cmds``
         :type cmds: list(:py:class:`gevent.Greenlet`)
+        :param greenlet_timeout: (Optional) Greenlet timeout setting.
+          Defaults to no timeout. If set, this function will raise
+          :py:class:`gevent.Timeout` after ``greenlet_timeout`` seconds
+          if no result is available from greenlets.
+          In some cases, such as when using proxy hosts, connection timeout
+          is controlled by proxy server and getting result from greenlets may
+          hang indefinitely if remote server is unavailable. Use this setting
+          to avoid blocking in such circumstances.
+          Note that ``gevent.Timeout`` is a special class that inherits from
+          ``BaseException`` and thus **can not be caught** by
+          ``stop_on_errors=False``.
+        :type greenlet_timeout: float
+        :param return_list: (Optional) Return a list of ``HostOutput`` objects
+          instead of dictionary. ``run_command`` will return a list starting
+          from 2.0.0 - enable this flag to avoid client code breaking on
+          upgrading to 2.0.0.
+        :type return_list: bool
 
-        :rtype: dict
+        :rtype: dict or list
         """
         cmds = self.cmds if cmds is None else cmds
         if cmds is None:
             return
-        output = {}
-        for cmd in self.cmds:
-            self.get_output(cmd, output)
-        return output
+        if not return_list:
+            warn(_output_depr_notice)
+            output = {}
+            for cmd in self.cmds:
+                self.get_output(cmd, output, timeout=greenlet_timeout)
+            return output
+        return [self._get_output_from_greenlet(cmd, timeout=greenlet_timeout)
+                for cmd in cmds]
 
     def _get_host_config_values(self, host):
         _user = self.host_config.get(host, {}).get('user', self.user)
@@ -124,19 +175,23 @@ class BaseParallelSSHClient(object):
         _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
         return _user, _port, _password, _pkey
 
-    def _run_command(self, host, command, *args, **kwargs):
+    def _run_command(self, host_i, host, command, *args, **kwargs):
         raise NotImplementedError
 
     def get_output(self, cmd, output, timeout=None):
         """Get output from command.
 
-        :param cmd: Command to get output from
-        :type cmd: :py:class:`gevent.Greenlet`
         :param output: Dictionary containing
           :py:class:`pssh.output.HostOutput` values to be updated with output
           from cmd
         :type output: dict
-        :rtype: None"""
+        :rtype: None
+        """
+        warn(_get_output_depr_notice)
+        if not isinstance(output, dict):
+            raise ValueError(
+                "get_output is for the deprecated dictionary output only. "
+                "To be removed in 2.0.0")
         try:
             (channel, host, stdout, stderr, stdin) = cmd.get(timeout=timeout)
         except Exception as ex:
@@ -185,10 +240,19 @@ class BaseParallelSSHClient(object):
           :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
         :rtype: None
         """
-        for host in output:
-            if output[host] is None:
-                continue
-            output[host].exit_code = self.get_exit_code(output[host])
+        if isinstance(output, list):
+            for host_out in output:
+                if host_out is None:
+                    continue
+            host_out.exit_code = self.get_exit_code(host_out)
+        elif isinstance(output, dict):
+            for host in output:
+                host_out = output[host]
+                if output[host] is None:
+                    continue
+                host_out.exit_code = self.get_exit_code(host_out)
+        else:
+            raise ValueError("Unexpected output object type")
 
     def get_exit_code(self, host_output):
         """Get exit code from host output *if available*.
@@ -248,7 +312,7 @@ class BaseParallelSSHClient(object):
         """
         if copy_args:
             try:
-                return [self.pool.spawn(self._copy_file, host,
+                return [self.pool.spawn(self._copy_file, host_i, host,
                                         local_file % copy_args[host_i],
                                         remote_file % copy_args[host_i],
                                         {'recurse': recurse})
@@ -258,16 +322,16 @@ class BaseParallelSSHClient(object):
                     "Number of per-host copy arguments provided does not match "
                     "number of hosts")
         else:
-            return [self.pool.spawn(self._copy_file, host, local_file,
+            return [self.pool.spawn(self._copy_file, host_i, host, local_file,
                                     remote_file, {'recurse': recurse})
-                    for host in self.hosts]
+                    for host_i, host in enumerate(self.hosts)]
 
-    def _copy_file(self, host, local_file, remote_file, recurse=False):
+    def _copy_file(self, host_i, host, local_file, remote_file, recurse=False):
         """Make sftp client, copy file"""
         try:
-            self._make_ssh_client(host)
-            return self.host_clients[host].copy_file(local_file, remote_file,
-                                                     recurse=recurse)
+            self._make_ssh_client(host_i, host)
+            return self._host_clients[(host_i, host)].copy_file(
+                local_file, remote_file, recurse=recurse)
         except Exception as ex:
             ex.host = host
             raise ex
@@ -334,7 +398,7 @@ class BaseParallelSSHClient(object):
         if copy_args:
             try:
                 return [self.pool.spawn(
-                    self._copy_remote_file, host,
+                    self._copy_remote_file, host_i, host,
                     remote_file % copy_args[host_i],
                     local_file % copy_args[host_i], recurse=recurse, **kwargs)
                     for host_i, host in enumerate(self.hosts)]
@@ -344,16 +408,16 @@ class BaseParallelSSHClient(object):
                     "number of hosts")
         else:
             return [self.pool.spawn(
-                self._copy_remote_file, host, remote_file,
+                self._copy_remote_file, host_i, host, remote_file,
                 suffix_separator.join([local_file, host]), recurse, **kwargs)
-                for host in self.hosts]
+                    for host_i, host in enumerate(self.hosts)]
 
-    def _copy_remote_file(self, host, remote_file, local_file, recurse,
+    def _copy_remote_file(self, host_i, host, remote_file, local_file, recurse,
                           **kwargs):
         """Make sftp client, copy file to local"""
         try:
-            self._make_ssh_client(host)
-            return self.host_clients[host].copy_remote_file(
+            self._make_ssh_client(host_i, host)
+            return self._host_clients[(host_i, host)].copy_remote_file(
                 remote_file, local_file, recurse=recurse, **kwargs)
         except Exception as ex:
             ex.host = host
