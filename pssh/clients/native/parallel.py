@@ -300,7 +300,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
         joinall(cmds, raise_error=True)
         self.get_exit_codes(output)
 
-    def _join(self, host_i, host, host_out, consume_output=False, timeout=None):
+    def _join(self, host_i, host, host_out, consume_output=False, timeout=None,
+              encoding="utf-8"):
         if (host_i, host) not in self._host_clients or \
            self._host_clients[(host_i, host)] is None:
             return
