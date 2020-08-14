@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 _output_depr_notice = "run_command output will change to a list rather than " \
                       "dictionary in 2.0.0 - Please use return_list=True " \
                       "to avoid client code breaking on upgrading to 2.0.0"
+_get_output_depr_notice = "get_output is scheduled to be removed in 2.0.0."
 
 try:
     xrange
@@ -186,6 +187,7 @@ class BaseParallelSSHClient(object):
         :type output: dict
         :rtype: None
         """
+        warn(_get_output_depr_notice)
         if not isinstance(output, dict):
             raise ValueError(
                 "get_output is for the deprecated dictionary output only. "
