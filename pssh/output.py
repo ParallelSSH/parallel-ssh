@@ -50,8 +50,7 @@ class HostOutput(dict):
         super(HostOutput, self).__init__(
             (('host', host), ('cmd', cmd), ('channel', channel),
              ('stdout', stdout), ('stderr', stderr),
-             ('stdin', stdin), ('exit_code', exit_code),
-             ('exception', exception)))
+             ('stdin', stdin), ('exception', exception)))
         self.host = host
         self.cmd = cmd
         self.channel = channel

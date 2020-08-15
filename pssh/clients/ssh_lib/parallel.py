@@ -245,18 +245,21 @@ class ParallelSSHClient(BaseParallelSSHClient):
                         "still running", timeout, host)
         self.get_exit_codes(output)
 
-    def _make_ssh_client(self, host):
+    def _make_ssh_client(self, host_i, host):
         logger.debug("Make client request for host %s, host in clients: %s",
                      host, host in self.host_clients)
         with self._clients_lock:
-            if host not in self.host_clients or self.host_clients[host] is None:
+            if (host_i, host) not in self._host_clients \
+               or self._host_clients[(host_i, host)] is None:
                 _user, _port, _password, _pkey = self._get_host_config_values(
                     host)
-                self.host_clients[host] = SSHClient(
+                _client = SSHClient(
                     host, user=_user, password=_password, port=_port,
                     pkey=_pkey, num_retries=self.num_retries,
                     timeout=self.timeout,
                     allow_agent=self.allow_agent, retry_delay=self.retry_delay)
+                self.host_clients[host] = _client
+                self._host_clients[(host_i, host)] = _client
                 # TODO - Add forward agent functionality
                 # forward_ssh_agent=self.forward_ssh_agent)
 

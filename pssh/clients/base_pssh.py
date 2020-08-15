@@ -204,8 +204,19 @@ class BaseParallelSSHClient(object):
         _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
         return _user, _port, _password, _pkey
 
-    def _run_command(self, host_i, host, command, *args, **kwargs):
-        raise NotImplementedError
+    def _run_command(self, host_i, host, command, sudo=False, user=None,
+                     shell=None, use_pty=False,
+                     encoding='utf-8', timeout=None):
+        """Make SSHClient if needed, run command on host"""
+        try:
+            self._make_ssh_client(host_i, host)
+            return self._host_clients[(host_i, host)].run_command(
+                command, sudo=sudo, user=user, shell=shell,
+                use_pty=use_pty, encoding=encoding, timeout=timeout)
+        except Exception as ex:
+            ex.host = host
+            logger.error("Failed to run on host %s - %s", host, ex)
+            raise ex
 
     def get_output(self, cmd, output, timeout=None):
         """Get output from command.
@@ -274,19 +285,7 @@ class BaseParallelSSHClient(object):
         Exit code is gathered, if available, by ``.exit_code`` on a
         :py:class:`pssh.output.HostOutput` object instead.
         """
-        if isinstance(output, list):
-            for host_out in output:
-                if host_out is None:
-                    continue
-            host_out.exit_code = self.get_exit_code(host_out)
-        elif isinstance(output, dict):
-            for host in output:
-                host_out = output[host]
-                if output[host] is None:
-                    continue
-                host_out.exit_code = self.get_exit_code(host_out)
-        else:
-            raise ValueError("Unexpected output object type")
+        pass
 
     def get_exit_code(self, host_output):
         """This function is now a no-op.
@@ -461,3 +460,6 @@ class BaseParallelSSHClient(object):
         except Exception as ex:
             ex.host = host
             raise ex
+
+    def _make_ssh_client(self, host_i, host):
+        raise NotImplementedError

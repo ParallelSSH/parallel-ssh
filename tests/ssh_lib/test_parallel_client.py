@@ -20,7 +20,7 @@ import os
 import pwd
 import logging
 import time
-import subprocess
+from sys import version_info
 
 from gevent import socket, sleep, spawn, joinall
 from pssh.exceptions import UnknownHostException, \
@@ -30,9 +30,9 @@ from pssh.exceptions import UnknownHostException, \
 from pssh import logger as pssh_logger
 from pssh.clients.ssh_lib.parallel import ParallelSSHClient, logger as ssh_logger
 
-from .base_ssh_test import PKEY_FILENAME, PUB_FILE
-from ..embedded_server.openssh import OpenSSHServer
 from ..embedded_server.embedded_server import make_socket
+from ..embedded_server.openssh import OpenSSHServer
+from ..base_ssh2_test import PKEY_FILENAME, PUB_FILE
 
 
 ssh_logger.setLevel(logging.DEBUG)
@@ -43,7 +43,7 @@ class LibSSHParallelTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        _mask = 0o600
+        _mask = int('0600') if version_info <= (2,) else 0o600
         os.chmod(PKEY_FILENAME, _mask)
         cls.host = '127.0.0.1'
         cls.port = 2223

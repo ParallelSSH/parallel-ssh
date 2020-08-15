@@ -168,8 +168,8 @@ class SSHClient(BaseSSHClient):
         eagain(self.session, channel.request_exec, cmd, timeout=self.timeout)
         self._stderr_read = False
         self._stdout_read = False
-        self._stdout_buffer = StringIO()
-        self._stderr_buffer = StringIO()
+        self._stdout_buffer = BytesIO()
+        self._stderr_buffer = BytesIO()
         self._stdout_reader = spawn(
             self._read_output_to_buffer, channel)
         self._stderr_reader = spawn(
