@@ -94,7 +94,10 @@ class BaseSSHClient(object):
         retries += 1
         self.session = None
         if not self.sock.closed:
-            self.sock.close()
+            try:
+                self.sock.close()
+            except Exception:
+                pass
         sleep(self.retry_delay)
         self._connect(self._host, self.port, retries=retries)
         return self._init(retries=retries)

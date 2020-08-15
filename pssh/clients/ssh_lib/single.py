@@ -78,7 +78,8 @@ class SSHClient(BaseSSHClient):
         super(SSHClient, self).__init__(
             host, user=user, password=password, port=port, pkey=pkey,
             num_retries=num_retries, retry_delay=retry_delay,
-            allow_agent=allow_agent, _auth_thread_pool=_auth_thread_pool,
+            allow_agent=allow_agent,
+            _auth_thread_pool=_auth_thread_pool,
             timeout=timeout)
         self._stdout_buffer = BytesIO()
         self._stderr_buffer = BytesIO()
