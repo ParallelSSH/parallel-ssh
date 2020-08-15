@@ -36,15 +36,13 @@ from .single import SSHClient  # noqa: E402
 
 logger = logging.getLogger('pssh')
 
-_msg = "This client will be replaced as the default client " \
-       "by the better performing and non-monkey patching " \
-       "pssh.clients.native.ParallelSSHClient from 2.0.0 onwards.%(nl)s" \
+_msg = "This client has been replaced as the default client " \
+       "by pssh.clients.native.ParallelSSHClient and will be _removed_ from " \
+       "2.0.0 onwards.%(nl)s" \
        "Please ensure required functionality is supported by the new client " \
-       "by switching to 'from pssh.clients import ParallelSSHClient'. " \
-       "The pssh2_client import for the new client will continue to be " \
-       "supported for backwards compatibility. %(nl)s%(nl)s" \
-       "To continue using this client please update imports to " \
-       "'from pssh.clients.miko import ParallelSSHClient'." % {'nl': linesep}
+       "by switching to 'from pssh.clients import ParallelSSHClient' " \
+       "and if not pin version requirements to <2.0.0.%(nl)s%(nl)s" % {
+           'nl': linesep}
 warn(_msg)
 
 
@@ -213,7 +211,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         output = {}
         if host_args:
             try:
-                cmds = [self.pool.spawn(self._run_command, host,
+                cmds = [self.pool.spawn(self._run_command, host_i, host,
                                         command % host_args[host_i],
                                         sudo=sudo, user=user, shell=shell,
                                         use_shell=use_shell, use_pty=use_pty,
@@ -225,11 +223,11 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     "number of hosts ")
         else:
             cmds = [self.pool.spawn(
-                self._run_command, host, command,
+                self._run_command, host_i, host, command,
                 sudo=sudo, user=user, shell=shell,
                 use_shell=use_shell, use_pty=use_pty,
                 **paramiko_kwargs)
-                for host in self.hosts]
+                    for host_i, host in enumerate(self.hosts)]
         for cmd in cmds:
             try:
                 self.get_output(cmd, output, encoding=encoding)
@@ -238,13 +236,13 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     raise
         return output
 
-    def _run_command(self, host, command, sudo=False, user=None,
+    def _run_command(self, host_i, host, command, sudo=False, user=None,
                      shell=None, use_shell=True, use_pty=True,
                      **paramiko_kwargs):
         """Make SSHClient, run command on host"""
         try:
-            self._make_ssh_client(host, **paramiko_kwargs)
-            return self.host_clients[host].exec_command(
+            self._make_ssh_client(host_i, host, **paramiko_kwargs)
+            return self._host_clients[(host_i, host)].exec_command(
                 command, sudo=sudo, user=user, shell=shell,
                 use_shell=use_shell, use_pty=use_pty)
         except Exception as ex:
@@ -330,10 +328,11 @@ class ParallelSSHClient(BaseParallelSSHClient):
         channel.close()
         return channel.recv_exit_status()
 
-    def _make_ssh_client(self, host, **paramiko_kwargs):
-        if host not in self.host_clients or self.host_clients[host] is None:
+    def _make_ssh_client(self, host_i, host, **paramiko_kwargs):
+        if (host_i, host) not in self._host_clients \
+           or self._host_clients[(host_i, host)] is None:
             _user, _port, _password, _pkey = self._get_host_config_values(host)
-            self.host_clients[host] = SSHClient(
+            _client = SSHClient(
                 host, user=_user, password=_password, port=_port, pkey=_pkey,
                 forward_ssh_agent=self.forward_ssh_agent,
                 num_retries=self.num_retries, timeout=self.timeout,
@@ -342,3 +341,5 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 proxy_pkey=self.proxy_pkey, allow_agent=self.allow_agent,
                 agent=self.agent, channel_timeout=self.channel_timeout,
                 **paramiko_kwargs)
+            self.host_clients[host] = _client
+            self._host_clients[(host_i, host)] = _client

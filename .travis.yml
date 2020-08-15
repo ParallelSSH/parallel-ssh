@@ -3,16 +3,17 @@ cache:
   - pip
   - directories:
       - "$HOME/.pyenv"
-sudo: required
+      - "$HOME/Library/Caches/Homebrew"
+      - "$HOME/.git/lfs"
 notifications:
   email: false
 services:
   - docker
 python:
   - 2.7
-  - 3.4
-  - 3.5
   - 3.6
+  - 3.7
+  - 3.8
 addons:
   apt:
     packages:
@@ -23,14 +24,14 @@ addons:
 before_install:
   - pip install -U pip setuptools
 install:
-  - pip install -r requirements_dev.txt
+  - pip install -U -r requirements_dev.txt
 script:
   # For testing SSH agent related functionality
   - eval `ssh-agent -s`
-  - nosetests --with-coverage --cover-package=pssh --nologcapture tests/test_native_tunnel.py
-  - nosetests --with-coverage --cover-package=pssh tests/test_native_*_client.py
-  - nosetests --with-coverage --cover-package=pssh tests/ssh_lib
-  - nosetests --with-coverage --cover-package=pssh tests/test_paramiko*.py
+  - pytest --reruns 5 --cov-append --cov=pssh -s tests/test_native_tunnel.py
+  - pytest --reruns 5 --cov-append --cov=pssh -s tests/test_native_*_client.py
+  - pytest --reruns 5 --cov-append --cov=pssh -s  tests/ssh_lib
+  - pytest --reruns 5 --cov-append --cov=pssh -s tests/test_paramiko*.py
   - flake8 pssh
   - cd doc; make html; cd ..
   # Test building from source distribution
@@ -73,32 +74,15 @@ jobs:
     - &osx-wheels
       stage: build packages
       os: osx
-      osx_image: xcode8
+      osx_image: xcode11.6
       env:
-        - PYENV: 3.6.4
+        - PYENV: 3.6.11
       before_install:
-        - brew update
-        - brew link --overwrite python@2 || brew install python@2 || brew link --overwrite python@2
-        - which python2
-        - sudo -H pip2 install twine
+        - sudo -H pip install twine
         - which twine
         - mkdir -p wheels
-      install:
-        - sudo -H pip2 install -U delocate wheel pip setuptools
-        - ls -lh
-        - pip2 install --user -r requirements.txt
+      install: skip
       script:
-        - pip2 wheel --no-deps .
-        - delocate-listdeps --all *.whl
-        - delocate-wheel -v *.whl
-        - delocate-listdeps --all *.whl
-        - ls -l *.whl
-        - rm -f *.dylib
-        - pip2 install --user -v *.whl
-        - pwd; mkdir temp; cd temp; pwd
-        - python -c "import pssh.clients"
-        - cd ..; pwd
-        - mv -f *.whl wheels/
         - ./ci/travis/pyenv-wheel.sh
       after_success:
         - if [[ ! -z "$TRAVIS_TAG" ]]; then
@@ -108,63 +92,47 @@ jobs:
       python: skip
 
     - <<: *osx-wheels
-      osx_image: xcode6.4
-
-    - <<: *osx-wheels
-      osx_image: xcode6.4
+      osx_image: xcode11.3
       env:
-        - PYENV: 3.7.0
-      install: skip
-      script:
-        - ./ci/travis/pyenv-wheel.sh
+        - PYENV: 3.6.11
 
     - <<: *osx-wheels
-      osx_image: xcode9.2
-
-    - <<: *osx-wheels
-      osx_image: xcode9.4
-
-    - <<: *osx-wheels
-      osx_image: xcode8
+      osx_image: xcode11.6
       env:
-        - PYENV: 3.7.0
-      install: skip
-      script:
-        - ./ci/travis/pyenv-wheel.sh
+        - PYENV: 3.7.8
 
     - <<: *osx-wheels
-      osx_image: xcode9.2
+      osx_image: xcode11.3
       env:
-        - PYENV: 3.7.0
-      install: skip
-      script:
-        - ./ci/travis/pyenv-wheel.sh
+        - PYENV: 3.7.8
 
     - <<: *osx-wheels
-      osx_image: xcode9.4
+      osx_image: xcode11.3
       env:
-        - PYENV: 3.7.0
-      install: skip
-      script:
-        - ./ci/travis/pyenv-wheel.sh
+        - PYENV: 3.8.5
 
-    - os: linux
-      stage: build packages
+    - <<: *osx-wheels
+      osx_image: xcode11.6
       env:
-        - SYSTEM_PACKAGES=1
-      python: 3.6
-      before_install: skip
-      install: skip
-      script:
-        - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-        - ./ci/docker/build-packages.sh
-      deploy:
-        - provider: releases
-          skip_cleanup: true
-          api_key:
-            secure: hKf+D9ZWRCJWNQtlOWeFh7z1a+VSz+GK5qOY0e1+iV/PrM0f41wy2yej0bxG1zS6CQAnJBK6/gmq5uXXhQhGNQeIQs7zElyKlrijQAn5UstPPJTRIk2oywRr2b+q0k3V42tto6WbhjqPRpOQl/pNTjKJCc/UPgd6kOVZEhCfAec=
-          file_glob: true
-          file: '*.{deb,rpm}'
-          on:
-            repo: ParallelSSH/parallel-ssh
-            tags: true
+        - PYENV: 3.8.5
+
+    # - os: linux
+    #   stage: build packages
+    #   env:
+    #     - SYSTEM_PACKAGES=1
+    #   python: 3.6
+    #   before_install: skip
+    #   install: skip
+    #   script:
+    #     - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+    #     - ./ci/docker/build-packages.sh
+    #   deploy:
+    #     - provider: releases
+    #       skip_cleanup: true
+    #       api_key:
+    #         secure: hKf+D9ZWRCJWNQtlOWeFh7z1a+VSz+GK5qOY0e1+iV/PrM0f41wy2yej0bxG1zS6CQAnJBK6/gmq5uXXhQhGNQeIQs7zElyKlrijQAn5UstPPJTRIk2oywRr2b+q0k3V42tto6WbhjqPRpOQl/pNTjKJCc/UPgd6kOVZEhCfAec=
+    #       file_glob: true
+    #       file: '*.{deb,rpm}'
+    #       on:
+    #         repo: ParallelSSH/parallel-ssh
+    #         tags: true

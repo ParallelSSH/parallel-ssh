@@ -106,8 +106,7 @@ class SSH2ClientTest(SSH2TestCase):
                            pkey=self.user_key,
                            num_retries=1)
         client.session.disconnect()
-        self.assertRaises(
-            (SocketDisconnectError, BannerRecvError, SocketRecvError), client._init)
+        self.assertRaises((SocketDisconnectError, BannerRecvError, SocketRecvError), client._init)
 
     def test_stdout_parsing(self):
         dir_list = os.listdir(os.path.expanduser('~'))

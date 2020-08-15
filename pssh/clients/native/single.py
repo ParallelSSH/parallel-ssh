@@ -100,6 +100,7 @@ class SSHClient(BaseSSHClient):
 
     def disconnect(self):
         """Disconnect session, close socket if needed."""
+        logger.debug("Disconnecting client for host %s", self.host)
         if self.session is not None:
             try:
                 self._eagain(self.session.disconnect)
@@ -107,6 +108,7 @@ class SSHClient(BaseSSHClient):
                 pass
         if self.sock is not None and not self.sock.closed:
             self.sock.close()
+            logger.debug("Client socket closed for host %s", self.host)
 
     def spawn_send_keepalive(self):
         """Spawns a new greenlet that sends keep alive messages every
@@ -134,6 +136,8 @@ class SSHClient(BaseSSHClient):
             logger.error(msg, self.host, self.port, ex)
             if isinstance(ex, SSH2Timeout):
                 raise Timeout(msg, self.host, self.port, ex)
+            ex.host = self.host
+            ex.port = self.port
             raise
         try:
             self.auth()

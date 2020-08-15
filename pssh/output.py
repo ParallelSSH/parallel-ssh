@@ -47,6 +47,11 @@ class HostOutput(dict):
         :param exception: Exception from host if any
         :type exception: :py:class:`Exception` or ``None``
         """
+        super(HostOutput, self).__init__(
+            (('host', host), ('cmd', cmd), ('channel', channel),
+             ('stdout', stdout), ('stderr', stderr),
+             ('stdin', stdin), ('exit_code', exit_code),
+             ('exception', exception)))
         self.host = host
         self.cmd = cmd
         self.channel = channel
@@ -55,11 +60,6 @@ class HostOutput(dict):
         self.stdin = stdin
         self.client = client
         self.exception = exception
-        dict.__init__(self, (('host', host), ('cmd', cmd), ('channel', channel),
-                             ('stdout', stdout), ('stderr', stderr),
-                             ('client', client),
-                             ('stdin', stdin), ('exit_code', self.exit_code),
-                             ('exception', exception)))
 
     @property
     def exit_code(self):
