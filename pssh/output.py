@@ -20,15 +20,17 @@
 
 from os import linesep
 
+from . import logger
+
 
 class HostOutput(dict):
     """Class to hold host output"""
 
     __slots__ = ('host', 'cmd', 'channel', 'stdout', 'stderr', 'stdin',
-                 'exit_code', 'exception')
+                 'client', 'exception')
 
     def __init__(self, host, cmd, channel, stdout, stderr, stdin,
-                 exit_code=None, exception=None):
+                 client, exception=None):
         """
         :param host: Host name output is for
         :type host: str
@@ -50,7 +52,7 @@ class HostOutput(dict):
         super(HostOutput, self).__init__(
             (('host', host), ('cmd', cmd), ('channel', channel),
              ('stdout', stdout), ('stderr', stderr),
-             ('stdin', stdin), ('exit_code', exit_code),
+             ('stdin', stdin),
              ('exception', exception)))
         self.host = host
         self.cmd = cmd
@@ -58,8 +60,17 @@ class HostOutput(dict):
         self.stdout = stdout
         self.stderr = stderr
         self.stdin = stdin
+        self.client = client
         self.exception = exception
-        self.exit_code = exit_code
+
+    @property
+    def exit_code(self):
+        if not self.client:
+            return
+        try:
+            return self.client.get_exit_status(self.channel)
+        except Exception as ex:
+            logger.error("Error getting exit status - %s", ex)
 
     def __setattr__(self, name, value):
         object.__setattr__(self, name, value)

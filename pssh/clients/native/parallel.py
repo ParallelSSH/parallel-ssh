@@ -240,20 +240,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 pass
             del s_client
 
-    def _run_command(self, host_i, host, command, sudo=False, user=None,
-                     shell=None, use_pty=False,
-                     encoding='utf-8', timeout=None):
-        """Make SSHClient if needed, run command on host"""
-        try:
-            self._make_ssh_client(host_i, host)
-            return self._host_clients[(host_i, host)].run_command(
-                command, sudo=sudo, user=user, shell=shell,
-                use_pty=use_pty, encoding=encoding, timeout=timeout)
-        except Exception as ex:
-            ex.host = host
-            logger.error("Failed to run on host %s - %s", host, ex)
-            raise ex
-
     def join(self, output, consume_output=False, timeout=None,
              encoding='utf-8'):
         """Wait until all remote commands in output have finished
@@ -434,6 +420,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     keepalive_seconds=self.keepalive_seconds)
                 self.host_clients[host] = _client
                 self._host_clients[(host_i, host)] = _client
+                return _client
+        return self._host_clients[(host_i, host)]
 
     def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel via SFTP.

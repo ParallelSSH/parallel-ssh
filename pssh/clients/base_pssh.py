@@ -82,11 +82,12 @@ class BaseParallelSSHClient(object):
         greenlet_timeout = kwargs.pop('greenlet_timeout', None)
         if host_args:
             try:
-                cmds = [self.pool.spawn(self._run_command, host_i, host,
-                                        command % host_args[host_i],
-                                        user=user, encoding=encoding,
-                                        use_pty=use_pty, shell=shell,
-                                        *args, **kwargs)
+                cmds = [self.pool.spawn(
+                    self._run_command, host_i, host,
+                    command % host_args[host_i],
+                    user=user, encoding=encoding,
+                    use_pty=use_pty, shell=shell,
+                    *args, **kwargs)
                         for host_i, host in enumerate(self.hosts)]
             except IndexError:
                 raise HostArgumentException(
@@ -111,13 +112,13 @@ class BaseParallelSSHClient(object):
 
     def _get_output_from_greenlet(self, cmd, timeout=None):
         try:
-            (channel, host, stdout, stderr, stdin) = cmd.get(timeout=timeout)
+            (channel, host, stdout, stderr, stdin), _client = cmd.get(
+                timeout=timeout)
         except Exception as ex:
             host = ex.host
-            return HostOutput(host, cmd, None, None, None, None, exception=ex)
-        return HostOutput(
-            host, cmd, channel, stdout, stderr, stdin,
-            exit_code=self._get_exit_code(channel))
+            return HostOutput(host, cmd, None, None, None, None,
+                              _client, exception=ex)
+        return HostOutput(host, cmd, channel, stdout, stderr, stdin, _client)
 
     def _get_output_dict(self, cmds, output, timeout=None,
                          stop_on_errors=False):
@@ -175,8 +176,19 @@ class BaseParallelSSHClient(object):
         _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
         return _user, _port, _password, _pkey
 
-    def _run_command(self, host_i, host, command, *args, **kwargs):
-        raise NotImplementedError
+    def _run_command(self, host_i, host, command, sudo=False, user=None,
+                     shell=None, use_pty=False,
+                     encoding='utf-8', timeout=None):
+        """Make SSHClient if needed, run command on host"""
+        try:
+            _client = self._make_ssh_client(host_i, host)
+            return _client.run_command(
+                command, sudo=sudo, user=user, shell=shell,
+                use_pty=use_pty, encoding=encoding, timeout=timeout), _client
+        except Exception as ex:
+            ex.host = host
+            logger.error("Failed to run on host %s - %s", host, ex)
+            raise ex
 
     def get_output(self, cmd, output, timeout=None):
         """Get output from command.
@@ -193,17 +205,24 @@ class BaseParallelSSHClient(object):
                 "get_output is for the deprecated dictionary output only. "
                 "To be removed in 2.0.0")
         try:
-            (channel, host, stdout, stderr, stdin) = cmd.get(timeout=timeout)
+            (channel, host, stdout, stderr, stdin), _client = cmd.get(
+                timeout=timeout)
         except Exception as ex:
             host = ex.host
             self._update_host_output(
-                output, host, None, None, None, None, None, cmd, exception=ex)
+                output, host, None, None, None, None, cmd, None, exception=ex)
             raise
-        self._update_host_output(output, host, self._get_exit_code(channel),
-                                 channel, stdout, stderr, stdin, cmd)
+        self._update_host_output(
+            output, host, channel, stdout, stderr, stdin, cmd, _client)
 
-    def _update_host_output(self, output, host, exit_code, channel, stdout,
-                            stderr, stdin, cmd, exception=None):
+    def _consume_output(self, stdout, stderr):
+        for line in stdout:
+            pass
+        for line in stderr:
+            pass
+
+    def _update_host_output(self, output, host, channel, stdout,
+                            stderr, stdin, cmd, client, exception=None):
         """Update host output with given data"""
         if host in output:
             new_host = "_".join([host,
@@ -214,7 +233,7 @@ class BaseParallelSSHClient(object):
                            "key for %s to %s", host, host, new_host)
             host = new_host
         output[host] = HostOutput(host, cmd, channel, stdout, stderr, stdin,
-                                  exit_code=exit_code, exception=exception)
+                                  client, exception=exception)
 
     def join(self, output, consume_output=False):
         raise NotImplementedError
@@ -233,37 +252,20 @@ class BaseParallelSSHClient(object):
         return True
 
     def get_exit_codes(self, output):
-        """Get exit code for all hosts in output *if available*.
-        Output parameter is modified in-place.
+        """This function is now a no-op. Exit code is gathered
+        on calling .exit_code on a ``HostOutput`` object.
 
-        :param output: As returned by
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
-        :rtype: None
+        to be removed in 2.0.0
         """
-        if isinstance(output, list):
-            for host_out in output:
-                if host_out is None:
-                    continue
-            host_out.exit_code = self.get_exit_code(host_out)
-        elif isinstance(output, dict):
-            for host in output:
-                host_out = output[host]
-                if output[host] is None:
-                    continue
-                host_out.exit_code = self.get_exit_code(host_out)
-        else:
-            raise ValueError("Unexpected output object type")
-
+        warn("get_exit_codes is deprecated and will be removed in 2.0.0")
+        
     def get_exit_code(self, host_output):
-        """Get exit code from host output *if available*.
+        """This function is now a no-op. Exit code is gathered
+        on calling .exit_code on a ``HostOutput`` object.
 
-        :param host_output: Per host output as returned by
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
-        :rtype: int or None if exit code not ready"""
-        if not hasattr(host_output, 'channel'):
-            logger.error("%s does not look like host output..", host_output,)
-            return
-        return self._get_exit_code(host_output.channel)
+        to be removed in 2.0.0
+        """
+        warn("get_exit_code is deprecated and will be removed in 2.0.0")
 
     def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel
