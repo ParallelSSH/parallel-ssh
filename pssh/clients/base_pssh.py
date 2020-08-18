@@ -258,7 +258,7 @@ class BaseParallelSSHClient(object):
         to be removed in 2.0.0
         """
         warn("get_exit_codes is deprecated and will be removed in 2.0.0")
-        
+
     def get_exit_code(self, host_output):
         """This function is now a no-op. Exit code is gathered
         on calling .exit_code on a ``HostOutput`` object.
