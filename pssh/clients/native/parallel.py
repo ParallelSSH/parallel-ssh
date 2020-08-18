@@ -247,8 +247,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         running in parallel.
 
         :param output: Output of commands to join on
-        :type output: dict as returned by
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
+        :type output: `HostOutput` objects
         :param consume_output: Whether or not join should consume output
           buffers. Output buffers will be empty after ``join`` if set
           to ``True``. Must be set to ``True`` to allow host logger to log

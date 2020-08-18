@@ -236,6 +236,20 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     raise
         return output
 
+    def _run_command(self, host_i, host, command, sudo=False, user=None,
+                     shell=None, use_shell=True, use_pty=True,
+                     **paramiko_kwargs):
+        """Make SSHClient, run command on host"""
+        try:
+            client = self._make_ssh_client(host_i, host, **paramiko_kwargs)
+            return self._host_clients[(host_i, host)].exec_command(
+                command, sudo=sudo, user=user, shell=shell,
+                use_shell=use_shell, use_pty=use_pty), client
+        except Exception as ex:
+            ex.host = host
+            logger.error("Failed to run on host %s", host)
+            raise ex
+
     def get_output(self, cmd, output, encoding='utf-8'):
         """Get output from command greenlet.
 
@@ -249,7 +263,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type output: dict
         :rtype: None"""
         try:
-            (channel, host, stdout, stderr, stdin) = cmd.get()
+            (channel, host, stdout, stderr, stdin), client = cmd.get()
         except Exception as ex:
             try:
                 host = ex.args[1]
@@ -258,7 +272,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                              "cannot update output data with %s", ex)
                 raise ex
             self._update_host_output(
-                output, host, None, None, None, None, None, cmd, exception=ex)
+                output, host, None, None, None, None, cmd, None, exception=ex)
             raise
         stdout = self.host_clients[host].read_output_buffer(
             stdout, callback=self.get_exit_codes,
@@ -268,8 +282,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
             stderr, prefix='\t[err]', callback=self.get_exit_codes,
             callback_args=(output,),
             encoding=encoding)
-        self._update_host_output(output, host, self._get_exit_code(channel),
-                                 channel, stdout, stderr, stdin, cmd)
+        self._update_host_output(output, host,
+                                 channel, stdout, stderr, stdin, cmd, client)
 
     def join(self, output, consume_output=False):
         """Block until all remote commands in output have finished
@@ -306,13 +320,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
             if chan is not None and not chan.closed:
                 return False
         return True
-
-    def _get_exit_code(self, channel):
-        """Get exit code from channel if ready"""
-        if channel is None or not channel.exit_status_ready():
-            return
-        channel.close()
-        return channel.recv_exit_status()
 
     def _make_ssh_client(self, host_i, host, **paramiko_kwargs):
         if (host_i, host) not in self._host_clients \
