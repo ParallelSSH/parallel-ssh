@@ -203,7 +203,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    port=self.listen_port,
                                    pkey=self.user_key,
                                    agent=self.agent)
-        output = client.run_command(self.fake_cmd,
+        output = client.run_command('sleep 1; echo me',
                                     stop_on_errors=False)
         self.assertFalse(client.finished(output))
         client.join(output, consume_output=True)

@@ -497,5 +497,6 @@ class SSHClient(object):
     def get_exit_status(self, channel):
         if channel is None or not channel.exit_status_ready():
             return
-        channel.close()
+        if not channel.closed:
+            channel.close()
         return channel.recv_exit_status()

@@ -300,12 +300,17 @@ class ParallelSSHClient(BaseParallelSSHClient):
         for host in output:
             output[host].cmd.join()
             if output[host].channel is not None:
+                # This blocks greenlet until cmd completion
                 output[host].channel.recv_exit_status()
+                if not output[host].channel.closed:
+                    output[host].channel.close()
             if consume_output:
-                for line in output[host].stdout:
-                    pass
-                for line in output[host].stderr:
-                    pass
+                if output[host].stdout:
+                    for line in output[host].stdout:
+                        pass
+                if output[host].stderr:
+                    for line in output[host].stderr:
+                        pass
         self.get_exit_codes(output)
 
     def finished(self, output):
@@ -317,7 +322,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         """
         for host in output:
             chan = output[host].channel
-            if chan is not None and not chan.closed:
+            if chan is not None and not chan.exit_status_ready():
                 return False
         return True
 
