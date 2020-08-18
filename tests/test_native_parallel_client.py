@@ -328,7 +328,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue(self.host in output, msg="Got no output for command")
         self.assertTrue(not output[self.host].exit_code,
                         msg="Got exit code %s for still running cmd.." % (
-                            output[self.host]['exit_code'],))
+                            output[self.host].exit_code,))
         self.assertFalse(self.client.finished(output))
         self.client.join(output, consume_output=True)
         self.assertTrue(self.client.finished(output))
@@ -1212,9 +1212,11 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_open_channel_failure(self):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)
-        client.join(client.run_command(self.cmd))
+        output = client.run_command(self.cmd, return_list=True)
+        client.join(output)
         client.host_clients[self.host].session.disconnect()
         self.assertRaises(SessionError, client.host_clients[self.host].open_session)
+        self.assertEqual(output[0].exit_code, None)
 
     def test_host_no_client(self):
         output = {'blah': None}
@@ -1453,11 +1455,12 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertIsInstance(output[0], HostOutput)
         for host_output in output:
             self.assertEqual(host_output.host, self.client.hosts[0])
-            self.assertEqual(host_output.exit_code, expected_exit_code)
+            self.assertEqual(host_output.exit_code, None)
             _stdout = list(host_output.stdout)
             _stderr = list(host_output.stderr)
             self.assertListEqual(expected_stdout, _stdout)
             self.assertListEqual(expected_stderr, _stderr)
+            self.assertEqual(host_output.exit_code, expected_exit_code)
         # self.client.cmds should be set
         for cmd in self.client.cmds:
             self.assertRaises(ValueError, self.client.get_output, cmd, output)
@@ -1483,11 +1486,12 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertIsInstance(last_out[0], HostOutput)
         for host_i, host_output in enumerate(last_out):
             self.assertEqual(host_output.host, client.hosts[host_i])
-            self.assertEqual(host_output.exit_code, expected_exit_code)
+            self.assertEqual(host_output.exit_code, None)
             _stdout = list(host_output.stdout)
             _stderr = list(host_output.stderr)
             self.assertListEqual(expected_stdout, _stdout)
             self.assertListEqual(expected_stderr, _stderr)
+            self.assertEqual(host_output.exit_code, expected_exit_code)
 
     def test_client_disconnect(self):
         client = ParallelSSHClient([self.host],

@@ -81,11 +81,12 @@ class BaseParallelSSHClient(object):
         greenlet_timeout = kwargs.pop('greenlet_timeout', None)
         if host_args:
             try:
-                cmds = [self.pool.spawn(self._run_command, host_i, host,
-                                        command % host_args[host_i],
-                                        user=user, encoding=encoding,
-                                        use_pty=use_pty, shell=shell,
-                                        *args, **kwargs)
+                cmds = [self.pool.spawn(
+                    self._run_command, host_i, host,
+                    command % host_args[host_i],
+                    user=user, encoding=encoding,
+                    use_pty=use_pty, shell=shell,
+                    *args, **kwargs)
                         for host_i, host in enumerate(self.hosts)]
             except IndexError:
                 raise HostArgumentException(
@@ -110,13 +111,13 @@ class BaseParallelSSHClient(object):
 
     def _get_output_from_greenlet(self, cmd, timeout=None):
         try:
-            (channel, host, stdout, stderr, stdin) = cmd.get(timeout=timeout)
+            (channel, host, stdout, stderr, stdin), _client = cmd.get(
+                timeout=timeout)
         except Exception as ex:
             host = ex.host
-            return HostOutput(host, cmd, None, None, None, None, exception=ex)
-        return HostOutput(
-            host, cmd, channel, stdout, stderr, stdin,
-            exit_code=self._get_exit_code(channel))
+            return HostOutput(host, cmd, None, None, None, None,
+                              _client, exception=ex)
+        return HostOutput(host, cmd, channel, stdout, stderr, stdin, _client)
 
     def _get_output_dict(self, cmds, output, timeout=None,
                          stop_on_errors=False):
@@ -209,10 +210,10 @@ class BaseParallelSSHClient(object):
                      encoding='utf-8', timeout=None):
         """Make SSHClient if needed, run command on host"""
         try:
-            self._make_ssh_client(host_i, host)
-            return self._host_clients[(host_i, host)].run_command(
+            _client = self._make_ssh_client(host_i, host)
+            return _client.run_command(
                 command, sudo=sudo, user=user, shell=shell,
-                use_pty=use_pty, encoding=encoding, timeout=timeout)
+                use_pty=use_pty, encoding=encoding, timeout=timeout), _client
         except Exception as ex:
             ex.host = host
             logger.error("Failed to run on host %s - %s", host, ex)
@@ -233,15 +234,15 @@ class BaseParallelSSHClient(object):
                 "get_output is for the deprecated dictionary output only. "
                 "To be removed in 2.0.0")
         try:
-            (channel, host, stdout, stderr, stdin) = cmd.get(timeout=timeout)
+            (channel, host, stdout, stderr, stdin), _client = cmd.get(
+                timeout=timeout)
         except Exception as ex:
             host = ex.host
             self._update_host_output(
                 output, host, None, None, None, None, cmd, None, exception=ex)
             raise
         self._update_host_output(
-            output, host, channel, stdout, stderr, stdin, cmd,
-            self.host_clients.get(host))
+            output, host, channel, stdout, stderr, stdin, cmd, _client)
 
     def _consume_output(self, stdout, stderr):
         for line in stdout:

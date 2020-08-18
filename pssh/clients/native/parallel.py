@@ -408,6 +408,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     keepalive_seconds=self.keepalive_seconds)
                 self.host_clients[host] = _client
                 self._host_clients[(host_i, host)] = _client
+                return _client
+        return self._host_clients[(host_i, host)]
 
     def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel via SFTP.

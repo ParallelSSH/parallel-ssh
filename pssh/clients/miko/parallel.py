@@ -343,3 +343,5 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 **paramiko_kwargs)
             self.host_clients[host] = _client
             self._host_clients[(host_i, host)] = _client
+            return _client
+        return self._host_clients[(host_i, host)]

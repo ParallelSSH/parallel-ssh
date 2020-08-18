@@ -20,6 +20,8 @@
 
 from os import linesep
 
+from . import logger
+
 
 class HostOutput(dict):
     """Class to hold host output"""
@@ -62,8 +64,12 @@ class HostOutput(dict):
 
     @property
     def exit_code(self):
-        return self.client.get_exit_status(self.channel) \
-            if self.client else None
+        if not self.client:
+            return
+        try:
+            return self.client.get_exit_status(self.channel)
+        except Exception as ex:
+            logger.error("Error getting exit status - %s", ex)
 
     def __setattr__(self, name, value):
         object.__setattr__(self, name, value)
