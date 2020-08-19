@@ -101,13 +101,19 @@ class BaseParallelSSHClient(object):
                     for host_i, host in enumerate(self.hosts)]
         self.cmds = cmds
         joinall(cmds, raise_error=False, timeout=greenlet_timeout)
+        return self._get_output_from_cmds(cmds, stop_on_errors=stop_on_errors,
+                                          timeout=greenlet_timeout,
+                                          return_list=return_list)
+
+    def _get_output_from_cmds(self, cmds, stop_on_errors=False, timeout=None,
+                          return_list=False):
         if not return_list:
             warn(_output_depr_notice)
             output = {}
             return self._get_output_dict(
                 cmds, output, stop_on_errors=stop_on_errors,
-                timeout=greenlet_timeout)
-        return [self._get_output_from_greenlet(cmd, timeout=greenlet_timeout)
+                timeout=timeout)
+        return [self._get_output_from_greenlet(cmd, timeout=timeout)
                 for cmd in cmds]
 
     def _get_output_from_greenlet(self, cmd, timeout=None):
@@ -159,14 +165,9 @@ class BaseParallelSSHClient(object):
         cmds = self.cmds if cmds is None else cmds
         if cmds is None:
             return
-        if not return_list:
-            warn(_output_depr_notice)
-            output = {}
-            for cmd in self.cmds:
-                self.get_output(cmd, output, timeout=greenlet_timeout)
-            return output
-        return [self._get_output_from_greenlet(cmd, timeout=greenlet_timeout)
-                for cmd in cmds]
+        return self._get_output_from_cmds(
+            cmds, timeout=greenlet_timeout, return_list=return_list,
+            stop_on_errors=False)
 
     def _get_host_config_values(self, host):
         _user = self.host_config.get(host, {}).get('user', self.user)

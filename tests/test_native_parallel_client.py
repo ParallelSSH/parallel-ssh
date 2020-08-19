@@ -145,7 +145,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         for host in output:
             self.assertTrue(host in _output)
 
-    @mark.flaky(reruns=5)
     def test_get_last_output(self):
         host = '127.0.0.9'
         server = OpenSSHServer(listen_ip=host, port=self.port)
