@@ -106,7 +106,7 @@ class BaseParallelSSHClient(object):
                                           return_list=return_list)
 
     def _get_output_from_cmds(self, cmds, stop_on_errors=False, timeout=None,
-                          return_list=False):
+                              return_list=False):
         if not return_list:
             warn(_output_depr_notice)
             output = {}
@@ -123,7 +123,7 @@ class BaseParallelSSHClient(object):
         except Exception as ex:
             host = ex.host
             return HostOutput(host, cmd, None, None, None, None,
-                              _client, exception=ex)
+                              None, exception=ex)
         return HostOutput(host, cmd, channel, stdout, stderr, stdin, _client)
 
     def _get_output_dict(self, cmds, output, timeout=None,

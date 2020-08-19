@@ -271,29 +271,30 @@ class ParallelSSHClient(BaseParallelSSHClient):
             for host_i, host_out in enumerate(output):
                 host = self.hosts[host_i]
                 cmds.append(self.pool.spawn(
-                    self._join, host_i, host, host_out,
+                    self._join, host_out,
                     consume_output=consume_output, timeout=timeout))
         elif isinstance(output, dict):
             for host_i, (host, host_out) in enumerate(output.items()):
                 cmds.append(self.pool.spawn(
-                    self._join, host_i, host, host_out,
+                    self._join, host_out,
                     consume_output=consume_output, timeout=timeout))
         else:
             raise ValueError("Unexpected output object type")
         # Errors raised by self._join should be propagated.
         # Timeouts are handled by self._join itself.
         joinall(cmds, raise_error=True)
-        self.get_exit_codes(output)
 
-    def _join(self, host_i, host, host_out, consume_output=False, timeout=None,
+    def _join(self, host_out, consume_output=False, timeout=None,
               encoding="utf-8"):
-        if (host_i, host) not in self._host_clients or \
-           self._host_clients[(host_i, host)] is None:
+        if host_out is None:
             return
-        client = self._host_clients[(host_i, host)]
         channel = host_out.channel
+        client = host_out.client
+        host = host_out.host
+        if client is None:
+            return
         stdout, stderr = self.reset_output_generators(
-            host_out, client=client, channel=channel, timeout=timeout,
+            host_out, channel=channel, timeout=timeout,
             encoding=encoding)
         try:
             client.wait_finished(channel, timeout=timeout)
@@ -334,7 +335,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :rtype: tuple(stdout, stderr)
         """
         channel = host_out.channel if channel is None else channel
-        client = self.host_clients[host_out.host] if client is None else client
+        client = host_out.client if client is None else client
         stdout = client.read_output_buffer(
             client.read_output(channel, timeout=timeout), encoding=encoding)
         stderr = client.read_output_buffer(
@@ -349,12 +350,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
             pass
         for line in stderr:
             pass
-
-    def _get_exit_code(self, channel):
-        """Get exit code from channel if ready"""
-        if channel is None:
-            return
-        return channel.get_exit_status()
 
     def _start_tunnel_thread(self):
         self._tunnel_lock = RLock()
