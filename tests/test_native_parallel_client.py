@@ -880,6 +880,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue('exception' in output[host],
                         msg="Got no exception for host %s - expected connection error" % (
                             host,))
+        for host_output in output.values():
+            exit_code = host_output.exit_code
+            self.assertEqual(exit_code, None)
         try:
             raise output[host]['exception']
         except ConnectionErrorException as ex:

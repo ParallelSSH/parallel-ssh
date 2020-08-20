@@ -67,3 +67,13 @@ class TestHostOutput(unittest.TestCase):
 
     def test_bad_exit_status(self):
         self.assertEqual(self.output.exit_code, None)
+
+    def test_excepting_client_exit_code(self):
+        class ExcSSHClient(object):
+            def get_exit_status(self, channel):
+                raise Exception
+        exc_client = ExcSSHClient()
+        host_out = HostOutput(
+            'host', None, None, None, None, None, exc_client, None)
+        exit_code = host_out.exit_code
+        self.assertEqual(exit_code, None)
