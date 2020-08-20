@@ -1,6 +1,25 @@
 Change Log
 ============
 
+1.11.0
+++++++
+
+Changes
+-------
+
+* Moved polling to gevent.select.poll to increase performance and better handle high number of sockets - #189
+* ``HostOutput.exit_code`` is now a dynamic property returning either ``None`` when exit code not ready or the exit code as reported by channel. ``ParallelSSHClient.get_exit_codes`` is now a no-op and scheduled to be removed.
+
+Packaging
+---------
+
+* Removed OSX Python 3.6 and 3.7 wheels. OSX wheels for brew python, currently 3.8, on OSX 10.14 and 10.15 are provided.
+
+Fixes
+------
+
+* Native client would fail on opening sockets with large file descriptor values - #189
+
 1.10.0
 +++++++
 

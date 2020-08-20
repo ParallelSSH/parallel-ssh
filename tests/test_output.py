@@ -22,28 +22,33 @@
 
 
 import unittest
+import logging
+
+from pssh import logger
 from pssh.output import HostOutput
+
+logger.setLevel(logging.DEBUG)
+logging.basicConfig()
 
 
 class TestHostOutput(unittest.TestCase):
 
     def setUp(self):
-        self.output = HostOutput(None, None, None, None, None, None)
+        self.output = HostOutput(None, None, None, None, None, None, True)
 
     def test_print(self):
         self.assertTrue(str(self.output))
 
     def test_update(self):
         host, cmd, chan, stdout, stderr, \
-          stdin, exit_code, exception = 'host', 'cmd', 'chan', 'stdout', \
-          'stderr', 'stdin', 1, Exception()
+          stdin, exception = 'host', 'cmd', 'chan', 'stdout', \
+          'stderr', 'stdin', Exception()
         self.output.update({'host': host,
                             'cmd': cmd,
                             'channel': chan,
                             'stdout': stdout,
                             'stderr': stderr,
                             'stdin': stdin,
-                            'exit_code': exit_code,
                             'exception': exception})
         self.assertEqual(host, self.output.host)
         self.assertEqual(self.output.host, self.output['host'])
@@ -57,7 +62,18 @@ class TestHostOutput(unittest.TestCase):
         self.assertEqual(self.output.stderr, self.output['stderr'])
         self.assertEqual(stdin, self.output.stdin)
         self.assertEqual(self.output.stdin, self.output['stdin'])
-        self.assertEqual(exit_code, self.output.exit_code)
-        self.assertEqual(self.output.exit_code, self.output['exit_code'])
         self.assertEqual(exception, self.output.exception)
         self.assertEqual(self.output.exception, self.output['exception'])
+
+    def test_bad_exit_status(self):
+        self.assertEqual(self.output.exit_code, None)
+
+    def test_excepting_client_exit_code(self):
+        class ExcSSHClient(object):
+            def get_exit_status(self, channel):
+                raise Exception
+        exc_client = ExcSSHClient()
+        host_out = HostOutput(
+            'host', None, None, None, None, None, exc_client, None)
+        exit_code = host_out.exit_code
+        self.assertEqual(exit_code, None)

@@ -131,15 +131,25 @@ It is advised that client code uses ``return_list=True`` to avoid breaking on up
 Exit codes
 -------------
 
-Exit codes are available on the host output object.
+Exit codes are available on the host output object as a dynamic property. Exit code will be ``None`` if not available, or the exit code as reported by channel.
 
-First, ensure that all commands have finished and exit codes gathered by joining on the output object, then iterate over all host's output to print their exit codes.
+First, ensure that all commands have finished by either joining on the output object or gathering all output, then iterate over all host's output to print their exit codes.
 
 .. code-block:: python
 
   client.join(output)
   for host, host_output in output.items():
       print("Host %s exit code: %s" % (host, host_output.exit_code))
+
+As of ``1.11.0``, ``client.join`` is not required as long as output has been gathered.
+
+.. code-block:: python
+
+  for host_out in output.values():
+      for line in host_out.stdout:
+          print(line)
+      print(host_out.exit_code)
+
 
 .. seealso:: 
 
