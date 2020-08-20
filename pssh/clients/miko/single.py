@@ -493,3 +493,10 @@ class SSHClient(object):
         if file_path.startswith(sep) or not destination:
             destination = sep + destination
         return destination
+
+    def get_exit_status(self, channel):
+        if channel is None or not channel.exit_status_ready():
+            return
+        if not channel.closed:
+            channel.close()
+        return channel.recv_exit_status()

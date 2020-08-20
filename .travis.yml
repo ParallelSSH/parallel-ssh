@@ -28,9 +28,9 @@ install:
 script:
   # For testing SSH agent related functionality
   - eval `ssh-agent -s`
-  - pytest --reruns 5 --cov-append --cov=pssh -s tests/test_native_tunnel.py
-  - pytest --reruns 5 --cov-append --cov=pssh -s tests/test_native_*_client.py
-  - pytest --reruns 5 --cov-append --cov=pssh -s tests/test_paramiko*.py
+  - pytest --reruns 5 --cov-append --cov=pssh tests/test_native_tunnel.py
+  - pytest --reruns 5 --cov-append --cov=pssh tests/test_native_*_client.py
+  - pytest --reruns 5 --cov-append --cov=pssh tests/test_paramiko*.py
   - flake8 pssh
   - cd doc; make html; cd ..
   # Test building from source distribution
@@ -43,7 +43,34 @@ after_success:
 jobs:
   include:
 
+    - stage: test
+      if: (type = push OR \
+          (type = pull_request AND fork = true)) AND \
+          tag IS blank
+
+    - &osx-wheels
+      stage: build packages
+      if: tag IS present
+      os: osx
+      osx_image: xcode11.6
+      before_install:
+        - sudo -H pip install twine
+        - which twine
+      install: skip
+      script:
+        - ./ci/osx-wheel.sh
+      after_success:
+        - if [[ ! -z "$TRAVIS_TAG" ]]; then
+              twine upload --skip-existing -u $PYPI_U -p $PYPI_P wheels/*.whl;
+          fi
+      language: generic
+      python: skip
+
+    - <<: *osx-wheels
+      osx_image: xcode11.3
+
     - stage: build packages
+      if: tag IS present
       env:
         - WHEELS=1
       os: linux
@@ -69,69 +96,3 @@ jobs:
           distributions: sdist
           skip_upload_docs: true
           skip_cleanup: true
-
-    - &osx-wheels
-      stage: build packages
-      os: osx
-      osx_image: xcode11.6
-      env:
-        - PYENV: 3.6.11
-      before_install:
-        - sudo -H pip install twine
-        - which twine
-        - mkdir -p wheels
-      install: skip
-      script:
-        - ./ci/travis/pyenv-wheel.sh
-      after_success:
-        - if [[ ! -z "$TRAVIS_TAG" ]]; then
-              twine upload --skip-existing -u $PYPI_U -p $PYPI_P wheels/*.whl;
-          fi
-      language: generic
-      python: skip
-
-    - <<: *osx-wheels
-      osx_image: xcode11.3
-      env:
-        - PYENV: 3.6.11
-
-    - <<: *osx-wheels
-      osx_image: xcode11.6
-      env:
-        - PYENV: 3.7.8
-
-    - <<: *osx-wheels
-      osx_image: xcode11.3
-      env:
-        - PYENV: 3.7.8
-
-    - <<: *osx-wheels
-      osx_image: xcode11.3
-      env:
-        - PYENV: 3.8.5
-
-    - <<: *osx-wheels
-      osx_image: xcode11.6
-      env:
-        - PYENV: 3.8.5
-
-    # - os: linux
-    #   stage: build packages
-    #   env:
-    #     - SYSTEM_PACKAGES=1
-    #   python: 3.6
-    #   before_install: skip
-    #   install: skip
-    #   script:
-    #     - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-    #     - ./ci/docker/build-packages.sh
-    #   deploy:
-    #     - provider: releases
-    #       skip_cleanup: true
-    #       api_key:
-    #         secure: hKf+D9ZWRCJWNQtlOWeFh7z1a+VSz+GK5qOY0e1+iV/PrM0f41wy2yej0bxG1zS6CQAnJBK6/gmq5uXXhQhGNQeIQs7zElyKlrijQAn5UstPPJTRIk2oywRr2b+q0k3V42tto6WbhjqPRpOQl/pNTjKJCc/UPgd6kOVZEhCfAec=
-    #       file_glob: true
-    #       file: '*.{deb,rpm}'
-    #       on:
-    #         repo: ParallelSSH/parallel-ssh
-    #         tags: true

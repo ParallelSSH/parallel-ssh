@@ -116,7 +116,13 @@ Native Code Client Features
 Exit codes
 ***********
 
-Once *either* standard output is iterated on *to completion*, or ``client.join(output)`` is called, exit codes become available in host output. Iteration ends *only when remote command has completed*, though it may be interrupted and resumed at any point.
+Once *either* standard output is iterated on *to completion*, or ``client.join(output)`` is called, exit codes become available in host output.
+
+Iteration ends *only when remote command has completed*, though it may be interrupted and resumed at any point.
+
+``HostOutput.exit_code`` is a dynamic property and will return ``None`` when exit code is not ready, meaning command has not finished, or channel is unavailable due to error.
+
+Once all output has been gathered exit codes become available even without calling ``join``.
 
 .. code-block:: python
 
@@ -144,8 +150,7 @@ Similarly, output and exit codes are available after ``client.join`` is called:
 
   output = client.run_command('exit 0')
 
-  # Wait for commands to complete and gather exit codes. 
-  # Output is updated in-place.
+  # Wait for commands to complete
   client.join(output)
   pprint(output.values()[0].exit_code)
 
