@@ -11,7 +11,7 @@ from .embedded_server.openssh import OpenSSHServer
 from pssh.clients.native import SSHClient, logger as ssh_logger
 from ssh2.session import Session
 from ssh2.channel import Channel
-from ssh2.exceptions import SocketDisconnectError, BannerRecvError
+from ssh2.exceptions import SocketDisconnectError, BannerRecvError, SocketRecvError
 from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
     SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout
 
@@ -106,7 +106,7 @@ class SSH2ClientTest(SSH2TestCase):
                            pkey=self.user_key,
                            num_retries=1)
         client.session.disconnect()
-        self.assertRaises((SocketDisconnectError, BannerRecvError), client._init)
+        self.assertRaises((SocketDisconnectError, BannerRecvError, SocketRecvError), client._init)
 
     def test_stdout_parsing(self):
         dir_list = os.listdir(os.path.expanduser('~'))

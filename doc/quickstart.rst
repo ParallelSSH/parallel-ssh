@@ -4,18 +4,6 @@ Quickstart
 
 First, make sure that ``parallel-ssh`` is `installed <installation.html>`_.
 
-.. note::
-
-   When using the paramiko based clients, ``parallel-ssh`` makes use of gevent's monkey patching to enable asynchronous use of the Python standard library's network I/O as paramiko does not and cannot natively support non-blocking mode.
-
-   Monkey patching is only done for the clients under ``pssh.clients.miko`` and the deprecated imports ``pssh.pssh_client`` and ``pssh.ssh_client``.
-
-   Make sure that these imports come **before** any other imports in your code in this case. Otherwise, patching may not be done before the standard library is loaded which will then cause the (g)event loop to be blocked.
-
-   If you are seeing messages like ``This operation would block forever``, this is the cause.
-
-   Native clients under ``pssh.clients.native`` **do not perform monkey patching** and are an option if monkey patching is not suitable. These clients will become the default, replacing the current ``pssh.pssh_client``, in a future major release - ``2.0.0``.
-
 Run a command on hosts in parallel
 ------------------------------------
 
@@ -46,15 +34,22 @@ Now one or more commands can be run via the client:
 
 .. code-block:: python
 
-    output = client.run_command('whoami')
+    output = client.run_command('whoami', return_list=True)
 
-When the call to ``run_command`` returns, the commands are already executing in parallel.
+When the call to ``run_command`` returns, the remote commands are already executing in parallel.
 
-Output is keyed by host name and contains a `host output <output.html>`_ object. From that, SSH output is available.
+As of version ``1.10.0``, when calling ``run_command`` with ``return_list=True`` output will be a list of :py:class:`pssh.output.HostOutput`.
+
+List will be the return type of ``run_command`` starting from ``2.0.0`` so is recommended to enable the ``return_list`` flag to avoid breaking client code on upgrading to ``2.0.0``.
+
+With ``return_list=False``, the default for the ``1.x.x`` series, output is keyed by host name and contains a `host output <output.html>`_ object. From that, SSH output is available.
 
 .. note::
 
    Multiple identical hosts will have their output key de-duplicated so that their output is not lost. The real host name used is available as ``host_output.host`` where ``host_output`` is a :py:class:`pssh.output.HostOutput` object.
+
+   To avoid this confusion and various issues associated with dictionary output, ``run_command`` output is changing to a list, whose order is the same as host list order assigned to client - ``client.hosts`` - in ``2.0.0``. See :ref:`host-list-output`.
+
 
 Standard Output
 ----------------
@@ -69,7 +64,7 @@ Standard output, aka ``stdout`` for ``host1``:
 :Output:
    .. code-block:: python
 
-      <your username here>
+      <username>
 
 There is nothing special needed to ensure output is available. 
 
@@ -99,6 +94,39 @@ Of course, iterating over all hosts can also be done the same way.
   for host, host_output in output.items():
       for line in host_output.stdout:
           print("Host [%s] - %s" % (host, line))
+
+.. _host-list-output:
+
+Host List Output
+----------------
+
+As of version ``1.10.0``, host output can be optionally returned as a list rather than dictionary keyed by host.
+
+This can be enabled with the ``return_list`` option to ``run_command``.
+
+Dictionary output is deprecated as of ``1.10.0`` and *will be removed* in ``2.0.0``.
+
+It is advised that client code uses ``return_list=True`` to avoid breaking on updating to ``2.0.0``.
+
+.. code-block:: python
+
+  output = client.run_command('whoami', return_list=True)
+  client.join(output)
+  for host_output in output:
+      hostname = output.host
+      host_output = list(host_output.stdout)
+      print("Host %s: exit code %s, output %s" % (
+            hostname, host_output.exit_code, host_output))
+
+:Output:
+   .. code-block:: python
+
+       host1: exit code 0, stdout <username>
+       host2: exit code 0, stdout <username>
+       host3: exit code 0, stdout <username>
+       host4: exit code 0, stdout <username>
+
+*New in 1.10.0*
 
 Exit codes
 -------------
@@ -143,10 +171,8 @@ Programmatic Private Key authentication
 
 It is also possible to programmatically provide a private key for authentication.
 
-Native Client
+Default Client
 ______________
-
-For the native client - ``pssh.clients.ParallelSSHClient`` - only private key filepath is needed. The corresponding public key *must* be available in the same directory as ``my_pkey.pub`` where private key file is ``my_pkey``. Public key file name and path will be made configurable in a future version.
 
  .. code-block:: python
 
@@ -180,9 +206,9 @@ Output for last executed commands can be retrieved by ``get_last_output``:
 .. code-block:: python
 
    client.run_command('uname')
-   output = client.get_last_output()
-   for host, host_output in output.items():
-       for line in host.stdout:
+   output = client.get_last_output(return_list=True)
+   for host_output in output:
+       for line in host_output.stdout:
            print(line)
 
 This function can also be used to retrieve output for previously executed commands in the case where output object was not stored or is no longer available.
@@ -236,11 +262,12 @@ The ``stdin`` attribute is a file-like object giving access to the remote stdin 
 
 .. code-block:: python
 
-  output = client.run_command('read')
-  stdin = output['localhost'].stdin
+  output = client.run_command('read', return_list=True)
+  host_output = output[0]
+  stdin = host_output.stdin
   stdin.write("writing to stdin\\n")
   stdin.flush()
-  for line in output['localhost'].stdout:
+  for line in host_output.stdout:
       print(line)
 
 :Output:
@@ -257,14 +284,15 @@ Alternatively, the ``stop_on_errors`` flag is provided to tell the client to go 
 
 .. code-block:: python
 
-  output = client.run_command('whoami', stop_on_errors=False)
+  output = client.run_command('whoami', return_list=True, stop_on_errors=False)
 
 With this flag, the ``exception`` output attribute will contain the exception on any failed hosts, or ``None``:
 
 .. code-block:: python
 
   client.join(output)
-  for host, host_output in output.items():
+  for host_output in output:
+      host = host_output.host
       print("Host %s: exit code %s, exception %s" % (
             host, host_output.exit_code, host_output.exception))
 

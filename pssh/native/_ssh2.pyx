@@ -17,10 +17,11 @@
 
 """Cython functions for interfacing with ssh2-python"""
 
+from datetime import datetime
 from libc.stdlib cimport malloc, free
 from libc.stdio cimport fopen, fclose, fwrite, fread, FILE
 
-from gevent.select import select
+from gevent.select import poll, POLLIN, POLLOUT
 from ssh2.session import LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 
@@ -161,14 +162,19 @@ def wait_select(session, timeout=None):
     """
     _socket = session.sock
     cdef int directions = session.block_directions()
-    cdef tuple readfds, writefds
     if directions == 0:
         return 0
-    readfds = (_socket,) \
-        if (directions & LIBSSH2_SESSION_BLOCK_INBOUND) else ()
-    writefds = (_socket,) \
-        if (directions & LIBSSH2_SESSION_BLOCK_OUTBOUND) else ()
-    select(readfds, writefds, (), timeout=timeout)
+    # gevent.select.poll converts seconds to miliseconds to match python socket
+    # implementation
+    timeout = timeout * 1000 if timeout is not None else None
+    events = 0
+    if directions & LIBSSH2_SESSION_BLOCK_INBOUND:
+        events = POLLIN
+    if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:
+        events |= POLLOUT
+    poller = poll()
+    poller.register(_socket, eventmask=events)
+    poller.poll(timeout=timeout)
 
 
 def eagain_write(write_func, data, session, timeout=None):

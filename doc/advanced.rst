@@ -554,14 +554,33 @@ Please note that the underlying SSH libraries used are subject to change and not
 
 *New in version 1.1.*
 
-Paramiko (current default SSH library)
----------------------------------------
+Paramiko based clients (``pssh.clients.miko``)
+-----------------------------------------------
+
+.. note::
+
+   When using the paramiko based clients, ``parallel-ssh`` makes use of gevent's monkey patching to enable asynchronous use of the Python standard library's network I/O as paramiko does not and cannot natively support non-blocking mode.
+
+   Monkey patching is only done for the clients under ``pssh.clients.miko`` and the deprecated imports ``pssh.pssh_client`` and ``pssh.ssh_client``.
+
+   Default client imports from ``pssh.clients`` do not do any monkey patching.
+
+   Make sure that these imports come **before** any other imports in your code in this case. Otherwise, patching may not be done before the standard library is loaded which will then cause the (g)event loop to be blocked.
+
+   If you are seeing messages like ``This operation would block forever``, this is the cause.
+
+   Paramiko based clients are deprecated and will be *removed* in the ``2.0.0`` release.
+
 
 GSS-API Authentication - aka Kerberos
 +++++++++++++++++++++++++++++++++++++++
 
+GSS authentication allows logins using Windows LDAP configured user accounts via Kerberos on Linux.
+
 .. code-block:: python
 
+   from pssh.clients.miko import ParallelSSHClient
+   
    client = ParallelSSHClient(hosts)
 
    client.run_command('id', gss_auth=True, gss_kex=True, gss_host='my_gss_host')

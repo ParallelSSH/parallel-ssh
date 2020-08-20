@@ -23,7 +23,7 @@ OpenSSH config parsing            Yes            Not yet implemented
 ECSA keys support                 Yes            Yes
 SCP functionality                 Not supported  Yes
 Keep-alive functionality          Unknown        Yes                     As of ``1.9.0``
-===============================  =============== ======================  ==============================================================================
+===============================  ==============  ====================== ===============================================================================
 
 If any of missing features are required for a use case, then the paramiko based clients should be used instead. Note there are several breaking bugs and low performance in some paramiko functionality, mileage may vary.
 
