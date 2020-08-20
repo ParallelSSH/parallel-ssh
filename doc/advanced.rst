@@ -251,12 +251,10 @@ Sometimes, different hosts require different configuration like user names and p
 
    host_config = {'host1' : {'user': 'user1', 'password': 'pass',
                              'port': 2222,
-                             'private_key': load_private_key(
-                                 'my_key.pem')},
+                             'private_key': 'my_key.pem'},
                   'host2' : {'user': 'user2', 'password': 'pass',
 		             'port': 2223,
-			     'private_key': load_private_key(
-			         open('my_other_key.pem'))},
+			     'private_key': 'my_other_key.pem'},
 		 }
    hosts = host_config.keys()
 
@@ -268,7 +266,8 @@ In the above example, ``host1`` will use user name ``user1`` and private key fro
 
 .. note::
 
-   Proxy host cannot be provided via per-host configuration at this time.
+   Proxy host configuration is per `ParallelSSHClient` and cannot be provided via per-host configuration.
+   Multiple clients can be used to make use of multiple proxy hosts.
 
 Per-Host Command substitution
 ******************************
@@ -282,7 +281,7 @@ Number of ``host_args`` items should be at least as many as number of hosts.
 Any Python string format specification characters may be used in command string.
 
 
-In the following example, first host in hosts list will use cmd ``host1_cmd`` second host ``host2_cmd`` and so on
+In the following example, first host in hosts list will use cmd ``host1_cmd`` second host ``host2_cmd`` and so on:
 
 .. code-block:: python
    
@@ -294,20 +293,38 @@ Command can also have multiple arguments to be substituted.
 
 .. code-block:: python
 
-   output = client.run_command('%s %s',
-   host_args = (('host1_cmd1', 'host1_cmd2'),
-                ('host2_cmd1', 'host2_cmd2'),
-                ('host3_cmd1', 'host3_cmd2'),))
+   output = client.run_command(
+                '%s %s',
+                host_args=(('host1_cmd1', 'host1_cmd2'),
+                           ('host2_cmd1', 'host2_cmd2'),
+                           ('host3_cmd1', 'host3_cmd2'),))
+
+This expands to the following per host commands:
+
+.. code-block:: bash
+
+   host1: 'host1_cmd1 host1_cmd2'
+   host2: 'host2_cmd1 host2_cmd2'
+   host3: 'host3_cmd1 host3_cmd2'
 
 A list of dictionaries can also be used as ``host_args`` for named argument substitution.
 
-In the following example, first host in host list will use cmd ``host-index-0``, second host ``host-index-1`` and so on.
+In the following example, first host in host list will use cmd ``echo command-1``, second host ``echo command-2`` and so on.
 
 .. code-block:: python
 
-   host_args = [{'cmd': 'host-index-%s' % (i,)}
+   host_args = [{'cmd': 'echo command-%s' % (i,)}
                 for i in range(len(client.hosts))]
    output = client.run_command('%(cmd)s', host_args=host_args)
+
+
+This expands to the following per host commands:
+
+.. code-block:: bash
+
+   host1: 'echo command-0'
+   host2: 'echo command-1'
+   host3: 'echo command-2'
 
 
 Run command features and options
