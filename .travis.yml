@@ -50,7 +50,7 @@ jobs:
 
     - &osx-wheels
       stage: build packages
-      # if: tag IS present
+      if: tag IS present
       os: osx
       osx_image: xcode11.6
       before_install:
