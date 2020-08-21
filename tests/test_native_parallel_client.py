@@ -35,6 +35,7 @@ import random
 import time
 
 
+from pytest import mark
 from gevent import joinall, spawn, Greenlet
 from pssh.clients.native import ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
@@ -162,7 +163,7 @@ class ParallelSSHClientTest(unittest.TestCase):
             for host in hosts:
                 self.assertTrue(host in output)
                 exit_code = output[host].exit_code
-                self.assertTrue(exit_code == 0)
+                self.assertEqual(exit_code, 0)
             output = client.get_last_output(return_list=True)
             self.assertTrue(len(output), len(hosts))
             for i, host_output in enumerate(output):
@@ -171,28 +172,24 @@ class ParallelSSHClientTest(unittest.TestCase):
             server.stop()
 
     def test_pssh_client_no_stdout_non_zero_exit_code_immediate_exit(self):
-        output = self.client.run_command('exit 1')
+        output = self.client.run_command('exit 1', return_list=True)
         expected_exit_code = 1
         self.client.join(output)
-        exit_code = output[self.host].exit_code
+        exit_code = output[0].exit_code
         self.assertEqual(expected_exit_code, exit_code,
                          msg="Got unexpected exit code - %s, expected %s" %
                          (exit_code,
                           expected_exit_code,))
 
-    # def test_pssh_client_no_stdout_non_zero_exit_code_immediate_exit_no_join(self):
-    #     output = self.client.run_command('echo me; exit 1', return_list=True)
-    #     expected_exit_code = 1
-    #     for host_out in output:
-    #         for line in host_out.stdout:
-    #             pass
-    #     # self.client.join(output)
-    #     exit_code = output[0].exit_code
-    #     self.client.join(output)
-    #     self.assertEqual(expected_exit_code, exit_code,
-    #                      msg="Got unexpected exit code - %s, expected %s" %
-    #                      (exit_code,
-    #                       expected_exit_code,))
+    def test_pssh_client_no_stdout_non_zero_exit_code_immediate_exit_no_join(self):
+        output = self.client.run_command('echo me && exit 1', return_list=True)
+        expected_exit_code = 1
+        for host_out in output:
+            for line in host_out.stdout:
+                pass
+        exit_code = output[0].exit_code
+        self.client.join(output)
+        self.assertEqual(expected_exit_code, exit_code)
 
     def test_pssh_client_run_command_get_output(self):
         output = self.client.run_command(self.cmd)
@@ -881,6 +878,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue('exception' in output[host],
                         msg="Got no exception for host %s - expected connection error" % (
                             host,))
+        for host_output in output.values():
+            exit_code = host_output.exit_code
+            self.assertEqual(exit_code, None)
         try:
             raise output[host]['exception']
         except ConnectionErrorException as ex:
@@ -1135,7 +1135,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         stdout = list(output[self.host]['stdout'])
         stderr = list(output[self.host]['stderr'])
         host_output = output[self.host]
-        self.assertEqual(expected_exit_code, host_output.exit_code)
         self.assertEqual(expected_exit_code, host_output.exit_code)
         self.assertEqual(host_output['cmd'], host_output.cmd)
         self.assertEqual(host_output['exception'], host_output.exception)

@@ -38,6 +38,7 @@ cython_directives = {'embedsignature': True,
                      'boundscheck': False,
                      'optimize.use_switch': True,
                      'wraparound': False,
+                     'language_level': 3,
 }
 
 cython_args = {'cython_directives': cython_directives} if USING_CYTHON else {}

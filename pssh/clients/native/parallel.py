@@ -1,16 +1,16 @@
 # This file is part of parallel-ssh.
-
-# Copyright (C) 2014-2018 Panos Kittenis.
-
+#
+# Copyright (C) 2014-2020 Panos Kittenis.
+#
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation, version 2.1.
-
+#
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
-
+#
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
@@ -247,8 +247,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         running in parallel.
 
         :param output: Output of commands to join on
-        :type output: dict as returned by
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
+        :type output: `HostOutput` objects
         :param consume_output: Whether or not join should consume output
           buffers. Output buffers will be empty after ``join`` if set
           to ``True``. Must be set to ``True`` to allow host logger to log
@@ -272,29 +271,30 @@ class ParallelSSHClient(BaseParallelSSHClient):
             for host_i, host_out in enumerate(output):
                 host = self.hosts[host_i]
                 cmds.append(self.pool.spawn(
-                    self._join, host_i, host, host_out,
+                    self._join, host_out,
                     consume_output=consume_output, timeout=timeout))
         elif isinstance(output, dict):
             for host_i, (host, host_out) in enumerate(output.items()):
                 cmds.append(self.pool.spawn(
-                    self._join, host_i, host, host_out,
+                    self._join, host_out,
                     consume_output=consume_output, timeout=timeout))
         else:
             raise ValueError("Unexpected output object type")
         # Errors raised by self._join should be propagated.
         # Timeouts are handled by self._join itself.
         joinall(cmds, raise_error=True)
-        self.get_exit_codes(output)
 
-    def _join(self, host_i, host, host_out, consume_output=False, timeout=None,
+    def _join(self, host_out, consume_output=False, timeout=None,
               encoding="utf-8"):
-        if (host_i, host) not in self._host_clients or \
-           self._host_clients[(host_i, host)] is None:
+        if host_out is None:
             return
-        client = self._host_clients[(host_i, host)]
         channel = host_out.channel
+        client = host_out.client
+        host = host_out.host
+        if client is None:
+            return
         stdout, stderr = self.reset_output_generators(
-            host_out, client=client, channel=channel, timeout=timeout,
+            host_out, channel=channel, timeout=timeout,
             encoding=encoding)
         try:
             client.wait_finished(channel, timeout=timeout)
@@ -335,7 +335,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :rtype: tuple(stdout, stderr)
         """
         channel = host_out.channel if channel is None else channel
-        client = self.host_clients[host_out.host] if client is None else client
+        client = host_out.client if client is None else client
         stdout = client.read_output_buffer(
             client.read_output(channel, timeout=timeout), encoding=encoding)
         stderr = client.read_output_buffer(

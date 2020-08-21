@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2018 Panos Kittenis and contributors.
+# Copyright (C) 2014-2020 Panos Kittenis.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -27,10 +27,10 @@ class HostOutput(dict):
     """Class to hold host output"""
 
     __slots__ = ('host', 'cmd', 'channel', 'stdout', 'stderr', 'stdin',
-                 'exception', 'client')
+                 'client', 'exception')
 
-    def __init__(self, host, cmd, channel, stdout, stderr, stdin, client,
-                 exception=None):
+    def __init__(self, host, cmd, channel, stdout, stderr, stdin,
+                 client, exception=None):
         """
         :param host: Host name output is for
         :type host: str
@@ -52,7 +52,8 @@ class HostOutput(dict):
         super(HostOutput, self).__init__(
             (('host', host), ('cmd', cmd), ('channel', channel),
              ('stdout', stdout), ('stderr', stderr),
-             ('stdin', stdin), ('exception', exception)))
+             ('stdin', stdin),
+             ('exception', exception)))
         self.host = host
         self.cmd = cmd
         self.channel = channel

@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2018 Panos Kittenis and contributors.
+# Copyright (C) 2014-2020 Panos Kittenis.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -100,13 +100,19 @@ class BaseParallelSSHClient(object):
                     for host_i, host in enumerate(self.hosts)]
         self.cmds = cmds
         joinall(cmds, raise_error=False, timeout=greenlet_timeout)
+        return self._get_output_from_cmds(cmds, stop_on_errors=stop_on_errors,
+                                          timeout=greenlet_timeout,
+                                          return_list=return_list)
+
+    def _get_output_from_cmds(self, cmds, stop_on_errors=False, timeout=None,
+                              return_list=False):
         if not return_list:
             warn(_output_depr_notice)
             output = {}
             return self._get_output_dict(
                 cmds, output, stop_on_errors=stop_on_errors,
-                timeout=greenlet_timeout)
-        return [self._get_output_from_greenlet(cmd, timeout=greenlet_timeout)
+                timeout=timeout)
+        return [self._get_output_from_greenlet(cmd, timeout=timeout)
                 for cmd in cmds]
 
     def _get_output_from_greenlet(self, cmd, timeout=None):
@@ -158,14 +164,9 @@ class BaseParallelSSHClient(object):
         cmds = self.cmds if cmds is None else cmds
         if cmds is None:
             return
-        if not return_list:
-            warn(_output_depr_notice)
-            output = {}
-            for cmd in self.cmds:
-                self.get_output(cmd, output, timeout=greenlet_timeout)
-            return output
-        return [self._get_output_from_greenlet(cmd, timeout=greenlet_timeout)
-                for cmd in cmds]
+        return self._get_output_from_cmds(
+            cmds, timeout=greenlet_timeout, return_list=return_list,
+            stop_on_errors=False)
 
     def reset_output_generators(self, host_out, timeout=None,
                                 client=None, channel=None,
@@ -281,20 +282,20 @@ class BaseParallelSSHClient(object):
         return True
 
     def get_exit_codes(self, output):
-        """This function is now a no-op.
+        """This function is now a no-op. Exit code is gathered
+        on calling .exit_code on a ``HostOutput`` object.
 
-        Exit code is gathered, if available, by ``.exit_code`` on a
-        :py:class:`pssh.output.HostOutput` object instead.
+        to be removed in 2.0.0
         """
-        pass
+        warn("get_exit_codes is deprecated and will be removed in 2.0.0")
 
     def get_exit_code(self, host_output):
-        """This function is now a no-op.
+        """This function is now a no-op. Exit code is gathered
+        on calling .exit_code on a ``HostOutput`` object.
 
-        Exit code is gathered, if available, by ``.exit_code`` on a
-        :py:class:`pssh.output.HostOutput` object instead.
+        to be removed in 2.0.0
         """
-        pass
+        warn("get_exit_code is deprecated and will be removed in 2.0.0")
 
     def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel
