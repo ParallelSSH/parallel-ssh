@@ -16,20 +16,16 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import unittest
-import os
 import logging
-import time
-import subprocess
 
-from gevent import socket, sleep, spawn
-
-from .base_ssh_test import SSHTestCase
-from ..embedded_server.openssh import OpenSSHServer
-from pssh.clients.ssh_lib.single import SSHClient, logger as ssh_logger
 from ssh.session import Session
 # from ssh.exceptions import SocketDisconnectError
 from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
     SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout
+from pssh.clients.ssh_lib.single import SSHClient, logger as ssh_logger
+
+from ..embedded_server.openssh import OpenSSHServer
+from .base_ssh_test import SSHTestCase
 
 
 ssh_logger.setLevel(logging.DEBUG)

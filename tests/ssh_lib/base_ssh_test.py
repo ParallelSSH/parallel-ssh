@@ -19,6 +19,7 @@ import unittest
 import pwd
 import os
 import logging
+import socket
 from sys import version_info
 
 from ..embedded_server.openssh import OpenSSHServer

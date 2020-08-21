@@ -272,8 +272,14 @@ class ParallelSSHClient(BaseParallelSSHClient):
           :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
         :rtype: bool
         """
-        for host in output:
-            chan = output[host].channel
-            if chan is not None and not chan.is_eof():
-                return False
+        if isinstance(output, dict):
+            for host_out in output.values():
+                chan = host_out.channel
+                if host_out.client and not host_out.client.finished(chan):
+                    return False
+        elif isinstance(output, list):
+            for host_out in output:
+                chan = host_out.channel
+                if host_out.client and not host_out.client.finished(chan):
+                    return False
         return True

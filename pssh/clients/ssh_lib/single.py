@@ -25,7 +25,7 @@ from gevent import sleep, spawn, Timeout as GeventTimeout
 from ssh import options
 from ssh.session import Session
 from ssh.key import import_privkey_file
-from ssh.exceptions import EOF
+from ssh.exceptions import EOF, FatalError
 from ssh.error_codes import SSH_AGAIN
 
 from ..base_ssh_client import BaseSSHClient
@@ -224,15 +224,17 @@ class SSHClient(BaseSSHClient):
         logger.debug("Starting output generator on channel %s for %s",
                      channel, _buffer_name)
         while True:
-            try:
-                if channel.poll():
-                    logger.debug("Socket blocked, waiting")
-                    wait_select(self.session, timeout=self.timeout)
-                    logger.debug(
-                        "Socket no longer blocked - reading data from channel "
-                        "%s", channel)
-            except EOF:
-                pass
+            # try:
+            #     if channel.poll():
+            #         logger.debug("Socket blocked, waiting")
+            #         logger.debug(
+            #             "Socket no longer blocked - reading data from channel "
+            #             "%s", channel)
+            # except EOF:
+            #     pass
+            # except FatalError:
+            #     channel.read()
+            wait_select(self.session, timeout=self.timeout)
             try:
                 size, data = channel.read_nonblocking(is_stderr=is_stderr)
             except EOF:
@@ -240,6 +242,12 @@ class SSHClient(BaseSSHClient):
                              "reader exiting", _buffer_name)
                 sleep()
                 return
+            except FatalError:
+                wait_select(self.session, timeout=self.timeout)
+                try:
+                    size, data = channel.read_nonblocking(is_stderr=is_stderr)
+                except EOF:
+                    break
             if size > 0:
                 logger.debug("Writing %s bytes to %s buffer",
                              size, _buffer_name)
@@ -275,6 +283,12 @@ class SSHClient(BaseSSHClient):
             logger.debug("Readers finished, closing channel")
             # Close channel
             self.close_channel(channel)
+
+    def finished(self, channel):
+        if channel is None:
+            return
+        # import ipdb; ipdb.set_trace()
+        return channel.is_eof()
 
     def get_exit_status(self, channel):
         if not channel.is_eof():
