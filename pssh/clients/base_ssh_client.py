@@ -55,6 +55,7 @@ class BaseSSHClient(object):
                  num_retries=DEFAULT_RETRIES,
                  retry_delay=RETRY_DELAY,
                  allow_agent=True, timeout=None,
+                 proxy_host=None,
                  _auth_thread_pool=True):
         self.host = host
         self.user = user if user else None
@@ -70,7 +71,7 @@ class BaseSSHClient(object):
         self.retry_delay = retry_delay
         self.allow_agent = allow_agent
         self.session = None
-        self._host = host
+        self._host = proxy_host if proxy_host else host
         self.pkey = _validate_pkey_path(pkey, self.host)
         self._connect(self._host, self.port)
         if _auth_thread_pool:

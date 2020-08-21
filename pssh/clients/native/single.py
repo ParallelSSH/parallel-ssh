@@ -96,7 +96,8 @@ class SSHClient(BaseSSHClient):
             host, user=user, password=password, port=port, pkey=pkey,
             num_retries=num_retries, retry_delay=retry_delay,
             allow_agent=allow_agent, _auth_thread_pool=_auth_thread_pool,
-            timeout=timeout)
+            timeout=timeout,
+            proxy_host=proxy_host)
 
     def disconnect(self):
         """Disconnect session, close socket if needed."""

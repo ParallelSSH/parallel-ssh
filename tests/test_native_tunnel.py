@@ -23,6 +23,7 @@ import os
 import shutil
 import sys
 import string
+import logging
 from socket import timeout as socket_timeout
 from sys import version_info
 import random
@@ -30,6 +31,7 @@ import time
 from collections import deque
 
 from gevent import sleep, spawn, Timeout as GTimeout, socket
+from pssh import logger
 from pssh.clients.native.tunnel import Tunnel
 from pssh.clients.native import SSHClient, ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
@@ -40,6 +42,10 @@ from ssh2.exceptions import ChannelFailure, SocketSendError
 
 from .embedded_server.openssh import ThreadedOpenSSHServer, OpenSSHServer
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
+
+
+logger.setLevel(logging.DEBUG)
+logging.basicConfig()
 
 
 class TunnelTest(unittest.TestCase):

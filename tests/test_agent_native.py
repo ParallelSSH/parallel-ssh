@@ -1,16 +1,16 @@
 # This file is part of parallel-ssh.
-
-# Copyright (C) 2015-2018 Panos Kittenis
-
+#
+# Copyright (C) 2015-2020 Panos Kittenis
+#
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation, version 2.1.
-
+#
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
-
+#
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
@@ -22,10 +22,13 @@ import os
 from sys import version_info
 from subprocess import call
 
-from .embedded_server.openssh import OpenSSHServer
-from .base_ssh2_test import PKEY_FILENAME, PUB_FILE
+from ssh2.channel import Channel
+from pssh import logger as pssh_logger
+from pssh.clients import ParallelSSHClient
 
-from pssh.pssh2_client import ParallelSSHClient, logger as pssh_logger
+from .embedded_server.openssh import OpenSSHServer
+from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
+
 
 pssh_logger.setLevel(logging.DEBUG)
 logging.basicConfig()
@@ -37,6 +40,9 @@ class ForwardTestCase(unittest.TestCase):
     def setUpClass(cls):
         _mask = int('0600') if version_info <= (2,) else 0o600
         os.chmod(PKEY_FILENAME, _mask)
+        if not hasattr(Channel, 'request_auth_agent'):
+            raise unittest.SkipTest(
+                "Agent forwarding implementation not available in libssh2")
         if call('ssh-add %s' % PKEY_FILENAME, shell=True) != 0:
             raise unittest.SkipTest("No agent available.")
         cls.server = OpenSSHServer()
