@@ -408,3 +408,7 @@ class LibSSHParallelTest(unittest.TestCase):
         _contents = [c.decode('utf-8').strip() for c in contents]
         self.assertEqual(len(contents), len(_out))
         self.assertListEqual(_contents, _out)
+
+    # TODO:
+    # * join with timeout
+    # * finished with list output

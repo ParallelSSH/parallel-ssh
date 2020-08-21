@@ -20,9 +20,9 @@ import unittest
 import os
 from logging import NullHandler
 try:
-    from cStringIO import StringIO as BytesIO
+    from cStringIO import StringIO
 except ImportError:
-    from io import BytesIO
+    from io import StringIO
 from uuid import uuid4
 
 PKEY_FILENAME = os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key'])
@@ -57,7 +57,7 @@ class ParallelSSHUtilsTest(unittest.TestCase):
             self.assertTrue(pkey, msg="Error loading key from file %s" % (key_filename,))
             pkey = utils.load_private_key(open(key_filename))
             self.assertTrue(pkey, msg="Error loading key from open file object for file %s" % (key_filename,))
-        fake_key = BytesIO(b"blah blah fakey fakey key\n")
+        fake_key = StringIO("blah blah fakey fakey key\n")
         self.assertFalse(utils.load_private_key(fake_key))
         fake_file = 'fake_key_file'
         with open(fake_file, 'wb') as fh:

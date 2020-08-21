@@ -29,9 +29,12 @@ script:
   # For testing SSH agent related functionality
   - eval `ssh-agent -s`
   - pytest --reruns 5 --cov-append --cov=pssh tests/test_native_tunnel.py
+  - pytest --reruns 5 --cov-append --cov=pssh tests/test_utils.py
   - pytest --reruns 5 --cov-append --cov=pssh tests/test_native_*_client.py
-  - pytest --reruns 5 --cov-append --cov=pssh tests/ssh_lib/test_*.py
-  - pytest --reruns 5 --cov-append --cov=pssh tests/test_paramiko*.py
+  - pytest --reruns 5 --cov-append --cov=pssh tests/test_paramiko_*.py
+  - pytest --reruns 5 --cov-append --cov=pssh tests/ssh_lib
+  - pytest --cov-append --cov=pssh tests/test_imports.py
+  - pytest --cov-append --cov=pssh tests/test_output.py
   - flake8 pssh
   - cd doc; make html; cd ..
   # Test building from source distribution
