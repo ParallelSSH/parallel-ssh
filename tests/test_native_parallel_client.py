@@ -1504,3 +1504,16 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertFalse(single_client.sock.closed)
         del client
         self.assertTrue(single_client.sock.closed)
+
+    # TODO:
+    # * forward agent enabled
+    # * password auth
+    # * disconnect exception
+    # * wait finished no channel
+    # * sftp init error
+    # * copy dir recurse off
+    # * sftp put error
+    # * mkdir with trailing slash
+    # * scp recv file not exist
+    # * scp send error opening remote file
+    # * sftp get error reading remote file

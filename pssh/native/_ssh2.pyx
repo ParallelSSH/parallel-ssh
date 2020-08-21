@@ -17,11 +17,7 @@
 
 """Cython functions for interfacing with ssh2-python and ssh-python"""
 
-from libc.stdlib cimport malloc, free
-from libc.stdio cimport fopen, fclose, fwrite, fread, FILE
-
-from gevent import sleep
-from gevent.select import select, poll, POLLIN, POLLOUT
+from gevent.select import poll, POLLIN, POLLOUT
 from ssh2.session import LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh.session import SSH_READ_PENDING, SSH_WRITE_PENDING
@@ -37,6 +33,8 @@ cdef int _LIBSSH2_SESSION_BLOCK_OUTBOUND = LIBSSH2_SESSION_BLOCK_OUTBOUND
 cdef int _SSH_READ_PENDING = SSH_READ_PENDING
 cdef int _SSH_WRITE_PENDING = SSH_WRITE_PENDING
 cdef int _SSH_AGAIN = SSH_AGAIN
+cdef int _POLLIN = POLLIN
+cdef int _POLLOUT = POLLOUT
 
 
 def _read_output(session, read_func, timeout=None):
@@ -81,7 +79,7 @@ def wait_select(session, timeout=None):
     Blocks current greenlet only if socket has pending read or write operations
     in the appropriate direction.
     """
-    cdef tuple readfds, writefds
+    cdef int events = 0
     cdef int directions = session.block_directions()
     if directions == 0:
         return 0
@@ -89,11 +87,10 @@ def wait_select(session, timeout=None):
     # gevent.select.poll converts seconds to miliseconds to match python socket
     # implementation
     timeout = timeout * 1000 if timeout is not None else None
-    events = 0
-    if directions & LIBSSH2_SESSION_BLOCK_INBOUND:
-        events = POLLIN
-    if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:
-        events |= POLLOUT
+    if directions & _LIBSSH2_SESSION_BLOCK_INBOUND:
+        events = _POLLIN
+    if directions & _LIBSSH2_SESSION_BLOCK_OUTBOUND:
+        events |= _POLLOUT
     poller = poll()
     poller.register(_socket, eventmask=events)
     poller.poll(timeout=timeout)
@@ -101,17 +98,19 @@ def wait_select(session, timeout=None):
 
 def wait_select_ssh(session, timeout=None):
     """ssh-python based co-operative gevent select on session socket."""
-    cdef tuple readfds, writefds
+    cdef int events = 0
     cdef int directions = session.get_poll_flags()
     if directions == 0:
         return 0
     _socket = session.sock
-    cdef tuple _socket_select = (_socket,)
-    readfds = _socket_select \
-              if (directions & _SSH_READ_PENDING) else ()
-    writefds = _socket_select \
-               if (directions & _SSH_WRITE_PENDING) else ()
-    select(readfds, writefds, (), timeout=timeout)
+    timeout = timeout * 1000 if timeout is not None else None
+    if directions & _SSH_READ_PENDING:
+        events = _POLLIN
+    if directions & _SSH_WRITE_PENDING:
+        events |= _POLLOUT
+    poller = poll()
+    poller.register(_socket, eventmask=events)
+    poller.poll(timeout=timeout)
 
 
 def eagain_write(write_func, data, session, timeout=None):
@@ -139,5 +138,4 @@ def eagain_ssh(session, func, *args, **kwargs):
         ret = func(*args, **kwargs)
         if ret == _SSH_AGAIN and timeout is not None:
             raise Timeout
-    sleep()
     return ret
