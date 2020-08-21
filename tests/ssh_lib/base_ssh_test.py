@@ -19,6 +19,7 @@ import unittest
 import pwd
 import os
 import logging
+from sys import version_info
 
 from ..embedded_server.openssh import OpenSSHServer
 from pssh.clients.ssh_lib.single import SSHClient, logger as ssh_logger
@@ -35,11 +36,12 @@ class SSHTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        os.chmod(PKEY_FILENAME, 0o600)
-        cls.server = OpenSSHServer()
-        cls.server.start_server()
+        _mask = int('0600') if version_info <= (2,) else 0o600
+        os.chmod(PKEY_FILENAME, _mask)
         cls.host = '127.0.0.1'
-        cls.port = 2222
+        cls.port = 2322
+        cls.server = OpenSSHServer(listen_ip=cls.host, port=cls.port)
+        cls.server.start_server()
         cls.cmd = 'echo me'
         cls.resp = u'me'
         cls.user_key = PKEY_FILENAME

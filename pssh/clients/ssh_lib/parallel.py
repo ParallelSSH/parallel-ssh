@@ -262,6 +262,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 self._host_clients[(host_i, host)] = _client
                 # TODO - Add forward agent functionality
                 # forward_ssh_agent=self.forward_ssh_agent)
+                return _client
+        return self._host_clients[(host_i, host)]
 
     def finished(self, output):
         """Check if commands have finished without blocking

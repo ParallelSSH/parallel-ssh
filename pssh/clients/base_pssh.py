@@ -122,7 +122,7 @@ class BaseParallelSSHClient(object):
         except Exception as ex:
             host = ex.host
             return HostOutput(host, cmd, None, None, None, None,
-                              _client, exception=ex)
+                              None, exception=ex)
         return HostOutput(host, cmd, channel, stdout, stderr, stdin, _client)
 
     def _get_output_dict(self, cmds, output, timeout=None,
@@ -188,7 +188,7 @@ class BaseParallelSSHClient(object):
         :rtype: tuple(stdout, stderr)
         """
         channel = host_out.channel if channel is None else channel
-        client = self.host_clients[host_out.host] if client is None else client
+        client = host_out.client if client is None else client
         stdout = client.read_output_buffer(
             client.read_output(channel, timeout=timeout), encoding=encoding)
         stderr = client.read_output_buffer(
@@ -457,7 +457,6 @@ class BaseParallelSSHClient(object):
 
     def _handle_greenlet_exc(self, func, host, *args, **kwargs):
         try:
-            self._make_ssh_client(host)
             return func(*args, **kwargs)
         except Exception as ex:
             ex.host = host

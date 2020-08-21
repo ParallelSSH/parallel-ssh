@@ -46,7 +46,7 @@ class LibSSHParallelTest(unittest.TestCase):
         _mask = int('0600') if version_info <= (2,) else 0o600
         os.chmod(PKEY_FILENAME, _mask)
         cls.host = '127.0.0.1'
-        cls.port = 2223
+        cls.port = 2422
         cls.server = OpenSSHServer(listen_ip=cls.host, port=cls.port)
         cls.server.start_server()
         cls.cmd = 'echo me'
@@ -66,6 +66,7 @@ class LibSSHParallelTest(unittest.TestCase):
     def tearDownClass(cls):
         del cls.client
         cls.server.stop()
+        del cls.server
 
     def setUp(self):
         self.long_cmd = lambda lines: 'for (( i=0; i<%s; i+=1 )) do echo $i; sleep 1; done' % (lines,)

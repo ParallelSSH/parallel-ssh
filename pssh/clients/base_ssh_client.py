@@ -274,6 +274,9 @@ class BaseSSHClient(object):
                 self.read_stderr(channel, timeout=timeout), encoding=encoding,
                 prefix='\t[err]'), channel
 
+    def _eagain(self, func, *args, **kwargs):
+        raise NotImplementedError
+
     def _make_sftp(self):
         raise NotImplementedError
 
