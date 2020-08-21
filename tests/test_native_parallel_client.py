@@ -47,7 +47,7 @@ from pssh import logger as pssh_logger
 
 from .embedded_server.embedded_server import make_socket
 from .embedded_server.openssh import OpenSSHServer
-from .base_ssh2_test import PKEY_FILENAME, PUB_FILE
+from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
 
 
 pssh_logger.setLevel(logging.DEBUG)

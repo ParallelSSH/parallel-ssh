@@ -25,7 +25,7 @@ from gevent import sleep, spawn, Timeout as GeventTimeout
 from ssh import options
 from ssh.session import Session
 from ssh.key import import_privkey_file
-from ssh.exceptions import EOF, FatalError
+from ssh.exceptions import EOF
 from ssh.error_codes import SSH_AGAIN
 
 from ..base_ssh_client import BaseSSHClient
@@ -45,8 +45,8 @@ class SSHClient(BaseSSHClient):
                  pkey=None,
                  num_retries=DEFAULT_RETRIES,
                  retry_delay=RETRY_DELAY,
-                 allow_agent=True, timeout=None,
-                 _auth_thread_pool=False):
+                 allow_agent=False, timeout=None,
+                 _auth_thread_pool=True):
         """:param host: Host name or IP to connect to.
         :type host: str
         :param user: User to connect as. Defaults to logged in user.
@@ -65,11 +65,11 @@ class SSHClient(BaseSSHClient):
         :param retry_delay: Number of seconds to wait between retries. Defaults
           to :py:class:`pssh.constants.RETRY_DELAY`
         :type retry_delay: int
-        :param timeout: SSH session timeout setting in seconds. This controls
-          timeout setting of authenticated SSH sessions.
+        :param timeout: (Optional) If provided, all commands will timeout after
+          <timeout> number of seconds.
         :type timeout: int
         :param allow_agent: (Optional) set to False to disable connecting to
-          the system's SSH agent
+          the system's SSH agent. Currently unused.
         :type allow_agent: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
@@ -134,6 +134,7 @@ class SSHClient(BaseSSHClient):
         self.session.userauth_publickey(pkey)
 
     def open_session(self):
+        """Open new channel from session."""
         logger.debug("Opening new channel on %s", self.host)
         try:
             channel = self.session.channel_new()
@@ -180,6 +181,13 @@ class SSHClient(BaseSSHClient):
         return channel
 
     def read_stderr(self, channel, timeout=None):
+        """Read standard error buffer from channel.
+        Returns a generator of line by line output.
+
+        :param channel: Channel to read output from.
+        :type channel: :py:class:`ssh2.channel.Channel`
+        :rtype: generator
+        """
         _buffer_name = 'stderr'
         _buffer = self._stderr_buffer
         _flag = self._stderr_read
@@ -189,6 +197,13 @@ class SSHClient(BaseSSHClient):
             is_stderr=True)
 
     def read_output(self, channel, timeout=None, is_stderr=False):
+        """Read standard output buffer from channel.
+        Returns a generator of line by line output.
+
+        :param channel: Channel to read output from.
+        :type channel: :py:class:`ssh2.channel.Channel`
+        :rtype: generator
+        """
         _buffer_name = 'stdout'
         _buffer = self._stdout_buffer
         _flag = self._stdout_read
@@ -202,6 +217,7 @@ class SSHClient(BaseSSHClient):
             logger.debug("Output for %s has already been read", _buffer_name)
             raise StopIteration
         logger.debug("Waiting for %s reader", _buffer_name)
+        timeout = timeout if timeout else self.timeout
         try:
             _reader.get(timeout=timeout)
         except GeventTimeout as ex:
@@ -224,16 +240,6 @@ class SSHClient(BaseSSHClient):
         logger.debug("Starting output generator on channel %s for %s",
                      channel, _buffer_name)
         while True:
-            # try:
-            #     if channel.poll():
-            #         logger.debug("Socket blocked, waiting")
-            #         logger.debug(
-            #             "Socket no longer blocked - reading data from channel "
-            #             "%s", channel)
-            # except EOF:
-            #     pass
-            # except FatalError:
-            #     channel.read()
             wait_select(self.session, timeout=self.timeout)
             try:
                 size, data = channel.read_nonblocking(is_stderr=is_stderr)
@@ -257,7 +263,7 @@ class SSHClient(BaseSSHClient):
                 # send back, meaning the generator does not yield and can there
                 # for block other generators/greenlets from running.
                 logger.debug("No data for %s, waiting", _buffer_name)
-                sleep(.1)
+                sleep()
 
     def wait_finished(self, channel, timeout=None):
         """Wait for EOF from channel and close channel.
@@ -270,9 +276,9 @@ class SSHClient(BaseSSHClient):
         """
         if channel is None:
             return
+        timeout = timeout if timeout else self.timeout
         logger.debug("Sending EOF on channel %s", channel)
-        eagain(self.session, channel.send_eof,
-               timeout=timeout if timeout else self.timeout)
+        eagain(self.session, channel.send_eof, timeout=timeout)
         try:
             self._stdout_reader.get(timeout=timeout)
             self._stderr_reader.get(timeout=timeout)
@@ -285,16 +291,29 @@ class SSHClient(BaseSSHClient):
             self.close_channel(channel)
 
     def finished(self, channel):
+        """Checks if remote command has finished - has server sent client
+        EOF.
+
+        :rtype: bool
+        """
         if channel is None:
             return
-        # import ipdb; ipdb.set_trace()
         return channel.is_eof()
 
     def get_exit_status(self, channel):
+        """Get exit status from channel if ready else return `None`.
+
+        :rtype: int or `None`
+        """
         if not channel.is_eof():
             return
         return channel.get_exit_status()
 
     def close_channel(self, channel):
+        """Close channel.
+
+        :param channel: The channel to close.
+        :type channel: :py:class:`ssh.channel.Channel`
+        """
         logger.debug("Closing channel")
         eagain(self.session, channel.close, timeout=self.timeout)

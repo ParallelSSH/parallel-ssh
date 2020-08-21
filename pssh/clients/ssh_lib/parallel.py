@@ -32,7 +32,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
     """ssh-python based parallel client."""
 
     def __init__(self, hosts, user=None, password=None, port=22, pkey=None,
-                 num_retries=DEFAULT_RETRIES, timeout=None, pool_size=10,
+                 num_retries=DEFAULT_RETRIES, timeout=None, pool_size=100,
                  allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
                  forward_ssh_agent=False):
         """
@@ -55,13 +55,22 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param retry_delay: Number of seconds to wait between retries. Defaults
           to :py:class:`pssh.constants.RETRY_DELAY`
         :type retry_delay: int
-        :param timeout: (Optional) SSH session timeout setting in seconds.
+        :param timeout: (Optional) Individual SSH client timeout setting in
+          seconds passed on to each SSH client spawned by `ParallelSSHClient`.
+
           This controls timeout setting of socket operations used for SSH
-          sessions. Defaults to OS default - usually 60 seconds.
+          sessions *on a per session basis* meaning for each individual
+          SSH session.
+
+          Defaults to OS default - usually 60 seconds.
+
+          Parallel functions like `run_command` and `join` have a cummulative
+          timeout setting that is separate to and
+          not affected by `self.timeout`.
         :type timeout: float
         :param pool_size: (Optional) Greenlet pool size. Controls
           concurrency, on how many hosts to execute tasks in parallel.
-          Defaults to 10. Overhead in event
+          Defaults to 100. Overhead in event
           loop will determine how high this can be set to, see scaling guide
           lines in project's readme.
         :type pool_size: int
@@ -90,7 +99,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
           equivalent to `ssh -A` from the `ssh` command line utility.
           Defaults to False if not set.
-          Requires agent forwarding implementation in libssh2 version used.
+          Currently unused meaning always off.
         :type forward_ssh_agent: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
@@ -109,14 +118,15 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     use_pty=False, host_args=None, shell=None,
                     encoding='utf-8', timeout=None, greenlet_timeout=None):
         """Run command on all hosts in parallel, honoring self.pool_size,
-        and return output dictionary.
+        and return output.
 
         This function will block until all commands have been received
         by remote servers and then return immediately.
 
         More explicitly, function will return after connection and
-        authentication establishment and after commands have been accepted by
-        successfully established SSH channels.
+        authentication establishment in the case of on new connections and
+        after execute
+        commands have been accepted by successfully established SSH channels.
 
         Any connection and/or authentication exceptions will be raised here
         and need catching *unless* ``run_command`` is called with
@@ -164,9 +174,12 @@ class ParallelSSHClient(BaseParallelSSHClient):
           Defaults to no timeout. If set, this function will raise
           :py:class:`gevent.Timeout` after ``greenlet_timeout`` seconds
           if no result is available from greenlets.
+
           In some cases, such as when using proxy hosts, connection timeout
           is controlled by proxy server and getting result from greenlets may
-          hang indefinitely if remote server is unavailable. Use this setting
+          hang indefinitely if remote server is unavailable.
+
+          Use this setting
           to avoid blocking in such circumstances.
           Note that ``gevent.Timeout`` is a special class that inherits from
           ``BaseException`` and thus **can not be caught** by
@@ -202,52 +215,36 @@ class ParallelSSHClient(BaseParallelSSHClient):
             encoding=encoding, use_pty=use_pty, timeout=timeout,
             greenlet_timeout=greenlet_timeout)
 
-    def join(self, output, consume_output=False, timeout=None):
-        """Wait until all remote commands in output have finished
-        and retrieve exit codes. Does *not* block other commands from
-        running in parallel.
 
-        :param output: Output of commands to join on
-        :type output: dict as returned by
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
-        :param consume_output: Whether or not join should consume output
-          buffers. Output buffers will be empty after ``join`` if set
-          to ``True``. Must be set to ``True`` to allow host logger to log
-          output on call to ``join`` when host logger has been enabled.
-        :type consume_output: bool
-        :param timeout: Timeout in seconds if remote command is not yet
-          finished. Note that use of timeout forces ``consume_output=True``
-          otherwise the channel output pending to be consumed always results
-          in the channel not being finished.
-        :type timeout: int
-
-        :raises: :py:class:`pssh.exceptions.Timeout` on timeout requested and
-          reached with commands still running.
-
-        :rtype: ``None``"""
-        for host, host_out in output.items():
-            if host not in self.host_clients or self.host_clients[host] is None:
-                continue
-            client = self.host_clients[host]
-            channel = host_out.channel
-            stdout, stderr = self.reset_output_generators(
-                host_out, client=client, channel=channel, timeout=timeout)
-            try:
-                client.wait_finished(channel, timeout=timeout)
-            except Timeout:
+    def _join(self, host_out, consume_output=False, timeout=None,
+              encoding="utf-8"):
+        if host_out is None:
+            return
+        channel = host_out.channel
+        client = host_out.client
+        host = host_out.host
+        if client is None:
+            return
+        stdout, stderr = self.reset_output_generators(
+            host_out, channel=channel, timeout=timeout,
+            encoding=encoding)
+        try:
+            client.wait_finished(channel, timeout=timeout)
+        except Timeout:
+            raise Timeout(
+                "Timeout of %s sec(s) reached on host %s with command "
+                "still running", timeout, host)
+        if timeout:
+            # Must consume buffers prior to EOF check
+            if not channel.is_eof():
                 raise Timeout(
                     "Timeout of %s sec(s) reached on host %s with command "
                     "still running", timeout, host)
-            if timeout:
-                if not channel.is_eof():
-                    raise Timeout(
-                        "Timeout of %s sec(s) reached on host %s with command "
-                        "still running", timeout, host)
-        self.get_exit_codes(output)
 
     def _make_ssh_client(self, host_i, host):
-        logger.debug("Make client request for host %s, host in clients: %s",
-                     host, host in self.host_clients)
+        logger.debug(
+            "Make client request for host %s, (host_i, host) in clients: %s",
+            host, (host_i, host) in self._host_clients)
         with self._clients_lock:
             if (host_i, host) not in self._host_clients \
                or self._host_clients[(host_i, host)] is None:

@@ -206,17 +206,21 @@ class SSHClient(BaseSSHClient):
 
     def read_stderr(self, channel, timeout=None):
         """Read standard error buffer from channel.
+        Returns a generator of line by line output.
 
         :param channel: Channel to read output from.
         :type channel: :py:class:`ssh2.channel.Channel`
+        :rtype: generator
         """
         return _read_output(self.session, channel.read_stderr, timeout=timeout)
 
     def read_output(self, channel, timeout=None):
         """Read standard output buffer from channel.
+        Returns a generator of line by line output.
 
         :param channel: Channel to read output from.
         :type channel: :py:class:`ssh2.channel.Channel`
+        :rtype: generator
         """
         return _read_output(self.session, channel.read, timeout=timeout)
 
@@ -257,49 +261,6 @@ class SSHClient(BaseSSHClient):
             wait_select(self.session)
             ret = func(*args, **kwargs)
         return ret
-
-    def run_command(self, command, sudo=False, user=None,
-                    use_pty=False, shell=None,
-                    encoding='utf-8', timeout=None):
-        """Run remote command.
-
-        :param command: Command to run.
-        :type command: str
-        :param sudo: Run command via sudo as super-user.
-        :type sudo: bool
-        :param user: Run command as user via sudo
-        :type user: str
-        :param use_pty: Whether or not to obtain a PTY on the channel.
-        :type use_pty: bool
-        :param shell: (Optional) Override shell to use to run command with.
-          Defaults to login user's defined shell. Use the shell's command
-          syntax, eg `shell='bash -c'` or `shell='zsh -c'`.
-        :type shell: str
-        :param encoding: Encoding to use for output. Must be valid
-          `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
-        :type encoding: str
-
-        :rtype: (channel, host, stdout, stderr, stdin) tuple.
-        """
-        # Fast path for no command substitution needed
-        if not sudo and not user and not shell:
-            _command = command
-        else:
-            _command = ''
-            if sudo and not user:
-                _command = 'sudo -S '
-            elif user:
-                _command = 'sudo -u %s -S ' % (user,)
-            _shell = shell if shell else '$SHELL -c'
-            _command += "%s '%s'" % (_shell, command,)
-        channel = self.execute(_command, use_pty=use_pty)
-        return channel, self.host, \
-            self.read_output_buffer(
-                self.read_output(channel, timeout=timeout),
-                encoding=encoding), \
-            self.read_output_buffer(
-                self.read_stderr(channel, timeout=timeout), encoding=encoding,
-                prefix='\t[err]'), channel
 
     def _make_sftp(self):
         """Make SFTP client from open transport"""

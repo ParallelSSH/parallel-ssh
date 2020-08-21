@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2015-2018 Panos Kittenis
+# Copyright (C) 2015-2020 Panos Kittenis
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -39,7 +39,7 @@ from pssh.exceptions import UnknownHostException, \
 from ssh2.exceptions import ChannelFailure, SocketSendError
 
 from .embedded_server.openssh import ThreadedOpenSSHServer, OpenSSHServer
-from .base_ssh2_test import PKEY_FILENAME, PUB_FILE
+from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
 
 
 class TunnelTest(unittest.TestCase):

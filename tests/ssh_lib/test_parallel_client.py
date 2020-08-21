@@ -19,6 +19,7 @@ import unittest
 import os
 import pwd
 import logging
+from datetime import datetime
 from sys import version_info
 
 from gevent import joinall, spawn, Greenlet
@@ -31,7 +32,7 @@ from pssh.clients.ssh_lib.parallel import ParallelSSHClient
 
 from ..embedded_server.embedded_server import make_socket
 from ..embedded_server.openssh import OpenSSHServer
-from ..base_ssh2_test import PKEY_FILENAME, PUB_FILE
+from .base_ssh_case import PKEY_FILENAME, PUB_FILE
 
 
 pssh_logger.setLevel(logging.DEBUG)
@@ -232,17 +233,19 @@ class LibSSHParallelTest(unittest.TestCase):
             raise Exception("Expected ConnectionError, got %s instead" % (
                 output[hosts[1]]['exception'],))
 
-    # def test_pssh_client_timeout(self):
-    # Broken atm
-    #     # 1ms timeout
-    #     client_timeout = 0.001
-    #     client = ParallelSSHClient([self.host], port=self.port,
-    #                                pkey=self.user_key,
-    #                                timeout=client_timeout,
-    #                                num_retries=1)
-    #     output = client.run_command('sleep 1', stop_on_errors=False)
-    #     self.assertIsInstance(output[self.host].exception,
-    #                           Timeout)
+    def test_pssh_client_timeout(self):
+        # 1ms timeout
+        client_timeout = 0.00001
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.user_key,
+                                   timeout=client_timeout,
+                                   num_retries=1)
+        now = datetime.now()
+        output = client.run_command('sleep 1', stop_on_errors=False)
+        dt = datetime.now() - now
+        print("Run command took %s" % (dt,))
+        self.assertIsInstance(output[self.host].exception,
+                              Timeout)
 
     def test_connection_timeout(self):
         client_timeout = .01
@@ -368,7 +371,6 @@ class LibSSHParallelTest(unittest.TestCase):
         contents = [b'a line\n' for _ in range(50)]
         with open(_file, 'wb') as fh:
             fh.writelines(contents)
-        # import ipdb; ipdb.set_trace()
         try:
             output = self.client.run_command(
                 'tail -f %s' % (_file,), use_pty=True, timeout=5)

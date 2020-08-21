@@ -6,7 +6,7 @@ import subprocess
 
 from gevent import socket, sleep, spawn
 
-from .base_ssh2_test import SSH2TestCase
+from .base_ssh2_case import SSH2TestCase
 from .embedded_server.openssh import OpenSSHServer
 from pssh.clients.native import SSHClient, logger as ssh_logger
 from ssh2.session import Session
