@@ -255,7 +255,7 @@ class LibSSHParallelTest(unittest.TestCase):
                                    timeout=client_timeout,
                                    num_retries=1)
         cmd = spawn(client.run_command, 'sleep 1', stop_on_errors=False)
-        output = cmd.get(timeout=client_timeout * 200)
+        output = cmd.get(timeout=client_timeout * 1000)
         self.assertIsInstance(output[host].exception,
                               ConnectionErrorException)
 

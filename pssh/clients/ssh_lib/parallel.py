@@ -215,7 +215,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
             encoding=encoding, use_pty=use_pty, timeout=timeout,
             greenlet_timeout=greenlet_timeout)
 
-
     def _join(self, host_out, consume_output=False, timeout=None,
               encoding="utf-8"):
         if host_out is None:

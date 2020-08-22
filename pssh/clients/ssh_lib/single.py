@@ -248,12 +248,6 @@ class SSHClient(BaseSSHClient):
                              "reader exiting", _buffer_name)
                 sleep()
                 return
-            except FatalError:
-                wait_select(self.session, timeout=self.timeout)
-                try:
-                    size, data = channel.read_nonblocking(is_stderr=is_stderr)
-                except EOF:
-                    break
             if size > 0:
                 logger.debug("Writing %s bytes to %s buffer",
                              size, _buffer_name)

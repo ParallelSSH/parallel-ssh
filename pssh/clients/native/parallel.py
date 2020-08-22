@@ -17,7 +17,7 @@
 
 import logging
 from collections import deque
-from gevent import sleep, joinall, Timeout as GeventTimeout
+from gevent import sleep
 from gevent.lock import RLock
 
 from ..base_pssh import BaseParallelSSHClient
