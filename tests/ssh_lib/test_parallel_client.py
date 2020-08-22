@@ -243,7 +243,7 @@ class LibSSHParallelTest(unittest.TestCase):
         now = datetime.now()
         output = client.run_command('sleep 1', stop_on_errors=False)
         dt = datetime.now() - now
-        print("Run command took %s" % (dt,))
+        pssh_logger.debug("Run command took %s", dt)
         self.assertIsInstance(output[self.host].exception,
                               Timeout)
 
@@ -409,6 +409,29 @@ class LibSSHParallelTest(unittest.TestCase):
         self.assertEqual(len(contents), len(_out))
         self.assertListEqual(_contents, _out)
 
-    # TODO:
-    # * join with timeout
-    # * finished with list output
+    def test_gssapi_creds(self):
+        _server_id = 'server_id'
+        _client_id = 'client_id'
+        client = ParallelSSHClient(
+            [self.host], port=self.port, num_retries=1,
+            pkey=None,
+            gssapi_server_identity=_server_id,
+            gssapi_client_identity=_client_id,
+            gssapi_delegate_credentials=True,
+            identity_auth=False)
+        self.assertRaises(AuthenticationException, client.run_command, self.cmd)
+        # ssh_client = list(client._host_clients.values())[0]
+        # self.assertEqual(ssh_client.gssapi_server_identity, _server_id)
+        # self.assertEqual(ssh_client.gssapi_client_identity, _client_id)
+        # self.assertEqual(ssh_client.gssapi_delegate_credentials, True)
+
+    def test_long_running_cmd_join_timeout(self):
+        output = self.client.run_command('sleep 1', return_list=True)
+        self.assertRaises(Timeout, self.client.join, output, timeout=0.2)
+
+    def test_finished_list_output(self):
+        output = self.client.run_command('sleep 1', return_list=True)
+        self.assertIsInstance(output, list)
+        self.assertFalse(self.client.finished(output))
+        self.client.join(output)
+        self.assertTrue(self.client.finished(output))

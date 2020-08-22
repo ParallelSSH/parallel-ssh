@@ -50,7 +50,8 @@ class SSHClient(BaseSSHClient):
                  allow_agent=True, timeout=None,
                  forward_ssh_agent=False,
                  proxy_host=None,
-                 _auth_thread_pool=True, keepalive_seconds=60):
+                 _auth_thread_pool=True, keepalive_seconds=60,
+                 identity_auth=True,):
         """:param host: Host name or IP to connect to.
         :type host: str
         :param user: User to connect as. Defaults to logged in user.
@@ -75,6 +76,10 @@ class SSHClient(BaseSSHClient):
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent
         :type allow_agent: bool
+        :param identity_auth: (Optional) set to False to disable attempting to
+          authenticate with default identity files from
+          `pssh.clients.base_ssh_client.BaseSSHClient.IDENTITIES`
+        :type identity_auth: bool
         :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
           equivalent to `ssh -A` from the `ssh` command line utility.
           Defaults to True if not set.
@@ -97,7 +102,7 @@ class SSHClient(BaseSSHClient):
             num_retries=num_retries, retry_delay=retry_delay,
             allow_agent=allow_agent, _auth_thread_pool=_auth_thread_pool,
             timeout=timeout,
-            proxy_host=proxy_host)
+            proxy_host=proxy_host, identity_auth=identity_auth)
 
     def disconnect(self):
         """Disconnect session, close socket if needed."""
@@ -146,7 +151,10 @@ class SSHClient(BaseSSHClient):
             while retries < self.num_retries:
                 return self._connect_init_retry(retries)
             msg = "Authentication error while connecting to %s:%s - %s"
-            raise AuthenticationException(msg, self.host, self.port, ex)
+            ex = AuthenticationException(msg, self.host, self.port, ex)
+            ex.host = self.host
+            ex.port = self.port
+            raise ex
         self.session.set_blocking(0)
         if self.keepalive_seconds:
             self.configure_keepalive()

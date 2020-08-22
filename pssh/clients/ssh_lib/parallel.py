@@ -33,8 +33,12 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
     def __init__(self, hosts, user=None, password=None, port=22, pkey=None,
                  num_retries=DEFAULT_RETRIES, timeout=None, pool_size=100,
-                 allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
-                 forward_ssh_agent=False):
+                 allow_agent=False, host_config=None, retry_delay=RETRY_DELAY,
+                 forward_ssh_agent=False,
+                 gssapi_server_identity=None,
+                 gssapi_client_identity=None,
+                 gssapi_delegate_credentials=False,
+                 identity_auth=True):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -78,8 +82,12 @@ class ParallelSSHClient(BaseParallelSSHClient):
           not all hosts use the same configuration.
         :type host_config: dict
         :param allow_agent: (Optional) set to False to disable connecting to
-          the system's SSH agent.
+          the system's SSH agent. Currently unused - always off.
         :type allow_agent: bool
+        :param identity_auth: (Optional) set to False to disable attempting to
+          authenticate with default identity files from
+          `pssh.clients.base_ssh_client.BaseSSHClient.IDENTITIES`
+        :type identity_auth: bool
         :param proxy_host: (Optional) SSH host to tunnel connection through
           so that SSH clients connect to host via client -> proxy_host -> host
         :type proxy_host: str
@@ -101,6 +109,13 @@ class ParallelSSHClient(BaseParallelSSHClient):
           Defaults to False if not set.
           Currently unused meaning always off.
         :type forward_ssh_agent: bool
+        :param gssapi_server_identity: Set GSSAPI server identity.
+        :type gssapi_server_identity: str
+        :param gssapi_server_identity: Set GSSAPI client identity.
+        :type gssapi_server_identity: str
+        :param gssapi_delegate_credentials: Enable/disable server credentials
+          delegation.
+        :type gssapi_delegate_credentials: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
@@ -109,14 +124,19 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, hosts, user=user, password=password, port=port, pkey=pkey,
             allow_agent=allow_agent, num_retries=num_retries,
             timeout=timeout, pool_size=pool_size,
-            host_config=host_config, retry_delay=retry_delay)
+            host_config=host_config, retry_delay=retry_delay,
+            identity_auth=identity_auth)
         self.pkey = _validate_pkey_path(pkey)
         self.forward_ssh_agent = forward_ssh_agent
         self._clients_lock = RLock()
+        self.gssapi_server_identity = gssapi_server_identity
+        self.gssapi_client_identity = gssapi_client_identity
+        self.gssapi_delegate_credentials = gssapi_delegate_credentials
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8', timeout=None, greenlet_timeout=None):
+                    encoding='utf-8', timeout=None, greenlet_timeout=None,
+                    return_list=False):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output.
 
@@ -213,7 +233,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, command, stop_on_errors=stop_on_errors, host_args=host_args,
             user=user, shell=shell, sudo=sudo,
             encoding=encoding, use_pty=use_pty, timeout=timeout,
-            greenlet_timeout=greenlet_timeout)
+            greenlet_timeout=greenlet_timeout, return_list=return_list)
 
     def _join(self, host_out, consume_output=False, timeout=None,
               encoding="utf-8"):
@@ -253,7 +273,12 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     host, user=_user, password=_password, port=_port,
                     pkey=_pkey, num_retries=self.num_retries,
                     timeout=self.timeout,
-                    allow_agent=self.allow_agent, retry_delay=self.retry_delay)
+                    allow_agent=self.allow_agent, retry_delay=self.retry_delay,
+                    gssapi_server_identity=self.gssapi_server_identity,
+                    gssapi_client_identity=self.gssapi_client_identity,
+                    gssapi_delegate_credentials=self.gssapi_delegate_credentials,
+                    identity_auth=self.identity_auth,
+                )
                 self.host_clients[host] = _client
                 self._host_clients[(host_i, host)] = _client
                 # TODO - Add forward agent functionality

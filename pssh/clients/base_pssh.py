@@ -52,7 +52,8 @@ class BaseParallelSSHClient(object):
                  allow_agent=True,
                  num_retries=DEFAULT_RETRIES,
                  timeout=120, pool_size=10,
-                 host_config=None, retry_delay=RETRY_DELAY):
+                 host_config=None, retry_delay=RETRY_DELAY,
+                 identity_auth=True):
         if isinstance(hosts, str) or isinstance(hosts, bytes):
             raise TypeError(
                 "Hosts must be list or other iterable, not string. "
@@ -73,6 +74,7 @@ class BaseParallelSSHClient(object):
         self.host_config = host_config if host_config else {}
         self.retry_delay = retry_delay
         self.cmds = None
+        self.identity_auth = identity_auth
 
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
@@ -210,8 +212,8 @@ class BaseParallelSSHClient(object):
                      shell=None, use_pty=False,
                      encoding='utf-8', timeout=None):
         """Make SSHClient if needed, run command on host"""
+        _client = self._make_ssh_client(host_i, host)
         try:
-            _client = self._make_ssh_client(host_i, host)
             return _client.run_command(
                 command, sudo=sudo, user=user, shell=shell,
                 use_pty=use_pty, encoding=encoding, timeout=timeout), _client

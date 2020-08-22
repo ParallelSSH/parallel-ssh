@@ -56,7 +56,8 @@ class BaseSSHClient(object):
                  retry_delay=RETRY_DELAY,
                  allow_agent=True, timeout=None,
                  proxy_host=None,
-                 _auth_thread_pool=True):
+                 _auth_thread_pool=True,
+                 identity_auth=True):
         self.host = host
         self.user = user if user else None
         if self.user is None and not WIN_PLATFORM:
@@ -73,6 +74,7 @@ class BaseSSHClient(object):
         self.session = None
         self._host = proxy_host if proxy_host else host
         self.pkey = _validate_pkey_path(pkey, self.host)
+        self.identity_auth = identity_auth
         self._connect(self._host, self.port)
         if _auth_thread_pool:
             THREAD_POOL.apply(self._init)
@@ -119,9 +121,12 @@ class BaseSSHClient(object):
             while retries < self.num_retries:
                 sleep(self.retry_delay)
                 return self._connect(host, port, retries=retries+1)
-            raise UnknownHostException("Unknown host %s - %s - retry %s/%s",
-                                       host, str(ex.args[1]), retries,
-                                       self.num_retries)
+            ex = UnknownHostException("Unknown host %s - %s - retry %s/%s",
+                                      host, str(ex.args[1]), retries,
+                                      self.num_retries)
+            ex.host = host
+            ex.port = port
+            raise ex
         except sock_error as ex:
             logger.error("Error connecting to host '%s:%s' - retry %s/%s",
                          host, port, retries, self.num_retries)
@@ -129,10 +134,13 @@ class BaseSSHClient(object):
                 sleep(self.retry_delay)
                 return self._connect(host, port, retries=retries+1)
             error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
-            raise ConnectionErrorException(
+            ex = ConnectionErrorException(
                 "Error connecting to host '%s:%s' - %s - retry %s/%s",
                 host, port, str(error_type), retries,
                 self.num_retries,)
+            ex.host = host
+            ex.port = port
+            raise ex
 
     def _identity_auth(self):
         for identity_file in self.IDENTITIES:
@@ -169,13 +177,14 @@ class BaseSSHClient(object):
             else:
                 logger.debug("Authentication with SSH Agent succeeded")
                 return
-        try:
-            self._identity_auth()
-        except AuthenticationException:
-            if self.password is None:
-                raise
-            logger.debug("Private key auth failed, trying password")
-            self._password_auth()
+        if self.identity_auth:
+            try:
+                self._identity_auth()
+            except AuthenticationException:
+                if self.password is None:
+                    raise
+        logger.debug("Private key auth failed, trying password")
+        self._password_auth()
 
     def _password_auth(self):
         raise NotImplementedError

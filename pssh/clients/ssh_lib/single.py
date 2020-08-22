@@ -46,6 +46,10 @@ class SSHClient(BaseSSHClient):
                  num_retries=DEFAULT_RETRIES,
                  retry_delay=RETRY_DELAY,
                  allow_agent=False, timeout=None,
+                 identity_auth=True,
+                 gssapi_server_identity=None,
+                 gssapi_client_identity=None,
+                 gssapi_delegate_credentials=False,
                  _auth_thread_pool=True):
         """:param host: Host name or IP to connect to.
         :type host: str
@@ -71,16 +75,31 @@ class SSHClient(BaseSSHClient):
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent. Currently unused.
         :type allow_agent: bool
+        :param identity_auth: (Optional) set to False to disable attempting to
+          authenticate with default identity files from
+          `pssh.clients.base_ssh_client.BaseSSHClient.IDENTITIES`
+        :type identity_auth: bool
+        :param gssapi_server_identity: Set GSSAPI server identity.
+        :type gssapi_server_identity: str
+        :param gssapi_server_identity: Set GSSAPI client identity.
+        :type gssapi_server_identity: str
+        :param gssapi_delegate_credentials: Enable/disable server credentials 
+          delegation.
+        :type gssapi_delegate_credentials: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
         """
+        self.gssapi_server_identity = gssapi_server_identity
+        self.gssapi_client_identity = gssapi_client_identity
+        self.gssapi_delegate_credentials = gssapi_delegate_credentials
         super(SSHClient, self).__init__(
             host, user=user, password=password, port=port, pkey=pkey,
             num_retries=num_retries, retry_delay=retry_delay,
             allow_agent=allow_agent,
             _auth_thread_pool=_auth_thread_pool,
-            timeout=timeout)
+            timeout=timeout,
+            identity_auth=identity_auth)
         self._stdout_buffer = BytesIO()
         self._stderr_buffer = BytesIO()
         self._stdout_reader = None
@@ -101,6 +120,15 @@ class SSHClient(BaseSSHClient):
         self.session.options_set(options.USER, self.user)
         self.session.options_set(options.HOST, self.host)
         self.session.options_set_port(self.port)
+        if self.gssapi_server_identity:
+            self.session.options_set(
+                options.GSSAPI_SERVER_IDENTITY, self.gssapi_server_identity)
+        if self.gssapi_client_identity:
+            self.session.options_set(
+                options.GSSAPI_CLIENT_IDENTITY, self.gssapi_client_identity)
+        if self.gssapi_client_identity or self.gssapi_server_identity:
+            self.session.options_set_gssapi_delegate_credentials(
+                self.gssapi_delegate_credentials)
         self.session.set_socket(self.sock)
         logger.debug("Session started, connecting with existing socket")
         try:
@@ -110,24 +138,62 @@ class SSHClient(BaseSSHClient):
                 return self._connect_init_retry(retries)
             msg = "Error connecting to host %s:%s - %s"
             logger.error(msg, self.host, self.port, ex)
-            raise
+            ex.host = self.host
+            ex.port = self.port
+            raise ex
         try:
             self.auth()
         except Exception as ex:
             while retries < self.num_retries:
                 return self._connect_init_retry(retries)
             msg = "Authentication error while connecting to %s:%s - %s"
-            raise AuthenticationException(msg, self.host, self.port, ex)
+            ex = AuthenticationException(msg, self.host, self.port, ex)
+            ex.host = self.host
+            ex.port = self.port
+            raise ex
         logger.debug("Authentication completed successfully - "
                      "setting session to non-blocking mode")
         self.session.set_blocking(0)
 
+    def auth(self):
+        if self.pkey is not None:
+            logger.debug(
+                "Proceeding with private key file authentication")
+            return self._pkey_auth(self.pkey, self.password)
+        # if self.allow_agent:
+        #     try:
+        #         self.session.userauth_agent(self.user)
+        #     except Exception as ex:
+        #         logger.debug("Agent auth failed with %s, "
+        #                      "continuing with other authentication methods",
+        #                      ex)
+        #     else:
+        #         logger.debug(
+        #             "Authentication with SSH Agent succeeded, "
+        #             "continuing with pub key auth")
+        if self.gssapi_server_identity and self.gssapi_client_identity:
+            try:
+                self.session.userauth_gssapi()
+            except Exception as ex:
+                logger.error(
+                    "GSSAPI authentication with server id %s and client id %s failed",
+                    self.gssapi_server_identity, self.gssapi_client_identity)
+        if self.identity_auth:
+            try:
+                self._identity_auth()
+            except AuthenticationException:
+                if self.password is None:
+                    raise
+        logger.debug("Private key auth failed, trying password")
+        self._password_auth()
+
     def _password_auth(self):
+        if not self.password:
+            raise AuthenticationException("All authentication methods failed")
         try:
             self.session.userauth_password(self.password)
         except Exception as ex:
-            raise AuthenticationException(
-                "Password authentication failed - %s", ex)
+            raise AuthenticationException("Password authentication failed - %s", ex)
 
     def _pkey_auth(self, pkey, password=None):
         pkey = import_privkey_file(pkey, password)

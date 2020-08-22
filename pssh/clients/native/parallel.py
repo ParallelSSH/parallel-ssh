@@ -40,7 +40,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                  proxy_host=None, proxy_port=22,
                  proxy_user=None, proxy_password=None, proxy_pkey=None,
                  forward_ssh_agent=False, tunnel_timeout=None,
-                 keepalive_seconds=60):
+                 keepalive_seconds=60, identity_auth=True):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -89,6 +89,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent.
         :type allow_agent: bool
+        :param identity_auth: (Optional) set to False to disable attempting to
+          authenticate with default identity files from
+          `pssh.clients.base_ssh_client.BaseSSHClient.IDENTITIES`
+        :type identity_auth: bool
         :param proxy_host: (Optional) SSH host to tunnel connection through
           so that SSH clients connect to host via client -> proxy_host -> host
         :type proxy_host: str
@@ -121,7 +125,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, hosts, user=user, password=password, port=port, pkey=pkey,
             allow_agent=allow_agent, num_retries=num_retries,
             timeout=timeout, pool_size=pool_size,
-            host_config=host_config, retry_delay=retry_delay)
+            host_config=host_config, retry_delay=retry_delay,
+            identity_auth=identity_auth)
         self.pkey = _validate_pkey_path(pkey)
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
@@ -341,7 +346,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     allow_agent=self.allow_agent, retry_delay=self.retry_delay,
                     proxy_host=proxy_host, _auth_thread_pool=auth_thread_pool,
                     forward_ssh_agent=self.forward_ssh_agent,
-                    keepalive_seconds=self.keepalive_seconds)
+                    keepalive_seconds=self.keepalive_seconds,
+                    identity_auth=self.identity_auth,
+                )
                 self.host_clients[host] = _client
                 self._host_clients[(host_i, host)] = _client
                 return _client
