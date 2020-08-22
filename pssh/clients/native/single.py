@@ -141,7 +141,9 @@ class SSHClient(BaseSSHClient):
             msg = "Error connecting to host %s:%s - %s"
             logger.error(msg, self.host, self.port, ex)
             if isinstance(ex, SSH2Timeout):
-                raise Timeout(msg, self.host, self.port, ex)
+                ex = Timeout(msg, self.host, self.port, ex)
+                ex.host = self.host
+                raise ex
             ex.host = self.host
             ex.port = self.port
             raise
@@ -239,7 +241,9 @@ class SSHClient(BaseSSHClient):
             wait_select(self.session, timeout=timeout)
             ret = func()
             if ret == LIBSSH2_ERROR_EAGAIN and timeout is not None:
-                raise Timeout
+                ex = Timeout()
+                ex.host = self.host
+                raise ex
 
     def wait_finished(self, channel, timeout=None):
         """Wait for EOF from channel and close channel.
