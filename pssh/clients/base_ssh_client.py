@@ -37,7 +37,7 @@ from .native.common import _validate_pkey_path
 Hub.NOT_ERROR = (Exception,)
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
-THREAD_POOL = get_hub().threadpool
+# THREAD_POOL = get_hub().threadpool
 
 
 class BaseSSHClient(object):
@@ -76,10 +76,10 @@ class BaseSSHClient(object):
         self.pkey = _validate_pkey_path(pkey, self.host)
         self.identity_auth = identity_auth
         self._connect(self._host, self.port)
-        if _auth_thread_pool:
-            THREAD_POOL.apply(self._init)
-        else:
-            self._init()
+        # if _auth_thread_pool:
+        #     THREAD_POOL.apply(self._init)
+        # else:
+        self._init()
 
     def disconnect(self):
         raise NotImplementedError

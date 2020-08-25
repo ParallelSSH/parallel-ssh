@@ -276,15 +276,17 @@ class ParallelSSHClient(BaseParallelSSHClient):
             raise Timeout(
                 "Timeout of %s sec(s) reached on host %s with command "
                 "still running", timeout, host)
-        if timeout:
-            # Must consume buffers prior to EOF check
+        if consume_output:
             self._consume_output(stdout, stderr)
-            if not channel.eof():
-                raise Timeout(
-                    "Timeout of %s sec(s) reached on host %s with command "
-                    "still running", timeout, host)
-        elif consume_output:
-            self._consume_output(stdout, stderr)
+        # if timeout:
+        #     # Must consume buffers prior to EOF check
+        #     self._consume_output(stdout, stderr)
+        #     if not channel.eof():
+        #         raise Timeout(
+        #             "Timeout of %s sec(s) reached on host %s with command "
+        #             "still running", timeout, host)
+        # elif consume_output:
+        #     self._consume_output(stdout, stderr)
 
     def _start_tunnel_thread(self):
         self._tunnel_lock = RLock()
