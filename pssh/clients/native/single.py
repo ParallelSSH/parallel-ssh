@@ -107,14 +107,14 @@ class SSHClient(BaseSSHClient):
     def disconnect(self):
         """Disconnect session, close socket if needed."""
         logger.debug("Disconnecting client for host %s", self.host)
+        self._keepalive_greenlet = None
         if self.session is not None:
             try:
                 self._eagain(self.session.disconnect)
             except Exception:
                 pass
-        if self.sock is not None and not self.sock.closed:
-            self.sock.close()
-            logger.debug("Client socket closed for host %s", self.host)
+            self.session = None
+        self.sock = None
 
     def spawn_send_keepalive(self):
         """Spawns a new greenlet that sends keep alive messages every
@@ -211,7 +211,7 @@ class SSHClient(BaseSSHClient):
         channel = self.open_session() if channel is None else channel
         if use_pty:
             self._eagain(channel.pty)
-        logger.debug("Executing command '%s'" % cmd)
+        logger.debug("Executing command '%s'", cmd)
         self._eagain(channel.execute, cmd)
         return channel
 

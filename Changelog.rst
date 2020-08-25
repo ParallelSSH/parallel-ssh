@@ -1,7 +1,7 @@
 Change Log
 ============
 
-1.13.0 (unreleased)
+1.12.0 (unreleased)
 +++++++++++++++++++
 
 * Added ``ssh-python`` (`libssh <https://libssh.org>`_) based native client with ``run_command`` implementation.
@@ -19,9 +19,11 @@ Please migrate to one of the two native clients if have not already as paramiko 
 Users that require paramiko for any reason can pin their parallel-ssh versions to `parallel-ssh<2.0.0`.
 
 
-1.12.0
-+++++++
+1.11.2
+++++++
 
+Fixes
+------
 
 * `ParallelSSHClient` going out of scope would cause new client sessions to fail if `client.join` was not called prior - #200
 

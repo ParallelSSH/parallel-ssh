@@ -212,7 +212,7 @@ class TunnelTest(unittest.TestCase):
             tunnel.cleanup()
             spawn(proxy_client.execute, 'echo me')
             proxy_client.disconnect()
-            self.assertTrue(proxy_client.sock.closed)
+            self.assertEqual(proxy_client.sock, None)
         finally:
             remote_server.stop()
 

@@ -85,7 +85,10 @@ class BaseSSHClient(object):
         raise NotImplementedError
 
     def __del__(self):
-        self.disconnect()
+        try:
+            self.disconnect()
+        except Exception:
+            pass
 
     def __enter__(self):
         return self
