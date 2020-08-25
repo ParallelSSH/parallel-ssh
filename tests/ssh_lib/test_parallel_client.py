@@ -435,3 +435,11 @@ class LibSSHParallelTest(unittest.TestCase):
         self.assertFalse(self.client.finished(output))
         self.client.join(output)
         self.assertTrue(self.client.finished(output))
+
+    def test_agent_auth(self):
+        client = ParallelSSHClient(
+            [self.host], port=self.port,
+            num_retries=1,
+            pkey=None, allow_agent=True,
+            identity_auth=True)
+        self.assertRaises(AuthenticationException, client.run_command, self.cmd)

@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2018 Panos Kittenis.
+# Copyright (C) 2014-2020 Panos Kittenis.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -83,7 +83,7 @@ class SSHClient(BaseSSHClient):
         :type gssapi_server_identity: str
         :param gssapi_server_identity: Set GSSAPI client identity.
         :type gssapi_server_identity: str
-        :param gssapi_delegate_credentials: Enable/disable server credentials 
+        :param gssapi_delegate_credentials: Enable/disable server credentials
           delegation.
         :type gssapi_delegate_credentials: bool
 
@@ -160,17 +160,18 @@ class SSHClient(BaseSSHClient):
             logger.debug(
                 "Proceeding with private key file authentication")
             return self._pkey_auth(self.pkey, self.password)
-        # if self.allow_agent:
-        #     try:
-        #         self.session.userauth_agent(self.user)
-        #     except Exception as ex:
-        #         logger.debug("Agent auth failed with %s, "
-        #                      "continuing with other authentication methods",
-        #                      ex)
-        #     else:
-        #         logger.debug(
-        #             "Authentication with SSH Agent succeeded, "
-        #             "continuing with pub key auth")
+        if self.allow_agent:
+            try:
+                self.session.userauth_agent(self.user)
+            except Exception as ex:
+                logger.debug(
+                    "Agent auth failed with %s, "
+                    "continuing with other authentication methods",
+                    ex)
+            else:
+                logger.debug(
+                    "Authentication with SSH Agent succeeded.")
+                return
         if self.gssapi_server_identity and self.gssapi_client_identity:
             try:
                 self.session.userauth_gssapi()
@@ -196,7 +197,8 @@ class SSHClient(BaseSSHClient):
             raise AuthenticationException("Password authentication failed - %s", ex)
 
     def _pkey_auth(self, pkey, password=None):
-        pkey = import_privkey_file(pkey, password)
+        password = b'' if not password else password
+        pkey = import_privkey_file(pkey, passphrase=password)
         self.session.userauth_publickey(pkey)
 
     def open_session(self):
