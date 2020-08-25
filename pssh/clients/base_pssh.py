@@ -212,8 +212,8 @@ class BaseParallelSSHClient(object):
                      shell=None, use_pty=False,
                      encoding='utf-8', timeout=None):
         """Make SSHClient if needed, run command on host"""
-        _client = self._make_ssh_client(host_i, host)
         try:
+            _client = self._make_ssh_client(host_i, host)
             return _client.run_command(
                 command, sudo=sudo, user=user, shell=shell,
                 use_pty=use_pty, encoding=encoding, timeout=timeout), _client
