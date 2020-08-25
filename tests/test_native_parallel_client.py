@@ -1511,6 +1511,5 @@ class ParallelSSHClientTest(unittest.TestCase):
                                     return_list=True)
         client.join(output, consume_output=True)
         single_client = list(client._host_clients.values())[0]
-        self.assertFalse(single_client.sock.closed)
         del client
-        self.assertTrue(single_client.sock.closed)
+        self.assertEqual(single_client.session, None)
