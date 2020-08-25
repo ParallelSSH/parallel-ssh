@@ -1,7 +1,7 @@
 Change Log
 ============
 
-1.12.0 (unreleased)
+1.13.0 (unreleased)
 +++++++++++++++++++
 
 * Added ``ssh-python`` (`libssh <https://libssh.org>`_) based native client with ``run_command`` implementation.
@@ -12,13 +12,18 @@ Change Log
 
 This release adds (yet another) native client, this one based on `libssh <https://libssh.org>`_. Key features of this client are more supported authentication methods compared to libssh2.
 
-Future releases will also enable GSS-API (Kerberos) and certificate authentication for the ssh-python client.
-
-Between the ``ssh-python`` and ``ssh2-python`` clients, ``parallel-ssh`` now has feature parity with paramiko using entirely native clients, all non-blocking with the performance and scalability that brings, and one step closer to removing the paramiko dependency entirely.
+Future releases will also enable certificate authentication for the ssh-python client.
 
 Please migrate to one of the two native clients if have not already as paramiko is very quickly accumulating (more) bugs and the client based on it will be removed in `2.0.0`.
 
 Users that require paramiko for any reason can pin their parallel-ssh versions to `parallel-ssh<2.0.0`.
+
+
+1.12.0
++++++++
+
+
+* `ParallelSSHClient` going out of scope would cause new client sessions to fail if `client.join` was not called prior - #200
 
 
 1.11.0
