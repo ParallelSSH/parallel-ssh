@@ -1,6 +1,15 @@
 Change Log
 ============
 
+1.11.2
+++++++
+
+Fixes
+------
+
+* `ParallelSSHClient.disconnect` would cause new client sessions to fail if `client.join` was not called prior - #200
+
+
 1.11.0
 ++++++
 

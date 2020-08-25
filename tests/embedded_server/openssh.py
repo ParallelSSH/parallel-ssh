@@ -41,9 +41,9 @@ class OpenSSHServer(object):
         self.listen_ip = listen_ip
         self.port = port
         self.server_proc = None
-        self.sshd_config = SSHD_CONFIG + '_%s' % ''.join(
-            random.choice(string.ascii_lowercase + string.digits)
-            for _ in range(8))
+        self.random_server = ''.join(random.choice(string.ascii_lowercase + string.digits)
+                                     for _ in range(8))
+        self.sshd_config = SSHD_CONFIG + '_%s' % self.random_server
         self._fix_masks()
         self.make_config()
 
@@ -60,7 +60,9 @@ class OpenSSHServer(object):
         template = Template(tmpl)
         with open(self.sshd_config, 'w') as fh:
             fh.write(template.render(parent_dir=os.path.abspath(DIR_NAME),
-                                     listen_ip=self.listen_ip))
+                                     listen_ip=self.listen_ip,
+                                     random_server=self.random_server,
+            ))
             fh.write(os.linesep)
 
     def start_server(self):
