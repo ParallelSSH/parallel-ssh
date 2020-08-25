@@ -172,12 +172,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           syntax, eg `shell='bash -c'` or `shell='zsh -c'`.
         :type shell: str
         :param use_pty: (Optional) Enable/Disable use of pseudo terminal
-          emulation. Disabling it will prohibit capturing standard input/output.
-          This is required in majority of cases, exceptions being where a shell
-          is not used and/or input/output is not required. In particular
-          when running a command which deliberately closes input/output pipes,
-          such as a daemon process, you may want to disable ``use_pty``.
-          Defaults to ``True``
+          emulation. Defaults to ``False``
         :type use_pty: bool
         :param host_args: (Optional) Format command string with per-host
           arguments in ``host_args``. ``host_args`` length must equal length of
