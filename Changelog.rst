@@ -1,10 +1,10 @@
 Change Log
 ============
 
-1.12.0 (unreleased)
-+++++++++++++++++++
+1.12.0
+++++++
 
-* Added ``ssh-python`` (`libssh <https://libssh.org>`_) based native client with ``run_command`` implementation.
+* Added `ssh-python` (`libssh <https://libssh.org>`_) based native client with `run_command` implementation.
 
 .. note::
 

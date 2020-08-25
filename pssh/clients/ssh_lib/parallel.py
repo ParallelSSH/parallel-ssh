@@ -1,16 +1,16 @@
 # This file is part of parallel-ssh.
-
+#
 # Copyright (C) 2014-2020 Panos Kittenis.
-
+#
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation, version 2.1.
-
+#
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
-
+#
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
@@ -35,6 +35,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                  num_retries=DEFAULT_RETRIES, timeout=None, pool_size=100,
                  allow_agent=False, host_config=None, retry_delay=RETRY_DELAY,
                  forward_ssh_agent=False,
+                 gssapi_auth=False,
                  gssapi_server_identity=None,
                  gssapi_client_identity=None,
                  gssapi_delegate_credentials=False,
@@ -129,6 +130,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         self.pkey = _validate_pkey_path(pkey)
         self.forward_ssh_agent = forward_ssh_agent
         self._clients_lock = RLock()
+        self.gssapi_auth = gssapi_auth
         self.gssapi_server_identity = gssapi_server_identity
         self.gssapi_client_identity = gssapi_client_identity
         self.gssapi_delegate_credentials = gssapi_delegate_credentials
@@ -274,6 +276,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     pkey=_pkey, num_retries=self.num_retries,
                     timeout=self.timeout,
                     allow_agent=self.allow_agent, retry_delay=self.retry_delay,
+                    gssapi_auth=self.gssapi_auth,
                     gssapi_server_identity=self.gssapi_server_identity,
                     gssapi_client_identity=self.gssapi_client_identity,
                     gssapi_delegate_credentials=self.gssapi_delegate_credentials,

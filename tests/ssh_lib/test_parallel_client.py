@@ -409,7 +409,7 @@ class LibSSHParallelTest(unittest.TestCase):
         self.assertEqual(len(contents), len(_out))
         self.assertListEqual(_contents, _out)
 
-    def test_gssapi_creds(self):
+    def test_gssapi_auth(self):
         _server_id = 'server_id'
         _client_id = 'client_id'
         client = ParallelSSHClient(
@@ -418,6 +418,12 @@ class LibSSHParallelTest(unittest.TestCase):
             gssapi_server_identity=_server_id,
             gssapi_client_identity=_client_id,
             gssapi_delegate_credentials=True,
+            identity_auth=False)
+        self.assertRaises(AuthenticationException, client.run_command, self.cmd)
+        client = ParallelSSHClient(
+            [self.host], port=self.port, num_retries=1,
+            pkey=None,
+            gssapi_auth=True,
             identity_auth=False)
         self.assertRaises(AuthenticationException, client.run_command, self.cmd)
         # ssh_client = list(client._host_clients.values())[0]

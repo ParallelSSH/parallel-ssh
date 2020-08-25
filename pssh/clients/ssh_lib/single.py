@@ -47,6 +47,7 @@ class SSHClient(BaseSSHClient):
                  retry_delay=RETRY_DELAY,
                  allow_agent=False, timeout=None,
                  identity_auth=True,
+                 gssapi_auth=False,
                  gssapi_server_identity=None,
                  gssapi_client_identity=None,
                  gssapi_delegate_credentials=False,
@@ -79,10 +80,15 @@ class SSHClient(BaseSSHClient):
           authenticate with default identity files from
           `pssh.clients.base_ssh_client.BaseSSHClient.IDENTITIES`
         :type identity_auth: bool
+        :param gssapi_server_identity: Enable GSS-API authentication.
+          Uses GSS-MIC key exchange. Enabled if either gssapi_server_identity or
+          gssapi_client_identity are provided.
+        :type gssapi_auth: bool
+        :type gssapi_server_identity: str
         :param gssapi_server_identity: Set GSSAPI server identity.
         :type gssapi_server_identity: str
-        :param gssapi_server_identity: Set GSSAPI client identity.
-        :type gssapi_server_identity: str
+        :param gssapi_client_identity: Set GSSAPI client identity.
+        :type gssapi_client_identity: str
         :param gssapi_delegate_credentials: Enable/disable server credentials
           delegation.
         :type gssapi_delegate_credentials: bool
@@ -90,6 +96,7 @@ class SSHClient(BaseSSHClient):
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
         """
+        self.gssapi_auth = gssapi_auth
         self.gssapi_server_identity = gssapi_server_identity
         self.gssapi_client_identity = gssapi_client_identity
         self.gssapi_delegate_credentials = gssapi_delegate_credentials
@@ -172,13 +179,14 @@ class SSHClient(BaseSSHClient):
                 logger.debug(
                     "Authentication with SSH Agent succeeded.")
                 return
-        if self.gssapi_server_identity and self.gssapi_client_identity:
+        if self.gssapi_auth or (self.gssapi_server_identity or self.gssapi_client_identity):
             try:
                 self.session.userauth_gssapi()
             except Exception as ex:
                 logger.error(
-                    "GSSAPI authentication with server id %s and client id %s failed",
-                    self.gssapi_server_identity, self.gssapi_client_identity)
+                    "GSSAPI authentication with server id %s and client id %s failed - %s",
+                    self.gssapi_server_identity, self.gssapi_client_identity,
+                    ex)
         if self.identity_auth:
             try:
                 self._identity_auth()
