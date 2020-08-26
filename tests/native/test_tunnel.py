@@ -15,8 +15,6 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from __future__ import print_function
-
 import unittest
 import pwd
 import os
@@ -40,8 +38,8 @@ from pssh.exceptions import UnknownHostException, \
     ProxyError
 from ssh2.exceptions import ChannelFailure, SocketSendError
 
-from .embedded_server.openssh import ThreadedOpenSSHServer, OpenSSHServer
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
+from ..embedded_server.openssh import ThreadedOpenSSHServer, OpenSSHServer
 
 
 logger.setLevel(logging.DEBUG)

@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2015-2018 Panos Kittenis
+# Copyright (C) 2014-2020 Panos Kittenis
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -19,31 +19,30 @@ import unittest
 import pwd
 import os
 import logging
-import socket
+# import socket
 from sys import version_info
 
-from .embedded_server.openssh import OpenSSHServer
-from ssh2.session import Session
-from pssh.clients.native import SSHClient, logger as ssh_logger
+from ..embedded_server.openssh import OpenSSHServer
+from pssh.clients.ssh.single import SSHClient, logger as ssh_logger
 
 
 ssh_logger.setLevel(logging.DEBUG)
 logging.basicConfig()
 
-PKEY_FILENAME = os.path.sep.join([os.path.dirname(__file__), 'client_pkey'])
+PKEY_FILENAME = os.path.sep.join([os.path.dirname(__file__), '..', 'client_pkey'])
 PUB_FILE = "%s.pub" % (PKEY_FILENAME,)
 
 
-class SSH2TestCase(unittest.TestCase):
+class SSHTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         _mask = int('0600') if version_info <= (2,) else 0o600
         os.chmod(PKEY_FILENAME, _mask)
-        cls.server = OpenSSHServer()
-        cls.server.start_server()
         cls.host = '127.0.0.1'
-        cls.port = 2222
+        cls.port = 2322
+        cls.server = OpenSSHServer(listen_ip=cls.host, port=cls.port)
+        cls.server.start_server()
         cls.cmd = 'echo me'
         cls.resp = u'me'
         cls.user_key = PKEY_FILENAME
@@ -55,5 +54,6 @@ class SSH2TestCase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        del cls.client
         cls.server.stop()
         del cls.server

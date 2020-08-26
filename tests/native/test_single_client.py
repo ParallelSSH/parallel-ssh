@@ -6,8 +6,6 @@ import subprocess
 
 from gevent import socket, sleep, spawn
 
-from .base_ssh2_case import SSH2TestCase
-from .embedded_server.openssh import OpenSSHServer
 from pssh.clients.native import SSHClient, logger as ssh_logger
 from ssh2.session import Session
 from ssh2.channel import Channel
@@ -16,6 +14,9 @@ from ssh2.exceptions import SocketDisconnectError, BannerRecvError, SocketRecvEr
     AgentAuthenticationError, AgentGetIdentityError
 from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
     SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout
+
+from .base_ssh2_case import SSH2TestCase
+from ..embedded_server.openssh import OpenSSHServer
 
 
 ssh_logger.setLevel(logging.DEBUG)
@@ -123,7 +124,7 @@ class SSH2ClientTest(SSH2TestCase):
         lines = int(subprocess.check_output(
             ['wc', '-l', 'pssh/native/_ssh2.c']).split()[0])
         dir_name = os.path.dirname(__file__)
-        ssh2_file = os.sep.join((dir_name, '..', 'pssh', 'native', '_ssh2.c'))
+        ssh2_file = os.sep.join((dir_name, '..', '..', 'pssh', 'native', '_ssh2.c'))
         channel, host, stdout, stderr, stdin = self.client.run_command(
             'cat %s' % ssh2_file)
         output = list(stdout)

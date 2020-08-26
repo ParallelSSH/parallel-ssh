@@ -30,7 +30,7 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_SFTP_S_IWUSR, LIBSSH2_SFTP_S_IXUSR, LIBSSH2_SFTP_S_IROTH, \
     LIBSSH2_SFTP_S_IXGRP, LIBSSH2_SFTP_S_IXOTH
 
-from ..base_ssh_client import BaseSSHClient
+from ..base.single import BaseSSHClient
 from ...exceptions import AuthenticationException, SessionError, SFTPError, \
     SFTPIOError, Timeout, SCPError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY

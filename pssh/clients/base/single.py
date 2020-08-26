@@ -28,10 +28,10 @@ from socket import gaierror as sock_gaierror, error as sock_error
 from gevent import sleep, socket, get_hub
 from gevent.hub import Hub
 
-from ..exceptions import UnknownHostException, AuthenticationException, \
+from ..common import _validate_pkey_path
+from ...constants import DEFAULT_RETRIES, RETRY_DELAY
+from ...exceptions import UnknownHostException, AuthenticationException, \
     ConnectionErrorException
-from ..constants import DEFAULT_RETRIES, RETRY_DELAY
-from .native.common import _validate_pkey_path
 
 
 Hub.NOT_ERROR = (Exception,)

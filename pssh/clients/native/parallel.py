@@ -20,12 +20,12 @@ from collections import deque
 from gevent import sleep
 from gevent.lock import RLock
 
-from ..base_pssh import BaseParallelSSHClient
-from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from .single import SSHClient
-from ...exceptions import ProxyError, Timeout, HostArgumentException
 from .tunnel import Tunnel
-from .common import _validate_pkey_path
+from ..common import _validate_pkey_path
+from ..base.parallel import BaseParallelSSHClient
+from ...constants import DEFAULT_RETRIES, RETRY_DELAY
+from ...exceptions import ProxyError, Timeout, HostArgumentException
 
 
 logger = logging.getLogger(__name__)

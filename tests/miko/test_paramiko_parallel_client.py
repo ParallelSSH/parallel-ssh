@@ -2,7 +2,7 @@
 #
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2015 Panos Kittenis
+# Copyright (C) 2014-2020 Panos Kittenis
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -36,12 +36,12 @@ from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SSHException, \
     HostArgumentException
 from pssh.utils import load_private_key
-from .embedded_server.embedded_server import start_server, make_socket, \
-     logger as server_logger, paramiko_logger, start_server_from_ip
+from ..embedded_server.embedded_server import start_server, make_socket, \
+    logger as server_logger, paramiko_logger, start_server_from_ip
 from pssh.agent import SSHAgent
 from paramiko import RSAKey
 
-PKEY_FILENAME = os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key'])
+PKEY_FILENAME = os.path.sep.join([os.path.dirname(__file__), '..', 'test_client_private_key'])
 USER_KEY = RSAKey.from_private_key_file(PKEY_FILENAME)
 
 server_logger.setLevel(logging.DEBUG)

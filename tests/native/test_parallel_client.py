@@ -36,7 +36,7 @@ import time
 
 
 from pytest import mark
-from gevent import joinall, spawn, Greenlet
+from gevent import joinall, spawn, socket, Greenlet
 from pssh.clients.native import ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
@@ -45,9 +45,8 @@ from pssh.exceptions import UnknownHostException, \
 from pssh.output import HostOutput
 from pssh import logger as pssh_logger
 
-from .embedded_server.embedded_server import make_socket
-from .embedded_server.openssh import OpenSSHServer
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
+from ..embedded_server.openssh import OpenSSHServer
 
 
 pssh_logger.setLevel(logging.DEBUG)
@@ -86,10 +85,12 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.long_cmd = lambda lines: 'for (( i=0; i<%s; i+=1 )) do echo $i; sleep 1; done' % (lines,)
 
     def make_random_port(self, host=None):
-        host = self.host if not host else host
-        listen_socket = make_socket(host)
-        listen_port = listen_socket.getsockname()[1]
-        listen_socket.close()
+        host = '127.0.0.1' if host is None else host
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind((host, 0))
+        listen_port = sock.getsockname()[1]
+        sock.close()
         return listen_port
 
     def test_client_join_consume_output(self):
@@ -970,12 +971,9 @@ class ParallelSSHClientTest(unittest.TestCase):
                                  hosts[0][0])
         self.assertTrue(output[hosts[1][0]].exit_code is None,
                         msg="Execution failed on host %s" % (hosts[1][0],))
-        self.assertTrue(client.host_clients[hosts[0][0]].user == self.user,
-                        msg="Host config user override failed")
-        self.assertTrue(client.host_clients[hosts[0][0]].password == password,
-                        msg="Host config password override failed")
-        self.assertTrue(client.host_clients[hosts[0][0]].pkey == self.user_key,
-                        msg="Host config pkey override failed")
+        self.assertEqual(client.host_clients[hosts[0][0]].user, self.user)
+        self.assertEqual(client.host_clients[hosts[0][0]].password, password)
+        self.assertEqual(client.host_clients[hosts[0][0]].pkey, os.path.abspath(self.user_key))
         for server in servers:
             server.stop()
 

@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2018 Panos Kittenis
+# Copyright (C) 2014-2020 Panos Kittenis
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -22,17 +22,16 @@ import logging
 from datetime import datetime
 from sys import version_info
 
-from gevent import joinall, spawn, Greenlet
+from gevent import joinall, spawn, socket, Greenlet
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
     ProxyError, PKeyFileError
 from pssh import logger as pssh_logger
-from pssh.clients.ssh_lib.parallel import ParallelSSHClient
+from pssh.clients.ssh.parallel import ParallelSSHClient
 
-from ..embedded_server.embedded_server import make_socket
-from ..embedded_server.openssh import OpenSSHServer
 from .base_ssh_case import PKEY_FILENAME, PUB_FILE
+from ..embedded_server.openssh import OpenSSHServer
 
 
 pssh_logger.setLevel(logging.DEBUG)
@@ -71,11 +70,12 @@ class LibSSHParallelTest(unittest.TestCase):
     def setUp(self):
         self.long_cmd = lambda lines: 'for (( i=0; i<%s; i+=1 )) do echo $i; sleep 1; done' % (lines,)
 
-    def make_random_port(self, host=None):
-        host = self.host if not host else host
-        listen_socket = make_socket(host)
-        listen_port = listen_socket.getsockname()[1]
-        listen_socket.close()
+    def make_random_port(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(('127.0.0.1', 0))
+        listen_port = sock.getsockname()[1]
+        sock.close()
         return listen_port
 
     def test_client_join_stdout(self):
@@ -287,7 +287,7 @@ class LibSSHParallelTest(unittest.TestCase):
         """Test that we get connection error exception in output with correct arguments"""
         # Make port with no server listening on it on separate ip
         host = '127.0.0.3'
-        port = self.make_random_port(host=host)
+        port = self.make_random_port()
         hosts = [host]
         client = ParallelSSHClient(hosts, port=port,
                                    pkey=self.user_key,

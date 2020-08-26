@@ -19,8 +19,8 @@ import logging
 from gevent.lock import RLock
 
 from .single import SSHClient
-from ..native.common import _validate_pkey_path
-from ..base_pssh import BaseParallelSSHClient
+from ..common import _validate_pkey_path
+from ..base.parallel import BaseParallelSSHClient
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import Timeout
 

@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2018 Panos Kittenis
+# Copyright (C) 2014-2020 Panos Kittenis
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -22,11 +22,10 @@ from ssh.session import Session
 # from ssh.exceptions import SocketDisconnectError
 from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
     SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout
-from pssh.clients.ssh_lib.single import SSHClient, logger as ssh_logger
+from pssh.clients.ssh.single import SSHClient, logger as ssh_logger
 
-from ..embedded_server.openssh import OpenSSHServer
 from .base_ssh_case import SSHTestCase
-
+from ..embedded_server.openssh import OpenSSHServer
 
 ssh_logger.setLevel(logging.DEBUG)
 logging.basicConfig()

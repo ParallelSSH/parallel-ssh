@@ -17,9 +17,9 @@
 
 import logging
 try:
-    from cStringIO import StringIO as BytesIO
-except ImportError:
     from io import BytesIO
+except ImportError:
+    from cStringIO import StringIO as BytesIO
 
 from gevent import sleep, spawn, Timeout as GeventTimeout
 from ssh import options
@@ -28,7 +28,7 @@ from ssh.key import import_privkey_file
 from ssh.exceptions import EOF
 from ssh.error_codes import SSH_AGAIN
 
-from ..base_ssh_client import BaseSSHClient
+from ..base.single import BaseSSHClient
 from ...exceptions import AuthenticationException, SessionError, Timeout
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...native._ssh2 import wait_select_ssh as wait_select, eagain_ssh as eagain

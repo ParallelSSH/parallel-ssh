@@ -26,8 +26,8 @@ from ssh2.channel import Channel
 from pssh import logger as pssh_logger
 from pssh.clients import ParallelSSHClient
 
-from .embedded_server.openssh import OpenSSHServer
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
+from ..embedded_server.openssh import OpenSSHServer
 
 
 pssh_logger.setLevel(logging.DEBUG)
