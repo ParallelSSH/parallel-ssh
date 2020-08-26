@@ -6,17 +6,6 @@ There are several more advanced usage features of ``parallel-ssh``, such as tunn
 Agents and Private Keys
 ************************
 
-SSH Agent forwarding
-======================
-
-SSH agent forwarding, what ``ssh -A`` does on the command line, is supported and enabled by default. Creating a client object as:
-
-.. code-block:: python
-
-   ParallelSSHClient(hosts, forward_ssh_agent=False)
-
-will disable this behaviour.
-
 Programmatic Private Keys
 ============================
 
@@ -37,24 +26,13 @@ A private key can also be provided programmatically.
 Where ``my_key`` is a private key file under `.ssh` in the user's home directory.
 
 
-Disabling use of system SSH Agent
-====================================
-
-Use of an available SSH agent can also be disabled.
-
-.. code-block:: python
-
-  client = ParallelSSHClient(hosts, pkey=os.path.expanduser("~/.ssh/my_key"),
-                             allow_agent=False)
-
-
 Native clients
 ***************
 
 ssh2-python
 =============
 
-Starting from version ``1.2.0``, the default client in ``parallel-ssh`` is based on `libssh2` via `ssh2-python`. It is a native client, offering C level performance with an easy to use API.
+Starting from version ``1.2.0``, the default client in ``parallel-ssh`` is based on `ssh2-python` (`libssh2`). It is a native client, offering C level performance with an easy to use Python API.
 
 See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of the available clients in the `1.x.x` series.
 
@@ -71,6 +49,7 @@ See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a perf
        for line in host_out.stdout:
            print(line)
 
+`return_list=True` makes `run_command` return a list of `HostOutput` objects which will become the default in `2.0.0`. Dictionary output from `run_command` is deprecated.
 
 .. seealso::
 
