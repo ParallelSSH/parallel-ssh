@@ -19,6 +19,7 @@ import unittest
 import os
 import pwd
 import logging
+import time
 from datetime import datetime
 from sys import version_info
 
@@ -77,6 +78,20 @@ class LibSSHParallelTest(unittest.TestCase):
         listen_port = sock.getsockname()[1]
         sock.close()
         return listen_port
+
+    def test_join_timeout(self):
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.user_key)
+        output = client.run_command('echo me; sleep 2')
+        # Wait for long running command to start to avoid race condition
+        time.sleep(.1)
+        self.assertRaises(Timeout, client.join, output, timeout=1)
+        self.assertFalse(output[self.host].channel.is_eof())
+        # Ensure command has actually finished - avoid race conditions
+        time.sleep(2)
+        client.join(output, timeout=3)
+        self.assertTrue(output[self.host].channel.is_eof())
+        self.assertTrue(client.finished(output))
 
     def test_client_join_stdout(self):
         output = self.client.run_command(self.cmd)

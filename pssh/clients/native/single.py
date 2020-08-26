@@ -275,7 +275,7 @@ class SSHClient(BaseSSHClient):
         """
         if channel is None:
             return
-        # If .eof() returns EAGAIN after a select with a timeout, it means
+        # If wait_eof() returns EAGAIN after a select with a timeout, it means
         # it reached timeout without EOF and _select_timeout will raise
         # timeout exception causing the channel to appropriately
         # not be closed as the command is still running.
