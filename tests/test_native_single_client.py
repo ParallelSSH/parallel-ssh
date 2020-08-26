@@ -11,7 +11,9 @@ from .embedded_server.openssh import OpenSSHServer
 from pssh.clients.native import SSHClient, logger as ssh_logger
 from ssh2.session import Session
 from ssh2.channel import Channel
-from ssh2.exceptions import SocketDisconnectError, BannerRecvError, SocketRecvError
+from ssh2.exceptions import SocketDisconnectError, BannerRecvError, SocketRecvError, \
+    AgentConnectionError, AgentListIdentitiesError, \
+    AgentAuthenticationError, AgentGetIdentityError
 from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
     SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout
 
@@ -171,3 +173,27 @@ class SSH2ClientTest(SSH2TestCase):
             output = list(client.read_output(channel))
             self.assertListEqual(output, [b'me'])
             client.disconnect()
+
+    def test_agent_auth_exceptions(self):
+        """Test SSH agent authentication failure with custom client that
+        does not do auth at class init.
+        """
+        class _SSHClient(SSHClient):
+            def __init__(self, host, port, num_retries):
+                super(SSHClient, self).__init__(
+                    host, port=port, num_retries=1,
+                    allow_agent=True)
+
+            def _init(self):
+                self.session = Session()
+                if self.timeout:
+                    self.session.set_timeout(self.timeout * 1000)
+                self.session.handshake(self.sock)
+
+        client = _SSHClient(self.host, port=self.port,
+                           num_retries=1)
+        self.assertRaises((AgentConnectionError, AgentListIdentitiesError, \
+                           AgentAuthenticationError, AgentGetIdentityError),
+                          client.session.agent_auth, client.user)
+        self.assertRaises(AuthenticationException,
+                          client.auth)

@@ -22,7 +22,8 @@ from warnings import warn
 from gevent import sleep, spawn
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
-    Timeout as SSH2Timeout
+    Timeout as SSH2Timeout, AgentConnectionError, AgentListIdentitiesError, \
+    AgentAuthenticationError, AgentGetIdentityError
 from ssh2.session import Session
 from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR, LIBSSH2_SFTP_S_IRGRP, \
@@ -106,7 +107,6 @@ class SSHClient(BaseSSHClient):
 
     def disconnect(self):
         """Disconnect session, close socket if needed."""
-        # import ipdb; ipdb.set_trace()
         logger.debug("Disconnecting client for host %s", self.host)
         self._keepalive_greenlet = None
         if self.session is not None:
@@ -158,10 +158,35 @@ class SSHClient(BaseSSHClient):
             self.configure_keepalive()
             self._keepalive_greenlet = self.spawn_send_keepalive()
 
-    def _pkey_auth(self, pkey, password=None):
+    def auth(self):
+        if self.pkey is not None:
+            logger.debug(
+                "Proceeding with private key file authentication")
+            return self._pkey_auth(password=self.password)
+        if self.allow_agent:
+            try:
+                self.session.agent_auth(self.user)
+            except (AgentAuthenticationError, AgentConnectionError, AgentGetIdentityError,
+                    AgentListIdentitiesError) as ex:
+                logger.debug("Agent auth failed with %s"
+                             "continuing with other authentication methods", ex)
+            except Exception as ex:
+                logger.error("Unknown error during agent authentication - %s", ex)
+            else:
+                logger.debug("Authentication with SSH Agent succeeded")
+                return
+        try:
+            self._identity_auth()
+        except AuthenticationException:
+            if self.password is None:
+                raise
+            logger.debug("Private key auth failed, trying password")
+            self._password_auth()
+
+    def _pkey_auth(self, password=None):
         self.session.userauth_publickey_fromfile(
             self.user,
-            pkey,
+            self.pkey,
             passphrase=password if password is not None else '')
 
     def _password_auth(self):
