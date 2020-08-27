@@ -328,7 +328,6 @@ class BaseParallelSSHClient(object):
             return
         channel = host_out.channel
         client = host_out.client
-        host = host_out.host
         if client is None:
             return
         stdout, stderr = self.reset_output_generators(

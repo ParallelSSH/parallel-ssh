@@ -22,7 +22,6 @@ from .single import SSHClient
 from ..common import _validate_pkey_path
 from ..base.parallel import BaseParallelSSHClient
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-from ...exceptions import Timeout
 
 
 logger = logging.getLogger(__name__)
