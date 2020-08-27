@@ -1512,6 +1512,23 @@ class ParallelSSHClientTest(unittest.TestCase):
         for host_out in output:
             self.assertFalse(host_out.client.finished(host_out.channel))
 
+    def test_multiple_run_command_timeout(self):
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.user_key)
+        for _ in range(5):
+            output = client.run_command('pwd', return_list=True, timeout=1)
+            for host_out in output:
+                stdout = list(host_out.stdout)
+                self.assertTrue(len(stdout) > 0)
+                self.assertTrue(host_out.client.finished(host_out.channel))
+        output = client.run_command('sleep 2; echo me', return_list=True, timeout=1)
+        for host_out in output:
+            self.assertRaises(Timeout, list, host_out.stdout)
+        client.join(output)
+        for host_out in output:
+            stdout = list(host_out.stdout)
+            self.assertEqual(stdout, ['me'])
+
     # TODO:
     # * forward agent enabled
     # * password auth
