@@ -3,7 +3,7 @@
 
 # This file is part of parallel-ssh.
 
-# Copyright (C) 2015 Panos Kittenis
+# Copyright (C) 2014-2020 Panos Kittenis
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -28,17 +28,16 @@ import shutil
 import unittest
 from pssh.ssh_client import SSHClient, logger
 from pssh.exceptions import  UnknownHostException, AuthenticationException,\
-     ConnectionErrorException, UnknownHostException, SSHException
+    ConnectionErrorException, UnknownHostException, SSHException
 from pssh import utils
-from .embedded_server.embedded_server import start_server, make_socket, logger as server_logger, \
-     paramiko_logger
 from pssh.agent import SSHAgent
 import paramiko
 import os
 import random, string
 import tempfile
 
-from .test_paramiko_parallel_client import USER_KEY
+from ..embedded_server.embedded_server import start_server, make_socket, logger as server_logger, \
+    paramiko_logger
 
 
 try:
@@ -46,8 +45,10 @@ try:
 except NameError:
     xrange = range
 
-USER_KEY_PATH = os.path.sep.join([os.path.dirname(__file__), 'test_client_private_key'])
+
+USER_KEY_PATH = os.path.sep.join([os.path.dirname(__file__), '..', 'test_client_private_key'])
 USER_KEY = paramiko.RSAKey.from_private_key_file(USER_KEY_PATH)
+
 
 class SSHClientTest(unittest.TestCase):
 

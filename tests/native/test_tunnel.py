@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2015-2018 Panos Kittenis
+# Copyright (C) 2014-2020 Panos Kittenis
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -15,14 +15,13 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from __future__ import print_function
-
 import unittest
 import pwd
 import os
 import shutil
 import sys
 import string
+import logging
 from socket import timeout as socket_timeout
 from sys import version_info
 import random
@@ -30,6 +29,7 @@ import time
 from collections import deque
 
 from gevent import sleep, spawn, Timeout as GTimeout, socket
+from pssh import logger
 from pssh.clients.native.tunnel import Tunnel
 from pssh.clients.native import SSHClient, ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
@@ -38,8 +38,12 @@ from pssh.exceptions import UnknownHostException, \
     ProxyError
 from ssh2.exceptions import ChannelFailure, SocketSendError
 
-from .embedded_server.openssh import ThreadedOpenSSHServer, OpenSSHServer
-from .base_ssh2_test import PKEY_FILENAME, PUB_FILE
+from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
+from ..embedded_server.openssh import ThreadedOpenSSHServer, OpenSSHServer
+
+
+logger.setLevel(logging.DEBUG)
+logging.basicConfig()
 
 
 class TunnelTest(unittest.TestCase):

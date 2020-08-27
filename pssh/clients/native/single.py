@@ -17,49 +17,31 @@
 
 import logging
 import os
-try:
-    import pwd
-except ImportError:
-    WIN_PLATFORM = True
-else:
-    WIN_PLATFORM = False
-from socket import gaierror as sock_gaierror, error as sock_error
 from warnings import warn
 
-from gevent import sleep, socket, get_hub, spawn
-from gevent.hub import Hub
+from gevent import sleep, spawn
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
-    Timeout as SSH2Timeout
+    Timeout as SSH2Timeout, AgentConnectionError, AgentListIdentitiesError, \
+    AgentAuthenticationError, AgentGetIdentityError
 from ssh2.session import Session
 from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR, LIBSSH2_SFTP_S_IRGRP, \
     LIBSSH2_SFTP_S_IWUSR, LIBSSH2_SFTP_S_IXUSR, LIBSSH2_SFTP_S_IROTH, \
     LIBSSH2_SFTP_S_IXGRP, LIBSSH2_SFTP_S_IXOTH
 
-from ...exceptions import UnknownHostException, AuthenticationException, \
-     ConnectionErrorException, SessionError, SFTPError, SFTPIOError, Timeout, \
-     SCPError
+from ..base.single import BaseSSHClient
+from ...exceptions import AuthenticationException, SessionError, SFTPError, \
+    SFTPIOError, Timeout, SCPError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...native._ssh2 import wait_select, eagain_write, _read_output
-from .common import _validate_pkey_path
 
 
-Hub.NOT_ERROR = (Exception,)
-host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
-THREAD_POOL = get_hub().threadpool
 
 
-class SSHClient(object):
+class SSHClient(BaseSSHClient):
     """ssh2-python (libssh2) based non-blocking SSH client."""
-
-    IDENTITIES = (
-        os.path.expanduser('~/.ssh/id_rsa'),
-        os.path.expanduser('~/.ssh/id_dsa'),
-        os.path.expanduser('~/.ssh/identity'),
-        os.path.expanduser('~/.ssh/id_ecdsa'),
-    )
 
     def __init__(self, host,
                  user=None, password=None, port=None,
@@ -69,7 +51,8 @@ class SSHClient(object):
                  allow_agent=True, timeout=None,
                  forward_ssh_agent=False,
                  proxy_host=None,
-                 _auth_thread_pool=True, keepalive_seconds=60):
+                 _auth_thread_pool=True, keepalive_seconds=60,
+                 identity_auth=True,):
         """:param host: Host name or IP to connect to.
         :type host: str
         :param user: User to connect as. Defaults to logged in user.
@@ -94,6 +77,10 @@ class SSHClient(object):
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent
         :type allow_agent: bool
+        :param identity_auth: (Optional) set to False to disable attempting to
+          authenticate with default identity files from
+          `pssh.clients.base_ssh_client.BaseSSHClient.IDENTITIES`
+        :type identity_auth: bool
         :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
           equivalent to `ssh -A` from the `ssh` command line utility.
           Defaults to True if not set.
@@ -107,31 +94,16 @@ class SSHClient(object):
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
         """
-        self.host = host
-        self.user = user if user else None
-        if self.user is None and not WIN_PLATFORM:
-            self.user = pwd.getpwuid(os.geteuid()).pw_name
-        elif self.user is None and WIN_PLATFORM:
-            raise ValueError("Must provide user parameter on Windows")
-        self.password = password
-        self.port = port if port else 22
-        self.num_retries = num_retries
-        self.sock = None
-        self.timeout = timeout
-        self.retry_delay = retry_delay
-        self.allow_agent = allow_agent
         self.forward_ssh_agent = forward_ssh_agent
         self._forward_requested = False
-        self.session = None
         self.keepalive_seconds = keepalive_seconds
         self._keepalive_greenlet = None
-        self._host = proxy_host if proxy_host else host
-        self.pkey = _validate_pkey_path(pkey, self.host)
-        self._connect(self._host, self.port)
-        if _auth_thread_pool:
-            THREAD_POOL.apply(self._init)
-        else:
-            self._init()
+        super(SSHClient, self).__init__(
+            host, user=user, password=password, port=port, pkey=pkey,
+            num_retries=num_retries, retry_delay=retry_delay,
+            allow_agent=allow_agent, _auth_thread_pool=_auth_thread_pool,
+            timeout=timeout,
+            proxy_host=proxy_host, identity_auth=identity_auth)
 
     def disconnect(self):
         """Disconnect session, close socket if needed."""
@@ -145,18 +117,6 @@ class SSHClient(object):
             self.session = None
         self.sock = None
 
-    def __del__(self):
-        try:
-            self.disconnect()
-        except Exception:
-            pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        self.disconnect()
-
     def spawn_send_keepalive(self):
         """Spawns a new greenlet that sends keep alive messages every
         self.keepalive_seconds"""
@@ -168,15 +128,6 @@ class SSHClient(object):
 
     def configure_keepalive(self):
         self.session.keepalive_config(False, self.keepalive_seconds)
-
-    def _connect_init_retry(self, retries):
-        retries += 1
-        self.session = None
-        if not self.sock.closed:
-            self.sock.close()
-        sleep(self.retry_delay)
-        self._connect(self._host, self.port, retries=retries)
-        return self._init(retries=retries)
 
     def _init(self, retries=1):
         self.session = Session()
@@ -207,76 +158,20 @@ class SSHClient(object):
             self.configure_keepalive()
             self._keepalive_greenlet = self.spawn_send_keepalive()
 
-    def _connect(self, host, port, retries=1):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if self.timeout:
-            self.sock.settimeout(self.timeout)
-        logger.debug("Connecting to %s:%s", host, port)
-        try:
-            self.sock.connect((host, port))
-        except sock_gaierror as ex:
-            logger.error("Could not resolve host '%s' - retry %s/%s",
-                         host, retries, self.num_retries)
-            while retries < self.num_retries:
-                sleep(self.retry_delay)
-                return self._connect(host, port, retries=retries+1)
-            raise UnknownHostException("Unknown host %s - %s - retry %s/%s",
-                                       host, str(ex.args[1]), retries,
-                                       self.num_retries)
-        except sock_error as ex:
-            logger.error("Error connecting to host '%s:%s' - retry %s/%s",
-                         host, port, retries, self.num_retries)
-            while retries < self.num_retries:
-                sleep(self.retry_delay)
-                return self._connect(host, port, retries=retries+1)
-            error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
-            raise ConnectionErrorException(
-                "Error connecting to host '%s:%s' - %s - retry %s/%s",
-                host, port, str(error_type), retries,
-                self.num_retries,)
-
-    def _pkey_auth(self):
-        self.session.userauth_publickey_fromfile(
-            self.user,
-            self.pkey,
-            passphrase=self.password if self.password is not None else '')
-
-    def _identity_auth(self):
-        passphrase = self.password if self.password is not None else ''
-        for identity_file in self.IDENTITIES:
-            if not os.path.isfile(identity_file):
-                continue
-            logger.debug(
-                "Trying to authenticate with identity file %s",
-                identity_file)
-            try:
-                self.session.userauth_publickey_fromfile(
-                    self.user,
-                    identity_file,
-                    passphrase=passphrase)
-            except Exception:
-                logger.debug("Authentication with identity file %s failed, "
-                             "continuing with other identities",
-                             identity_file)
-                continue
-            else:
-                logger.debug("Authentication succeeded with identity file %s",
-                             identity_file)
-                return
-        raise AuthenticationException("No authentication methods succeeded")
-
     def auth(self):
         if self.pkey is not None:
             logger.debug(
                 "Proceeding with private key file authentication")
-            return self._pkey_auth()
+            return self._pkey_auth(password=self.password)
         if self.allow_agent:
             try:
                 self.session.agent_auth(self.user)
+            except (AgentAuthenticationError, AgentConnectionError, AgentGetIdentityError,
+                    AgentListIdentitiesError) as ex:
+                logger.debug("Agent auth failed with %s"
+                             "continuing with other authentication methods", ex)
             except Exception as ex:
-                logger.debug("Agent auth failed with %s, "
-                             "continuing with other authentication methods",
-                             ex)
+                logger.error("Unknown error during agent authentication - %s", ex)
             else:
                 logger.debug("Authentication with SSH Agent succeeded")
                 return
@@ -287,6 +182,12 @@ class SSHClient(object):
                 raise
             logger.debug("Private key auth failed, trying password")
             self._password_auth()
+
+    def _pkey_auth(self, password=None):
+        self.session.userauth_publickey_fromfile(
+            self.user,
+            self.pkey,
+            passphrase=password if password is not None else '')
 
     def _password_auth(self):
         try:
@@ -337,27 +238,23 @@ class SSHClient(object):
 
     def read_stderr(self, channel, timeout=None):
         """Read standard error buffer from channel.
+        Returns a generator of line by line output.
 
         :param channel: Channel to read output from.
         :type channel: :py:class:`ssh2.channel.Channel`
+        :rtype: generator
         """
         return _read_output(self.session, channel.read_stderr, timeout=timeout)
 
     def read_output(self, channel, timeout=None):
         """Read standard output buffer from channel.
+        Returns a generator of line by line output.
 
         :param channel: Channel to read output from.
         :type channel: :py:class:`ssh2.channel.Channel`
+        :rtype: generator
         """
         return _read_output(self.session, channel.read, timeout=timeout)
-
-    def _select_timeout(self, func, timeout):
-        ret = func()
-        while ret == LIBSSH2_ERROR_EAGAIN:
-            wait_select(self.session, timeout=timeout)
-            ret = func()
-            if ret == LIBSSH2_ERROR_EAGAIN and timeout is not None:
-                raise Timeout
 
     def wait_finished(self, channel, timeout=None):
         """Wait for EOF from channel and close channel.
@@ -370,11 +267,11 @@ class SSHClient(object):
         """
         if channel is None:
             return
-        # If .eof() returns EAGAIN after a select with a timeout, it means
+        # If wait_eof() returns EAGAIN after a select with a timeout, it means
         # it reached timeout without EOF and _select_timeout will raise
         # timeout exception causing the channel to appropriately
         # not be closed as the command is still running.
-        self._select_timeout(channel.wait_eof, timeout)
+        self._eagain(channel.wait_eof)
         # Close channel to indicate no more commands will be sent over it
         self.close_channel(channel)
 
@@ -388,72 +285,6 @@ class SSHClient(object):
             wait_select(self.session)
             ret = func(*args, **kwargs)
         return ret
-
-    def read_output_buffer(self, output_buffer, prefix=None,
-                           callback=None,
-                           callback_args=None,
-                           encoding='utf-8'):
-        """Read from output buffers and log to ``host_logger``.
-
-        :param output_buffer: Iterator containing buffer
-        :type output_buffer: iterator
-        :param prefix: String to prefix log output to ``host_logger`` with
-        :type prefix: str
-        :param callback: Function to call back once buffer is depleted:
-        :type callback: function
-        :param callback_args: Arguments for call back function
-        :type callback_args: tuple
-        """
-        prefix = '' if prefix is None else prefix
-        for line in output_buffer:
-            output = line.decode(encoding)
-            host_logger.info("[%s]%s\t%s", self.host, prefix, output)
-            yield output
-        if callback:
-            callback(*callback_args)
-
-    def run_command(self, command, sudo=False, user=None,
-                    use_pty=False, shell=None,
-                    encoding='utf-8', timeout=None):
-        """Run remote command.
-
-        :param command: Command to run.
-        :type command: str
-        :param sudo: Run command via sudo as super-user.
-        :type sudo: bool
-        :param user: Run command as user via sudo
-        :type user: str
-        :param use_pty: Whether or not to obtain a PTY on the channel.
-        :type use_pty: bool
-        :param shell: (Optional) Override shell to use to run command with.
-          Defaults to login user's defined shell. Use the shell's command
-          syntax, eg `shell='bash -c'` or `shell='zsh -c'`.
-        :type shell: str
-        :param encoding: Encoding to use for output. Must be valid
-          `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
-        :type encoding: str
-
-        :rtype: (channel, host, stdout, stderr, stdin) tuple.
-        """
-        # Fast path for no command substitution needed
-        if not sudo and not user and not shell:
-            _command = command
-        else:
-            _command = ''
-            if sudo and not user:
-                _command = 'sudo -S '
-            elif user:
-                _command = 'sudo -u %s -S ' % (user,)
-            _shell = shell if shell else '$SHELL -c'
-            _command += "%s '%s'" % (_shell, command,)
-        channel = self.execute(_command, use_pty=use_pty)
-        return channel, self.host, \
-            self.read_output_buffer(
-                self.read_output(channel, timeout=timeout),
-                encoding=encoding), \
-            self.read_output_buffer(
-                self.read_stderr(channel, timeout=timeout), encoding=encoding,
-                prefix='\t[err]'), channel
 
     def _make_sftp(self):
         """Make SFTP client from open transport"""
@@ -586,16 +417,6 @@ class SSHClient(object):
                 _dir = ''.join(('/', _dir))
             return self.mkdir(sftp, sub_dirs, _parent_path=_dir)
 
-    def _copy_dir(self, local_dir, remote_dir, sftp):
-        """Call copy_file on every file in the specified directory, copying
-        them to the specified remote directory."""
-        file_list = os.listdir(local_dir)
-        for file_name in file_list:
-            local_path = os.path.join(local_dir, file_name)
-            remote_path = '/'.join([remote_dir, file_name])
-            self.copy_file(local_path, remote_path, recurse=True,
-                           sftp=sftp)
-
     def copy_remote_file(self, remote_file, local_file, recurse=False,
                          sftp=None, encoding='utf-8'):
         """Copy remote file to local host via SFTP.
@@ -727,27 +548,6 @@ class SSHClient(object):
         finally:
             local_fh.close()
 
-    def _scp_send_dir(self, local_dir, remote_dir, sftp):
-        file_list = os.listdir(local_dir)
-        for file_name in file_list:
-            local_path = os.path.join(local_dir, file_name)
-            remote_path = '/'.join([remote_dir, file_name])
-            self.scp_send(local_path, remote_path, recurse=True,
-                          sftp=sftp)
-
-    def _scp_recv_dir(self, file_list, remote_dir, local_dir, sftp,
-                      encoding='utf-8'):
-        for file_name in file_list:
-            file_name = file_name.decode(encoding)
-            if file_name in ('.', '..'):
-                continue
-            remote_path = os.path.join(remote_dir, file_name)
-            local_path = os.path.join(local_dir, file_name)
-            logger.debug("Attempting recursive copy from %s:%s to %s",
-                         self.host, remote_path, local_path)
-            self.scp_recv(remote_path, local_path, sftp=sftp,
-                          recurse=True)
-
     def scp_send(self, local_file, remote_file, recurse=False, sftp=None):
         """Copy local file to host via SCP.
 
@@ -809,11 +609,6 @@ class SSHClient(object):
             logger.error(msg, remote_file, self.host, ex)
             raise SCPError(msg, remote_file, self.host, ex)
 
-    def _sftp_readdir(self, dir_h):
-        for size, buf, attrs in dir_h.readdir():
-            for line in buf.splitlines():
-                yield line
-
     def _sftp_openfh(self, open_func, remote_file, *args):
         try:
             fh = open_func(remote_file, *args)
@@ -851,34 +646,17 @@ class SSHClient(object):
                 logger.error(msg, remote_file, ex)
                 raise SFTPIOError(msg, remote_file, ex)
 
-    def _copy_remote_dir(self, file_list, remote_dir, local_dir, sftp,
-                         encoding='utf-8'):
-        for file_name in file_list:
-            file_name = file_name.decode(encoding)
-            if file_name in ('.', '..'):
-                continue
-            remote_path = os.path.join(remote_dir, file_name)
-            local_path = os.path.join(local_dir, file_name)
-            self.copy_remote_file(remote_path, local_path, sftp=sftp,
-                                  recurse=True)
-
-    def _make_local_dir(self, dirpath):
-        if os.path.exists(dirpath):
-            return
-        try:
-            os.makedirs(dirpath)
-        except OSError:
-            logger.error("Unable to create local directory structure for "
-                         "directory %s", dirpath)
-            raise
-
-    def _remote_paths_split(self, file_path):
-        _sep = file_path.rfind('/')
-        if _sep > 0:
-            return file_path[:_sep]
-        return
-
     def get_exit_status(self, channel):
         if not channel.eof():
             return
         return channel.get_exit_status()
+
+    def finished(self, channel):
+        """Checks if remote command has finished - has server sent client
+        EOF.
+
+        :rtype: bool
+        """
+        if channel is None:
+            return
+        return channel.eof()

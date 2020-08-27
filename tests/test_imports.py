@@ -44,3 +44,6 @@ class ImportTestCase(unittest.TestCase):
 
     def test_tunnel_imports(self):
         import pssh.tunnel
+
+    def test_miko_top_level(self):
+        from pssh.clients.miko import SSHClient, logger, ParallelSSHClient

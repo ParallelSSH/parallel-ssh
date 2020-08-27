@@ -17,7 +17,7 @@
 
 import os
 
-from ...exceptions import PKeyFileError
+from ..exceptions import PKeyFileError
 
 
 def _validate_pkey_path(pkey, host=None):

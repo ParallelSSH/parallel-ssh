@@ -1,13 +1,46 @@
 Change Log
 ============
 
+1.12.0
+++++++
+
+Changes
+--------
+
+* Added `ssh-python` (`libssh <https://libssh.org>`_) based native client with `run_command` implementation.
+* ``ParallelSSHClient.join`` with timeout no longer consumes output by default to allow reading of output after timeout.
+
+Fixes
+------
+
+* ``ParallelSSHClient.join`` with timeout would raise ``Timeout`` before value given when client was busy with other commands.
+
+.. note::
+
+   ``ssh-python`` client at `pssh.clients.ssh.ParallelSSHClient` is available for testing. Please report any issues.
+
+   To use:
+
+   .. code-block:: python
+
+      from pssh.clients.ssh import ParallelSSHClient
+
+This release adds (yet another) client, this one based on `ssh-python <https://github.com/ParallelSSH/ssh-python>`_ (`libssh <https://libssh.org>`_). Key features of this client are more supported authentication methods compared to `ssh2-python`.
+
+Future releases will also enable certificate authentication for the ssh-python client.
+
+Please migrate to one of the two native clients if have not already as paramiko is very quickly accumulating yet more bugs and the `2.0.0` release which removes it is imminent.
+
+Users that require paramiko for any reason can pin their parallel-ssh versions to `parallel-ssh<2.0.0`.
+
+
 1.11.2
 ++++++
 
 Fixes
 ------
 
-* `ParallelSSHClient.disconnect` would cause new client sessions to fail if `client.join` was not called prior - #200
+* `ParallelSSHClient` going out of scope would cause new client sessions to fail if `client.join` was not called prior - #200
 
 
 1.11.0
@@ -18,6 +51,8 @@ Changes
 
 * Moved polling to gevent.select.poll to increase performance and better handle high number of sockets - #189
 * ``HostOutput.exit_code`` is now a dynamic property returning either ``None`` when exit code not ready or the exit code as reported by channel. ``ParallelSSHClient.get_exit_codes`` is now a no-op and scheduled to be removed.
+* Native client exit codes are now more explicit and return ``None`` if no exit code is ready. Would previously return ``0`` by default.
+
 
 Packaging
 ---------
@@ -29,6 +64,7 @@ Fixes
 
 * Native client would fail on opening sockets with large file descriptor values - #189
 
+
 1.10.0
 +++++++
 
@@ -38,6 +74,7 @@ Changes
 * Added ``return_list`` optional argument to ``run_command`` to return list of ``HostOutput`` objects as output rather than dictionary - defaults to ``False``. List output will become default starting from ``2.0.0``.
 * Updated native clients for new version of ``ssh2-python``.
 * Manylinux 2010 wheels.
+
 
 Fixes
 ------

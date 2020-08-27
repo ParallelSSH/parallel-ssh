@@ -44,8 +44,8 @@ class HostOutput(dict):
         :type stderr: generator
         :param stdin: Standard input buffer
         :type stdin: :py:func:`file`-like object
-        :param exit_code: Exit code of command
-        :type exit_code: int or None
+        :param client: `SSHClient` output is coming from.
+        :type client: :py:class:`pssh.clients.base_ssh_client.SSHClient`
         :param exception: Exception from host if any
         :type exception: :py:class:`Exception` or ``None``
         """

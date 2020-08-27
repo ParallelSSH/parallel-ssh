@@ -17,15 +17,15 @@
 
 import logging
 from collections import deque
-from gevent import sleep, joinall
+from gevent import sleep
 from gevent.lock import RLock
 
-from ..base_pssh import BaseParallelSSHClient
-from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from .single import SSHClient
-from ...exceptions import ProxyError, Timeout, HostArgumentException
 from .tunnel import Tunnel
-from .common import _validate_pkey_path
+from ..common import _validate_pkey_path
+from ..base.parallel import BaseParallelSSHClient
+from ...constants import DEFAULT_RETRIES, RETRY_DELAY
+from ...exceptions import ProxyError, Timeout, HostArgumentException
 
 
 logger = logging.getLogger(__name__)
@@ -35,12 +35,12 @@ class ParallelSSHClient(BaseParallelSSHClient):
     """ssh2-python based parallel client."""
 
     def __init__(self, hosts, user=None, password=None, port=22, pkey=None,
-                 num_retries=DEFAULT_RETRIES, timeout=None, pool_size=10,
+                 num_retries=DEFAULT_RETRIES, timeout=None, pool_size=100,
                  allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
                  proxy_host=None, proxy_port=22,
                  proxy_user=None, proxy_password=None, proxy_pkey=None,
                  forward_ssh_agent=False, tunnel_timeout=None,
-                 keepalive_seconds=60):
+                 keepalive_seconds=60, identity_auth=True):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -64,10 +64,22 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param timeout: (Optional) SSH session timeout setting in seconds.
           This controls timeout setting of socket operations used for SSH
           sessions. Defaults to OS default - usually 60 seconds.
+        :param timeout: (Optional) Individual SSH client timeout setting in
+          seconds passed on to each SSH client spawned by `ParallelSSHClient`.
+
+          This controls timeout setting of socket operations used for SSH
+          sessions *on a per session basis* meaning for each individual
+          SSH session.
+
+          Defaults to OS default - usually 60 seconds.
+
+          Parallel functions like `run_command` and `join` have a cummulative
+          timeout setting that is separate to and
+          not affected by `self.timeout`.
         :type timeout: float
         :param pool_size: (Optional) Greenlet pool size. Controls
           concurrency, on how many hosts to execute tasks in parallel.
-          Defaults to 10. Overhead in event
+          Defaults to 100. Overhead in event
           loop will determine how high this can be set to, see scaling guide
           lines in project's readme.
         :type pool_size: int
@@ -77,6 +89,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent.
         :type allow_agent: bool
+        :param identity_auth: (Optional) set to False to disable attempting to
+          authenticate with default identity files from
+          `pssh.clients.base_ssh_client.BaseSSHClient.IDENTITIES`
+        :type identity_auth: bool
         :param proxy_host: (Optional) SSH host to tunnel connection through
           so that SSH clients connect to host via client -> proxy_host -> host
         :type proxy_host: str
@@ -109,7 +125,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, hosts, user=user, password=password, port=port, pkey=pkey,
             allow_agent=allow_agent, num_retries=num_retries,
             timeout=timeout, pool_size=pool_size,
-            host_config=host_config, retry_delay=retry_delay)
+            host_config=host_config, retry_delay=retry_delay,
+            identity_auth=identity_auth)
         self.pkey = _validate_pkey_path(pkey)
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
@@ -130,14 +147,15 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     encoding='utf-8', timeout=None, greenlet_timeout=None,
                     return_list=False):
         """Run command on all hosts in parallel, honoring self.pool_size,
-        and return output dictionary.
+        and return output.
 
         This function will block until all commands have been received
         by remote servers and then return immediately.
 
         More explicitly, function will return after connection and
-        authentication establishment and after commands have been accepted by
-        successfully established SSH channels.
+        authentication establishment in the case of on new connections and
+        after execute
+        commands have been accepted by successfully established SSH channels.
 
         Any connection and/or authentication exceptions will be raised here
         and need catching *unless* ``run_command`` is called with
@@ -161,12 +179,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           syntax, eg `shell='bash -c'` or `shell='zsh -c'`.
         :type shell: str
         :param use_pty: (Optional) Enable/Disable use of pseudo terminal
-          emulation. Disabling it will prohibit capturing standard input/output.
-          This is required in majority of cases, exceptions being where a shell
-          is not used and/or input/output is not required. In particular
-          when running a command which deliberately closes input/output pipes,
-          such as a daemon process, you may want to disable ``use_pty``.
-          Defaults to ``True``
+          emulation. Defaults to ``False``
         :type use_pty: bool
         :param host_args: (Optional) Format command string with per-host
           arguments in ``host_args``. ``host_args`` length must equal length of
@@ -240,117 +253,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 pass
             del s_client
 
-    def join(self, output, consume_output=False, timeout=None,
-             encoding='utf-8'):
-        """Wait until all remote commands in output have finished
-        and retrieve exit codes. Does *not* block other commands from
-        running in parallel.
-
-        :param output: Output of commands to join on
-        :type output: `HostOutput` objects
-        :param consume_output: Whether or not join should consume output
-          buffers. Output buffers will be empty after ``join`` if set
-          to ``True``. Must be set to ``True`` to allow host logger to log
-          output on call to ``join`` when host logger has been enabled.
-        :type consume_output: bool
-        :param timeout: Timeout in seconds if remote command is not yet
-          finished. Note that use of timeout forces ``consume_output=True``
-          otherwise the channel output pending to be consumed always results
-          in the channel not being finished.
-        :type timeout: int
-        :param encoding: Encoding to use for output. Must be valid
-          `Python codec <https://docs.python.org/library/codecs.html>`_
-        :type encoding: str
-
-        :raises: :py:class:`pssh.exceptions.Timeout` on timeout requested and
-          reached with commands still running.
-
-        :rtype: ``None``"""
-        cmds = []
-        if isinstance(output, list):
-            for host_i, host_out in enumerate(output):
-                host = self.hosts[host_i]
-                cmds.append(self.pool.spawn(
-                    self._join, host_out,
-                    consume_output=consume_output, timeout=timeout))
-        elif isinstance(output, dict):
-            for host_i, (host, host_out) in enumerate(output.items()):
-                cmds.append(self.pool.spawn(
-                    self._join, host_out,
-                    consume_output=consume_output, timeout=timeout))
-        else:
-            raise ValueError("Unexpected output object type")
-        # Errors raised by self._join should be propagated.
-        # Timeouts are handled by self._join itself.
-        joinall(cmds, raise_error=True)
-
-    def _join(self, host_out, consume_output=False, timeout=None,
-              encoding="utf-8"):
-        if host_out is None:
-            return
-        channel = host_out.channel
-        client = host_out.client
-        host = host_out.host
-        if client is None:
-            return
-        stdout, stderr = self.reset_output_generators(
-            host_out, channel=channel, timeout=timeout,
-            encoding=encoding)
-        try:
-            client.wait_finished(channel, timeout=timeout)
-        except Timeout:
-            raise Timeout(
-                "Timeout of %s sec(s) reached on host %s with command "
-                "still running", timeout, host)
-        if timeout:
-            # Must consume buffers prior to EOF check
-            self._consume_output(stdout, stderr)
-            if not channel.eof():
-                raise Timeout(
-                    "Timeout of %s sec(s) reached on host %s with command "
-                    "still running", timeout, host)
-        elif consume_output:
-            self._consume_output(stdout, stderr)
-
-    def reset_output_generators(self, host_out, timeout=None,
-                                client=None, channel=None,
-                                encoding='utf-8'):
-        """Reset output generators for host output. This creates new
-        generators for stdout and stderr for the provided host output, useful
-        in cases where the previous generators have raised a Timeout but the
-        remote command is still running.
-
-        :param host_out: Host output
-        :type host_out: :py:class:`pssh.output.HostOutput`
-        :param client: (Optional) SSH client
-        :type client: :py:class:`pssh.ssh2_client.SSHClient`
-        :param channel: (Optional) SSH channel
-        :type channel: :py:class:`ssh2.channel.Channel`
-        :param timeout: (Optional) Timeout setting
-        :type timeout: int
-        :param encoding: (Optional) Encoding to use for output. Must be valid
-          `Python codec <https://docs.python.org/library/codecs.html>`_
-        :type encoding: str
-
-        :rtype: tuple(stdout, stderr)
-        """
-        channel = host_out.channel if channel is None else channel
-        client = host_out.client if client is None else client
-        stdout = client.read_output_buffer(
-            client.read_output(channel, timeout=timeout), encoding=encoding)
-        stderr = client.read_output_buffer(
-            client.read_stderr(channel, timeout=timeout),
-            prefix='\t[err]', encoding=encoding)
-        host_out.stdout = stdout
-        host_out.stderr = stderr
-        return stdout, stderr
-
-    def _consume_output(self, stdout, stderr):
-        for line in stdout:
-            pass
-        for line in stderr:
-            pass
-
     def _start_tunnel_thread(self):
         self._tunnel_lock = RLock()
         self._tunnel_in_q = deque()
@@ -411,7 +313,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     allow_agent=self.allow_agent, retry_delay=self.retry_delay,
                     proxy_host=proxy_host, _auth_thread_pool=auth_thread_pool,
                     forward_ssh_agent=self.forward_ssh_agent,
-                    keepalive_seconds=self.keepalive_seconds)
+                    keepalive_seconds=self.keepalive_seconds,
+                    identity_auth=self.identity_auth,
+                )
                 self.host_clients[host] = _client
                 self._host_clients[(host_i, host)] = _client
                 return _client
@@ -668,10 +572,3 @@ class ParallelSSHClient(BaseParallelSSHClient):
             raise HostArgumentException(
                 "Number of per-host copy arguments provided does not match "
                 "number of hosts")
-
-    def _handle_greenlet_exc(self, func, host, *args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as ex:
-            ex.host = host
-            raise ex

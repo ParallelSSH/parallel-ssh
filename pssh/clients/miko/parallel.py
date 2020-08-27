@@ -28,10 +28,10 @@ import gevent.pool  # noqa: E402
 import gevent.hub  # noqa: E402
 gevent.hub.Hub.NOT_ERROR = (Exception,)
 
-from ..base_pssh import BaseParallelSSHClient  # noqa: E402
+from .single import SSHClient  # noqa: E402
+from ..base.parallel import BaseParallelSSHClient  # noqa: E402
 from ...exceptions import HostArgumentException  # noqa: E402
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY  # noqa: E402
-from .single import SSHClient  # noqa: E402
 
 
 logger = logging.getLogger('pssh')

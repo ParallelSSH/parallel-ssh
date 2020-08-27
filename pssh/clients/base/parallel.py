@@ -27,9 +27,9 @@ from warnings import warn
 from gevent import joinall
 from gevent.hub import Hub
 
-from ..exceptions import HostArgumentException
-from ..constants import DEFAULT_RETRIES, RETRY_DELAY
-from ..output import HostOutput
+from ...constants import DEFAULT_RETRIES, RETRY_DELAY
+from ...exceptions import HostArgumentException, Timeout
+from ...output import HostOutput
 
 
 Hub.NOT_ERROR = (Exception,)
@@ -46,14 +46,14 @@ except NameError:
 
 
 class BaseParallelSSHClient(object):
-
     """Parallel client base class."""
 
     def __init__(self, hosts, user=None, password=None, port=None, pkey=None,
                  allow_agent=True,
                  num_retries=DEFAULT_RETRIES,
                  timeout=120, pool_size=10,
-                 host_config=None, retry_delay=RETRY_DELAY):
+                 host_config=None, retry_delay=RETRY_DELAY,
+                 identity_auth=True):
         if isinstance(hosts, str) or isinstance(hosts, bytes):
             raise TypeError(
                 "Hosts must be list or other iterable, not string. "
@@ -74,6 +74,7 @@ class BaseParallelSSHClient(object):
         self.host_config = host_config if host_config else {}
         self.retry_delay = retry_delay
         self.cmds = None
+        self.identity_auth = identity_auth
 
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
@@ -169,6 +170,36 @@ class BaseParallelSSHClient(object):
             cmds, timeout=greenlet_timeout, return_list=return_list,
             stop_on_errors=False)
 
+    def reset_output_generators(self, host_out, timeout=None,
+                                client=None, channel=None,
+                                encoding='utf-8'):
+        """Reset output generators for host output.
+
+        :param host_out: Host output
+        :type host_out: :py:class:`pssh.output.HostOutput`
+        :param client: (Optional) SSH client
+        :type client: :py:class:`pssh.ssh2_client.SSHClient`
+        :param channel: (Optional) SSH channel
+        :type channel: :py:class:`ssh2.channel.Channel`
+        :param timeout: (Optional) Timeout setting
+        :type timeout: int
+        :param encoding: (Optional) Encoding to use for output. Must be valid
+          `Python codec <https://docs.python.org/library/codecs.html>`_
+        :type encoding: str
+
+        :rtype: tuple(stdout, stderr)
+        """
+        channel = host_out.channel if channel is None else channel
+        client = host_out.client if client is None else client
+        stdout = client.read_output_buffer(
+            client.read_output(channel, timeout=timeout), encoding=encoding)
+        stderr = client.read_output_buffer(
+            client.read_stderr(channel, timeout=timeout),
+            prefix='\t[err]', encoding=encoding)
+        host_out.stdout = stdout
+        host_out.stderr = stderr
+        return stdout, stderr
+
     def _get_host_config_values(self, host):
         _user = self.host_config.get(host, {}).get('user', self.user)
         _port = self.host_config.get(host, {}).get('port', self.port)
@@ -236,8 +267,74 @@ class BaseParallelSSHClient(object):
         output[host] = HostOutput(host, cmd, channel, stdout, stderr, stdin,
                                   client, exception=exception)
 
-    def join(self, output, consume_output=False):
-        raise NotImplementedError
+    def join(self, output, consume_output=False, timeout=None,
+             encoding='utf-8'):
+        """Wait until all remote commands in output have finished.
+        Does *not* block other commands from running in parallel.
+
+        :param output: Output of commands to join on
+        :type output: `HostOutput` objects
+        :param consume_output: Whether or not join should consume output
+          buffers. Output buffers will be empty after ``join`` if set
+          to ``True``. Must be set to ``True`` to allow host logger to log
+          output on call to ``join`` when host logger has been enabled.
+        :type consume_output: bool
+        :param timeout: Timeout in seconds if **all** remote commands are not
+          yet finished. Note that use of timeout forces ``consume_output=True``
+          otherwise the channel output pending to be consumed always results
+          in the channel not being finished.
+          This function's timeout is for all commands in total and will therefor
+          be affected by pool size and total number of concurrent commands in
+          self.pool.
+          Since self.timeout is passed onto each individual SSH session it is
+          **not** used for any parallel functions like `run_command` or `join`.
+        :type timeout: int
+        :param encoding: Encoding to use for output. Must be valid
+          `Python codec <https://docs.python.org/library/codecs.html>`_
+        :type encoding: str
+
+        :raises: :py:class:`pssh.exceptions.Timeout` on timeout requested and
+          reached with commands still running.
+
+        :rtype: ``None``"""
+        cmds = []
+        if isinstance(output, list):
+            for host_i, host_out in enumerate(output):
+                host = self.hosts[host_i]
+                cmds.append(self.pool.spawn(
+                    self._join, host_out,
+                    consume_output=consume_output, timeout=timeout))
+        elif isinstance(output, dict):
+            for host_i, (host, host_out) in enumerate(output.items()):
+                cmds.append(self.pool.spawn(
+                    self._join, host_out,
+                    consume_output=consume_output, timeout=timeout))
+        else:
+            raise ValueError("Unexpected output object type")
+        # Errors raised by self._join should be propagated.
+        finished_cmds = joinall(cmds, raise_error=True, timeout=timeout)
+        if timeout is None:
+            return
+        unfinished_cmds = set.difference(set(cmds), set(finished_cmds))
+        if unfinished_cmds:
+            raise Timeout(
+                "Timeout of %s sec(s) reached with commands "
+                "still running")
+
+    def _join(self, host_out, consume_output=False, timeout=None,
+              encoding="utf-8"):
+        if host_out is None:
+            return
+        channel = host_out.channel
+        client = host_out.client
+        if client is None:
+            return
+        stdout, stderr = self.reset_output_generators(
+            host_out, channel=channel, timeout=timeout,
+            encoding=encoding)
+        client.wait_finished(channel, timeout=timeout)
+        if consume_output:
+            self._consume_output(stdout, stderr)
 
     def finished(self, output):
         """Check if commands have finished without blocking
@@ -246,10 +343,16 @@ class BaseParallelSSHClient(object):
           :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
         :rtype: bool
         """
-        for host in output:
-            chan = output[host].channel
-            if chan is not None and not chan.eof():
-                return False
+        if isinstance(output, dict):
+            for host_out in output.values():
+                chan = host_out.channel
+                if host_out.client and not host_out.client.finished(chan):
+                    return False
+        elif isinstance(output, list):
+            for host_out in output:
+                chan = host_out.channel
+                if host_out.client and not host_out.client.finished(chan):
+                    return False
         return True
 
     def get_exit_codes(self, output):
@@ -425,3 +528,13 @@ class BaseParallelSSHClient(object):
         except Exception as ex:
             ex.host = host
             raise ex
+
+    def _handle_greenlet_exc(self, func, host, *args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as ex:
+            ex.host = host
+            raise ex
+
+    def _make_ssh_client(self, host_i, host):
+        raise NotImplementedError

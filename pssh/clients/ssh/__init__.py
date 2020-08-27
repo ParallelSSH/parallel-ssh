@@ -16,5 +16,5 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 # flake8: noqa: F401
-from .native.parallel import ParallelSSHClient
-from .native.single import SSHClient
+from .parallel import ParallelSSHClient
+from .single import SSHClient
