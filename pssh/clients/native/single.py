@@ -256,14 +256,6 @@ class SSHClient(BaseSSHClient):
         """
         return _read_output(self.session, channel.read, timeout=timeout)
 
-    def _select_timeout(self, func, timeout):
-        ret = func()
-        while ret == LIBSSH2_ERROR_EAGAIN:
-            wait_select(self.session, timeout=timeout)
-            ret = func()
-            if ret == LIBSSH2_ERROR_EAGAIN and timeout is not None:
-                raise Timeout
-
     def wait_finished(self, channel, timeout=None):
         """Wait for EOF from channel and close channel.
 
@@ -279,7 +271,6 @@ class SSHClient(BaseSSHClient):
         # it reached timeout without EOF and _select_timeout will raise
         # timeout exception causing the channel to appropriately
         # not be closed as the command is still running.
-        # self._select_timeout(channel.wait_eof, timeout)
         self._eagain(channel.wait_eof)
         # Close channel to indicate no more commands will be sent over it
         self.close_channel(channel)
