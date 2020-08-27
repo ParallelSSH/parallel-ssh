@@ -1499,6 +1499,28 @@ class ParallelSSHClientTest(unittest.TestCase):
         del client
         self.assertEqual(single_client.session, None)
 
+    def test_multiple_join_timeout(self):
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.user_key)
+        for _ in range(2):
+            output = client.run_command(self.cmd, return_list=True)
+            client.join(output, timeout=1, consume_output=True)
+            for host_out in output:
+                self.assertTrue(host_out.client.finished(host_out.channel))
+        output = client.run_command('sleep 2')
+        self.assertRaises(Timeout, client.join, output, timeout=1, consume_output=True)
+        for host_out in output:
+            self.assertFalse(host_out.client.finished(host_out.channel))
+        # Wait for long running command to start to avoid race condition
+        # time.sleep(1)
+        # self.assertRaises(Timeout, client.join, output, timeout=1)
+        # self.assertFalse(output[self.host].channel.eof())
+        # Ensure command has actually finished - avoid race conditions
+        # time.sleep(2)
+        # client.join(output, timeout=3, consume_output=True)
+        # self.assertTrue(output[self.host].channel.eof())
+        # self.assertTrue(client.finished(output))
+
 
     # TODO:
     # * forward agent enabled
