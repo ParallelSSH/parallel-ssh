@@ -98,3 +98,19 @@ class SSHClientTest(SSHTestCase):
             'sleep 2; echo me')
         output_gen = client.read_output(channel)
         self.assertRaises(Timeout, list, output_gen)
+
+    def test_multiple_clients_exec_terminates_channels(self):
+        # See #200 - Multiple clients should not interfere with
+        # each other. session.disconnect can leave state in libssh2
+        # and break subsequent sessions even on different socket and
+        # session
+        def scope_killer():
+            for _ in range(5):
+                client = SSHClient(self.host, port=self.port,
+                                   pkey=self.user_key,
+                                   num_retries=1,
+                                   allow_agent=False)
+                channel = client.execute(self.cmd)
+                output = list(client.read_output(channel))
+                self.assertListEqual(output, [b'me'])
+        scope_killer()

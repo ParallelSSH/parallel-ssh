@@ -333,7 +333,7 @@ class SSHClient(BaseSSHClient):
                 # send back, meaning the generator does not yield and can there
                 # for block other generators/greenlets from running.
                 logger.debug("No data for %s, waiting", _buffer_name)
-                sleep()
+                sleep(1)
 
     def wait_finished(self, channel, timeout=None):
         """Wait for EOF from channel and close channel.

@@ -1499,6 +1499,16 @@ class ParallelSSHClientTest(unittest.TestCase):
         del client
         self.assertEqual(single_client.session, None)
 
+    def test_client_disconnect_error(self):
+        def disc():
+            raise Exception
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.user_key, num_retries=1)
+        output = client.run_command(self.cmd)
+        client.join(output)
+        client._host_clients[(0, self.host)].disconnect = disc
+        del client
+
     def test_multiple_join_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)

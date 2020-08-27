@@ -441,10 +441,6 @@ class LibSSHParallelTest(unittest.TestCase):
             gssapi_auth=True,
             identity_auth=False)
         self.assertRaises(AuthenticationException, client.run_command, self.cmd)
-        # ssh_client = list(client._host_clients.values())[0]
-        # self.assertEqual(ssh_client.gssapi_server_identity, _server_id)
-        # self.assertEqual(ssh_client.gssapi_client_identity, _client_id)
-        # self.assertEqual(ssh_client.gssapi_delegate_credentials, True)
 
     def test_long_running_cmd_join_timeout(self):
         output = self.client.run_command('sleep 1', return_list=True)
@@ -494,3 +490,12 @@ class LibSSHParallelTest(unittest.TestCase):
         for host_out in output:
             stdout = list(host_out.stdout)
             self.assertEqual(stdout, ['me'])
+
+    def test_client_scope(self):
+        def scope_killer():
+            for _ in range(5):
+                client = ParallelSSHClient([self.host], port=self.port,
+                                           pkey=self.user_key, num_retries=1)
+                output = client.run_command(self.cmd)
+                client.join(output)
+        scope_killer()
