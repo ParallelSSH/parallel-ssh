@@ -1,5 +1,5 @@
-libssh based Parallel Client
-=============================
+ssh-python based Parallel Client
+=================================
 
 API documentation for the ``ssh-python`` (``libssh``) based parallel client.
 
