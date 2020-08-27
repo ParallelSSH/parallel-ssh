@@ -44,19 +44,17 @@ Usage Example
 
 See documentation on `read the docs`_ for more complete examples.
 
-Run ``uname`` on two remote hosts in parallel with ``sudo``.
+Run ``uname`` on two remote hosts in parallel.
 
 .. code-block:: python
 
-  from __future__ import print_function
-
   from pssh.clients import ParallelSSHClient
 
-  hosts = ['myhost1', 'myhost2']
+  hosts = ['localhost', 'localhost']
   client = ParallelSSHClient(hosts)
 
-  output = client.run_command('uname')
-  for host, host_output in output.items():
+  output = client.run_command('uname', return_list=True)
+  for host_output in output:
       for line in host_output.stdout:
           print(line)
 
@@ -71,26 +69,21 @@ Run ``uname`` on two remote hosts in parallel with ``sudo``.
 Native client
 **************
 
-Starting from version ``1.2.0``, a new client is supported in ``parallel-ssh`` which offers much greater performance and reduced overhead than the current default client.
+Starting from version ``1.2.0``, the default client in ``parallel-ssh`` has changed to the native clint which offers much greater performance and reduced overhead than the current default client.
 
-The new client is based on ``libssh2`` via the ``ssh2-python`` extension library and supports non-blocking mode natively. Binary wheel packages with ``libssh2`` included are provided for Linux, OSX and Windows platforms and all supported Python versions.
+The new default client is based on ``libssh2`` via the ``ssh2-python`` extension library and supports non-blocking mode natively. Binary wheel packages with ``libssh2`` included are provided for Linux, OSX and Windows platforms and all supported Python versions.
 
 See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of the available clients.
 
-To make use of this new client, ``ParallelSSHClient`` can be imported from ``pssh.clients.native`` instead. Their respective APIs are almost identical.
+The paramiko based client under ``pssh.clients.miko`` and the old ``pssh.pssh_client`` imports will be **removed** on the release of ``2.0.0``.
 
-The new client will become the default and will replace the current ``pssh.pssh_client`` in a new major version of the library - ``2.0.0``.
-
-The paramiko based client will become an optional install via pip `extras`, available under ``pssh.clients.miko``.
-
-For example:
+Default client:
 
 .. code-block:: python
 
-  from pprint import pprint
-  from pssh.clients.native import ParallelSSHClient
+  from pssh.clients import ParallelSSHClient
 
-  hosts = ['myhost1', 'myhost2']
+  hosts = ['localhost', 'localhost']
   client = ParallelSSHClient(hosts)
 
   output = client.run_command('uname')
@@ -106,8 +99,8 @@ See `documentation <http://parallel-ssh.readthedocs.io/en/latest/ssh2.html>`_ fo
 Native Code Client Features
 ****************************
 
-* Highest performance and least overhead of any Python SSH libraries
-* Thread safe - makes use of native threads for blocking calls like authentication
+* Highest performance and least overhead of any Python SSH library
+* Thread safe - makes use of native threads for CPU bound calls like authentication
 * Natively non-blocking utilising ``libssh2`` via ``ssh2-python`` - **no monkey patching of the Python standard library**
 * Significantly reduced overhead in CPU and memory usage
 
@@ -116,7 +109,7 @@ Native Code Client Features
 Exit codes
 ***********
 
-Once *either* standard output is iterated on *to completion*, or ``client.join(output)`` is called, exit codes become available in host output.
+Once *either* standard output is iterated on *to completion*, or ``client.join(output, consume_output=True)`` is called, exit codes become available in host output.
 
 Iteration ends *only when remote command has completed*, though it may be interrupted and resumed at any point.
 
@@ -126,44 +119,52 @@ Once all output has been gathered exit codes become available even without calli
 
 .. code-block:: python
 
-  for host in output:
-      print(output[host].exit_code)
+  output = client.run_command('uname', return_list=True)
+  for host_out in output:
+      for line in host_out.stdout:
+          print(line)
+      print(host_out.exit_code)
 
 :Output:
    .. code-block:: python
 
+      Linux
       0
+      Linux
       0
 
+The client's ``join`` function can be used to wait for all commands in output object to finish.
 
-The client's ``join`` function can be used to wait for all commands in output object to finish:
+After ``join`` returns, commands have finished and output can be read.
 
 .. code-block:: python
 
   client.join(output)
 
-Similarly, output and exit codes are available after ``client.join`` is called:
-
-.. code-block:: python
-
-  from pprint import pprint
-
-  output = client.run_command('exit 0')
-
-  # Wait for commands to complete
-  client.join(output)
-  pprint(output.values()[0].exit_code)
-
-  # Output remains available in output generators
-  for host, host_output in output.items():
+  for host_out in output:
       for line in host_output.stdout:
-          pprint(line)
+          print(line)
+      print(host_out.exit_code)
+
+Similarly, exit codes are available after ``client.join(output, consume_output=True)``.
+
+``consume_output`` flag must be set to get exit codes when not reading from ``stdout``. Future releases aim to remove the need for `consume_output` to be set.
+
+.. code-block:: python
+
+  output = client.run_command('uname')
+
+  # Wait for commands to complete and consume output so can get exit codes
+  client.join(output, consume_output=True)
+
+  for host_output in output:
+      print(host_out.exit_code)
 
 :Output:
    .. code-block:: python
 
       0
-      <..stdout..>
+      0
 
 
 There is also a built in host logger that can be enabled to log output from remote hosts. The helper function ``pssh.utils.enable_host_logger`` will enable host logging to stdout.
@@ -175,7 +176,8 @@ To log output without having to iterate over output generators, the ``consume_ou
   from pssh.utils import enable_host_logger
 
   enable_host_logger()
-  client.join(client.run_command('uname'), consume_output=True)
+  output = client.run_command('uname')
+  client.join(output, consume_output=True)
 
 :Output:
    .. code-block:: shell
@@ -259,7 +261,7 @@ As always, it is best to use a tool that is suited to the task at hand. ``parall
 Paramiko
 ________
 
-The default SSH client library in ``parallel-ssh`` ``1.x.x`` series.
+The default SSH client library in ``parallel-ssh`` <=``1.6.x`` series.
 
 Pure Python code, while having native extensions as dependencies, with poor performance and numerous bugs compared to both OpenSSH binaries and the ``libssh2`` based native clients in ``parallel-ssh`` ``1.2.x`` and above. Recent versions have regressed in performance and have `blocker issues <https://github.com/ParallelSSH/parallel-ssh/issues/83>`_.
 

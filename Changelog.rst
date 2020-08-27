@@ -19,11 +19,17 @@ Fixes
 
    ``ssh-python`` client at `pssh.clients.ssh.ParallelSSHClient` is available for testing. Please report any issues.
 
-This release adds (yet another) client, this one based on `ssh-python <https://github.com/ParallelSSH/ssh-python>`_ (`libssh <https://libssh.org>`_). Key features of this client are more supported authentication methods compared to libssh2.
+   To use:
+
+   .. code-block:: python
+
+      from pssh.clients.ssh import ParallelSSHClient
+
+This release adds (yet another) client, this one based on `ssh-python <https://github.com/ParallelSSH/ssh-python>`_ (`libssh <https://libssh.org>`_). Key features of this client are more supported authentication methods compared to `ssh2-python`.
 
 Future releases will also enable certificate authentication for the ssh-python client.
 
-Please migrate to one of the two native clients if have not already as paramiko is very quickly accumulating yet more bugs and the client based on it will be removed in `2.0.0`.
+Please migrate to one of the two native clients if have not already as paramiko is very quickly accumulating yet more bugs and the `2.0.0` release which removes it is imminent.
 
 Users that require paramiko for any reason can pin their parallel-ssh versions to `parallel-ssh<2.0.0`.
 
