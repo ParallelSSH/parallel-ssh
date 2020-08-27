@@ -199,7 +199,7 @@ class SSH2ClientTest(SSH2TestCase):
         class _SSHClient(SSHClient):
             def __init__(self, host, port, num_retries):
                 super(SSHClient, self).__init__(
-                    host, port=port, num_retries=1,
+                    host, port=port, num_retries=2,
                     allow_agent=True)
 
             def _init(self):
@@ -215,3 +215,12 @@ class SSH2ClientTest(SSH2TestCase):
                           client.session.agent_auth, client.user)
         self.assertRaises(AuthenticationException,
                           client.auth)
+
+    def test_finished(self):
+        self.assertFalse(self.client.finished(None))
+        channel = self.client.execute('echo me')
+        self.assertFalse(self.client.finished(channel))
+        self.client.wait_finished(channel)
+        stdout = list(self.client.read_output(channel))
+        self.assertTrue(self.client.finished(channel))
+        self.assertListEqual(stdout, [b'me'])
