@@ -189,7 +189,6 @@ class BaseParallelSSHClient(object):
 
         :rtype: tuple(stdout, stderr)
         """
-        # import ipdb; ipdb.set_trace()
         channel = host_out.channel if channel is None else channel
         client = host_out.client if client is None else client
         stdout = client.read_output_buffer(
