@@ -290,9 +290,7 @@ class LibSSHParallelTest(unittest.TestCase):
         expected_lines = 2
         output = self.client.run_command(self.long_cmd(expected_lines))
         self.assertTrue(self.host in output, msg="Got no output for command")
-        self.assertTrue(not output[self.host].exit_code,
-                        msg="Got exit code %s for still running cmd.." % (
-                            output[self.host].exit_code,))
+        self.assertTrue(output[self.host].exit_code is None)
         self.assertFalse(self.client.finished(output))
         self.client.join(output, consume_output=True)
         self.assertTrue(self.client.finished(output))
