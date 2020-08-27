@@ -45,7 +45,7 @@ class SSHClient(BaseSSHClient):
                  pkey=None,
                  num_retries=DEFAULT_RETRIES,
                  retry_delay=RETRY_DELAY,
-                 allow_agent=False, timeout=None,
+                 allow_agent=True, timeout=None,
                  identity_auth=True,
                  gssapi_auth=False,
                  gssapi_server_identity=None,

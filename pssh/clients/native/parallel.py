@@ -253,27 +253,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 pass
             del s_client
 
-    def _join(self, host_out, consume_output=False, timeout=None,
-              encoding="utf-8"):
-        if host_out is None:
-            return
-        channel = host_out.channel
-        client = host_out.client
-        host = host_out.host
-        if client is None:
-            return
-        stdout, stderr = self.reset_output_generators(
-            host_out, channel=channel, timeout=timeout,
-            encoding=encoding)
-        try:
-            client.wait_finished(channel, timeout=timeout)
-        except Timeout:
-            raise Timeout(
-                "Timeout of %s sec(s) reached on host %s with command "
-                "still running", timeout, host)
-        if consume_output:
-            self._consume_output(stdout, stderr)
-
     def _start_tunnel_thread(self):
         self._tunnel_lock = RLock()
         self._tunnel_in_q = deque()

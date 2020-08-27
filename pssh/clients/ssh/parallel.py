@@ -33,7 +33,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
     def __init__(self, hosts, user=None, password=None, port=22, pkey=None,
                  num_retries=DEFAULT_RETRIES, timeout=None, pool_size=100,
-                 allow_agent=False, host_config=None, retry_delay=RETRY_DELAY,
+                 allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
                  forward_ssh_agent=False,
                  gssapi_auth=False,
                  gssapi_server_identity=None,
@@ -231,31 +231,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
             user=user, shell=shell, sudo=sudo,
             encoding=encoding, use_pty=use_pty, timeout=timeout,
             greenlet_timeout=greenlet_timeout, return_list=return_list)
-
-    def _join(self, host_out, consume_output=False, timeout=None,
-              encoding="utf-8"):
-        if host_out is None:
-            return
-        channel = host_out.channel
-        client = host_out.client
-        host = host_out.host
-        if client is None:
-            return
-        stdout, stderr = self.reset_output_generators(
-            host_out, channel=channel, timeout=timeout,
-            encoding=encoding)
-        try:
-            client.wait_finished(channel, timeout=timeout)
-        except Timeout:
-            raise Timeout(
-                "Timeout of %s sec(s) reached on host %s with command "
-                "still running", timeout, host)
-        if timeout:
-            # Must consume buffers prior to EOF check
-            if not channel.is_eof():
-                raise Timeout(
-                    "Timeout of %s sec(s) reached on host %s with command "
-                    "still running", timeout, host)
 
     def _make_ssh_client(self, host_i, host):
         logger.debug(

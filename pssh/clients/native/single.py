@@ -658,3 +658,13 @@ class SSHClient(BaseSSHClient):
         if not channel.eof():
             return
         return channel.get_exit_status()
+
+    def finished(self, channel):
+        """Checks if remote command has finished - has server sent client
+        EOF.
+
+        :rtype: bool
+        """
+        if channel is None:
+            return
+        return channel.eof()
