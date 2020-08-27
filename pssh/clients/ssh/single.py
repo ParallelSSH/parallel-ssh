@@ -322,7 +322,7 @@ class SSHClient(BaseSSHClient):
             except EOF:
                 logger.debug("Channel is at EOF trying to read %s - "
                              "reader exiting", _buffer_name)
-                sleep()
+                sleep(.1)
                 return
             if size > 0:
                 logger.debug("Writing %s bytes to %s buffer",
@@ -333,7 +333,7 @@ class SSHClient(BaseSSHClient):
                 # send back, meaning the generator does not yield and can there
                 # for block other generators/greenlets from running.
                 logger.debug("No data for %s, waiting", _buffer_name)
-                sleep()
+                sleep(.1)
 
     def wait_finished(self, channel, timeout=None):
         """Wait for EOF from channel and close channel.

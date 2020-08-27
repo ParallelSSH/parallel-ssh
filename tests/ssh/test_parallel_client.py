@@ -114,7 +114,7 @@ class LibSSHParallelTest(unittest.TestCase):
         output = self.client.run_command(";".join([self.cmd, 'exit 1']))
         self.client.join(output)
         exit_code = output[self.host].exit_code
-        self.assertTrue(exit_code == 1)
+        self.assertEqual(exit_code, 1)
         self.assertTrue(len(output), len(self.client.cmds))
         _output = {}
         for i, host in enumerate([self.host]):
