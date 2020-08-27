@@ -28,7 +28,7 @@ from gevent import joinall
 from gevent.hub import Hub
 
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-from ...exceptions import HostArgumentException
+from ...exceptions import HostArgumentException, Timeout
 from ...output import HostOutput
 
 
@@ -313,8 +313,14 @@ class BaseParallelSSHClient(object):
         else:
             raise ValueError("Unexpected output object type")
         # Errors raised by self._join should be propagated.
-        # Timeouts are handled by self._join itself.
-        joinall(cmds, raise_error=True)
+        finished_cmds = joinall(cmds, raise_error=True, timeout=timeout)
+        if timeout is None:
+            return
+        unfinished_cmds = set.difference(set(cmds), set(finished_cmds))
+        if unfinished_cmds:
+            raise Timeout(
+                "Timeout of %s sec(s) reached with commands "
+                "still running")
 
     def _join(self, host_out, consume_output=False, timeout=None,
               encoding="utf-8"):
@@ -328,12 +334,7 @@ class BaseParallelSSHClient(object):
         stdout, stderr = self.reset_output_generators(
             host_out, channel=channel, timeout=timeout,
             encoding=encoding)
-        try:
-            client.wait_finished(channel, timeout=timeout)
-        except Timeout:
-            raise Timeout(
-                "Timeout of %s sec(s) reached on host %s with command "
-                "still running", timeout, host)
+        client.wait_finished(channel, timeout=timeout)
         if consume_output:
             self._consume_output(stdout, stderr)
 

@@ -4,9 +4,16 @@ Change Log
 1.12.0
 ++++++
 
+Changes
+--------
+
 * Added `ssh-python` (`libssh <https://libssh.org>`_) based native client with `run_command` implementation.
 * ``ParallelSSHClient.join`` with timeout no longer consumes output by default to allow reading of output after timeout.
 
+Fixes
+------
+
+* ``ParallelSSHClient.join`` with timeout would raise ``Timeout`` before value given when client was busy with other commands.
 
 .. note::
 

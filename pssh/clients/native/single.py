@@ -279,7 +279,8 @@ class SSHClient(BaseSSHClient):
         # it reached timeout without EOF and _select_timeout will raise
         # timeout exception causing the channel to appropriately
         # not be closed as the command is still running.
-        self._select_timeout(channel.wait_eof, timeout)
+        # self._select_timeout(channel.wait_eof, timeout)
+        self._eagain(channel.wait_eof)
         # Close channel to indicate no more commands will be sent over it
         self.close_channel(channel)
 

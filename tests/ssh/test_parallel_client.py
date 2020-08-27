@@ -464,3 +464,16 @@ class LibSSHParallelTest(unittest.TestCase):
             pkey=None, allow_agent=True,
             identity_auth=True)
         self.assertRaises(AuthenticationException, client.run_command, self.cmd)
+
+    def test_multiple_join_timeout(self):
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.user_key)
+        for _ in range(5):
+            output = client.run_command(self.cmd, return_list=True)
+            client.join(output, timeout=1, consume_output=True)
+            for host_out in output:
+                self.assertTrue(host_out.client.finished(host_out.channel))
+        output = client.run_command('sleep 2', return_list=True)
+        self.assertRaises(Timeout, client.join, output, timeout=1, consume_output=True)
+        for host_out in output:
+            self.assertFalse(host_out.client.finished(host_out.channel))
