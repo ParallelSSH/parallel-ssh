@@ -28,22 +28,20 @@ import os
 import shutil
 import sys
 import string
-from socket import timeout as socket_timeout
-from sys import version_info
+from datetime import datetime
 from platform import python_version
 import random
 import time
 
-
 from pytest import mark
-from gevent import joinall, spawn, socket, Greenlet
+from gevent import joinall, spawn, socket, Greenlet, sleep
+from pssh import logger as pssh_logger
 from pssh.clients.native import ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
     ProxyError, PKeyFileError
 from pssh.output import HostOutput
-from pssh import logger as pssh_logger
 
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
 from ..embedded_server.openssh import OpenSSHServer
@@ -1538,6 +1536,37 @@ class ParallelSSHClientTest(unittest.TestCase):
         for host_out in output:
             stdout = list(host_out.stdout)
             self.assertEqual(stdout, ['me'])
+
+    def test_read_timeout_no_output(self):
+        def get_out(host_out, stream, read_timeout):
+            now = datetime.now()
+            try:
+                for line in stream:
+                    pass
+            except Timeout:
+                self.client.reset_output_generators(host_out, timeout=read_timeout)
+            finally:
+                dt = datetime.now() - now
+                return dt
+        cmd = 'sleep 1; echo start >&2; for i in 1 5 5; do sleep $i; echo $i; done'
+        read_timeout = 3
+        output = self.client.run_command(
+            cmd, timeout=read_timeout, stop_on_errors=False, return_list=True)
+        for host_out in output:
+            while not host_out.client.finished(host_out.channel):
+                dt = get_out(host_out, host_out.stdout, read_timeout)
+                dt_seconds = dt.total_seconds()
+                # print("Stdout dt %s" %(dt.total_seconds(),))
+                self.assertTrue(
+                    read_timeout <= dt_seconds <= read_timeout/8.0,
+                    msg="Read for stdout timed out at %s seconds for %s second timeout" % (
+                        dt_seconds, read_timeout))
+                dt = get_out(host_out, host_out.stderr, read_timeout)
+                # print("Stderr dt %s" %(dt.total_seconds(),))
+                self.assertTrue(
+                    read_timeout <= dt_seconds <= read_timeout/8.0,
+                    msg="Read for stdout timed out at %s seconds for %s second timeout" % (
+                        dt_seconds, read_timeout))
 
     # TODO:
     # * forward agent enabled
