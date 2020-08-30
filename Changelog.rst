@@ -7,7 +7,7 @@ Change Log
 Fixes
 ------
 
-* Reading from output streams with timeout via `run_command(<..>, timeout=<timeout>)` would raise timeout early when trying to read from an output stream with no data written to it while the other output stream has pending data to read - #180.
+* Reading from output streams with timeout via `run_command(<..>, timeout=<timeout>)` would raise timeout early when trying to read from a stream with no data written to it while other streams have pending data - #180.
 
 
 1.12.0
