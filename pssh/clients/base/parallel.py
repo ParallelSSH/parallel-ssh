@@ -101,7 +101,6 @@ class BaseParallelSSHClient(object):
                 *args, **kwargs)
                     for host_i, host in enumerate(self.hosts)]
         self.cmds = cmds
-        logger.debug("Made %s cmds, joining", len(cmds))
         joinall(cmds, raise_error=False, timeout=greenlet_timeout)
         return self._get_output_from_cmds(cmds, stop_on_errors=stop_on_errors,
                                           timeout=greenlet_timeout,
