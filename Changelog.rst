@@ -1,6 +1,15 @@
 Change Log
 ============
 
+1.12.1
+++++++
+
+Fixes
+------
+
+* Reading from output streams with timeout via `run_command(<..>, timeout=<timeout>)` would raise timeout early when trying to read from an output stream with no data written to it while the other output stream has pending data to read - #180.
+
+
 1.12.0
 ++++++
 

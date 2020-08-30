@@ -30,7 +30,7 @@ script:
   - eval `ssh-agent -s`
   - pytest --cov-append --cov=pssh tests/test_imports.py tests/test_output.py tests/test_utils.py
   - pytest --reruns 5 --cov-append --cov=pssh tests/miko
-  - pytest --reruns 5 --cov-append --cov=pssh tests/native/test_tunnel.py tests/native/test_agent.py
+  - pytest --reruns 10 --cov-append --cov=pssh tests/native/test_tunnel.py tests/native/test_agent.py
   - pytest --reruns 5 --cov-append --cov=pssh tests/native/test_*_client.py
   - pytest --reruns 5 --cov-append --cov=pssh tests/ssh
   - flake8 pssh
