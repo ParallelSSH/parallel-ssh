@@ -1582,8 +1582,8 @@ class ParallelSSHClientTest(unittest.TestCase):
             dt, timed_out = self.read_stream_dt(host_out, host_out.stderr, read_timeout)
             self.assertFalse(timed_out)
 
-    def test_read_timeout_no_timeout(self):
-        cmd = 'echo me'
+    def test_read_timeout_no_timeouts(self):
+        cmd = 'echo me; echo me_stderr >&2'
         read_timeout = 1
         # No timeouts
         output = self.client.run_command(
