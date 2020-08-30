@@ -1569,23 +1569,6 @@ class ParallelSSHClientTest(unittest.TestCase):
                     msg="Read for stdout timed out at %s seconds for %s second timeout" % (
                         dt_seconds, read_timeout))
 
-    def test_read_timeout_no_output(self):
-        # Should always time out
-        cmd = 'sleep 2'
-        read_timeout = 1
-        output = self.client.run_command(
-            cmd, timeout=read_timeout, stop_on_errors=False, return_list=True)
-        for host_out in output:
-            dt, timed_out = self.read_stream_dt(host_out, host_out.stdout, read_timeout)
-            dt_seconds = dt.total_seconds()
-            # Timeout within timeout value + 3%
-            self.assertTrue(timed_out)
-            self.assertTrue(read_timeout <= dt_seconds <= read_timeout*1.03)
-            dt, timed_out = self.read_stream_dt(host_out, host_out.stderr, read_timeout)
-            dt_seconds = dt.total_seconds()
-            self.assertTrue(timed_out)
-            self.assertTrue(read_timeout <= dt_seconds <= read_timeout*1.03)
-
     def test_read_stdout_no_timeout(self):
         cmd = 'sleep 1; echo me; sleep 1; echo me'
         read_timeout = 3
@@ -1614,8 +1597,8 @@ class ParallelSSHClientTest(unittest.TestCase):
             self.assertTrue(dt.total_seconds() < read_timeout)
 
     def test_read_stdout_timeout_stderr_no_timeout(self):
-        cmd = 'sleep 1; echo me >&2; sleep 1; echo me >&2'
-        read_timeout = 5
+        cmd = 'sleep 1; echo me >&2; sleep 1; echo me >&2; sleep 1'
+        read_timeout = 2
         # No timeouts
         output = self.client.run_command(
             cmd, timeout=read_timeout, stop_on_errors=False, return_list=True)
