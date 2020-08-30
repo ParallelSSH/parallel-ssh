@@ -24,6 +24,7 @@ from ssh.session import SSH_READ_PENDING, SSH_WRITE_PENDING
 from ssh.error_codes import SSH_AGAIN
 
 from ..exceptions import Timeout
+from gevent import Timeout as GTimeout
 
 
 cdef bytes LINESEP = b'\n'
@@ -45,32 +46,37 @@ def _read_output(session, read_func, timeout=None):
     cdef size_t _pos = 0
     cdef Py_ssize_t linesep
     _size, _data = read_func()
-    while _size == _LIBSSH2_ERROR_EAGAIN or _size > 0:
-        if _size == _LIBSSH2_ERROR_EAGAIN:
-            wait_select(session, timeout)
-            _size, _data = read_func()
-            if timeout is not None and _size == _LIBSSH2_ERROR_EAGAIN:
-                raise Timeout
-        while _size > 0:
-            while _pos < _size:
-                linesep = _data[:_size].find(LINESEP, _pos)
-                if linesep >= 0:
-                    if remainder_len > 0:
-                        yield remainder + _data[_pos:linesep].rstrip()
-                        remainder = b""
-                        remainder_len = 0
+    t = GTimeout(timeout)
+    t.start()
+    try:
+        while _size == _LIBSSH2_ERROR_EAGAIN or _size > 0:
+            if _size == _LIBSSH2_ERROR_EAGAIN:
+                wait_select(session, timeout)
+                _size, _data = read_func()
+            while _size > 0:
+                while _pos < _size:
+                    linesep = _data[:_size].find(LINESEP, _pos)
+                    if linesep >= 0:
+                        if remainder_len > 0:
+                            yield remainder + _data[_pos:linesep].rstrip()
+                            remainder = b""
+                            remainder_len = 0
+                        else:
+                            yield _data[_pos:linesep].rstrip()
+                        _pos = linesep + 1
                     else:
-                        yield _data[_pos:linesep].rstrip()
-                    _pos = linesep + 1
-                else:
-                    remainder += _data[_pos:]
-                    remainder_len = len(remainder)
-                    break
-            _size, _data = read_func()
-            _pos = 0
-    if remainder_len > 0:
-        # Finished reading without finding ending linesep
-        yield remainder
+                        remainder += _data[_pos:]
+                        remainder_len = len(remainder)
+                        break
+                _size, _data = read_func()
+                _pos = 0
+        if remainder_len > 0:
+            # Finished reading without finding ending linesep
+            yield remainder
+    except GTimeout:
+        raise Timeout
+    finally:
+        t.close()
 
 
 def wait_select(session, timeout=None):
