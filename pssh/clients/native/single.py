@@ -470,7 +470,7 @@ class SSHClient(BaseSSHClient):
                  encoding='utf-8'):
         """Copy remote file to local host via SCP.
 
-        Note - Remote directory listings are gather via SFTP when
+        Note - Remote directory listings are gathered via SFTP when
         ``recurse`` is enabled - SCP lacks directory list support.
         Enabling recursion therefore involves creating an extra SFTP channel
         and requires SFTP support on the server.
@@ -491,8 +491,8 @@ class SSHClient(BaseSSHClient):
         :raises: :py:class:`IOError` on local file IO errors.
         :raises: :py:class:`OSError` on local OS errors like permission denied.
         """
-        sftp = self._make_sftp() if (sftp is None and recurse) else sftp
         if recurse:
+            sftp = self._make_sftp() if sftp is None else sftp
             try:
                 self._eagain(sftp.stat, remote_file)
             except (SFTPHandleError, SFTPProtocolError):
