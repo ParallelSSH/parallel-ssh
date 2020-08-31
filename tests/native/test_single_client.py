@@ -307,7 +307,6 @@ class SSH2ClientTest(SSH2TestCase):
         copy_to_abs_path = os.path.abspath(os.path.expanduser('~/' + copy_to_file_path))
         copy_to_abs_dir = os.path.abspath(os.path.expanduser('~/' + dir_base_dir))
         for _path in (copy_from_file_path, copy_to_abs_dir):
-            import ipdb; ipdb.set_trace()
             try:
                 shutil.rmtree(_path, ignore_errors=True)
             except Exception:
