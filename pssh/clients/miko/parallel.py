@@ -1,16 +1,16 @@
 # This file is part of parallel-ssh.
-
-# Copyright (C) 2014-2018 Panos Kittenis and contributors.
-
+#
+# Copyright (C) 2014-2020 Panos Kittenis.
+#
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation, version 2.1.
-
+#
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
-
+#
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
@@ -28,23 +28,21 @@ import gevent.pool  # noqa: E402
 import gevent.hub  # noqa: E402
 gevent.hub.Hub.NOT_ERROR = (Exception,)
 
-from ..base_pssh import BaseParallelSSHClient  # noqa: E402
+from .single import SSHClient  # noqa: E402
+from ..base.parallel import BaseParallelSSHClient  # noqa: E402
 from ...exceptions import HostArgumentException  # noqa: E402
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY  # noqa: E402
-from .single import SSHClient  # noqa: E402
 
 
 logger = logging.getLogger('pssh')
 
-_msg = "This client will be replaced as the default client " \
-       "by the better performing and non-monkey patching " \
-       "pssh.clients.native.ParallelSSHClient from 2.0.0 onwards.%(nl)s" \
+_msg = "This client has been replaced as the default client " \
+       "by pssh.clients.native.ParallelSSHClient and will be _removed_ from " \
+       "2.0.0 onwards.%(nl)s" \
        "Please ensure required functionality is supported by the new client " \
-       "by switching to 'from pssh.clients import ParallelSSHClient'. " \
-       "The pssh2_client import for the new client will continue to be " \
-       "supported for backwards compatibility. %(nl)s%(nl)s" \
-       "To continue using this client please update imports to " \
-       "'from pssh.clients.miko import ParallelSSHClient'." % {'nl': linesep}
+       "by switching to 'from pssh.clients import ParallelSSHClient' " \
+       "and if not pin version requirements to <2.0.0.%(nl)s%(nl)s" % {
+           'nl': linesep}
 warn(_msg)
 
 
@@ -213,7 +211,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         output = {}
         if host_args:
             try:
-                cmds = [self.pool.spawn(self._run_command, host,
+                cmds = [self.pool.spawn(self._run_command, host_i, host,
                                         command % host_args[host_i],
                                         sudo=sudo, user=user, shell=shell,
                                         use_shell=use_shell, use_pty=use_pty,
@@ -225,11 +223,11 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     "number of hosts ")
         else:
             cmds = [self.pool.spawn(
-                self._run_command, host, command,
+                self._run_command, host_i, host, command,
                 sudo=sudo, user=user, shell=shell,
                 use_shell=use_shell, use_pty=use_pty,
                 **paramiko_kwargs)
-                for host in self.hosts]
+                    for host_i, host in enumerate(self.hosts)]
         for cmd in cmds:
             try:
                 self.get_output(cmd, output, encoding=encoding)
@@ -238,15 +236,15 @@ class ParallelSSHClient(BaseParallelSSHClient):
                     raise
         return output
 
-    def _run_command(self, host, command, sudo=False, user=None,
+    def _run_command(self, host_i, host, command, sudo=False, user=None,
                      shell=None, use_shell=True, use_pty=True,
                      **paramiko_kwargs):
         """Make SSHClient, run command on host"""
         try:
-            self._make_ssh_client(host, **paramiko_kwargs)
-            return self.host_clients[host].exec_command(
+            client = self._make_ssh_client(host_i, host, **paramiko_kwargs)
+            return self._host_clients[(host_i, host)].exec_command(
                 command, sudo=sudo, user=user, shell=shell,
-                use_shell=use_shell, use_pty=use_pty)
+                use_shell=use_shell, use_pty=use_pty), client
         except Exception as ex:
             ex.host = host
             logger.error("Failed to run on host %s", host)
@@ -265,7 +263,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type output: dict
         :rtype: None"""
         try:
-            (channel, host, stdout, stderr, stdin) = cmd.get()
+            (channel, host, stdout, stderr, stdin), client = cmd.get()
         except Exception as ex:
             try:
                 host = ex.args[1]
@@ -274,7 +272,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                              "cannot update output data with %s", ex)
                 raise ex
             self._update_host_output(
-                output, host, None, None, None, None, None, cmd, exception=ex)
+                output, host, None, None, None, None, cmd, None, exception=ex)
             raise
         stdout = self.host_clients[host].read_output_buffer(
             stdout, callback=self.get_exit_codes,
@@ -284,8 +282,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
             stderr, prefix='\t[err]', callback=self.get_exit_codes,
             callback_args=(output,),
             encoding=encoding)
-        self._update_host_output(output, host, self._get_exit_code(channel),
-                                 channel, stdout, stderr, stdin, cmd)
+        self._update_host_output(output, host,
+                                 channel, stdout, stderr, stdin, cmd, client)
 
     def join(self, output, consume_output=False):
         """Block until all remote commands in output have finished
@@ -302,12 +300,17 @@ class ParallelSSHClient(BaseParallelSSHClient):
         for host in output:
             output[host].cmd.join()
             if output[host].channel is not None:
+                # This blocks greenlet until cmd completion
                 output[host].channel.recv_exit_status()
+                if not output[host].channel.closed:
+                    output[host].channel.close()
             if consume_output:
-                for line in output[host].stdout:
-                    pass
-                for line in output[host].stderr:
-                    pass
+                if output[host].stdout:
+                    for line in output[host].stdout:
+                        pass
+                if output[host].stderr:
+                    for line in output[host].stderr:
+                        pass
         self.get_exit_codes(output)
 
     def finished(self, output):
@@ -319,21 +322,15 @@ class ParallelSSHClient(BaseParallelSSHClient):
         """
         for host in output:
             chan = output[host].channel
-            if chan is not None and not chan.closed:
+            if chan is not None and not chan.exit_status_ready():
                 return False
         return True
 
-    def _get_exit_code(self, channel):
-        """Get exit code from channel if ready"""
-        if channel is None or not channel.exit_status_ready():
-            return
-        channel.close()
-        return channel.recv_exit_status()
-
-    def _make_ssh_client(self, host, **paramiko_kwargs):
-        if host not in self.host_clients or self.host_clients[host] is None:
+    def _make_ssh_client(self, host_i, host, **paramiko_kwargs):
+        if (host_i, host) not in self._host_clients \
+           or self._host_clients[(host_i, host)] is None:
             _user, _port, _password, _pkey = self._get_host_config_values(host)
-            self.host_clients[host] = SSHClient(
+            _client = SSHClient(
                 host, user=_user, password=_password, port=_port, pkey=_pkey,
                 forward_ssh_agent=self.forward_ssh_agent,
                 num_retries=self.num_retries, timeout=self.timeout,
@@ -342,3 +339,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 proxy_pkey=self.proxy_pkey, allow_agent=self.allow_agent,
                 agent=self.agent, channel_timeout=self.channel_timeout,
                 **paramiko_kwargs)
+            self.host_clients[host] = _client
+            self._host_clients[(host_i, host)] = _client
+            return _client
+        return self._host_clients[(host_i, host)]

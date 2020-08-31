@@ -4,5 +4,4 @@ dependencies:
   - python
   - setuptools
   - pip
-  - libssh2
   - toolchain3

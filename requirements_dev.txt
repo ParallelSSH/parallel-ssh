@@ -1,8 +1,11 @@
+coverage
 codecov
 flake8
 sphinx
 sphinx_rtd_theme
-nose
+pytest
+pytest-cov
+pytest-rerunfailures
 python-gssapi
 jinja2
 -r requirements.txt
