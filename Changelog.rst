@@ -9,6 +9,7 @@ Fixes
 
 * `ParallelSSHClient.copy_file` with recurse enabled and absolute destination path would create empty directory in home directory of user - #197.
 * `ParallelSSHClient.copy_file` and `scp_recv` with recurse enabled would not create remote directories when copying empty local directories.
+* `ParallelSSHClient.scp_send` would require SFTP when recurse is off and remote destination path contains directory - #157.
 
 1.12.1
 ++++++
