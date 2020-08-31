@@ -1,0 +1,141 @@
+version: 2.1
+
+orbs:
+  python: circleci/python@0.3.2
+
+jobs:
+  python_test:
+    parameters:
+      python_ver:
+        type: string
+        default: "3.6"
+    docker:
+      - image: circleci/python:<< parameters.python_ver >>
+    steps:
+      - checkout
+      - python/load-cache:
+          dependency-file: requirements_dev.txt
+          key: depsv3-{{ .Branch }}.{{ arch }}-PY<< parameters.python_ver >>
+      - run:
+          name: Deps
+          command: |
+            sudo apt-get install openssh-server
+      - python/save-cache:
+          dependency-file: requirements_dev.txt
+          key: depsv3-{{ .Branch }}.{{ arch }}-PY<< parameters.python_ver >>
+      - run:
+          command: |
+            pip install -U -r requirements_dev.txt
+          name: Build
+      - run:
+          command: |
+            eval "$(ssh-agent -s)"
+            pytest --cov-append --cov=pssh tests/test_imports.py tests/test_output.py tests/test_utils.py
+            pytest --reruns 5 --cov-append --cov=pssh tests/miko
+            pytest --reruns 10 --cov-append --cov=pssh tests/native/test_tunnel.py tests/native/test_agent.py
+            pytest --reruns 5 --cov-append --cov=pssh tests/native/test_*_client.py
+            pytest --reruns 5 --cov-append --cov=pssh tests/ssh
+            flake8 pssh
+            cd doc; make html; cd ..
+            # Test building from source distribution
+            python setup.py sdist
+            cd dist; pip install *; cd ..
+            python setup.py check --restructuredtext
+          name: Test
+      - run:
+          command: codecov
+          name: Coverage
+
+  osx:
+    parameters:
+      xcode_ver:
+        type: string
+        default: "11.6.0"
+    macos:
+      xcode: << parameters.xcode_ver >>
+    environment:
+      HOMEBREW_NO_AUTO_UPDATE: 1
+    steps:
+      - checkout
+      - run:
+          name: deps
+          command: |
+            pip3 install twine
+            which twine
+      - run:
+          name: Build Wheel
+          command: |
+            ./ci/osx-wheel.sh
+      - store_artifacts:
+          path: wheels
+      - run:
+          name: Upload Wheel
+          command: |
+            twine upload --skip-existing -u $PYPI_U -p $PYPI_P wheels/*
+
+  manylinux:
+    machine:
+      image: ubuntu-1604:201903-01
+    steps:
+      - checkout
+      - run:
+          name: sdist
+          command: python setup.py sdist
+      - python/load-cache:
+          key: manylinuxdepsv6-{{ .Branch }}.{{ arch }}
+          dependency-file: requirements.txt
+      - run:
+          name: Deps
+          command: |
+            sudo apt-get install python-pip
+            pip install -U pip
+            pip install twine
+            which twine
+      - python/save-cache:
+          key: manylinuxdepsv6-{{ .Branch }}.{{ arch }}
+          dependency-file: requirements.txt
+      - run:
+          name: Build Wheels
+          command: |
+            if [[ -z "${CIRCLE_PULL_REQUEST}" ]]; then
+              echo "$DOCKER_PASSWORD" | docker login -u="$DOCKER_USERNAME" --password-stdin;
+            fi
+            ./ci/travis/build-manylinux.sh
+      - run:
+          name: PyPi Upload
+          command: |
+            twine upload --skip-existing -u $PYPI_USER -p $PYPI_PASSWORD dist/* wheelhouse/*
+
+workflows:
+  version: 2.1
+  main:
+    jobs:
+      - python_test:
+          matrix:
+            parameters:
+              python_ver:
+                - "3.6"
+                - "3.7"
+                - "3.8"
+          filters:
+            tags:
+              ignore: /.*/
+      - manylinux:
+          context: Docker
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
+      - osx:
+          matrix:
+            parameters:
+              xcode_ver:
+                - "11.6.0"
+                - "11.1.0"
+          context: Docker
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
