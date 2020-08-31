@@ -326,8 +326,7 @@ class SSHClient(BaseSSHClient):
             raise SFTPIOError(msg, directory, self.host, error)
         logger.debug("Created remote directory %s", directory)
 
-    def copy_file(self, local_file, remote_file, recurse=False,
-                  sftp=None, _dir=None):
+    def copy_file(self, local_file, remote_file, recurse=False, sftp=None):
         """Copy local file to host via SFTP.
 
         :param local_file: Local filepath to copy to remote host

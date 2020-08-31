@@ -239,7 +239,10 @@ class SSH2ClientTest(SSH2TestCase):
         except Exception:
             pass
         try:
-            os.makedirs(to_copy_dir_path, exist_ok=True)
+            try:
+                os.makedirs(to_copy_dir_path)
+            except OSError:
+                pass
             # Copy for empty remote dir should create local dir
             self.client.scp_recv(to_copy_dir_path, copy_to_path, recurse=True)
             self.assertTrue(os.path.isdir(copy_to_path))
@@ -252,11 +255,11 @@ class SSH2ClientTest(SSH2TestCase):
                 local_file_path = os.path.sep.join([copy_to_path, _file])
                 self.assertTrue(os.path.isfile(local_file_path))
         finally:
-            try:
-                shutil.rmtree(to_copy_dir_path)
-            except Exception:
-                pass
-            shutil.rmtree(copy_to_path)
+            for _path in (to_copy_dir_path, copy_to_path):
+                try:
+                    shutil.rmtree(_path)
+                except Exception:
+                    pass
 
     def test_copy_file_abspath_recurse(self):
         cur_dir = os.path.dirname(__file__)
@@ -271,7 +274,10 @@ class SSH2ClientTest(SSH2TestCase):
             except Exception:
                 pass
         try:
-            os.makedirs(to_copy_dir_path, exist_ok=True)
+            try:
+                os.makedirs(to_copy_dir_path)
+            except OSError:
+                pass
             self.client.copy_file(to_copy_dir_path, copy_to_path, recurse=True)
             self.assertTrue(os.path.isdir(copy_to_path))
             for _file in files:
