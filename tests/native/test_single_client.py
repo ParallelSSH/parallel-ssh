@@ -296,6 +296,34 @@ class SSH2ClientTest(SSH2TestCase):
                 except Exception:
                     pass
 
+    def test_copy_file_remote_dir_relpath(self):
+        cur_dir = os.path.dirname(__file__)
+        dir_base_dir = 'a_dir'
+        dir_name_to_copy = '//'.join([dir_base_dir, 'dir1', 'dir2'])
+        file_to_copy = 'file_to_copy'
+        dir_path = [cur_dir, file_to_copy]
+        copy_from_file_path = os.path.abspath(os.path.sep.join(dir_path))
+        copy_to_file_path = '///'.join([dir_name_to_copy, file_to_copy])
+        copy_to_abs_path = os.path.abspath(os.path.expanduser('~/' + copy_to_file_path))
+        copy_to_abs_dir = os.path.abspath(os.path.expanduser('~/' + dir_base_dir))
+        for _path in (copy_from_file_path, copy_to_abs_dir):
+            import ipdb; ipdb.set_trace()
+            try:
+                shutil.rmtree(_path, ignore_errors=True)
+            except Exception:
+                pass
+        try:
+            with open(copy_from_file_path, 'w') as fh:
+                fh.writelines(['asdf'])
+            self.client.copy_file(copy_from_file_path, copy_to_file_path)
+            self.assertTrue(os.path.isfile(copy_to_abs_path))
+        finally:
+            for _path in (copy_from_file_path, copy_to_abs_dir):
+                try:
+                    shutil.rmtree(_path, ignore_errors=True)
+                except Exception:
+                    pass
+
     def test_sftp_mkdir_abspath(self):
         remote_dir = '/tmp/dir_to_create/dir1/dir2/dir3'
         _sftp = self.client._make_sftp()
