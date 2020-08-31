@@ -1,16 +1,16 @@
 # This file is part of parallel-ssh.
-
-# Copyright (C) 2014-2018 Panos Kittenis.
-
+#
+# Copyright (C) 2014-2020 Panos Kittenis.
+#
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation, version 2.1.
-
+#
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
-
+#
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
@@ -20,12 +20,12 @@ from collections import deque
 from gevent import sleep
 from gevent.lock import RLock
 
-from ..base_pssh import BaseParallelSSHClient
-from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from .single import SSHClient
-from ...exceptions import ProxyError, Timeout, HostArgumentException
 from .tunnel import Tunnel
-from .common import _validate_pkey_path
+from ..common import _validate_pkey_path
+from ..base.parallel import BaseParallelSSHClient
+from ...constants import DEFAULT_RETRIES, RETRY_DELAY
+from ...exceptions import ProxyError, Timeout, HostArgumentException
 
 
 logger = logging.getLogger(__name__)
@@ -35,12 +35,12 @@ class ParallelSSHClient(BaseParallelSSHClient):
     """ssh2-python based parallel client."""
 
     def __init__(self, hosts, user=None, password=None, port=22, pkey=None,
-                 num_retries=DEFAULT_RETRIES, timeout=None, pool_size=10,
+                 num_retries=DEFAULT_RETRIES, timeout=None, pool_size=100,
                  allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
                  proxy_host=None, proxy_port=22,
                  proxy_user=None, proxy_password=None, proxy_pkey=None,
                  forward_ssh_agent=False, tunnel_timeout=None,
-                 keepalive_seconds=60):
+                 keepalive_seconds=60, identity_auth=True):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -64,10 +64,22 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param timeout: (Optional) SSH session timeout setting in seconds.
           This controls timeout setting of socket operations used for SSH
           sessions. Defaults to OS default - usually 60 seconds.
+        :param timeout: (Optional) Individual SSH client timeout setting in
+          seconds passed on to each SSH client spawned by `ParallelSSHClient`.
+
+          This controls timeout setting of socket operations used for SSH
+          sessions *on a per session basis* meaning for each individual
+          SSH session.
+
+          Defaults to OS default - usually 60 seconds.
+
+          Parallel functions like `run_command` and `join` have a cummulative
+          timeout setting that is separate to and
+          not affected by `self.timeout`.
         :type timeout: float
         :param pool_size: (Optional) Greenlet pool size. Controls
           concurrency, on how many hosts to execute tasks in parallel.
-          Defaults to 10. Overhead in event
+          Defaults to 100. Overhead in event
           loop will determine how high this can be set to, see scaling guide
           lines in project's readme.
         :type pool_size: int
@@ -77,6 +89,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent.
         :type allow_agent: bool
+        :param identity_auth: (Optional) set to False to disable attempting to
+          authenticate with default identity files from
+          `pssh.clients.base_ssh_client.BaseSSHClient.IDENTITIES`
+        :type identity_auth: bool
         :param proxy_host: (Optional) SSH host to tunnel connection through
           so that SSH clients connect to host via client -> proxy_host -> host
         :type proxy_host: str
@@ -109,7 +125,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, hosts, user=user, password=password, port=port, pkey=pkey,
             allow_agent=allow_agent, num_retries=num_retries,
             timeout=timeout, pool_size=pool_size,
-            host_config=host_config, retry_delay=retry_delay)
+            host_config=host_config, retry_delay=retry_delay,
+            identity_auth=identity_auth)
         self.pkey = _validate_pkey_path(pkey)
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
@@ -127,16 +144,18 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8', timeout=None, greenlet_timeout=None):
+                    encoding='utf-8', timeout=None, greenlet_timeout=None,
+                    return_list=False):
         """Run command on all hosts in parallel, honoring self.pool_size,
-        and return output dictionary.
+        and return output.
 
         This function will block until all commands have been received
         by remote servers and then return immediately.
 
         More explicitly, function will return after connection and
-        authentication establishment and after commands have been accepted by
-        successfully established SSH channels.
+        authentication establishment in the case of on new connections and
+        after execute
+        commands have been accepted by successfully established SSH channels.
 
         Any connection and/or authentication exceptions will be raised here
         and need catching *unless* ``run_command`` is called with
@@ -160,12 +179,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           syntax, eg `shell='bash -c'` or `shell='zsh -c'`.
         :type shell: str
         :param use_pty: (Optional) Enable/Disable use of pseudo terminal
-          emulation. Disabling it will prohibit capturing standard input/output.
-          This is required in majority of cases, exceptions being where a shell
-          is not used and/or input/output is not required. In particular
-          when running a command which deliberately closes input/output pipes,
-          such as a daemon process, you may want to disable ``use_pty``.
-          Defaults to ``True``
+          emulation. Defaults to ``False``
         :type use_pty: bool
         :param host_args: (Optional) Format command string with per-host
           arguments in ``host_args``. ``host_args`` length must equal length of
@@ -192,10 +206,15 @@ class ParallelSSHClient(BaseParallelSSHClient):
           ``BaseException`` and thus **can not be caught** by
           ``stop_on_errors=False``.
         :type greenlet_timeout: float
+        :param return_list: (Optional) Return a list of ``HostOutput`` objects
+          instead of dictionary. ``run_command`` will return a list starting
+          from 2.0.0 - enable this flag to avoid client code breaking on
+          upgrading to 2.0.0.
+        :type return_list: bool
         :rtype: Dictionary with host as key and
-          :py:class:`pssh.output.HostOutput` as value as per
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
-
+          :py:class:`pssh.output.HostOutput` as value
+          *or* list(:py:class:`pssh.output.HostOutput`) when
+          ``return_list=True``
         :raises: :py:class:`pssh.exceptions.AuthenticationException` on
           authentication error
         :raises: :py:class:`pssh.exceptions.UnknownHostException` on DNS
@@ -220,112 +239,19 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, command, stop_on_errors=stop_on_errors, host_args=host_args,
             user=user, shell=shell, sudo=sudo,
             encoding=encoding, use_pty=use_pty, timeout=timeout,
-            greenlet_timeout=greenlet_timeout)
+            greenlet_timeout=greenlet_timeout, return_list=return_list)
 
-    def _run_command(self, host, command, sudo=False, user=None,
-                     shell=None, use_pty=False,
-                     encoding='utf-8', timeout=None):
-        """Make SSHClient if needed, run command on host"""
-        try:
-            self._make_ssh_client(host)
-            return self.host_clients[host].run_command(
-                command, sudo=sudo, user=user, shell=shell,
-                use_pty=use_pty, encoding=encoding, timeout=timeout)
-        except Exception as ex:
-            ex.host = host
-            logger.error("Failed to run on host %s - %s", host, ex)
-            raise ex
-
-    def join(self, output, consume_output=False, timeout=None,
-             encoding='utf-8'):
-        """Wait until all remote commands in output have finished
-        and retrieve exit codes. Does *not* block other commands from
-        running in parallel.
-
-        :param output: Output of commands to join on
-        :type output: dict as returned by
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
-        :param consume_output: Whether or not join should consume output
-          buffers. Output buffers will be empty after ``join`` if set
-          to ``True``. Must be set to ``True`` to allow host logger to log
-          output on call to ``join`` when host logger has been enabled.
-        :type consume_output: bool
-        :param timeout: Timeout in seconds if remote command is not yet
-          finished. Note that use of timeout forces ``consume_output=True``
-          otherwise the channel output pending to be consumed always results
-          in the channel not being finished.
-        :type timeout: int
-
-        :raises: :py:class:`pssh.exceptions.Timeout` on timeout requested and
-          reached with commands still running.
-
-        :rtype: ``None``"""
-        for host, host_out in output.items():
-            if host not in self.host_clients or self.host_clients[host] is None:
-                continue
-            client = self.host_clients[host]
-            channel = host_out.channel
-            stdout, stderr = self.reset_output_generators(
-                host_out, client=client, channel=channel,
-                timeout=timeout, encoding=encoding)
-            try:
-                client.wait_finished(channel, timeout=timeout)
-            except Timeout:
-                raise Timeout(
-                    "Timeout of %s sec(s) reached on host %s with command "
-                    "still running", timeout, host)
-            if timeout:
-                # Must consume buffers prior to EOF check
-                self._consume_output(stdout, stderr)
-                if not channel.eof():
-                    raise Timeout(
-                        "Timeout of %s sec(s) reached on host %s with command "
-                        "still running", timeout, host)
-            elif consume_output:
-                self._consume_output(stdout, stderr)
-        self.get_exit_codes(output)
-
-    def reset_output_generators(self, host_out, timeout=None,
-                                client=None, channel=None,
-                                encoding='utf-8'):
-        """Reset output generators for host output.
-
-        :param host_out: Host output
-        :type host_out: :py:class:`pssh.output.HostOutput`
-        :param client: (Optional) SSH client
-        :type client: :py:class:`pssh.ssh2_client.SSHClient`
-        :param channel: (Optional) SSH channel
-        :type channel: :py:class:`ssh2.channel.Channel`
-        :param timeout: (Optional) Timeout setting
-        :type timeout: int
-        :param encoding: (Optional) Encoding to use for output. Must be valid
-          `Python codec <https://docs.python.org/library/codecs.html>`_
-        :type encoding: str
-
-        :rtype: tuple(stdout, stderr)
-        """
-        channel = host_out.channel if channel is None else channel
-        client = self.host_clients[host_out.host] if client is None else client
-        stdout = client.read_output_buffer(
-            client.read_output(channel, timeout=timeout), encoding=encoding)
-        stderr = client.read_output_buffer(
-            client.read_stderr(channel, timeout=timeout),
-            prefix='\t[err]', encoding=encoding)
-        host_out.stdout = stdout
-        host_out.stderr = stderr
-        return stdout, stderr
-
-    def _consume_output(self, stdout, stderr):
-        for line in stdout:
-            pass
-        for line in stderr:
-            pass
-
-    def _get_exit_code(self, channel):
-        """Get exit code from channel if ready"""
-        if channel is None:
+    def __del__(self):
+        if not hasattr(self, '_host_clients'):
             return
-        return channel.get_exit_status()
+        logger.debug("Disconnecting clients")
+        for s_client in self._host_clients.values():
+            try:
+                s_client.disconnect()
+            except Exception as ex:
+                logger.debug("Client disconnect failed with %s", ex)
+                pass
+            del s_client
 
     def _start_tunnel_thread(self):
         self._tunnel_lock = RLock()
@@ -349,14 +275,15 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 logger.error(msg, self._tunnel.exception)
                 raise ProxyError(msg, self._tunnel.exception)
 
-    def _make_ssh_client(self, host):
+    def _make_ssh_client(self, host_i, host):
         auth_thread_pool = True
         if self.proxy_host is not None and self._tunnel is None:
             self._start_tunnel_thread()
         logger.debug("Make client request for host %s, host in clients: %s",
                      host, host in self.host_clients)
         with self._clients_lock:
-            if host not in self.host_clients or self.host_clients[host] is None:
+            if (host_i, host) not in self._host_clients \
+               or self._host_clients[(host_i, host)] is None:
                 _user, _port, _password, _pkey = self._get_host_config_values(
                     host)
                 proxy_host = None if self.proxy_host is None else '127.0.0.1'
@@ -379,14 +306,20 @@ class ParallelSSHClient(BaseParallelSSHClient):
                             _wait += .5
                         else:
                             break
-                self.host_clients[host] = SSHClient(
+                _client = SSHClient(
                     host, user=_user, password=_password, port=_port,
                     pkey=_pkey, num_retries=self.num_retries,
                     timeout=self.timeout,
                     allow_agent=self.allow_agent, retry_delay=self.retry_delay,
                     proxy_host=proxy_host, _auth_thread_pool=auth_thread_pool,
                     forward_ssh_agent=self.forward_ssh_agent,
-                    keepalive_seconds=self.keepalive_seconds)
+                    keepalive_seconds=self.keepalive_seconds,
+                    identity_auth=self.identity_auth,
+                )
+                self.host_clients[host] = _client
+                self._host_clients[(host_i, host)] = _client
+                return _client
+        return self._host_clients[(host_i, host)]
 
     def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel via SFTP.
@@ -511,16 +444,16 @@ class ParallelSSHClient(BaseParallelSSHClient):
             suffix_separator=suffix_separator, copy_args=copy_args,
             encoding=encoding)
 
-    def _scp_send(self, host, local_file, remote_file, recurse=False):
-        self._make_ssh_client(host)
+    def _scp_send(self, host_i, host, local_file, remote_file, recurse=False):
+        self._make_ssh_client(host_i, host)
         return self._handle_greenlet_exc(
-            self.host_clients[host].scp_send, host,
+            self._host_clients[(host_i, host)].scp_send, host,
             local_file, remote_file, recurse=recurse)
 
-    def _scp_recv(self, host, remote_file, local_file, recurse=False):
-        self._make_ssh_client(host)
+    def _scp_recv(self, host_i, host, remote_file, local_file, recurse=False):
+        self._make_ssh_client(host_i, host)
         return self._handle_greenlet_exc(
-            self.host_clients[host].scp_recv, host,
+            self._host_clients[(host_i, host)].scp_recv, host,
             remote_file, local_file, recurse=recurse)
 
     def scp_send(self, local_file, remote_file, recurse=False):
@@ -555,9 +488,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :raises: :py:class:`pss.exceptions.SCPError` on errors copying file.
         :raises: :py:class:`OSError` on local OS errors like permission denied.
         """
-        return [self.pool.spawn(self._scp_send, host, local_file,
+        return [self.pool.spawn(self._scp_send, host_i, host, local_file,
                                 remote_file, recurse=recurse)
-                for host in self.hosts]
+                for host_i, host in enumerate(self.hosts)]
 
     def scp_recv(self, remote_file, local_file, recurse=False, copy_args=None,
                  suffix_separator='_'):
@@ -631,7 +564,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         remote_file = "%(remote_file)s"
         try:
             return [self.pool.spawn(
-                self._scp_recv, host,
+                self._scp_recv, host_i, host,
                 remote_file % copy_args[host_i],
                 local_file % copy_args[host_i], recurse=recurse)
                     for host_i, host in enumerate(self.hosts)]
@@ -639,11 +572,3 @@ class ParallelSSHClient(BaseParallelSSHClient):
             raise HostArgumentException(
                 "Number of per-host copy arguments provided does not match "
                 "number of hosts")
-
-    def _handle_greenlet_exc(self, func, host, *args, **kwargs):
-        try:
-            self._make_ssh_client(host)
-            return func(*args, **kwargs)
-        except Exception as ex:
-            ex.host = host
-            raise ex

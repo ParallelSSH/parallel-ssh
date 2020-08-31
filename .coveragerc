@@ -12,6 +12,7 @@ omit =
     setup.py
     /home/travis/virtualenv/python*/lib/python*/*
     */_version.py
+    *.pyx
 exclude_lines =
     pragma: no cover
     def __repr__

@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2018 Panos Kittenis.
+# Copyright (C) 2014-2020 Panos Kittenis.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -17,7 +17,7 @@
 
 import os
 
-from ...exceptions import PKeyFileError
+from ..exceptions import PKeyFileError
 
 
 def _validate_pkey_path(pkey, host=None):

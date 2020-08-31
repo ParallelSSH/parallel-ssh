@@ -1,5 +1,6 @@
 # This file is part of parallel-ssh.
-# Copyright (C) 2014-2018 Panos Kittenis
+#
+# Copyright (C) 2014-2020 Panos Kittenis
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -18,12 +19,17 @@ import os
 import socket
 import random
 import string
+import logging
 from threading import Thread
 from subprocess import Popen
 from time import sleep
 from sys import version_info
 
 from jinja2 import Template
+
+
+logger = logging.getLogger('pssh.test.openssh_server')
+logger.setLevel(logging.DEBUG)
 
 
 DIR_NAME = os.path.dirname(__file__)
@@ -41,9 +47,9 @@ class OpenSSHServer(object):
         self.listen_ip = listen_ip
         self.port = port
         self.server_proc = None
-        self.sshd_config = SSHD_CONFIG + '_%s' % ''.join(
-            random.choice(string.ascii_lowercase + string.digits)
-            for _ in range(8))
+        self.random_server = ''.join(random.choice(string.ascii_lowercase + string.digits)
+                                     for _ in range(8))
+        self.sshd_config = SSHD_CONFIG + '_%s' % self.random_server
         self._fix_masks()
         self.make_config()
 
@@ -60,12 +66,15 @@ class OpenSSHServer(object):
         template = Template(tmpl)
         with open(self.sshd_config, 'w') as fh:
             fh.write(template.render(parent_dir=os.path.abspath(DIR_NAME),
-                                     listen_ip=self.listen_ip))
+                                     listen_ip=self.listen_ip,
+                                     random_server=self.random_server,
+            ))
             fh.write(os.linesep)
 
     def start_server(self):
         cmd = ['/usr/sbin/sshd', '-D', '-p', str(self.port),
                '-h', SERVER_KEY, '-f', self.sshd_config]
+        logger.debug("Starting server with %s" % (" ".join(cmd),))
         self.server_proc = Popen(cmd)
         self.wait_for_port()
 

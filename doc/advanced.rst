@@ -1,120 +1,109 @@
 Advanced Usage
-=================
+###############
 
 There are several more advanced usage features of ``parallel-ssh``, such as tunnelling (aka proxying) via an intermediate SSH server and per-host configuration and command substitution among others.
 
 Agents and Private Keys
-*************************
-
-SSH Agent forwarding
------------------------
-
-SSH agent forwarding, what ``ssh -A`` does on the command line, is supported and enabled by default. Creating a client object as:
-
-.. code-block:: python
-
-   ParallelSSHClient(hosts, forward_ssh_agent=False)
-
-will disable this behaviour.
+************************
 
 Programmatic Private Keys
---------------------------
+============================
 
-By default, ``parallel-ssh`` will use all keys in an available SSH agent and identity keys under the user's SSH directory - ``id_rsa``, ``id_dsa`` and ``identity`` in ``~/.ssh``.
+By default, ``parallel-ssh`` will attempt to use loaded keys in an available SSH agent as well as default identity files under the user's home directory.
+
+See `IDENTITIES` in :py:class:`SSHClient <pssh.clients.base_ssh_client.BaseSSHClient>` for a list of identity files.
 
 A private key can also be provided programmatically.
 
 .. code-block:: python
 
-  from pssh.utils import load_private_key
-  from pssh.pssh_client import ParallelSSHClient
+   import os
 
-  client = ParallelSSHClient(hosts, pkey=load_private_key('my_key'))
+   from pssh.clients import ParallelSSHClient
 
-Where ``my_key`` is a private key file in current working directory.
+   client = ParallelSSHClient(hosts, pkey=os.path.expanduser("~/.ssh/my_key"))
 
-The helper function :py:func:`load_private_key <pssh.utils.load_private_key>` will attempt to load all available key types and raises :mod:`SSHException <pssh.exceptions.SSHException>` if it cannot load the key file.
-
-.. seealso::
-
-   :py:func:`load_private_key <pssh.utils.load_private_key>`
-
-Disabling use of system SSH Agent
-----------------------------------
-
-Use of an available SSH agent can also be disabled.
-
-.. code-block:: python
-
-  client = ParallelSSHClient(hosts, pkey=load_private_key('my_key'), 
-                             allow_agent=False)
-
-.. warning::
-
-   For large number of hosts, it is recommended that private keys are provided programmatically and use of SSH agent is disabled via ``allow_agent=False`` as above. 
-
-   If the number of hosts is large enough, available connections to the system SSH agent may be exhausted which will stop the client from working on a subset of hosts.
-
-   This is a limitation of the underlying SSH client used by ``parallel-ssh``.
-
-Programmatic SSH Agent
------------------------
-
-*Paramiko client only*.
-
-It is also possible to programmatically provide an SSH agent for the client to use, instead of a system provided one. This is useful in cases where hosts need different private keys and a system SSH agent is not available.
-
-.. code-block:: python
-   
-   from pssh.agent import SSHAgent
-   from pssh.utils import load_private_key
-   from pssh.clients.miko import ParallelSSHClient
-
-   agent = SSHAgent()
-   agent.add_key(load_private_key('my_private_key_filename'))
-   agent.add_key(load_private_key('my_other_private_key_filename'))
-   hosts = ['my_host', 'my_other_host']
-
-   client = ParallelSSHClient(hosts, agent=agent)
-   client.run_command(<..>)
-
-.. note::
-
-   Supplying an agent programmatically implies that a system SSH agent will *not* be used even if available.
-
-.. seealso::
-
-   :py:class:`pssh.agent.SSHAgent`
+Where ``my_key`` is a private key file under `.ssh` in the user's home directory.
 
 
 Native clients
-*****************
+***************
 
-Starting from version ``1.2.0``, a new client is supported in ``parallel-ssh`` which offers much greater performance and reduced overhead than the current default client.
+ssh2-python
+=============
 
-The new client is based on ``libssh2`` via the ``ssh2-python`` extension library and supports non-blocking mode natively. Binary wheel packages with ``libssh2`` included are provided for Linux, OSX and Windows platforms and all supported Python versions.
+Starting from version ``1.2.0``, the default client in ``parallel-ssh`` is based on `ssh2-python` (`libssh2`). It is a native client, offering C level performance with an easy to use Python API.
 
-See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of the available clients.
+See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of the available clients in the `1.x.x` series.
 
-To make use of this new client, ``ParallelSSHClient`` can be imported from ``pssh.clients.native`` instead. Their respective APIs are almost identical. 
 
 .. code-block:: python
 
-  from pssh.clients.native import ParallelSSHClient
+   from pssh.clients import ParallelSSHClient
 
-  hosts = ['my_host', 'my_other_host']
-  client = ParallelSSHClient(hosts)
-  client.run_command(<..>)
+   hosts = ['my_host', 'my_other_host']
+   client = ParallelSSHClient(hosts)
 
+   output = client.run_command('uname', return_list=True)
+   for host_out in output:
+       for line in host_out.stdout:
+           print(line)
+
+`return_list=True` makes `run_command` return a list of `HostOutput` objects which will become the default in `2.0.0`. Dictionary output from `run_command` is deprecated.
 
 .. seealso::
 
-   `Feature comparison <ssh2.html>`_ for how the client features compare.
+   `Feature comparison <ssh2.html>`_ for how the `1.x.x` client features compare.
 
    API documentation for `parallel <native_parallel.html>`_ and `single <native_single.html>`_ native clients.
 
+
+ssh-python (libssh) Client
+============================
+
+From version `1.12.0` another client based on `libssh <https://libssh.org>`_ via `ssh-python` is provided for testing purposes.
+
+The API is similar to the default client, while `ssh-python` offers more supported authentication methods compared to the default client.
+
+On the other hand, this client lacks SCP and SFTP functionality.
+
+.. code-block:: python
+
+   from pssh.clients.ssh_lib import ParallelSSHClient
+
+   hosts = ['localhost', 'localhost']
+   client = ParallelSSHClient(hosts)
+
+   output = client.run_command('uname', return_list=True)
+   client.join(output)
+   for host_out in output:
+       for line in host_out.stdout:
+           print(line)
+
+
+GSS-API Authentication - aka Kerberos
+--------------------------------------
+
+GSS authentication allows logins using Windows LDAP configured user accounts via Kerberos on Linux.
+
+.. code-block:: python
+
+   from pssh.clients.ssh_lib import ParallelSSHClient
+
+   client = ParallelSSHClient(hosts, gssapi_auth=True, gssapi_server_identity='gss_server_id')
+
+   output = client.run_command('id', return_list)
+   client.join(output)
+   for host_out in output:
+       for line in output.stdout:
+           print(line)
+
+
+This functionality is only supported in the ssh-python client :py:class:`ssh lib Client <pssh.clients.ssh_lib.ParallelSSHClient>`.
+
+
 Tunneling
-**********
+===========
 
 This is used in cases where the client does not have direct access to the target host and has to authenticate via an intermediary, also called a bastion host, commonly used for additional security as only the bastion host needs to have access to the target host.
 
@@ -131,13 +120,11 @@ Configuration for the proxy host's user name, port, password and private key can
 
 .. code-block:: python
    
-   from pssh.utils import load_private_key
-   
    hosts = [<..>]
    client = ParallelSSHClient(hosts, user='target_host_user', 
                               proxy_host='bastion', proxy_user='my_proxy_user',
  			      proxy_port=2222, 
- 			      proxy_pkey=load_private_key('proxy.key'))
+ 			      proxy_pkey='proxy.key')
 
 Where ``proxy.key`` is a filename containing private key to use for proxy host authentication.
 
@@ -181,7 +168,7 @@ The native clients have timeout functionality on reading output and ``client.joi
 The client will raise a ``Timeout`` exception if remote commands have not finished within five seconds in the above examples.
 
 Reading Partial Output of Commands That Do Not Terminate
-----------------------------------------------------------
+==========================================================
 
 In some cases, such as when the remote command never terminates unless interrupted, it is necessary to use PTY and to close the channel to force the process to be terminated before a ``join`` sans timeout can complete. For example:
 
@@ -247,16 +234,12 @@ Sometimes, different hosts require different configuration like user names and p
 
 .. code-block:: python
 
-   from pssh.utils import load_private_key
-
    host_config = {'host1' : {'user': 'user1', 'password': 'pass',
                              'port': 2222,
-                             'private_key': load_private_key(
-                                 'my_key.pem')},
+                             'private_key': 'my_key.pem'},
                   'host2' : {'user': 'user2', 'password': 'pass',
 		             'port': 2223,
-			     'private_key': load_private_key(
-			         open('my_other_key.pem'))},
+			     'private_key': 'my_other_key.pem'},
 		 }
    hosts = host_config.keys()
 
@@ -268,21 +251,22 @@ In the above example, ``host1`` will use user name ``user1`` and private key fro
 
 .. note::
 
-   Proxy host cannot be provided via per-host configuration at this time.
+   Proxy host configuration is per `ParallelSSHClient` and cannot be provided via per-host configuration.
+   Multiple clients can be used to make use of multiple proxy hosts.
 
 Per-Host Command substitution
 ******************************
 
 For cases where different commands should be run on each host, or the same command with different arguments, functionality exists to provide per-host command arguments for substitution.
 
-The ``host_args`` keyword parameter to :py:func:`run_command <pssh.pssh_client.ParallelSSHClient.run_command>` can be used to provide arguments to use to format the command string.
+The ``host_args`` keyword parameter to :py:func:`run_command <pssh.clients.native.parallel.ParallelSSHClient.run_command>` can be used to provide arguments to use to format the command string.
 
 Number of ``host_args`` items should be at least as many as number of hosts.
 
 Any Python string format specification characters may be used in command string.
 
 
-In the following example, first host in hosts list will use cmd ``host1_cmd`` second host ``host2_cmd`` and so on
+In the following example, first host in hosts list will use cmd ``host1_cmd`` second host ``host2_cmd`` and so on:
 
 .. code-block:: python
    
@@ -294,26 +278,44 @@ Command can also have multiple arguments to be substituted.
 
 .. code-block:: python
 
-   output = client.run_command('%s %s',
-   host_args = (('host1_cmd1', 'host1_cmd2'),
-                ('host2_cmd1', 'host2_cmd2'),
-                ('host3_cmd1', 'host3_cmd2'),))
+   output = client.run_command(
+                '%s %s',
+                host_args=(('host1_cmd1', 'host1_cmd2'),
+                           ('host2_cmd1', 'host2_cmd2'),
+                           ('host3_cmd1', 'host3_cmd2'),))
+
+This expands to the following per host commands:
+
+.. code-block:: bash
+
+   host1: 'host1_cmd1 host1_cmd2'
+   host2: 'host2_cmd1 host2_cmd2'
+   host3: 'host3_cmd1 host3_cmd2'
 
 A list of dictionaries can also be used as ``host_args`` for named argument substitution.
 
-In the following example, first host in host list will use cmd ``host-index-0``, second host ``host-index-1`` and so on.
+In the following example, first host in host list will use cmd ``echo command-1``, second host ``echo command-2`` and so on.
 
 .. code-block:: python
 
-   host_args = [{'cmd': 'host-index-%s' % (i,)}
+   host_args = [{'cmd': 'echo command-%s' % (i,)}
                 for i in range(len(client.hosts))]
    output = client.run_command('%(cmd)s', host_args=host_args)
+
+
+This expands to the following per host commands:
+
+.. code-block:: bash
+
+   host1: 'echo command-0'
+   host2: 'echo command-1'
+   host3: 'echo command-2'
 
 
 Run command features and options
 *********************************
 
-See :py:func:`run_command API documentation <pssh.pssh_client.ParallelSSHClient.run_command>` for a complete list of features and options.
+See :py:func:`run_command API documentation <pssh.clients.native.parallel.ParallelSSHClient.run_command>` for a complete list of features and options.
 
 .. note::
 
@@ -322,7 +324,7 @@ See :py:func:`run_command API documentation <pssh.pssh_client.ParallelSSHClient.
    Without a PTY, separate output is given for stdout and stderr, although some programs and server configurations require a PTY.
 
 Run with sudo
----------------
+===============
 
 ``parallel-ssh`` can be instructed to run its commands under ``sudo``:
 
@@ -345,9 +347,13 @@ While not best practice and password-less ``sudo`` is best configured for a limi
        stdin.write('my_password\n')
        stdin.flush()
    client.join(output)
+   
+.. note::
+
+   Note the inclusion of the new line ``\n`` when using sudo with a password.
 
 Output encoding
------------------
+===============
 
 By default, output is encoded as ``UTF-8``. This can be configured with the ``encoding`` keyword argument.
 
@@ -364,34 +370,12 @@ Contents of ``stdout`` will be `UTF-16` encoded.
 
    Encoding must be valid `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
 
-Disabling use of pseudo terminal emulation
---------------------------------------------
+Enabling use of pseudo terminal emulation
+===========================================
 
-For cases where use of a `PTY` is not wanted, such as having separate stdout and stderr outputs, the remote command is a daemon that needs to fork and detach itself or when use of a shell is explicitly disabled, use of PTY can also be disabled.
+Pseudo Terminal Emulation (PTY) can be enabled when running commands. Enabling it has some side effects on the output and behaviour of commands such as combining stdout and stderr output - see bash man page for more information.
 
-The following example prints to stderr with PTY disabled.
-
-.. code-block:: python
-
-   from __future__ import print_function
-
-   client = <..>
-
-   client.run_command("echo 'asdf' >&2", use_pty=False)
-   for line in output[client.hosts[0]].stderr: 
-       print(line)
-
-:Output:
-   .. code-block:: shell
-
-      asdf
-
-Combined stdout/stderr
------------------------
-
-With a PTY on the paramiko client, stdout and stderr output is combined.
-
-The same example as above with a PTY:
+All output, including stderr, is sent to the `stdout` channel with PTY enabled.
 
 .. code-block:: python
 
@@ -399,11 +383,12 @@ The same example as above with a PTY:
 
    client = <..>
 
-   client.run_command("echo 'asdf' >&2")
+   client.run_command("echo 'asdf' >&2", use_pty=True)
    for line in output[client.hosts[0]].stdout: 
        print(line)
 
-Note output is now from the ``stdout`` channel.
+
+Note output is from the ``stdout`` channel.
 
 :Output:
    .. code-block:: shell
@@ -419,24 +404,24 @@ Stderr is empty:
 
 No output from ``stderr``.
 
-SFTP
-*****
+SFTP and SCP
+*************
 
-SFTP - `SCP version 2` - is supported by ``parallel-ssh`` and two functions are provided by the client for copying files with SFTP.
+SFTP and SCP are supported by ``parallel-ssh`` and two functions are provided by the client for copying files with SFTP to and from remote servers.
 
-SFTP does not have a shell interface and no output is provided for any SFTP commands.
+Neither SFTP nor SCP do not have a shell interface and no output is provided for any SFTP/SCP commands.
 
 As such, SFTP functions in ``ParallelSSHClient`` return greenlets that will need to be joined to raise any exceptions from them. :py:func:`gevent.joinall` may be used for that.
 
 
 Copying files to remote hosts in parallel
-----------------------------------------------
+===========================================
 
 To copy the local file with relative path ``../test`` to the remote relative path ``test_dir/test`` - remote directory will be created if it does not exist, permissions allowing. ``raise_error=True`` instructs ``joinall`` to raise any exceptions thrown by the greenlets.
 
 .. code-block:: python
 
-   from pssh.pssh_client import ParallelSSHClient
+   from pssh.clients import ParallelSSHClient
    from gevent import joinall
    
    client = ParallelSSHClient(hosts)
@@ -453,12 +438,12 @@ To recursively copy directory structures, enable the ``recurse`` flag:
 
 .. seealso::
 
-   :py:func:`copy_file <pssh.pssh_client.ParallelSSHClient.copy_file>` API documentation and exceptions raised.
+   :py:func:`copy_file <pssh.clients.native.parallel.ParallelSSHClient.copy_file>` API documentation and exceptions raised.
 
    :py:func:`gevent.joinall` Gevent's ``joinall`` API documentation.
 
 Copying files from remote hosts in parallel
-----------------------------------------------
+===========================================
 
 Copying remote files in parallel requires that file names are de-duplicated otherwise they will overwrite each other. ``copy_remote_file`` names local files as ``<local_file><suffix_separator><host>``, suffixing each file with the host name it came from, separated by a configurable character or string.
 
@@ -476,30 +461,30 @@ The above will create files ``local.file_host1`` where ``host1`` is the host nam
 
 .. seealso::
 
-   :py:func:`copy_remote_file <pssh.pssh_client.ParallelSSHClient.copy_remote_file>`  API documentation and exceptions raised.
+   :py:func:`copy_remote_file <pssh.clients.native.parallel.ParallelSSHClient.copy_remote_file>`  API documentation and exceptions raised.
 
 Single host copy
------------------
+==================
 
-If wanting to copy a file from a single remote host and retain the original filename, can use the single host :py:class:`SSHClient <pssh.ssh_client.SSHClient>` and its :py:func:`copy_file <pssh.ssh_client.SSHClient.copy_remote_file>` directly.
+If wanting to copy a file from a single remote host and retain the original filename, can use the single host :py:class:`SSHClient <pssh.clients.native.single.SSHClient>` and its :py:func:`copy_file <pssh.clients.native.single.SSHClient.copy_remote_file>` directly.
 
 .. code-block:: python
 
-   from pssh.pssh_client import SSHClient
+   from pssh.clients import SSHClient
 
    client = SSHClient('localhost')
    client.copy_remote_file('remote_filename', 'local_filename')
 
 .. seealso::
 
-   :py:func:`SSHClient.copy_remote_file <pssh.clients.native.SSHClient.copy_remote_file>`  API documentation and exceptions raised.
+   :py:func:`SSHClient.copy_remote_file <pssh.clients.native.single.SSHClient.copy_remote_file>`  API documentation and exceptions raised.
 
 
 Hosts filtering and overriding
 *******************************
 
 Iterators and filtering
-------------------------
+========================
 
 Any type of iterator may be used as hosts list, including generator and list comprehension expressions.
 
@@ -527,7 +512,7 @@ Any type of iterator may be used as hosts list, including generator and list com
     Since generators by design only iterate over a sequence once then stop, ``client.hosts`` should be re-assigned after each call to ``run_command`` when using generators as target of ``client.hosts``.
 
 Overriding hosts list
-----------------------
+=======================
 
 Hosts list can be modified in place. A call to ``run_command`` will create new connections as necessary and output will only contain output for the hosts ``run_command`` executed on.
 
@@ -539,44 +524,23 @@ Hosts list can be modified in place. A call to ``run_command`` will create new c
    print(client.run_command('exit 0'))
    {'otherhost': exit_code=None, <..>}
 
-Additional options for underlying SSH libraries
-************************************************
 
-Not all SSH library configuration options are used directly by ``parallel-ssh``.
+Paramiko based clients (``pssh.clients.miko``)
+==============================================
 
-Additional options can be passed on to the underlying SSH libraries used via an optional keyword argument.
+.. warning::
 
-Please note that the underlying SSH libraries used are subject to change and not all features are present in all SSH libraries used. Future releases will have more than one option on which SSH library to use, depending on user requirements and preference.
+   Paramiko based clients are deprecated and will be *removed* in the ``2.0.0`` release.
 
-*New in version 1.1.*
-
-Paramiko (current default SSH library)
----------------------------------------
-
-GSS-API Authentication - aka Kerberos
-+++++++++++++++++++++++++++++++++++++++
-
-.. code-block:: python
-
-   client = ParallelSSHClient(hosts)
-
-   client.run_command('id', gss_auth=True, gss_kex=True, gss_host='my_gss_host')
-
-In this example, ``gss_auth``, ``gss_kex`` and ``gss_host`` are keyword arguments passed on to `paramiko.client.SSHClient.connect <http://paramiko-docs.readthedocs.io/en/stable/api/client.html#paramiko.client.SSHClient.connect>`_ to instruct the client to enable GSS-API authentication and key exchange with the provided GSS host.
 
 .. note::
 
-   The GSS-API features of Paramiko require that the ``python-gssapi`` package be installed manually - it is optional and not installed by any *extras* option of Paramiko.
+   When using the paramiko based clients, ``parallel-ssh`` makes use of gevent's monkey patching to enable asynchronous use of the Python standard library's network I/O as paramiko does not and cannot natively support non-blocking mode.
 
-   ``pip install python-gssapi``
+   Monkey patching is only done for the clients under ``pssh.clients.miko`` and the deprecated imports ``pssh.pssh_client`` and ``pssh.ssh_client``.
 
-Compression
-++++++++++++
+   Default client imports from ``pssh.clients`` do not do any monkey patching.
 
-Any other options not directly referenced by ``run_command`` can be passed on to `paramiko.client.SSHClient.connect <http://paramiko-docs.readthedocs.io/en/stable/api/client.html#paramiko.client.SSHClient.connect>`_, for example the ``compress`` option.
+   Make sure that these imports come **before** any other imports in your code in this case. Otherwise, patching may not be done before the standard library is loaded which will then cause the (g)event loop to be blocked.
 
-.. code-block:: python
-
-   client = ParallelSSHClient(hosts)
-
-   client.run_command('id', compress=True)
+   If you are seeing messages like ``This operation would block forever``, this is the cause.

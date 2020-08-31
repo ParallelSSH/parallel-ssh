@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 
-# Copyright (C) 2014-2018 Panos Kittenis.
+# Copyright (C) 2014-2020 Panos Kittenis.
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -21,7 +21,7 @@ Run SSH commands over many - hundreds/hundreds of thousands - number of servers
 asynchronously and with minimal system load on the client host.
 
 New users should start with
-:py:func:`pssh.pssh_client.ParallelSSHClient.run_command`
+:py:func:`pssh.clients.ParallelSSHClient.run_command`
 
 See also :py:class:`pssh.ParallelSSHClient` and :py:class:mod:`pssh.SSHClient`
 for class documentation.
