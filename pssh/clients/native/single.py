@@ -497,7 +497,10 @@ class SSHClient(BaseSSHClient):
             except SFTPError:
                 pass
             else:
-                os.makedirs(local_file, exist_ok=True)
+                try:
+                    os.makedirs(local_file)
+                except OSError:
+                    pass
                 file_list = self._sftp_readdir(dir_h)
                 return self._scp_recv_dir(file_list, remote_file,
                                           local_file, sftp,
