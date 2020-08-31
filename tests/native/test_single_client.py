@@ -376,7 +376,47 @@ class SSH2ClientTest(SSH2TestCase):
             read_file_size = os.stat(file_path_from).st_size
             written_file_size = os.stat(file_copy_to_dirpath).st_size
             self.assertEqual(read_file_size, written_file_size)
-            # import ipdb; ipdb.set_trace()
+            sha = sha256()
+            with open(file_path_from, 'rb') as fh:
+                for block in fh:
+                    sha.update(block)
+            read_file_hash = sha.hexdigest()
+            sha = sha256()
+            with open(file_copy_to_dirpath, 'rb') as fh:
+                for block in fh:
+                    sha.update(block)
+            written_file_hash = sha.hexdigest()
+            self.assertEqual(read_file_hash, written_file_hash)
+        finally:
+            for _path in (file_path_from, file_copy_to_dirpath):
+                try:
+                    os.unlink(_path)
+                except Exception:
+                    pass
+
+    def test_scp_send_large_file(self):
+        cur_dir = os.path.dirname(__file__)
+        file_name = 'file1'
+        file_copy_to = 'file_copied'
+        file_path_from = os.path.sep.join([cur_dir, file_name])
+        file_copy_to_dirpath = os.path.expanduser('~/') + file_copy_to
+        for _path in (file_path_from, file_copy_to_dirpath):
+            try:
+                os.unlink(_path)
+            except OSError:
+                pass
+        try:
+            with open(file_path_from, 'wb') as fh:
+                # ~300MB
+                for _ in range(20000000):
+                    fh.write(b"adsfasldkfjabafj")
+            self.client.scp_send(file_path_from, file_copy_to_dirpath)
+            self.assertTrue(os.path.isfile(file_copy_to_dirpath))
+            # OS file flush race condition
+            sleep(.1)
+            read_file_size = os.stat(file_path_from).st_size
+            written_file_size = os.stat(file_copy_to_dirpath).st_size
+            self.assertEqual(read_file_size, written_file_size)
             sha = sha256()
             with open(file_path_from, 'rb') as fh:
                 for block in fh:
