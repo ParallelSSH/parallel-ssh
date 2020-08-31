@@ -384,8 +384,14 @@ class ParallelSSHClientTest(unittest.TestCase):
         except Exception:
             raise
         finally:
-            os.unlink(remote_file_abspath)
-            shutil.rmtree(remote_test_dir_abspath)
+            try:
+                os.unlink(remote_file_abspath)
+            except OSError:
+                pass
+            try:
+                shutil.rmtree(remote_test_dir_abspath)
+            except Exception:
+                pass
         # No directory
         remote_file_abspath = os.path.expanduser('~/' + remote_filepath)
         cmds = client.copy_file(local_filename, remote_filepath)
@@ -494,11 +500,11 @@ class ParallelSSHClientTest(unittest.TestCase):
             for path in remote_file_paths:
                 self.assertTrue(os.path.isfile(path))
         finally:
-            try:
-                shutil.rmtree(local_test_path)
-                shutil.rmtree(remote_test_path_abs)
-            except Exception:
-                pass
+            for _path in (local_test_path, remote_test_path_abs):
+                try:
+                    shutil.rmtree(_path)
+                except Exception:
+                    pass
 
     def test_pssh_client_directory_abs_path(self):
         client = ParallelSSHClient([self.host], port=self.port,
@@ -533,8 +539,11 @@ class ParallelSSHClientTest(unittest.TestCase):
             for path in remote_file_paths:
                 self.assertTrue(os.path.isfile(path))
         finally:
-            shutil.rmtree(local_test_path)
-            shutil.rmtree(remote_test_path_abs)
+            for _path in (local_test_path, remote_test_path_abs):
+                try:
+                    shutil.rmtree(_path)
+                except Exception:
+                    pass
 
     def test_pssh_client_copy_file_failure(self):
         """Test failure scenarios of file copy"""
@@ -588,7 +597,10 @@ class ParallelSSHClientTest(unittest.TestCase):
         mask = 0o600
         os.chmod(remote_test_path_abs, mask)
         for path in [local_test_path, remote_test_path_abs]:
-            shutil.rmtree(path)
+            try:
+                shutil.rmtree(path)
+            except Exception:
+                pass
 
     def test_pssh_copy_remote_file_failure(self):
         cmds = self.client.copy_remote_file(
@@ -646,10 +658,16 @@ class ParallelSSHClientTest(unittest.TestCase):
             for path in local_file_paths:
                 self.assertTrue(os.path.isfile(path))
         except Exception:
-            shutil.rmtree(remote_test_path_abs)
+            try:
+                shutil.rmtree(remote_test_path_abs)
+            except Exception:
+                pass
             raise
         finally:
-            shutil.rmtree(local_copied_dir)
+            try:
+                shutil.rmtree(local_copied_dir)
+            except Exception:
+                pass
 
         # Relative path
         cmds = self.client.copy_remote_file(remote_test_path_rel, local_test_path,
@@ -660,7 +678,10 @@ class ParallelSSHClientTest(unittest.TestCase):
             for path in local_file_paths:
                 self.assertTrue(os.path.isfile(path))
         finally:
-            shutil.rmtree(local_copied_dir)
+            try:
+                shutil.rmtree(local_copied_dir)
+            except Exception:
+                pass
 
         # Different suffix
         cmds = self.client.copy_remote_file(remote_test_path_abs, local_test_path,
@@ -672,8 +693,11 @@ class ParallelSSHClientTest(unittest.TestCase):
                 path = path.replace(local_copied_dir, new_local_copied_dir)
                 self.assertTrue(os.path.isfile(path))
         finally:
-            shutil.rmtree(new_local_copied_dir)
-            shutil.rmtree(remote_test_path_abs)
+            for _path in (new_local_copied_dir, remote_test_path_abs):
+                try:
+                    shutil.rmtree(_path)
+                except Exception:
+                    pass
 
     def test_pssh_copy_remote_file_per_host_args(self):
         """Test parallel remote copy file with per-host arguments"""
@@ -1343,6 +1367,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         finally:
             try:
                 os.unlink(local_filename)
+            except OSError:
+                pass
+            try:
                 shutil.rmtree(remote_test_dir_abspath)
             except OSError:
                 pass
@@ -1426,10 +1453,16 @@ class ParallelSSHClientTest(unittest.TestCase):
             for path in local_file_paths:
                 self.assertTrue(os.path.isfile(path))
         except Exception:
-            shutil.rmtree(remote_test_path_abs)
+            try:
+                shutil.rmtree(remote_test_path_abs)
+            except Exception:
+                pass
             raise
         finally:
-            shutil.rmtree(local_copied_dir)
+            try:
+                shutil.rmtree(local_copied_dir)
+            except Exception:
+                pass
 
         # Relative path
         cmds = self.client.scp_recv(remote_test_path_rel, local_test_path,
@@ -1440,8 +1473,11 @@ class ParallelSSHClientTest(unittest.TestCase):
             for path in local_file_paths:
                 self.assertTrue(os.path.isfile(path))
         finally:
-            shutil.rmtree(remote_test_path_abs)
-            shutil.rmtree(local_copied_dir)
+            for _path in (remote_test_path_abs, local_copied_dir):
+                try:
+                    shutil.rmtree(_path)
+                except Exception:
+                    pass
 
     def test_bad_hosts_value(self):
         self.assertRaises(TypeError, ParallelSSHClient, 'a host')

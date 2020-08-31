@@ -20,6 +20,7 @@ import os
 import logging
 import time
 import subprocess
+import shutil
 
 from gevent import socket, sleep, spawn
 
@@ -224,3 +225,131 @@ class SSH2ClientTest(SSH2TestCase):
         stdout = list(self.client.read_output(channel))
         self.assertTrue(self.client.finished(channel))
         self.assertListEqual(stdout, [b'me'])
+
+    def test_scp_abspath_recursion(self):
+        cur_dir = os.path.dirname(__file__)
+        dir_name_to_copy = 'a_dir'
+        files = ['file1', 'file2']
+        dir_paths = [cur_dir, dir_name_to_copy]
+        to_copy_dir_path = os.path.abspath(os.path.sep.join(dir_paths))
+        # Dir to copy to
+        copy_to_path = '/tmp/copied_dir'
+        try:
+            shutil.rmtree(copy_to_path)
+        except Exception:
+            pass
+        try:
+            try:
+                os.makedirs(to_copy_dir_path)
+            except OSError:
+                pass
+            # Copy for empty remote dir should create local dir
+            self.client.scp_recv(to_copy_dir_path, copy_to_path, recurse=True)
+            self.assertTrue(os.path.isdir(copy_to_path))
+            for _file in files:
+                _filepath = os.path.sep.join([to_copy_dir_path, _file])
+                with open(_filepath, 'w') as fh:
+                    fh.writelines(['asdf'])
+            self.client.scp_recv(to_copy_dir_path, copy_to_path, recurse=True)
+            for _file in files:
+                local_file_path = os.path.sep.join([copy_to_path, _file])
+                self.assertTrue(os.path.isfile(local_file_path))
+        finally:
+            for _path in (to_copy_dir_path, copy_to_path):
+                try:
+                    shutil.rmtree(_path)
+                except Exception:
+                    pass
+
+    def test_copy_file_abspath_recurse(self):
+        cur_dir = os.path.dirname(__file__)
+        dir_name_to_copy = 'a_dir'
+        files = ['file1', 'file2']
+        dir_paths = [cur_dir, dir_name_to_copy]
+        to_copy_dir_path = os.path.abspath(os.path.sep.join(dir_paths))
+        copy_to_path = '/tmp/dest_path//'
+        for _path in (copy_to_path, to_copy_dir_path):
+            try:
+                shutil.rmtree(_path)
+            except Exception:
+                pass
+        try:
+            try:
+                os.makedirs(to_copy_dir_path)
+            except OSError:
+                pass
+            self.client.copy_file(to_copy_dir_path, copy_to_path, recurse=True)
+            self.assertTrue(os.path.isdir(copy_to_path))
+            for _file in files:
+                _filepath = os.path.sep.join([to_copy_dir_path, _file])
+                with open(_filepath, 'w') as fh:
+                    fh.writelines(['asdf'])
+            self.client.copy_file(to_copy_dir_path, copy_to_path, recurse=True)
+            self.assertFalse(os.path.exists(os.path.expanduser('~/tmp')))
+            for _file in files:
+                local_file_path = os.path.sep.join([copy_to_path, _file])
+                self.assertTrue(os.path.isfile(local_file_path))
+        finally:
+            for _path in (copy_to_path, to_copy_dir_path):
+                try:
+                    shutil.rmtree(_path)
+                except Exception:
+                    pass
+
+    def test_copy_file_remote_dir_relpath(self):
+        cur_dir = os.path.dirname(__file__)
+        dir_base_dir = 'a_dir'
+        dir_name_to_copy = '//'.join([dir_base_dir, 'dir1', 'dir2'])
+        file_to_copy = 'file_to_copy'
+        dir_path = [cur_dir, file_to_copy]
+        copy_from_file_path = os.path.abspath(os.path.sep.join(dir_path))
+        copy_to_file_path = '///'.join([dir_name_to_copy, file_to_copy])
+        copy_to_abs_path = os.path.abspath(os.path.expanduser('~/' + copy_to_file_path))
+        copy_to_abs_dir = os.path.abspath(os.path.expanduser('~/' + dir_base_dir))
+        for _path in (copy_from_file_path, copy_to_abs_dir):
+            try:
+                shutil.rmtree(_path, ignore_errors=True)
+            except Exception:
+                pass
+        try:
+            with open(copy_from_file_path, 'w') as fh:
+                fh.writelines(['asdf'])
+            self.client.copy_file(copy_from_file_path, copy_to_file_path)
+            self.assertTrue(os.path.isfile(copy_to_abs_path))
+        finally:
+            for _path in (copy_from_file_path, copy_to_abs_dir):
+                try:
+                    shutil.rmtree(_path, ignore_errors=True)
+                except Exception:
+                    pass
+
+    def test_sftp_mkdir_abspath(self):
+        remote_dir = '/tmp/dir_to_create/dir1/dir2/dir3'
+        _sftp = self.client._make_sftp()
+        try:
+            self.client.mkdir(_sftp, remote_dir)
+            self.assertTrue(os.path.isdir(remote_dir))
+            self.assertFalse(os.path.exists(os.path.expanduser('~/tmp')))
+        finally:
+            for _dir in (remote_dir, os.path.expanduser('~/tmp')):
+                try:
+                    shutil.rmtree(_dir)
+                except Exception:
+                    pass
+
+    def test_sftp_mkdir_rel_path(self):
+        remote_dir = 'dir_to_create/dir1/dir2/dir3'
+        try:
+            shutil.rmtree(os.path.expanduser('~/' + remote_dir))
+        except Exception:
+            pass
+        _sftp = self.client._make_sftp()
+        try:
+            self.client.mkdir(_sftp, remote_dir)
+            self.assertTrue(os.path.exists(os.path.expanduser('~/' + remote_dir)))
+        finally:
+            for _dir in (remote_dir, os.path.expanduser('~/tmp')):
+                try:
+                    shutil.rmtree(_dir)
+                except Exception:
+                    pass
