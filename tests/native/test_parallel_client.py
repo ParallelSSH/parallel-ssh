@@ -1307,16 +1307,17 @@ class ParallelSSHClientTest(unittest.TestCase):
         remote_filename = os.path.sep.join([remote_test_dir, remote_filepath])
         remote_file_abspath = os.path.expanduser('~/' + remote_filename)
         remote_test_dir_abspath = os.path.expanduser('~/' + remote_test_dir)
-        print(remote_file_abspath, remote_test_dir_abspath)
         try:
             cmds = self.client.scp_send(local_filename, remote_filename)
             joinall(cmds, raise_error=True)
-            time.sleep(.2)
         except Exception as ex:
             self.assertIsInstance(ex, SCPError)
         finally:
             try:
                 os.unlink(local_filename)
+            except OSError:
+                pass
+            try:
                 shutil.rmtree(remote_test_dir_abspath)
             except OSError:
                 pass
@@ -1333,7 +1334,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         try:
             cmds = self.client.scp_send(local_filename, remote_filename, recurse=True)
             joinall(cmds, raise_error=True)
-            time.sleep(.2)
             self.assertTrue(os.path.isdir(remote_test_dir_abspath))
             self.assertTrue(os.path.isfile(remote_file_abspath))
             remote_file_data = open(remote_file_abspath, 'r').read()
