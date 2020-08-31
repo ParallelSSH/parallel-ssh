@@ -303,3 +303,20 @@ class SSH2ClientTest(SSH2TestCase):
                     shutil.rmtree(_dir)
                 except Exception:
                     pass
+
+    def test_sftp_mkdir_rel_path(self):
+        remote_dir = 'dir_to_create/dir1/dir2/dir3'
+        try:
+            shutil.rmtree(os.path.expanduser('~/' + remote_dir))
+        except Exception:
+            pass
+        _sftp = self.client._make_sftp()
+        try:
+            self.client.mkdir(_sftp, remote_dir)
+            self.assertTrue(os.path.exists(os.path.expanduser('~/' + remote_dir)))
+        finally:
+            for _dir in (remote_dir, os.path.expanduser('~/tmp')):
+                try:
+                    shutil.rmtree(_dir)
+                except Exception:
+                    pass

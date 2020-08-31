@@ -401,7 +401,7 @@ class SSHClient(BaseSSHClient):
             if not d:
                 continue
             _paths_to_create.append(d)
-        cwd = ''
+        cwd = '' if directory.startswith('/') else '.'
         while _paths_to_create:
             cur_dir = _paths_to_create.popleft()
             cwd = '/'.join([cwd, cur_dir])
