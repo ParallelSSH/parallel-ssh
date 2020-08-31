@@ -17,6 +17,7 @@
 
 import logging
 import os
+from collections import deque
 from warnings import warn
 
 from gevent import sleep, spawn
@@ -383,7 +384,7 @@ class SSHClient(BaseSSHClient):
                 logger.error(msg, remote_file, ex)
                 raise SFTPIOError(msg, remote_file, ex)
 
-    def mkdir(self, sftp, directory, _parent_path=None):
+    def mkdir(self, sftp, directory):
         """Make directory via SFTP channel.
 
         Parent paths in the directory are created if they do not exist.
@@ -395,27 +396,20 @@ class SSHClient(BaseSSHClient):
 
         Catches and logs at error level remote IOErrors on creating directory.
         """
-        try:
-            _dir, sub_dirs = directory.split('/', 1)
-        except ValueError:
-            _dir = directory.split('/', 1)[0]
-            sub_dirs = None
-        if not _dir and directory.startswith('/'):
+        _paths_to_create = deque()
+        for d in directory.split('/'):
+            if not d:
+                continue
+            _paths_to_create.append(d)
+        cwd = ''
+        while _paths_to_create:
+            cur_dir = _paths_to_create.popleft()
+            cwd = '/'.join([cwd, cur_dir])
             try:
-                _dir, sub_dirs = sub_dirs.split(os.path.sep, 1)
-            except ValueError:
-                return True
-        if _parent_path is not None:
-            _dir = '/'.join((_parent_path, _dir))
-        try:
-            self._eagain(sftp.stat, _dir)
-        except (SFTPHandleError, SFTPProtocolError) as ex:
-            logger.debug("Stat for %s failed with %s", _dir, ex)
-            self._mkdir(sftp, _dir)
-        if sub_dirs is not None:
-            if directory.startswith('/'):
-                _dir = ''.join(('/', _dir))
-            return self.mkdir(sftp, sub_dirs, _parent_path=_dir)
+                self._eagain(sftp.stat, cwd)
+            except (SFTPHandleError, SFTPProtocolError) as ex:
+                logger.debug("Stat for %s failed with %s", cwd, ex)
+                self._mkdir(sftp, cwd)
 
     def copy_remote_file(self, remote_file, local_file, recurse=False,
                          sftp=None, encoding='utf-8'):
@@ -470,7 +464,7 @@ class SSHClient(BaseSSHClient):
                  encoding='utf-8'):
         """Copy remote file to local host via SCP.
 
-        Note - Remote directory listings are gather via SFTP when
+        Note - Remote directory listings are gathered via SFTP when
         ``recurse`` is enabled - SCP lacks directory list support.
         Enabling recursion therefore involves creating an extra SFTP channel
         and requires SFTP support on the server.
@@ -504,6 +498,7 @@ class SSHClient(BaseSSHClient):
             except SFTPError:
                 pass
             else:
+                os.makedirs(local_file, exist_ok=True)
                 file_list = self._sftp_readdir(dir_h)
                 return self._scp_recv_dir(file_list, remote_file,
                                           local_file, sftp,

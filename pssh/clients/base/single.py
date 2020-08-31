@@ -294,6 +294,7 @@ class BaseSSHClient(object):
     def _copy_dir(self, local_dir, remote_dir, sftp):
         """Call copy_file on every file in the specified directory, copying
         them to the specified remote directory."""
+        self.mkdir(sftp, remote_dir)
         file_list = os.listdir(local_dir)
         for file_name in file_list:
             local_path = os.path.join(local_dir, file_name)
