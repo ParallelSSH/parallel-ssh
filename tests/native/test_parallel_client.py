@@ -1319,6 +1319,10 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertListEqual(_contents, _out)
 
     def test_scp_send_dir(self):
+        """
+        Attempting to copy into a non-existent remote directory via scp_send()
+        without recurse=True should raise an SCPError.
+        """
         test_file_data = 'test'
         local_filename = 'test_file'
         remote_test_dir, remote_filepath = 'remote_test_dir', 'test_file_copy'
@@ -1330,7 +1334,30 @@ class ParallelSSHClientTest(unittest.TestCase):
         try:
             cmds = self.client.scp_send(local_filename, remote_filename)
             joinall(cmds, raise_error=True)
-            time.sleep(.2)
+        except Exception as ex:
+            self.assertIsInstance(ex, SCPError)
+        finally:
+            try:
+                os.unlink(local_filename)
+            except OSError:
+                pass
+            try:
+                shutil.rmtree(remote_test_dir_abspath)
+            except OSError:
+                pass
+
+    def test_scp_send_dir_recurse(self):
+        test_file_data = 'test'
+        local_filename = 'test_file'
+        remote_test_dir, remote_filepath = 'remote_test_dir', 'test_file_copy'
+        with open(local_filename, 'w') as file_h:
+            file_h.writelines([test_file_data + os.linesep])
+        remote_filename = os.path.sep.join([remote_test_dir, remote_filepath])
+        remote_file_abspath = os.path.expanduser('~/' + remote_filename)
+        remote_test_dir_abspath = os.path.expanduser('~/' + remote_test_dir)
+        try:
+            cmds = self.client.scp_send(local_filename, remote_filename, recurse=True)
+            joinall(cmds, raise_error=True)
             self.assertTrue(os.path.isdir(remote_test_dir_abspath))
             self.assertTrue(os.path.isfile(remote_file_abspath))
             remote_file_data = open(remote_file_abspath, 'r').read()
