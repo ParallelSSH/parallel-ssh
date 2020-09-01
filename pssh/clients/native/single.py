@@ -130,7 +130,7 @@ class SSHClient(BaseSSHClient):
     def configure_keepalive(self):
         self.session.keepalive_config(False, self.keepalive_seconds)
 
-    def _init(self, retries=1):
+    def _init_session(self, retries=1):
         self.session = Session()
         if self.timeout:
             # libssh2 timeout is in ms
@@ -138,8 +138,8 @@ class SSHClient(BaseSSHClient):
         try:
             self.session.handshake(self.sock)
         except Exception as ex:
-            while retries < self.num_retries:
-                return self._connect_init_retry(retries)
+            if retries < self.num_retries:
+                return self._connect_init_session_retry(retries=retries+1)
             msg = "Error connecting to host %s:%s - %s"
             logger.error(msg, self.host, self.port, ex)
             if isinstance(ex, SSH2Timeout):
@@ -147,14 +147,17 @@ class SSHClient(BaseSSHClient):
             ex.host = self.host
             ex.port = self.port
             raise
+
+    def _auth_retry(self, retries=1):
         try:
             self.auth()
         except Exception as ex:
-            while retries < self.num_retries:
-                return self._connect_init_retry(retries)
+            if retries < self.num_retries:
+                return self._auth_retry(retries=retries+1)
             msg = "Authentication error while connecting to %s:%s - %s"
             raise AuthenticationException(msg, self.host, self.port, ex)
-        self.session.set_blocking(0)
+
+    def _keepalive(self):
         if self.keepalive_seconds:
             self.configure_keepalive()
             self._keepalive_greenlet = self.spawn_send_keepalive()

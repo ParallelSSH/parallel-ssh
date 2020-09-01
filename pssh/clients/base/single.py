@@ -76,11 +76,15 @@ class BaseSSHClient(object):
         self._host = proxy_host if proxy_host else host
         self.pkey = _validate_pkey_path(pkey, self.host)
         self.identity_auth = identity_auth
+        self._keepalive_greenlet = None
         self._connect(self._host, self.port)
+        self._init_session()
         # if _auth_thread_pool:
         #     THREAD_POOL.apply(self._init)
         # else:
-        self._init()
+        self._auth_retry()
+        self._keepalive()
+        self.session.set_blocking(0)
 
     def disconnect(self):
         raise NotImplementedError
@@ -97,8 +101,11 @@ class BaseSSHClient(object):
     def __exit__(self, *args):
         self.disconnect()
 
-    def _connect_init_retry(self, retries):
-        retries += 1
+    def _connect_init_session_retry(self, retries):
+        try:
+            self.session.disconnect()
+        except Exception:
+            pass
         self.session = None
         if not self.sock.closed:
             try:
@@ -107,9 +114,12 @@ class BaseSSHClient(object):
                 pass
         sleep(self.retry_delay)
         self._connect(self._host, self.port, retries=retries)
-        return self._init(retries=retries)
+        return self._init_session(retries=retries)
 
-    def _init(self, retries=1):
+    def _init_session(self, retries=1):
+        raise NotImplementedError
+
+    def _keepalive(self):
         raise NotImplementedError
 
     def _connect(self, host, port, retries=1):
