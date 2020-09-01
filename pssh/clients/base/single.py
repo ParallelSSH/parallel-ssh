@@ -77,10 +77,10 @@ class BaseSSHClient(object):
         self.pkey = _validate_pkey_path(pkey, self.host)
         self.identity_auth = identity_auth
         self._connect(self._host, self.port)
-        if _auth_thread_pool:
-            THREAD_POOL.apply(self._init)
-        else:
-            self._init()
+        # if _auth_thread_pool:
+        #     THREAD_POOL.apply(self._init)
+        # else:
+        self._init()
 
     def disconnect(self):
         raise NotImplementedError
