@@ -216,7 +216,9 @@ class BaseParallelSSHClient(object):
         return stdout, stderr
 
     def _get_host_config_values(self, host_i, host):
-        if isinstance(self.host_config, list):
+        if self.host_config is None:
+            return self.user, self.port, self.password, self.pkey
+        elif isinstance(self.host_config, list):
             _user = self.host_config[host_i].user
             _port = self.host_config[host_i].port
             _password = self.host_config[host_i].password
