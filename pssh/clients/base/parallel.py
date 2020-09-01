@@ -34,15 +34,13 @@ from ...output import HostOutput
 
 Hub.NOT_ERROR = (Exception,)
 logger = logging.getLogger(__name__)
-_output_depr_notice = "run_command output will change to a list rather than " \
+_OUTPUT_DEPR_NOTICE = "run_command output will change to a list rather than " \
                       "dictionary in 2.0.0 - Please use return_list=True " \
                       "to avoid client code breaking on upgrading to 2.0.0"
-_get_output_depr_notice = "get_output is scheduled to be removed in 2.0.0."
-
-try:
-    xrange
-except NameError:
-    xrange = range
+_GET_OUTPUT_DEPR_NOTICE = "get_output is scheduled to be removed in 2.0.0."
+_HOST_CONFIG_DEPR_NOTICE = "host_config type will be changing to list of HostConfig " \
+                           "objects from dictionary. See pssh.config.HostConfig " \
+                           "Please migrate to new type to avoid breaking on upgrading to 2.0.0"
 
 
 class BaseParallelSSHClient(object):
@@ -71,10 +69,27 @@ class BaseParallelSSHClient(object):
         # To hold host clients
         self.host_clients = {}
         self._host_clients = {}
-        self.host_config = host_config if host_config else {}
+        self.host_config = host_config
         self.retry_delay = retry_delay
         self.cmds = None
         self.identity_auth = identity_auth
+        self._check_host_config()
+
+    def _check_host_config(self):
+        if isinstance(self.host_config, dict):
+            warn(_HOST_CONFIG_DEPR_NOTICE)
+        elif isinstance(self.host_config, list):
+            host_len = 0
+            try:
+                host_len = len(self.hosts)
+            except TypeError:
+                # Generator
+                return
+            if host_len != len(self.host_config):
+                raise ValueError(
+                    "Host config entries must match number of hosts if provided. "
+                    "Got %s host config entries from %s hosts" % (
+                        len(self.host_config), host_len))
 
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
@@ -109,7 +124,7 @@ class BaseParallelSSHClient(object):
     def _get_output_from_cmds(self, cmds, stop_on_errors=False, timeout=None,
                               return_list=False):
         if not return_list:
-            warn(_output_depr_notice)
+            warn(_OUTPUT_DEPR_NOTICE)
             output = {}
             return self._get_output_dict(
                 cmds, output, stop_on_errors=stop_on_errors,
@@ -200,13 +215,20 @@ class BaseParallelSSHClient(object):
         host_out.stderr = stderr
         return stdout, stderr
 
-    def _get_host_config_values(self, host):
-        _user = self.host_config.get(host, {}).get('user', self.user)
-        _port = self.host_config.get(host, {}).get('port', self.port)
-        _password = self.host_config.get(host, {}).get(
-            'password', self.password)
-        _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
-        return _user, _port, _password, _pkey
+    def _get_host_config_values(self, host_i, host):
+        if isinstance(self.host_config, list):
+            _user = self.host_config[host_i].user
+            _port = self.host_config[host_i].port
+            _password = self.host_config[host_i].password
+            _pkey = self.host_config[host_i].private_key
+            return _user, _port, _password, _pkey
+        elif isinstance(self.host_config, dict):
+            _user = self.host_config.get(host, {}).get('user', self.user)
+            _port = self.host_config.get(host, {}).get('port', self.port)
+            _password = self.host_config.get(host, {}).get(
+                'password', self.password)
+            _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
+            return _user, _port, _password, _pkey
 
     def _run_command(self, host_i, host, command, sudo=False, user=None,
                      shell=None, use_pty=False,
@@ -231,7 +253,7 @@ class BaseParallelSSHClient(object):
         :type output: dict
         :rtype: None
         """
-        warn(_get_output_depr_notice)
+        warn(_GET_OUTPUT_DEPR_NOTICE)
         if not isinstance(output, dict):
             raise ValueError(
                 "get_output is for the deprecated dictionary output only. "
@@ -260,7 +282,7 @@ class BaseParallelSSHClient(object):
             new_host = "_".join([host,
                                  ''.join(random.choice(
                                      string.ascii_lowercase + string.digits)
-                                     for _ in xrange(8))])
+                                         for _ in range(8))])
             logger.warning("Already have output for host %s - changing host "
                            "key for %s to %s", host, host, new_host)
             host = new_host

@@ -34,6 +34,7 @@ import time
 from pytest import mark
 from gevent import joinall, spawn, socket, Greenlet, sleep
 from pssh import logger as pssh_logger
+from pssh.config import HostConfig
 from pssh.clients.native import ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
@@ -996,6 +997,52 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(client.host_clients[hosts[0][0]].pkey, os.path.abspath(self.user_key))
         for server in servers:
             server.stop()
+
+    def test_host_config_list_type(self):
+        """Test per-host configuration functionality of ParallelSSHClient"""
+        hosts = [('127.0.0.%01d' % n, self.make_random_port())
+                 for n in range(1,3)]
+        host_config = [HostConfig() for _ in hosts]
+        servers = []
+        password = 'overriden_pass'
+        fake_key = 'FAKE KEY'
+        for host_i, (host, port) in enumerate(hosts):
+            server = OpenSSHServer(listen_ip=host, port=port)
+            server.start_server()
+            host_config[host_i].port = port
+            host_config[host_i].user = self.user
+            host_config[host_i].password = password
+            host_config[host_i].private_key = self.user_key
+            servers.append(server)
+        host_config[1].private_key = fake_key
+        client = ParallelSSHClient([h for h, _ in hosts],
+                                   host_config=host_config,
+                                   num_retries=1)
+        output = client.run_command(self.cmd, stop_on_errors=False)
+        client.join(output)
+        for host, _ in hosts:
+            self.assertTrue(host in output)
+        try:
+            raise output[hosts[1][0]]['exception']
+        except PKeyFileError as ex:
+            self.assertEqual(ex.host, host)
+        else:
+            raise AssertionError("Expected ValueError on host %s",
+                                 hosts[0][0])
+        self.assertTrue(output[hosts[1][0]].exit_code is None,
+                        msg="Execution failed on host %s" % (hosts[1][0],))
+        self.assertEqual(client.host_clients[hosts[0][0]].user, self.user)
+        self.assertEqual(client.host_clients[hosts[0][0]].password, password)
+        self.assertEqual(client.host_clients[hosts[0][0]].pkey, os.path.abspath(self.user_key))
+        for server in servers:
+            server.stop()
+
+    def test_host_config_bad_entries(self):
+        hosts = ['localhost', 'localhost']
+        host_config = [HostConfig()]
+        self.assertRaises(ValueError, ParallelSSHClient, hosts, host_config=host_config)
+        # Can't sanity check generators
+        ParallelSSHClient(iter(hosts), host_config=host_config)
 
     def test_pssh_client_override_allow_agent_authentication(self):
         """Test running command with allow_agent set to False"""
