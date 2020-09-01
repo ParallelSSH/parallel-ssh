@@ -505,6 +505,9 @@ class SSHClient(BaseSSHClient):
                 return self._scp_recv_dir(file_list, remote_file,
                                           local_file, sftp,
                                           encoding=encoding)
+        elif local_file.endswith('/'):
+            remote_filename = remote_file.rsplit('/')[-1]
+            local_file += remote_filename
         destination = os.path.join(os.path.sep, os.path.sep.join(
             [_dir for _dir in local_file.split('/')
              if _dir][:-1]))
@@ -577,6 +580,9 @@ class SSHClient(BaseSSHClient):
                     self._eagain(sftp.stat, destination)
                 except (SFTPHandleError, SFTPProtocolError):
                     self.mkdir(sftp, destination)
+        elif remote_file.endswith('/'):
+            local_filename = local_file.rsplit('/')[-1]
+            remote_file += local_filename
         self._scp_send(local_file, remote_file)
         logger.info("SCP local file %s to remote destination %s:%s",
                     local_file, self.host, remote_file)
