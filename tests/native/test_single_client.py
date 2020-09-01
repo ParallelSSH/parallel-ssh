@@ -172,6 +172,14 @@ class SSH2ClientTest(SSH2TestCase):
                           SSHClient, self.host, port=12345,
                           num_retries=2, _auth_thread_pool=False)
 
+    def test_auth_retry_failure(self):
+        self.assertRaises(AuthenticationException,
+                          SSHClient, self.host, port=self.port,
+                          user=self.user,
+                          password='fake',
+                          num_retries=3,
+                          allow_agent=False)
+
     def test_connection_timeout(self):
         cmd = spawn(SSHClient, 'fakehost.com', port=12345,
                     num_retries=1, timeout=1, _auth_thread_pool=False)

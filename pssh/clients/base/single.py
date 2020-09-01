@@ -79,11 +79,13 @@ class BaseSSHClient(object):
         self._keepalive_greenlet = None
         self._connect(self._host, self.port)
         self._init_session()
-        # if _auth_thread_pool:
-        #     THREAD_POOL.apply(self._init)
-        # else:
-        self._auth_retry()
+        if _auth_thread_pool:
+            THREAD_POOL.apply(self._auth_retry)
+        else:
+            self._auth_retry()
         self._keepalive()
+        logger.debug("Authentication completed successfully - "
+                     "setting session to non-blocking mode")
         self.session.set_blocking(0)
 
     def disconnect(self):
@@ -115,12 +117,6 @@ class BaseSSHClient(object):
         sleep(self.retry_delay)
         self._connect(self._host, self.port, retries=retries)
         return self._init_session(retries=retries)
-
-    def _init_session(self, retries=1):
-        raise NotImplementedError
-
-    def _keepalive(self):
-        raise NotImplementedError
 
     def _connect(self, host, port, retries=1):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -176,7 +172,16 @@ class BaseSSHClient(object):
                 return
         raise AuthenticationException("No authentication methods succeeded")
 
+    def _init_session(self, retries=1):
+        raise NotImplementedError
+
+    def _keepalive(self):
+        raise NotImplementedError
+
     def auth(self):
+        raise NotImplementedError
+
+    def _auth_retry(self):
         raise NotImplementedError
 
     def _password_auth(self):
