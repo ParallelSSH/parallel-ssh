@@ -18,6 +18,7 @@ Fixes
 * ``ParallelSSHClient.scp_send`` would require SFTP when recurse is off and remote destination path contains directory - #157.
 * ``ParallelSSHClient.scp_recv`` could block infinitely on large - 200-300MB or more - files.
 
+
 1.12.1
 ++++++
 

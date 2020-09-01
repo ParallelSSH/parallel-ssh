@@ -541,6 +541,7 @@ class SSHClient(BaseSSHClient):
                                fileinfo.st_size)
         finally:
             local_fh.close()
+            file_chan.close()
 
     def scp_send(self, local_file, remote_file, recurse=False, sftp=None):
         """Copy local file to host via SCP.
@@ -606,6 +607,8 @@ class SSHClient(BaseSSHClient):
             msg = "Error writing to remote file %s on host %s - %s"
             logger.error(msg, remote_file, self.host, ex)
             raise SCPError(msg, remote_file, self.host, ex)
+        finally:
+            chan.close()
 
     def _sftp_openfh(self, open_func, remote_file, *args):
         try:
