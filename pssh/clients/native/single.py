@@ -524,15 +524,9 @@ class SSHClient(BaseSSHClient):
         local_fh = open(local_file, 'wb')
         try:
             total = 0
-            size, data = file_chan.read(size=fileinfo.st_size)
-            while size == LIBSSH2_ERROR_EAGAIN:
-                wait_select(self.session)
-                size, data = file_chan.read(size=fileinfo.st_size)
-            total += size
-            local_fh.write(data)
             while total < fileinfo.st_size:
                 size, data = file_chan.read(size=fileinfo.st_size - total)
-                while size == LIBSSH2_ERROR_EAGAIN:
+                if size == LIBSSH2_ERROR_EAGAIN:
                     wait_select(self.session)
                     continue
                 total += size
