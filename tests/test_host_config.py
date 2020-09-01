@@ -35,7 +35,7 @@ class TestHostConfig(unittest.TestCase):
         keepalive_seconds=1
         cfg = HostConfig(
             user=user, port=port, password=password, private_key=private_key,
-            allow_agent=allow_agent, num_retries=num_retries, retry_delay=retry_delay, 
+            allow_agent=allow_agent, num_retries=num_retries, retry_delay=retry_delay,
             timeout=timeout, identity_auth=identity_auth, proxy_host=proxy_host)
         self.assertEqual(cfg.user, user)
         self.assertEqual(cfg.port, port)

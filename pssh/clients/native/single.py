@@ -52,7 +52,7 @@ class SSHClient(BaseSSHClient):
                  allow_agent=True, timeout=None,
                  forward_ssh_agent=False,
                  proxy_host=None,
-                 _auth_thread_pool=False, keepalive_seconds=60,
+                 _auth_thread_pool=True, keepalive_seconds=60,
                  identity_auth=True,):
         """:param host: Host name or IP to connect to.
         :type host: str
