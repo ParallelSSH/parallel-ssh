@@ -23,6 +23,9 @@ class HostConfig(object):
     """Host configuration for ParallelSSHClient.
 
     Used to hold individual configuration for each host in ParallelSSHClient host list.
+
+    Currently only user, port, password and private_key attributes can be configured for backwards
+    compatibility with dictionary host_config implementation in the 1.x.x series.
     """
     __slots__ = ('user', 'port', 'password', 'private_key', 'allow_agent',
                  'num_retries', 'retry_delay', 'timeout', 'identity_auth',

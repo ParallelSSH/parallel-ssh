@@ -20,7 +20,7 @@ import os
 from collections import deque
 from warnings import warn
 
-from gevent import sleep, spawn
+from gevent import sleep, spawn, get_hub
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
     Timeout as SSH2Timeout, AgentConnectionError, AgentListIdentitiesError, \
@@ -39,6 +39,7 @@ from ...native._ssh2 import wait_select, eagain_write, _read_output
 
 
 logger = logging.getLogger(__name__)
+THREAD_POOL = get_hub().threadpool
 
 
 class SSHClient(BaseSSHClient):
@@ -136,9 +137,13 @@ class SSHClient(BaseSSHClient):
             # libssh2 timeout is in ms
             self.session.set_timeout(self.timeout * 1000)
         try:
-            self.session.handshake(self.sock)
+            if self._auth_thread_pool:
+                THREAD_POOL.apply(self.session.handshake, (self.sock,))
+            else:
+                self.session.handshake(self.sock)
         except Exception as ex:
             if retries < self.num_retries:
+                sleep(self.retry_delay)
                 return self._connect_init_session_retry(retries=retries+1)
             msg = "Error connecting to host %s:%s - %s"
             logger.error(msg, self.host, self.port, ex)
@@ -147,15 +152,6 @@ class SSHClient(BaseSSHClient):
             ex.host = self.host
             ex.port = self.port
             raise
-
-    def _auth_retry(self, retries=1):
-        try:
-            self.auth()
-        except Exception as ex:
-            if retries < self.num_retries:
-                return self._auth_retry(retries=retries+1)
-            msg = "Authentication error while connecting to %s:%s - %s"
-            raise AuthenticationException(msg, self.host, self.port, ex)
 
     def _keepalive(self):
         if self.keepalive_seconds:

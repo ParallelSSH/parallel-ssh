@@ -25,7 +25,7 @@ else:
     WIN_PLATFORM = False
 from socket import gaierror as sock_gaierror, error as sock_error
 
-from gevent import sleep, socket, get_hub
+from gevent import sleep, socket
 from gevent.hub import Hub
 
 from ..common import _validate_pkey_path
@@ -37,7 +37,6 @@ from ...exceptions import UnknownHostException, AuthenticationException, \
 Hub.NOT_ERROR = (Exception,)
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
-THREAD_POOL = get_hub().threadpool
 
 
 class BaseSSHClient(object):
@@ -59,6 +58,7 @@ class BaseSSHClient(object):
                  proxy_host=None,
                  _auth_thread_pool=True,
                  identity_auth=True):
+        self._auth_thread_pool = _auth_thread_pool
         self.host = host
         self.user = user if user else None
         if self.user is None and not WIN_PLATFORM:
@@ -77,16 +77,26 @@ class BaseSSHClient(object):
         self.pkey = _validate_pkey_path(pkey, self.host)
         self.identity_auth = identity_auth
         self._keepalive_greenlet = None
+        self._init()
+
+    def _init(self):
         self._connect(self._host, self.port)
         self._init_session()
-        if _auth_thread_pool:
-            THREAD_POOL.apply(self._auth_retry)
-        else:
-            self._auth_retry()
+        self._auth_retry()
         self._keepalive()
         logger.debug("Authentication completed successfully - "
                      "setting session to non-blocking mode")
         self.session.set_blocking(0)
+
+    def _auth_retry(self, retries=1):
+        try:
+            self.auth()
+        except Exception as ex:
+            if retries < self.num_retries:
+                sleep(self.retry_delay)
+                return self._auth_retry(retries=retries+1)
+            msg = "Authentication error while connecting to %s:%s - %s"
+            raise AuthenticationException(msg, self.host, self.port, ex)
 
     def disconnect(self):
         raise NotImplementedError
@@ -128,7 +138,7 @@ class BaseSSHClient(object):
         except sock_gaierror as ex:
             logger.error("Could not resolve host '%s' - retry %s/%s",
                          host, retries, self.num_retries)
-            while retries < self.num_retries:
+            if retries < self.num_retries:
                 sleep(self.retry_delay)
                 return self._connect(host, port, retries=retries+1)
             ex = UnknownHostException("Unknown host %s - %s - retry %s/%s",
@@ -179,9 +189,6 @@ class BaseSSHClient(object):
         raise NotImplementedError
 
     def auth(self):
-        raise NotImplementedError
-
-    def _auth_retry(self):
         raise NotImplementedError
 
     def _password_auth(self):

@@ -152,18 +152,6 @@ class SSHClient(BaseSSHClient):
             ex.port = self.port
             raise ex
 
-    def _auth_retry(self, retries=1):
-        try:
-            self.auth()
-        except Exception as ex:
-            if retries < self.num_retries:
-                return self._auth_retry(retries=retries+1)
-            msg = "Authentication error while connecting to %s:%s - %s"
-            ex = AuthenticationException(msg, self.host, self.port, ex)
-            ex.host = self.host
-            ex.port = self.port
-            raise ex
-
     def auth(self):
         if self.pkey is not None:
             logger.debug(
