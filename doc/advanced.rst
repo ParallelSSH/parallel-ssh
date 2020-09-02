@@ -234,6 +234,35 @@ Sometimes, different hosts require different configuration like user names and p
 
 .. code-block:: python
 
+   from pssh.config import HostConfig
+
+   hosts = ['localhost', 'localhost']
+   host_config = [
+       HostConfig(port=2222, user='user1', password='pass', private_key='my_pkey.pem'),
+       HostConfig(port=2223, user='user2', password='pass', private_key='my_other_key.pem')
+   ]
+
+   client = ParallelSSHClient(hosts, host_config=host_config)
+   client.run_command('uname')
+   <..>
+
+In the above example, the client is configured to connect to hostname ``localhost``, port ``2222`` with username ``user1``, password ``pass`` and private key file ``my_pkey.pem`` and hostname ``localhost``, port ``2222`` with username ``user1``, password ``pass`` and private key file ``my_other_pkey.pem``.
+
+
+.. note::
+
+   For versions under ``2.0.0`` only ``port``, ``user``, ``password`` and ``private_key`` ``HostConfig`` values are used.
+
+
+Deprecated Host Config type
+=============================
+
+This per host configuration is deprecated as of ``1.13.0`` - please migrate to :py:class:`HostConfig <pssh.config.HostConfig>`
+
+Versions `1.12.x` and below only.
+
+.. code-block:: python
+
    host_config = {'host1' : {'user': 'user1', 'password': 'pass',
                              'port': 2222,
                              'private_key': 'my_key.pem'},

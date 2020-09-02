@@ -285,7 +285,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             if (host_i, host) not in self._host_clients \
                or self._host_clients[(host_i, host)] is None:
                 _user, _port, _password, _pkey = self._get_host_config_values(
-                    host)
+                    host_i, host)
                 proxy_host = None if self.proxy_host is None else '127.0.0.1'
                 if proxy_host is not None:
                     auth_thread_pool = False

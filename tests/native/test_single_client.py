@@ -103,7 +103,7 @@ class SSH2ClientTest(SSH2TestCase):
         del client.sock
         client.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client._connect(self.host, self.port)
-        client._init()
+        client._init_session()
         # Identity auth
         client.pkey = None
         client.session.disconnect()
@@ -128,7 +128,7 @@ class SSH2ClientTest(SSH2TestCase):
                            pkey=self.user_key,
                            num_retries=1)
         client.session.disconnect()
-        self.assertRaises((SocketDisconnectError, BannerRecvError, SocketRecvError), client._init)
+        self.assertRaises((SocketDisconnectError, BannerRecvError, SocketRecvError), client._init_session)
 
     def test_stdout_parsing(self):
         dir_list = os.listdir(os.path.expanduser('~'))
@@ -172,6 +172,14 @@ class SSH2ClientTest(SSH2TestCase):
                           SSHClient, self.host, port=12345,
                           num_retries=2, _auth_thread_pool=False)
 
+    def test_auth_retry_failure(self):
+        self.assertRaises(AuthenticationException,
+                          SSHClient, self.host, port=self.port,
+                          user=self.user,
+                          password='fake',
+                          num_retries=3,
+                          allow_agent=False)
+
     def test_connection_timeout(self):
         cmd = spawn(SSHClient, 'fakehost.com', port=12345,
                     num_retries=1, timeout=1, _auth_thread_pool=False)
@@ -200,15 +208,19 @@ class SSH2ClientTest(SSH2TestCase):
         """
         class _SSHClient(SSHClient):
             def __init__(self, host, port, num_retries):
+                self.keepalive_seconds = None
                 super(SSHClient, self).__init__(
                     host, port=port, num_retries=2,
                     allow_agent=True)
 
-            def _init(self):
+            def _init_session(self):
                 self.session = Session()
                 if self.timeout:
                     self.session.set_timeout(self.timeout * 1000)
                 self.session.handshake(self.sock)
+
+            def _auth_retry(self):
+                pass
 
         client = _SSHClient(self.host, port=self.port,
                            num_retries=1)
