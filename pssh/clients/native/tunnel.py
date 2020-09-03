@@ -110,8 +110,8 @@ class Tunnel(Thread):
                 return
             try:
                 data = forward_sock.recv(1024)
-            except Exception:
-                logger.exception("Forward socket read error:")
+            except Exception as ex:
+                logger.error("Forward socket read error: %s", ex)
                 sleep(1)
                 continue
             data_len = len(data)
@@ -121,8 +121,8 @@ class Tunnel(Thread):
             while data_written < data_len:
                 try:
                     rc, bytes_written = channel.write(data[data_written:])
-                except Exception:
-                    logger.exception("Channel write error:")
+                except Exception as ex:
+                    logger.error("Channel write error: %s", ex)
                     sleep(1)
                     continue
                 data_written += bytes_written
@@ -184,6 +184,9 @@ class Tunnel(Thread):
         self.tunnel_open.set()
 
     def cleanup(self):
+        if self.session is not None:
+            self.client.disconnect()
+            self.session = None
         for _sock in self._sockets:
             if not _sock:
                 continue
@@ -191,9 +194,6 @@ class Tunnel(Thread):
                 _sock.close()
             except Exception as ex:
                 logger.error("Exception while closing sockets - %s", ex)
-        if self.session is not None:
-            self.client.disconnect()
-            self.session = None
 
     def _consume_q(self):
         while True:
@@ -259,8 +259,8 @@ class Tunnel(Thread):
         try:
             channel = self._open_channel_retries(fw_host, fw_port, local_port)
         except Exception as ex:
-            logger.exception("Could not establish channel to %s:%s:",
-                             fw_host, fw_port)
+            logger.error("Could not establish channel to %s:%s: %s",
+                         fw_host, fw_port, ex)
             self.exception = ex
             forward_sock.close()
             listen_socket.close()
