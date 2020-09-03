@@ -50,6 +50,10 @@ class SSHClientTest(SSHTestCase):
         exit_code = host_out.channel.get_exit_status()
         self.assertEqual(exit_code, 0)
 
+    def test_finished_error(self):
+        self.assertIsNone(self.client.wait_finished(None))
+        self.assertIsNone(self.client.finished(None))
+
     def test_stderr(self):
         host_out = self.client.run_command('echo "me" >&2')
         self.client.wait_finished(host_out.channel)
@@ -115,3 +119,11 @@ class SSHClientTest(SSHTestCase):
                 output = list(client.read_output(channel))
                 self.assertListEqual(output, [b'me'])
         scope_killer()
+
+    # TODO:
+    # * read timeouts
+    # * session connect retry
+    # * agent auth success
+    # * password auth failure
+    # * open session error
+    # * disconnect exc

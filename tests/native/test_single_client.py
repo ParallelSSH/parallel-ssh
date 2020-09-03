@@ -71,6 +71,10 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertEqual(host_out.exit_code, 0)
         self.assertEqual(expected, output)
 
+    def test_finished_error(self):
+        self.assertIsNone(self.client.wait_finished(None))
+        self.assertIsNone(self.client.finished(None))
+
     def test_stderr(self):
         host_out = self.client.run_command('echo "me" >&2')
         self.client.wait_finished(host_out.channel)
@@ -534,8 +538,16 @@ class SSH2ClientTest(SSH2TestCase):
     # TODO
     # * scp send recursive
     # * scp recv recursive local dir permission denied
+    # * scp_recv remote file not exists exception
+    # * scp send open local file exception
     # * read output callback
     # * identity auth success
     # * connect init retries
+    # * handshake retries
     # * agent forwarding
     # * password auth
+    # * disconnect exception
+    # * SFTP init exception
+    # * sftp openfh exception
+    # * sftp get exception
+    # * copy file local_file dir no recurse exception
