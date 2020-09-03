@@ -42,30 +42,27 @@ class SSHClientTest(SSHTestCase):
             self.assertIsInstance(client, SSHClient)
 
     def test_execute(self):
-        channel, host, stdout, stderr, stdin = self.client.run_command(
-            self.cmd)
-        output = list(stdout)
-        stderr = list(stderr)
+        host_out = self.client.run_command(self.cmd)
+        output = list(host_out.stdout)
+        stderr = list(host_out.stderr)
         expected = [self.resp]
         self.assertEqual(expected, output)
-        exit_code = channel.get_exit_status()
+        exit_code = host_out.channel.get_exit_status()
         self.assertEqual(exit_code, 0)
 
     def test_stderr(self):
-        channel, host, stdout, stderr, stdin = self.client.run_command(
-            'echo "me" >&2')
-        self.client.wait_finished(channel)
-        output = list(stdout)
-        stderr = list(stderr)
+        host_out = self.client.run_command('echo "me" >&2')
+        self.client.wait_finished(host_out.channel)
+        output = list(host_out.stdout)
+        stderr = list(host_out.stderr)
         expected = ['me']
         self.assertListEqual(expected, stderr)
         self.assertEqual(len(output), 0)
 
     def test_long_running_cmd(self):
-        channel, host, stdout, stderr, stdin = self.client.run_command(
-            'sleep 2; exit 2')
-        self.client.wait_finished(channel)
-        exit_code = channel.get_exit_status()
+        host_out = self.client.run_command('sleep 2; exit 2')
+        self.client.wait_finished(host_out.channel)
+        exit_code = host_out.exit_code
         self.assertEqual(exit_code, 2)
 
     def test_wait_finished_timeout(self):
@@ -99,9 +96,8 @@ class SSHClientTest(SSHTestCase):
                            pkey=self.user_key,
                            num_retries=1,
                            timeout=0.2)
-        channel, host, stdout, stderr, stdin = client.run_command(
-            'sleep 2; echo me')
-        output_gen = client.read_output(channel)
+        host_out = client.run_command('sleep 2; echo me')
+        output_gen = client.read_output(host_out.channel)
         self.assertRaises(Timeout, list, output_gen)
 
     def test_multiple_clients_exec_terminates_channels(self):

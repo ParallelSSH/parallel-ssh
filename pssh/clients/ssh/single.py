@@ -117,7 +117,6 @@ class SSHClient(BaseSSHClient):
     def disconnect(self):
         """Close socket if needed."""
         if self.sock is not None and not self.sock.closed:
-            logger.debug("Closing socket")
             self.sock.close()
 
     def _keepalive(self):
