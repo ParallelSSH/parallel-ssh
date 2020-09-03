@@ -17,7 +17,6 @@
 
 import unittest
 import os
-import logging
 import time
 import subprocess
 import shutil
@@ -26,7 +25,7 @@ from datetime import datetime
 
 from gevent import socket, sleep, spawn
 
-from pssh.clients.native import SSHClient, logger as ssh_logger
+from pssh.clients.native import SSHClient
 from ssh2.session import Session
 from ssh2.channel import Channel
 from ssh2.exceptions import SocketDisconnectError, BannerRecvError, SocketRecvError, \

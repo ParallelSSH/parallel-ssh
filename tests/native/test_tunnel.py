@@ -21,15 +21,14 @@ import os
 import shutil
 import sys
 import string
-import logging
-from socket import timeout as socket_timeout
-from sys import version_info
 import random
 import time
+
+from socket import timeout as socket_timeout
+from sys import version_info
 from collections import deque
 
 from gevent import sleep, spawn, Timeout as GTimeout, socket
-from pssh import logger
 from pssh.clients.native.tunnel import Tunnel
 from pssh.clients.native import SSHClient, ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
@@ -40,10 +39,6 @@ from ssh2.exceptions import ChannelFailure, SocketSendError
 
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
 from ..embedded_server.openssh import ThreadedOpenSSHServer, OpenSSHServer
-
-
-logger.setLevel(logging.DEBUG)
-logging.basicConfig()
 
 
 class TunnelTest(unittest.TestCase):
@@ -262,10 +257,10 @@ class TunnelTest(unittest.TestCase):
                 proxy_pkey=self.user_key)
             output = client.run_command(self.cmd)
             client.join(output)
-            for host, host_out in output.items():
+            for host_out in output:
                 _stdout = list(host_out.stdout)
                 self.assertListEqual(_stdout, [self.resp])
-            self.assertEqual(remote_host, list(output.keys())[0])
+            self.assertEqual(remote_host, output[0].host)
             del client
         finally:
             remote_server.stop()
@@ -278,7 +273,7 @@ class TunnelTest(unittest.TestCase):
             proxy_pkey=self.user_key)
         output = client.run_command(self.cmd, stop_on_errors=False)
         client.join(output)
-        exc = output[self.host].exception
+        exc = output[0].exception
         self.assertIsInstance(exc, ProxyError)
         self.assertIsInstance(exc.args[1], ConnectionErrorException)
 
@@ -325,10 +320,10 @@ class TunnelTest(unittest.TestCase):
                 proxy_pkey=self.user_key)
             output = client.run_command(self.cmd, stop_on_errors=False)
             client.join(output)
-            for host, host_out in output.items():
+            for host_out in output:
                 _stdout = list(host_out.stdout)
                 self.assertListEqual(_stdout, [self.resp])
-            self.assertEqual(len(hosts), len(list(output.keys())))
+            self.assertEqual(len(hosts), len(output))
             del client
         finally:
             remote_server.stop()
@@ -349,8 +344,8 @@ class TunnelTest(unittest.TestCase):
                 timeout=.001)
             output = client.run_command(self.cmd, stop_on_errors=False)
             client.join(output)
-            for host, host_out in output.items():
-                self.assertIsInstance(output[host].exception, Timeout)
+            for host_out in output:
+                self.assertIsInstance(host_out.exception, Timeout)
         finally:
             remote_server.stop()
             remote_server.join()

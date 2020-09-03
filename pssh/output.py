@@ -23,7 +23,7 @@ from os import linesep
 from . import logger
 
 
-class HostOutput(dict):
+class HostOutput(object):
     """Class to hold host output"""
 
     __slots__ = ('host', 'channel', 'stdout', 'stderr', 'stdin',
@@ -47,11 +47,6 @@ class HostOutput(dict):
         :param exception: Exception from host if any
         :type exception: :py:class:`Exception` or ``None``
         """
-        super(HostOutput, self).__init__(
-            (('host', host), ('channel', channel),
-             ('stdout', stdout), ('stderr', stderr),
-             ('stdin', stdin),
-             ('exception', exception)))
         self.host = host
         self.channel = channel
         self.stdout = stdout
@@ -68,16 +63,6 @@ class HostOutput(dict):
             return self.client.get_exit_status(self.channel)
         except Exception as ex:
             logger.error("Error getting exit status - %s", ex)
-
-    def __setattr__(self, name, value):
-        object.__setattr__(self, name, value)
-        dict.__setitem__(self, name, value)
-
-    def update(self, update_dict):
-        """Override of dict update function for backwards compatibility"""
-        dict.update(self, update_dict)
-        for key in update_dict:
-            object.__setattr__(self, key, update_dict[key])
 
     def __repr__(self):
         return "{linesep}\thost={host}{linesep}" \

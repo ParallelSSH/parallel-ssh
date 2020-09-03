@@ -20,13 +20,8 @@
 
 
 import unittest
-import logging
 
-from pssh import logger
 from pssh.output import HostOutput
-
-logger.setLevel(logging.DEBUG)
-logging.basicConfig()
 
 
 class TestHostOutput(unittest.TestCase):
@@ -37,34 +32,8 @@ class TestHostOutput(unittest.TestCase):
     def test_print(self):
         self.assertTrue(str(self.output))
 
-    def test_update(self):
-        host, cmd, chan, stdout, stderr, \
-          stdin, exception = 'host', 'cmd', 'chan', 'stdout', \
-          'stderr', 'stdin', Exception()
-        self.output.update({'host': host,
-                            'cmd': cmd,
-                            'channel': chan,
-                            'stdout': stdout,
-                            'stderr': stderr,
-                            'stdin': stdin,
-                            'exception': exception})
-        self.assertEqual(host, self.output.host)
-        self.assertEqual(self.output.host, self.output['host'])
-        self.assertEqual(cmd, self.output.cmd)
-        self.assertEqual(self.output.cmd, self.output['cmd'])
-        self.assertEqual(chan, self.output.channel)
-        self.assertEqual(self.output.channel, self.output['channel'])
-        self.assertEqual(stdout, self.output.stdout)
-        self.assertEqual(self.output.stdout, self.output['stdout'])
-        self.assertEqual(stderr, self.output.stderr)
-        self.assertEqual(self.output.stderr, self.output['stderr'])
-        self.assertEqual(stdin, self.output.stdin)
-        self.assertEqual(self.output.stdin, self.output['stdin'])
-        self.assertEqual(exception, self.output.exception)
-        self.assertEqual(self.output.exception, self.output['exception'])
-
     def test_bad_exit_status(self):
-        self.assertEqual(self.output.exit_code, None)
+        self.assertIsNone(self.output.exit_code)
 
     def test_excepting_client_exit_code(self):
         class ExcSSHClient(object):
