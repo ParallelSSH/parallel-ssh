@@ -151,8 +151,7 @@ class TunnelTest(unittest.TestCase):
             self.assertTrue(tunnel.tunnel_open.is_set())
             self.assertIsNotNone(tunnel.client)
             tunnel.cleanup()
-            for _sock in tunnel._sockets:
-                self.assertTrue(_sock.closed)
+            self.assertIsNone(tunnel._sockets)
         finally:
             server.stop()
 
@@ -302,9 +301,12 @@ class TunnelTest(unittest.TestCase):
             for _server in (server, remote_server):
                 _server.stop()
                 _server.join()
-            # Gevent timeout cannot be caught by stop_on_errors
-            self.assertRaises(GTimeout, client.run_command, self.cmd,
-                              greenlet_timeout=1, stop_on_errors=False)
+            try:
+                client.run_command(self.cmd, greenlet_timeout=1)
+            except (GTimeout, Exception):
+                pass
+            else:
+                raise Exception("Command neither failed nor timeout raised")
         finally:
             for _server in (server, remote_server):
                 _server.stop()

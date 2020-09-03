@@ -342,7 +342,7 @@ class BaseParallelSSHClient(object):
         if unfinished_cmds:
             raise Timeout(
                 "Timeout of %s sec(s) reached with commands "
-                "still running")
+                "still running", timeout, finished_cmds, unfinished_cmds)
 
     def _join(self, host_out, consume_output=False, timeout=None,
               encoding="utf-8"):

@@ -1,14 +1,16 @@
 Change Log
 ============
 
-1.13.0 (unreleased)
-++++++++++++++++++++
+1.13.0
+++++++
 
 Changes
 --------
 
 * Added ``pssh.config.HostConfig`` for providing per-host configuration. Replaces dictionary ``host_config`` which is now deprecated. See `per-host configuration <https://parallel-ssh.readthedocs.io/en/latest/advanced.html#per-host-configuration>`_ documentation.
 * ``ParallelSSHClient.scp_send`` and ``scp_recv`` with directory target path will now copy source file to directory keeping existing name instead of failing when recurse is off - #183.
+* ``pssh.clients.ssh.SSHClient`` ``wait_finished`` timeout is now separate from ``SSHClient(timeout=<timeout>)`` session timeout.
+* ``ParallelSSHClient.join`` with timeout now has finished and unfinished commands as ``Timeout`` exception arguments for use by client code.
 
 Fixes
 ------
@@ -17,6 +19,7 @@ Fixes
 * ``ParallelSSHClient.copy_file`` and ``scp_recv`` with recurse enabled would not create remote directories when copying empty local directories.
 * ``ParallelSSHClient.scp_send`` would require SFTP when recurse is off and remote destination path contains directory - #157.
 * ``ParallelSSHClient.scp_recv`` could block infinitely on large - 200-300MB or more - files.
+* ``SSHClient.wait_finished`` would not apply timeout value given.
 
 
 1.12.1

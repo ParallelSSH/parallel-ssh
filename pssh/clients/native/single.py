@@ -20,7 +20,7 @@ import os
 from collections import deque
 from warnings import warn
 
-from gevent import sleep, spawn, get_hub
+from gevent import sleep, spawn, get_hub, Timeout as GTimeout
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
     Timeout as SSH2Timeout, AgentConnectionError, AgentListIdentitiesError, \
@@ -264,6 +264,11 @@ class SSHClient(BaseSSHClient):
 
         :param channel: The channel to use.
         :type channel: :py:class:`ssh2.channel.Channel`
+        :param timeout: Timeout value in seconds - defaults to no timeout.
+        :type timeout: float
+
+        :raises: :py:class:`pssh.exceptions.Timeout` after <timeout> seconds if
+          timeout given.
         """
         if channel is None:
             return
@@ -271,7 +276,11 @@ class SSHClient(BaseSSHClient):
         # it reached timeout without EOF and _select_timeout will raise
         # timeout exception causing the channel to appropriately
         # not be closed as the command is still running.
-        self._eagain(channel.wait_eof)
+        if timeout is not None:
+            with GTimeout(seconds=timeout, exception=Timeout):
+                self._eagain(channel.wait_eof)
+        else:
+            self._eagain(channel.wait_eof)
         # Close channel to indicate no more commands will be sent over it
         self.close_channel(channel)
 
