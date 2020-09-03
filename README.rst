@@ -69,28 +69,13 @@ Run ``uname`` on two remote hosts in parallel.
 Native client
 **************
 
-Starting from version ``1.2.0``, the default client in ``parallel-ssh`` has changed to the native clint which offers much greater performance and reduced overhead than the current default client.
+Starting from version ``1.2.0``, the default client in ``parallel-ssh`` has changed to the native client which offers much greater performance and reduced overhead.
 
 The new default client is based on ``libssh2`` via the ``ssh2-python`` extension library and supports non-blocking mode natively. Binary wheel packages with ``libssh2`` included are provided for Linux, OSX and Windows platforms and all supported Python versions.
 
 See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of the available clients.
 
 The paramiko based client under ``pssh.clients.miko`` and the old ``pssh.pssh_client`` imports will be **removed** on the release of ``2.0.0``.
-
-Default client:
-
-.. code-block:: python
-
-  from pssh.clients import ParallelSSHClient
-
-  hosts = ['localhost', 'localhost']
-  client = ParallelSSHClient(hosts)
-
-  output = client.run_command('uname')
-  for host, host_output in output.items():
-      for line in host_output.stdout:
-          print(line)
-
 
 See `documentation <http://parallel-ssh.readthedocs.io/en/latest/ssh2.html>`_ for a feature comparison of the two clients.
 
@@ -133,9 +118,13 @@ Once all output has been gathered exit codes become available even without calli
       Linux
       0
 
+**********************
+Waiting for Completion
+**********************
+
 The client's ``join`` function can be used to wait for all commands in output object to finish.
 
-After ``join`` returns, commands have finished and output can be read.
+After ``join`` returns, commands have finished and all output can be read without blocking.
 
 .. code-block:: python
 
@@ -167,7 +156,11 @@ Similarly, exit codes are available after ``client.join(output, consume_output=T
       0
 
 
-There is also a built in host logger that can be enabled to log output from remote hosts. The helper function ``pssh.utils.enable_host_logger`` will enable host logging to stdout.
+***************************
+Build in Host Output Logger
+***************************
+
+There is also a built in host logger that can be enabled to log output from remote hosts for both stdout and stderr. The helper function ``pssh.utils.enable_host_logger`` will enable host logging to stdout.
 
 To log output without having to iterate over output generators, the ``consume_output`` flag *must* be enabled - for example:
 
@@ -213,7 +206,7 @@ See also documentation for SCP recv.
 SFTP
 *****
 
-SFTP is supported natively. Performance is much slower than SCP due to underlying library limitations and SCP should be preferred where possible. In the case of the deprecated paramiko clients, several bugs exist with SFTP performance and behaviour - avoid if at all possible.
+SFTP is supported natively. In the case of the deprecated paramiko clients, several bugs exist with SFTP performance and behaviour - avoid if at all possible.
 
 To copy a local file to remote hosts in parallel:
 
@@ -311,7 +304,7 @@ In addition, ``parallel-ssh`` uses native threads to offload CPU blocked tasks l
 
 Out of all the available Python SSH libraries, ``libssh2`` and ``ssh2-python`` have been shown, see benchmarks above, to perform the best with the least resource utilisation and ironically for a native code extension the least amount of dependencies. Only ``libssh2`` C library and its dependencies which are included in binary wheels.
 
-However, it lacks support for some SSH features present elsewhere like ECDSA keys (`PR pending <https://github.com/libssh2/libssh2/pull/206>`_), agent forwarding (`PR also pending <https://github.com/libssh2/libssh2/pull/219>`_) and Kerberos authentication - see `feature comparison <http://parallel-ssh.readthedocs.io/en/latest/ssh2.html>`_.
+However, it lacks support for some SSH features present elsewhere like GSS-API and certificate authentication.
 
 
 ********
