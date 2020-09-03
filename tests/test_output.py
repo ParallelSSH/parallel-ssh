@@ -41,6 +41,6 @@ class TestHostOutput(unittest.TestCase):
                 raise Exception
         exc_client = ExcSSHClient()
         host_out = HostOutput(
-            'host', None, None, None, None, None, exc_client, None)
+            'host', None, None, None, None, exc_client)
         exit_code = host_out.exit_code
         self.assertEqual(exit_code, None)
