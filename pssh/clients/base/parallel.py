@@ -34,13 +34,6 @@ from ...output import HostOutput
 
 Hub.NOT_ERROR = (Exception,)
 logger = logging.getLogger(__name__)
-_OUTPUT_DEPR_NOTICE = "run_command output will change to a list rather than " \
-                      "dictionary in 2.0.0 - Please use return_list=True " \
-                      "to avoid client code breaking on upgrading to 2.0.0"
-_GET_OUTPUT_DEPR_NOTICE = "get_output is scheduled to be removed in 2.0.0."
-_HOST_CONFIG_DEPR_NOTICE = "host_config type will be changing to list of HostConfig " \
-                           "objects from dictionary. See pssh.config.HostConfig " \
-                           "Please migrate to new type to avoid breaking on upgrading to 2.0.0"
 
 
 class BaseParallelSSHClient(object):
@@ -76,20 +69,19 @@ class BaseParallelSSHClient(object):
         self._check_host_config()
 
     def _check_host_config(self):
-        if isinstance(self.host_config, dict):
-            warn(_HOST_CONFIG_DEPR_NOTICE)
-        elif isinstance(self.host_config, list):
-            host_len = 0
-            try:
-                host_len = len(self.hosts)
-            except TypeError:
-                # Generator
-                return
-            if host_len != len(self.host_config):
-                raise ValueError(
-                    "Host config entries must match number of hosts if provided. "
-                    "Got %s host config entries from %s hosts" % (
-                        len(self.host_config), host_len))
+        if self.host_config is None:
+            return
+        host_len = 0
+        try:
+            host_len = len(self.hosts)
+        except TypeError:
+            # Generator
+            return
+        if host_len != len(self.host_config):
+            raise ValueError(
+                "Host config entries must match number of hosts if provided. "
+                "Got %s host config entries from %s hosts" % (
+                    len(self.host_config), host_len))
 
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
@@ -123,15 +115,17 @@ class BaseParallelSSHClient(object):
 
     def _get_output_from_cmds(self, cmds, stop_on_errors=False, timeout=None,
                               return_list=True):
-        return [self._get_output_from_greenlet(cmd, timeout=timeout)
+        return [self._get_output_from_greenlet(cmd, timeout=timeout, raise_error=stop_on_errors)
                 for cmd in cmds]
 
-    def _get_output_from_greenlet(self, cmd, timeout=None):
+    def _get_output_from_greenlet(self, cmd, timeout=None, raise_error=False):
         try:
             host_out = cmd.get(timeout=timeout)
             return host_out
         except Exception as ex:
             host = ex.host
+            if raise_error:
+                raise ex
             return HostOutput(host, None, None, None, None,
                               None, exception=ex)
         # return host_out
@@ -319,22 +313,6 @@ class BaseParallelSSHClient(object):
                 if host_out.client and not host_out.client.finished(chan):
                     return False
         return True
-
-    def get_exit_codes(self, output):
-        """This function is now a no-op. Exit code is gathered
-        on calling .exit_code on a ``HostOutput`` object.
-
-        to be removed in 2.0.0
-        """
-        warn("get_exit_codes is deprecated and will be removed in 2.0.0")
-
-    def get_exit_code(self, host_output):
-        """This function is now a no-op. Exit code is gathered
-        on calling .exit_code on a ``HostOutput`` object.
-
-        to be removed in 2.0.0
-        """
-        warn("get_exit_code is deprecated and will be removed in 2.0.0")
 
     def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel

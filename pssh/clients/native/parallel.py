@@ -244,7 +244,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
     def __del__(self):
         if not hasattr(self, '_host_clients'):
             return
-        logger.debug("Disconnecting clients")
         for s_client in self._host_clients.values():
             try:
                 s_client.disconnect()

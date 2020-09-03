@@ -109,7 +109,6 @@ class SSHClient(BaseSSHClient):
 
     def disconnect(self):
         """Disconnect session, close socket if needed."""
-        logger.debug("Disconnecting client for host %s", self.host)
         self._keepalive_greenlet = None
         if self.session is not None:
             try:
