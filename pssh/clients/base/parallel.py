@@ -302,16 +302,10 @@ class BaseParallelSSHClient(object):
           :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
         :rtype: bool
         """
-        if isinstance(output, dict):
-            for host_out in output.values():
-                chan = host_out.channel
-                if host_out.client and not host_out.client.finished(chan):
-                    return False
-        elif isinstance(output, list):
-            for host_out in output:
-                chan = host_out.channel
-                if host_out.client and not host_out.client.finished(chan):
-                    return False
+        for host_out in output:
+            chan = host_out.channel
+            if host_out.client and not host_out.client.finished(chan):
+                return False
         return True
 
     def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):

@@ -203,10 +203,6 @@ class SSHClient(BaseSSHClient):
         logger.debug("Opening new channel on %s", self.host)
         try:
             channel = self.session.channel_new()
-            while channel == SSH_AGAIN:
-                wait_select(self.session, timeout=self.timeout)
-                channel = self.session.channel_new()
-            logger.debug("Channel %s created, opening session", channel)
             channel.set_blocking(0)
             while channel.open_session() == SSH_AGAIN:
                 logger.debug(

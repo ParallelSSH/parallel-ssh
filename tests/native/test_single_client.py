@@ -530,3 +530,12 @@ class SSH2ClientTest(SSH2TestCase):
                     os.unlink(_path)
                 except OSError:
                     pass
+
+    # TODO
+    # * scp send recursive
+    # * scp recv recursive local dir permission denied
+    # * read output callback
+    # * identity auth success
+    # * connect init retries
+    # * agent forwarding
+    # * password auth

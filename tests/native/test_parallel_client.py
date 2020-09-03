@@ -1615,11 +1615,9 @@ class ParallelSSHClientTest(unittest.TestCase):
     # TODO:
     # * forward agent enabled
     # * password auth
-    # * wait finished no channel
     # * sftp init error
     # * copy dir recurse off
     # * sftp put error
-    # * mkdir with trailing slash
     # * scp recv file not exist
     # * scp send error opening remote file
     # * sftp get error reading remote file

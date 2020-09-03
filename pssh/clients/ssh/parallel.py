@@ -257,22 +257,3 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 # forward_ssh_agent=self.forward_ssh_agent)
                 return _client
         return self._host_clients[(host_i, host)]
-
-    def finished(self, output):
-        """Check if commands have finished without blocking
-
-        :param output: As returned by
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
-        :rtype: bool
-        """
-        if isinstance(output, dict):
-            for host_out in output.values():
-                chan = host_out.channel
-                if host_out.client and not host_out.client.finished(chan):
-                    return False
-        elif isinstance(output, list):
-            for host_out in output:
-                chan = host_out.channel
-                if host_out.client and not host_out.client.finished(chan):
-                    return False
-        return True
