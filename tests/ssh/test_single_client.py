@@ -18,6 +18,8 @@
 import unittest
 import logging
 
+from datetime import datetime
+
 from ssh.session import Session
 # from ssh.exceptions import SocketDisconnectError
 from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
@@ -66,13 +68,16 @@ class SSHClientTest(SSHTestCase):
         exit_code = channel.get_exit_status()
         self.assertEqual(exit_code, 2)
 
-    def test_client_wait_finished_timeout(self):
-        client = SSHClient(self.host, port=self.port,
-                           pkey=self.user_key,
-                           num_retries=1,
-                           timeout=0.6)
-        chan = client.execute('sleep 1')
-        self.assertRaises(Timeout, client.wait_finished, chan)
+    def test_wait_finished_timeout(self):
+        channel = self.client.execute('sleep 2')
+        timeout = 1
+        self.assertFalse(self.client.finished(channel))
+        start = datetime.now()
+        self.assertRaises(Timeout, self.client.wait_finished, channel, timeout=timeout)
+        dt = datetime.now() - start
+        self.assertTrue(timeout*1.05 > dt.total_seconds() > timeout)
+        self.client.wait_finished(channel)
+        self.assertTrue(self.client.finished(channel))
 
     def test_client_exec_timeout(self):
         client = SSHClient(self.host, port=self.port,

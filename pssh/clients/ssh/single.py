@@ -333,22 +333,27 @@ class SSHClient(BaseSSHClient):
 
         :param channel: The channel to use.
         :type channel: :py:class:`ssh.channel.Channel`
+        :param timeout: Timeout value in seconds - defaults to no timeout.
+        :type timeout: float
+
+        :raises: :py:class:`pssh.exceptions.Timeout` after <timeout> seconds if
+          timeout given.
         """
         if channel is None:
             return
-        timeout = timeout if timeout else self.timeout
         logger.debug("Sending EOF on channel %s", channel)
-        eagain(self.session, channel.send_eof, timeout=timeout)
-        try:
-            self._stdout_reader.get(timeout=timeout)
-            self._stderr_reader.get(timeout=timeout)
-        except GeventTimeout as ex:
-            logger.debug("Timed out waiting for readers..")
-            raise Timeout(ex)
+        eagain(self.session, channel.send_eof, timeout=self.timeout)
+        if timeout is not None:
+            with GeventTimeout(seconds=timeout, exception=Timeout):
+                logger.debug("Waiting for readers, timeout %s", timeout)
+                self._stdout_reader.get(timeout=timeout)
+                self._stderr_reader.get(timeout=timeout)
         else:
-            logger.debug("Readers finished, closing channel")
-            # Close channel
-            self.close_channel(channel)
+            self._stdout_reader.get()
+            self._stderr_reader.get()
+        logger.debug("Readers finished, closing channel")
+        # Close channel
+        self.close_channel(channel)
 
     def finished(self, channel):
         """Checks if remote command has finished - has server sent client

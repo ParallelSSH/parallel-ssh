@@ -22,6 +22,7 @@ import time
 import subprocess
 import shutil
 from hashlib import sha256
+from datetime import datetime
 
 from gevent import socket, sleep, spawn
 
@@ -238,6 +239,17 @@ class SSH2ClientTest(SSH2TestCase):
         stdout = list(self.client.read_output(channel))
         self.assertTrue(self.client.finished(channel))
         self.assertListEqual(stdout, [b'me'])
+
+    def test_wait_finished_timeout(self):
+        channel = self.client.execute('sleep 2')
+        timeout = 1
+        self.assertFalse(self.client.finished(channel))
+        start = datetime.now()
+        self.assertRaises(Timeout, self.client.wait_finished, channel, timeout=timeout)
+        dt = datetime.now() - start
+        self.assertTrue(timeout*1.05 > dt.total_seconds() > timeout)
+        self.client.wait_finished(channel)
+        self.assertTrue(self.client.finished(channel))
 
     def test_scp_abspath_recursion(self):
         cur_dir = os.path.dirname(__file__)
