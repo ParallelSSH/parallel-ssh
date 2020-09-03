@@ -17,13 +17,10 @@
 
 """Abstract parallel SSH client package"""
 
-import string
-import random
 import logging
 
 import gevent.pool
 
-from warnings import warn
 from gevent import joinall
 from gevent.hub import Hub
 
@@ -263,7 +260,6 @@ class BaseParallelSSHClient(object):
         if not isinstance(output, list):
             raise ValueError("Unexpected output object type")
         for host_i, host_out in enumerate(output):
-            host = self.hosts[host_i]
             cmds.append(self.pool.spawn(
                 self._join, host_out,
                 consume_output=consume_output, timeout=timeout))
@@ -291,6 +287,7 @@ class BaseParallelSSHClient(object):
         client.wait_finished(channel, timeout=timeout)
         if consume_output:
             self._consume_output(stdout, stderr)
+        return host_out
 
     def finished(self, output):
         """Check if commands have finished without blocking

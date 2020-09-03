@@ -13,6 +13,7 @@ A complete example is shown below.
 
 Examples all assume a valid key is available on a running SSH agent. See `Programmatic Private Key Authentication <quickstart.html#programmatic-private-key-authentication>`_ for authenticating without an SSH agent.
 
+
 Complete Example
 -----------------
 
@@ -26,7 +27,7 @@ Host list can contain identical hosts. Commands are executed concurrently on eve
    client = ParallelSSHClient(hosts, timeout=1)
    cmd = 'uname'
 
-   output = client.run_command(cmd, return_list=True)
+   output = client.run_command(cmd)
    client.join(output)
    for host_out in output:
        for line in host_out.stdout:
@@ -39,6 +40,31 @@ Output:
      Linux
      Linux
      Linux
+     Linux
+
+
+Single Host Client
+====================
+
+``parallel-ssh`` has a fully featured, non-blocking single host client that it uses for all its parallel commands.
+
+Users that do not need the parallel capabilities can use the single host client for a simpler way to run asynchronous non-blocking commands on a remote host.
+
+.. code-block:: python
+
+   from pssh.clients import SSHClient
+
+   host = 'localhost'
+   cmd = 'uname'
+   client = SSHClient(host)
+
+   host_out = client.run_command(cmd)
+   for line in host_out.stdout:
+       print(line)
+
+Output::
+  .. code-block:: bash
+
      Linux
 
 
@@ -67,26 +93,13 @@ Now one or more commands can be run via the client:
 
 .. code-block:: python
 
-    output = client.run_command('uname', return_list=True)
+    output = client.run_command('uname')
 
 When the call to ``run_command`` returns, the remote commands are already executing in parallel.
 
 
 Run Command Output
 ===================
-
-As of version `1.10.0`, when calling ``run_command`` with ``return_list=True`` output will be a list of :py:class:`pssh.output.HostOutput`.
-
-List output will be the default starting from ``2.0.0`` so is recommended to enable the ``return_list`` flag to avoid breaking client code on upgrading to ``2.0.0``.
-
-With ``return_list=False``, the default for the ``1.x.x`` series, output is keyed by host name and contains a `host output <output.html>`_ object. From that, SSH output is available.
-
-.. note::
-
-   With dictionary `run_command` output, multiple identical hosts will have their output key de-duplicated so that their output is not lost. The real host name used is available as ``host_output.host`` where ``host_output`` is a :py:class:`pssh.output.HostOutput` object.
-
-   To avoid this confusion and various issues associated with dictionary output, ``run_command`` output is changing to a list, whose order is the same as host list order assigned to client - ``client.hosts`` - in ``2.0.0``. See :ref:`host-list-output`.
-
 
 Standard Output
 ----------------
@@ -110,7 +123,7 @@ Please note that retrieving all of a command's standard output by definition req
 
 Iterating over ``stdout`` for any host *to completion* will therefor *only complete* when that host's command has completed unless interrupted.
 
-The ``timeout`` keyword argument to ``run_command`` may be used to cause output generators to timeout if no output is received after the given number of seconds - see `join and output timeouts <advanced.html#join-and-output-timeouts>`_ (native clients only).
+The ``timeout`` keyword argument to ``run_command`` may be used to cause output generators to timeout if no output is received after the given number of seconds - see `join and output timeouts <advanced.html#join-and-output-timeouts>`_.
 
 ``stdout`` is a generator. Iterating over it will consume the remote standard output stream via the network as it becomes available. To retrieve all of stdout can wrap it with list, per below.
 
@@ -135,16 +148,8 @@ Of course, iterating over all hosts can also be done the same way.
 
 .. _host-list-output:
 
-Host List Output
+Complete Example
 ----------------
-
-As of version ``1.10.0``, host output can be optionally returned as a list rather than dictionary keyed by host.
-
-This can be enabled with the ``return_list=True`` option to ``run_command``.
-
-Dictionary output is deprecated as of ``1.10.0`` and *will be removed* in ``2.0.0``.
-
-It is advised that client code uses ``return_list=True`` to avoid breaking on updating to ``2.0.0``.
 
 .. code-block:: python
 
@@ -247,7 +252,7 @@ Output for last executed commands can be retrieved by ``get_last_output``:
 .. code-block:: python
 
    client.run_command('uname')
-   output = client.get_last_output(return_list=True)
+   output = client.get_last_output()
    for host_output in output:
        for line in host_output.stdout:
            print(line)
@@ -287,7 +292,7 @@ The ``stdin`` attribute on :py:class:`HostOutput <pssh.output.HostOutput>` is a 
 
 .. code-block:: python
 
-  output = client.run_command('read', return_list=True)
+  output = client.run_command('read')
   host_output = output[0]
   stdin = host_output.stdin
   stdin.write("writing to stdin\\n")
@@ -329,32 +334,4 @@ With this flag, the ``exception`` output attribute will contain the exception on
 
 .. seealso::
 
-   Exceptions raised by the library can be found in the :mod:`pssh.exceptions` module.
-
-
-Single Host Client
-====================
-
-`parallel-ssh` has a fully featured, non-blocking single host client that it uses for all its parallel commands.
-
-Users that do not need the parallel capabilities can use the single host client for a simpler way to run asynchronous non-blocking commands on a remote host.
-
-.. code-block:: python
-
-   from pssh.clients import SSHClient
-
-   host = 'localhost'
-   cmd = 'uname'
-   client = SSHClient(host)
-
-   channel = client.execute(cmd)
-   for line in client.read_output(channel):
-       print(line.decode('utf-8'))
-
-Output::
-  .. code-block:: bash
-
-     Linux
-
-
-Future releases aim to simplify the single host client and make the parallel and single client APIs more consistent.
+   Exceptions raised by the library can be found in the :mod:`pssh.exceptions` module and in API documentation.
