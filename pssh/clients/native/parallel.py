@@ -206,10 +206,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
           ``BaseException`` and thus **can not be caught** by
           ``stop_on_errors=False``.
         :type greenlet_timeout: float
-        :param return_list: (Optional) Return a list of ``HostOutput`` objects
-          instead of dictionary. ``run_command`` will return a list starting
-          from 2.0.0 - enable this flag to avoid client code breaking on
-          upgrading to 2.0.0.
+        :param return_list: No-op - list of ``HostOutput`` always returned.
+          Parameter kept for backwards compatibility - to be removed in future
+          releases.
         :type return_list: bool
         :rtype: Dictionary with host as key and
           :py:class:`pssh.output.HostOutput` as value

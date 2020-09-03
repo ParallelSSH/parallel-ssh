@@ -128,8 +128,6 @@ class BaseParallelSSHClient(object):
                 raise ex
             return HostOutput(host, None, None, None, None,
                               None, exception=ex)
-        # return host_out
-        # return HostOutput(host, cmd, channel, stdout, stderr, stdin, _client)
 
     def get_last_output(self, cmds=None, greenlet_timeout=None,
                         return_list=True):
@@ -149,10 +147,9 @@ class BaseParallelSSHClient(object):
           ``BaseException`` and thus **can not be caught** by
           ``stop_on_errors=False``.
         :type greenlet_timeout: float
-        :param return_list: (Optional) Return a list of ``HostOutput`` objects
-          instead of dictionary. ``run_command`` will return a list starting
-          from 2.0.0 - enable this flag to avoid client code breaking on
-          upgrading to 2.0.0.
+        :param return_list: No-op - list of ``HostOutput`` always returned.
+          Parameter kept for backwards compatibility - to be removed in future
+          releases.
         :type return_list: bool
 
         :rtype: dict or list
@@ -269,7 +266,7 @@ class BaseParallelSSHClient(object):
             host = self.hosts[host_i]
             cmds.append(self.pool.spawn(
                 self._join, host_out,
-                consume_output=consume_output, timeout=timeout))            
+                consume_output=consume_output, timeout=timeout))
         # Errors raised by self._join should be propagated.
         finished_cmds = joinall(cmds, raise_error=True, timeout=timeout)
         if timeout is None:

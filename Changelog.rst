@@ -1,6 +1,29 @@
 Change Log
 ============
 
+2.0.0
++++++
+
+Changes
+--------
+
+See `Upgrading to API 2.0 <upgrade-link>`_ for examples of code that will need updating.
+
+* Removed paramiko clients and dependency.
+* ``ParallelSSHClient.run_command`` now always returns a list of ``HostOutput``.
+* ``ParallelSSHClient.get_last_output`` now always returns a list of ``HostOutput``.
+* ``SSHClient.run_command`` now returns ``HostOutput``.
+* Removed deprecated since `1.0.0` ``HostOutput`` dictionary attributes.
+* Removed deprecated since `1.0.0` imports and modules.
+* Removed paramiko based ``load_private_key`` and ``read_openssh_config`` functions from ``pssh.utils``.
+* Removed paramiko based ``pssh.tunnel``.
+* Removed paramiko based ``pssh.agent``.
+* Removed deprecated ``ParallelSSHClient.get_output`` function.
+* Removed deprecated ``ParallelSSHClient.get_exit_code`` and ``get_exit_codes`` functions.
+* Removed deprecated ``ParallelSSHClient`` ``host_config`` dictionary implementation - now list of ``HostConfig``.
+* Removed ``HostOutput.cmd`` attribute.
+
+
 1.13.0
 ++++++
 
