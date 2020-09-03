@@ -18,9 +18,7 @@
 
 """Module containing static utility functions for parallel-ssh."""
 
-
 import logging
-import os
 
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger('pssh')
