@@ -299,12 +299,12 @@ class BaseParallelSSHClient(object):
         :rtype: ``None``"""
         cmds = []
         if isinstance(output, list):
-            for host_out in output:
+            for host_i, host_out in enumerate(output):
                 cmds.append(self.pool.spawn(
                     self._join, host_out,
                     consume_output=consume_output, timeout=timeout, encoding=encoding))
         elif isinstance(output, dict):
-            for host_out in output.items():
+            for host_i, (host, host_out) in enumerate(output.items()):
                 cmds.append(self.pool.spawn(
                     self._join, host_out,
                     consume_output=consume_output, timeout=timeout, encoding=encoding))
