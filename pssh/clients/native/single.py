@@ -20,7 +20,7 @@ import os
 from collections import deque
 from warnings import warn
 
-from gevent import sleep, spawn
+from gevent import sleep, spawn, get_hub
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
     Timeout as SSH2Timeout, AgentConnectionError, AgentListIdentitiesError, \
@@ -39,6 +39,7 @@ from ...native._ssh2 import wait_select, eagain_write, _read_output
 
 
 logger = logging.getLogger(__name__)
+THREAD_POOL = get_hub().threadpool
 
 
 class SSHClient(BaseSSHClient):
@@ -130,16 +131,20 @@ class SSHClient(BaseSSHClient):
     def configure_keepalive(self):
         self.session.keepalive_config(False, self.keepalive_seconds)
 
-    def _init(self, retries=1):
+    def _init_session(self, retries=1):
         self.session = Session()
         if self.timeout:
             # libssh2 timeout is in ms
             self.session.set_timeout(self.timeout * 1000)
         try:
-            self.session.handshake(self.sock)
+            if self._auth_thread_pool:
+                THREAD_POOL.apply(self.session.handshake, (self.sock,))
+            else:
+                self.session.handshake(self.sock)
         except Exception as ex:
-            while retries < self.num_retries:
-                return self._connect_init_retry(retries)
+            if retries < self.num_retries:
+                sleep(self.retry_delay)
+                return self._connect_init_session_retry(retries=retries+1)
             msg = "Error connecting to host %s:%s - %s"
             logger.error(msg, self.host, self.port, ex)
             if isinstance(ex, SSH2Timeout):
@@ -147,14 +152,8 @@ class SSHClient(BaseSSHClient):
             ex.host = self.host
             ex.port = self.port
             raise
-        try:
-            self.auth()
-        except Exception as ex:
-            while retries < self.num_retries:
-                return self._connect_init_retry(retries)
-            msg = "Authentication error while connecting to %s:%s - %s"
-            raise AuthenticationException(msg, self.host, self.port, ex)
-        self.session.set_blocking(0)
+
+    def _keepalive(self):
         if self.keepalive_seconds:
             self.configure_keepalive()
             self._keepalive_greenlet = self.spawn_send_keepalive()
@@ -541,6 +540,7 @@ class SSHClient(BaseSSHClient):
                                fileinfo.st_size)
         finally:
             local_fh.close()
+            file_chan.close()
 
     def scp_send(self, local_file, remote_file, recurse=False, sftp=None):
         """Copy local file to host via SCP.
@@ -606,6 +606,8 @@ class SSHClient(BaseSSHClient):
             msg = "Error writing to remote file %s on host %s - %s"
             logger.error(msg, remote_file, self.host, ex)
             raise SCPError(msg, remote_file, self.host, ex)
+        finally:
+            chan.close()
 
     def _sftp_openfh(self, open_func, remote_file, *args):
         try:

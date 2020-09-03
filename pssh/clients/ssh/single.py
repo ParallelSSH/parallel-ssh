@@ -120,7 +120,10 @@ class SSHClient(BaseSSHClient):
             logger.debug("Closing socket")
             self.sock.close()
 
-    def _init(self, retries=1):
+    def _keepalive(self):
+        pass
+
+    def _init_session(self, retries=1):
         logger.debug("Starting new session for %s@%s:%s",
                      self.user, self.host, self.port)
         self.session = Session()
@@ -141,26 +144,13 @@ class SSHClient(BaseSSHClient):
         try:
             self.session.connect()
         except Exception as ex:
-            while retries < self.num_retries:
-                return self._connect_init_retry(retries)
+            if retries < self.num_retries:
+                return self._connect_init_session_retry(retries=retries+1)
             msg = "Error connecting to host %s:%s - %s"
             logger.error(msg, self.host, self.port, ex)
             ex.host = self.host
             ex.port = self.port
             raise ex
-        try:
-            self.auth()
-        except Exception as ex:
-            while retries < self.num_retries:
-                return self._connect_init_retry(retries)
-            msg = "Authentication error while connecting to %s:%s - %s"
-            ex = AuthenticationException(msg, self.host, self.port, ex)
-            ex.host = self.host
-            ex.port = self.port
-            raise ex
-        logger.debug("Authentication completed successfully - "
-                     "setting session to non-blocking mode")
-        self.session.set_blocking(0)
 
     def auth(self):
         if self.pkey is not None:

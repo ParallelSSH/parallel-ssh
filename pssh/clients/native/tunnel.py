@@ -193,6 +193,7 @@ class Tunnel(Thread):
                 logger.error("Exception while closing sockets - %s", ex)
         if self.session is not None:
             self.client.disconnect()
+            self.session = None
 
     def _consume_q(self):
         while True:

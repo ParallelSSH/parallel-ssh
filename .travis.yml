@@ -28,7 +28,7 @@ install:
 script:
   # For testing SSH agent related functionality
   - eval `ssh-agent -s`
-  - pytest --cov-append --cov=pssh tests/test_imports.py tests/test_output.py tests/test_utils.py
+  - pytest --cov-append --cov=pssh tests/test_imports.py tests/test_output.py tests/test_utils.py tests/test_host_config.py
   - pytest --reruns 5 --cov-append --cov=pssh tests/miko
   - pytest --reruns 10 --cov-append --cov=pssh tests/native/test_tunnel.py tests/native/test_agent.py
   - pytest --reruns 5 --cov-append --cov=pssh tests/native/test_*_client.py
@@ -46,9 +46,6 @@ jobs:
   include:
 
     - stage: test
-      if: (type = push OR \
-          (type = pull_request AND fork = true)) AND \
-          tag IS blank
 
     - &osx-wheels
       stage: build packages
@@ -96,5 +93,5 @@ jobs:
             repo: ParallelSSH/parallel-ssh
             tags: true
           distributions: sdist
-          skip_upload_docs: true
-          skip_cleanup: true
+          upload_docs: false
+          cleanup: false

@@ -13,6 +13,7 @@ API Documentation
    base_parallel
    base_single
    output
+   config
    agent
    tunnel
    utils
