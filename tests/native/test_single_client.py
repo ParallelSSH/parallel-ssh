@@ -39,10 +39,6 @@ from .base_ssh2_case import SSH2TestCase
 from ..embedded_server.openssh import OpenSSHServer
 
 
-ssh_logger.setLevel(logging.DEBUG)
-logging.basicConfig()
-
-
 class SSH2ClientTest(SSH2TestCase):
 
     def test_context_manager(self):
@@ -68,30 +64,27 @@ class SSH2ClientTest(SSH2TestCase):
             os.rmdir('adir')
 
     def test_execute(self):
-        channel, host, stdout, stderr, stdin = self.client.run_command(
-            self.cmd)
-        output = list(stdout)
-        stderr = list(stderr)
+        host_out = self.client.run_command(self.cmd)
+        output = list(host_out.stdout)
+        stderr = list(host_out.stderr)
         expected = [self.resp]
-        exit_code = channel.get_exit_status()
-        self.assertEqual(exit_code, 0)
+        exit_code = host_out.channel.get_exit_status()
+        self.assertEqual(host_out.exit_code, 0)
         self.assertEqual(expected, output)
 
     def test_stderr(self):
-        channel, host, stdout, stderr, stdin = self.client.run_command(
-            'echo "me" >&2')
-        self.client.wait_finished(channel)
-        output = list(stdout)
-        stderr = list(stderr)
+        host_out = self.client.run_command('echo "me" >&2')
+        self.client.wait_finished(host_out.channel)
+        output = list(host_out.stdout)
+        stderr = list(host_out.stderr)
         expected = ['me']
         self.assertListEqual(expected, stderr)
         self.assertTrue(len(output) == 0)
 
     def test_long_running_cmd(self):
-        channel, host, stdout, stderr, stdin = self.client.run_command(
-            'sleep 2; exit 2')
-        self.client.wait_finished(channel)
-        exit_code = channel.get_exit_status()
+        host_out = self.client.run_command('sleep 2; exit 2')
+        self.client.wait_finished(host_out.channel)
+        exit_code = host_out.exit_code
         self.assertEqual(exit_code, 2)
 
     def test_manual_auth(self):
@@ -133,9 +126,8 @@ class SSH2ClientTest(SSH2TestCase):
 
     def test_stdout_parsing(self):
         dir_list = os.listdir(os.path.expanduser('~'))
-        channel, host, stdout, stderr, stdin = self.client.run_command(
-            'ls -la')
-        output = list(stdout)
+        host_out = self.client.run_command('ls -la')
+        output = list(host_out.stdout)
         # Output of `ls` will have 'total', '.', and '..' in addition to dir
         # listing
         self.assertEqual(len(dir_list), len(output) - 3)
@@ -145,9 +137,8 @@ class SSH2ClientTest(SSH2TestCase):
             ['wc', '-l', 'pssh/native/_ssh2.c']).split()[0])
         dir_name = os.path.dirname(__file__)
         ssh2_file = os.sep.join((dir_name, '..', '..', 'pssh', 'native', '_ssh2.c'))
-        channel, host, stdout, stderr, stdin = self.client.run_command(
-            'cat %s' % ssh2_file)
-        output = list(stdout)
+        host_out = self.client.run_command('cat %s' % ssh2_file)
+        output = list(host_out.stdout)
         self.assertEqual(lines, len(output))
 
     def test_identity_auth_failure(self):

@@ -94,17 +94,17 @@ class ParallelSSHClientTest(unittest.TestCase):
         output = self.client.run_command(self.cmd)
         expected_exit_code = 0
         self.client.join(output, consume_output=True)
-        exit_code = output[self.host].exit_code
-        stdout = list(output[self.host]['stdout'])
-        stderr = list(output[self.host]['stderr'])
+        exit_code = output[0].exit_code
+        stdout = list(output[0]['stdout'])
+        stderr = list(output[0]['stderr'])
         self.assertEqual(len(stdout), 0)
         self.assertEqual(len(stderr), 0)
         self.assertEqual(expected_exit_code, exit_code)
         output = self.client.run_command('echo "me" >&2', use_pty=False)
         self.client.join(output, consume_output=True)
-        exit_code = output[self.host].exit_code
-        stdout = list(output[self.host]['stdout'])
-        stderr = list(output[self.host]['stderr'])
+        exit_code = output[0].exit_code
+        stdout = list(output[0]['stdout'])
+        stderr = list(output[0]['stderr'])
         self.assertTrue(len(stdout) == 0)
         self.assertTrue(len(stderr) == 0)
         self.assertEqual(expected_exit_code, exit_code)
@@ -115,9 +115,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         expected_stdout = [self.resp]
         expected_stderr = []
         self.client.join(output)
-        stdout = list(output[self.host].stdout)
-        stderr = list(output[self.host].stderr)
-        exit_code = output[self.host].exit_code
+        stdout = list(output[0].stdout)
+        stderr = list(output[0].stderr)
+        exit_code = output[0].exit_code
         self.assertEqual(expected_exit_code, exit_code,
                          msg="Got unexpected exit code - %s, expected %s" %
                          (exit_code,
@@ -132,16 +132,11 @@ class ParallelSSHClientTest(unittest.TestCase):
                           expected_stderr,))
         output = self.client.run_command(";".join([self.cmd, 'exit 1']))
         self.client.join(output, consume_output=True)
-        exit_code = output[self.host].exit_code
+        exit_code = output[0].exit_code
         self.assertTrue(exit_code == 1)
         self.assertTrue(len(output), len(self.client.cmds))
-        _output = {}
-        for i, host in enumerate([self.host]):
-            cmd = self.client.cmds[i]
-            self.client.get_output(cmd, _output)
+        _output = [cmd.get() for cmd in self.client.cmds]
         self.assertTrue(len(_output) == len(output))
-        for host in output:
-            self.assertTrue(host in _output)
 
     def test_get_last_output(self):
         host = '127.0.0.9'
@@ -194,9 +189,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         expected_exit_code = 0
         expected_stdout = [self.resp]
         expected_stderr = []
-        stdout = list(output[self.host]['stdout'])
-        stderr = list(output[self.host]['stderr'])
-        exit_code = output[self.host].exit_code
+        stdout = list(output[0]['stdout'])
+        stderr = list(output[0]['stderr'])
+        exit_code = output[0].exit_code
         self.assertEqual(expected_exit_code, exit_code,
                          msg="Got unexpected exit code - %s, expected %s" %
                          (exit_code,
@@ -219,9 +214,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         expected_exit_code = 0
         expected_stdout = [self.resp]
         expected_stderr = []
-        stdout = list(output[self.host]['stdout'])
-        stderr = list(output[self.host]['stderr'])
-        exit_code = output[self.host].exit_code
+        stdout = list(output[0]['stdout'])
+        stderr = list(output[0]['stderr'])
+        exit_code = output[0].exit_code
         self.assertEqual(expected_exit_code, exit_code,
                          msg="Got unexpected exit code - %s, expected %s" %
                          (exit_code,
@@ -240,7 +235,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         output = self.client.run_command(self.long_cmd(expected_lines))
         self.client.join(output)
         self.assertTrue(self.host in output, msg="Got no output for command")
-        stdout = list(output[self.host]['stdout'])
+        stdout = list(output[0]['stdout'])
         self.assertTrue(len(stdout) == expected_lines,
                         msg="Expected %s lines of response, got %s" % (
                             expected_lines, len(stdout)))
@@ -289,7 +284,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    timeout=client_timeout,
                                    num_retries=1)
         output = client.run_command('sleep 1', stop_on_errors=False)
-        self.assertIsInstance(output[self.host].exception,
+        self.assertIsInstance(output[0].exception,
                               Timeout)
 
     def test_connection_timeout(self):
@@ -314,20 +309,20 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    timeout=0)
         cmd = spawn(client.run_command, 'sleep 1', stop_on_errors=False)
         output = cmd.get(timeout=3)
-        self.assertTrue(output[self.host].exception is None)
+        self.assertTrue(output[0].exception is None)
 
     def test_pssh_client_long_running_command_exit_codes(self):
         expected_lines = 2
         output = self.client.run_command(self.long_cmd(expected_lines))
         self.client.join(output)
         self.assertTrue(self.host in output, msg="Got no output for command")
-        self.assertTrue(not output[self.host].exit_code,
+        self.assertTrue(not output[0].exit_code,
                         msg="Got exit code %s for still running cmd.." % (
-                            output[self.host].exit_code,))
+                            output[0].exit_code,))
         self.assertFalse(self.client.finished(output))
         self.client.join(output, consume_output=True)
         self.assertTrue(self.client.finished(output))
-        self.assertEqual(output[self.host].exit_code, 0)
+        self.assertEqual(output[0].exit_code, 0)
 
     def test_pssh_client_retries(self):
         """Test connection error retries"""
@@ -846,7 +841,8 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_bash_variable_substitution(self):
         """Test bash variables work correctly"""
         command = """for i in 1 2 3; do echo $i; done"""
-        output = list(self.client.run_command(command)[self.host]['stdout'])
+        host_output = self.client.run_command(command)[0]
+        output = list(host_output.stdout)
         expected = ['1','2','3']
         self.assertListEqual(output, expected)
 
@@ -923,11 +919,11 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_multiple_single_quotes_in_cmd(self):
         """Test that we can run a command with multiple single quotes"""
         output = self.client.run_command("echo 'me' 'and me'")
-        stdout = list(output[self.host].stdout)
+        stdout = list(output[0].stdout)
         expected = 'me and me'
         self.assertTrue(len(stdout)==1,
                         msg="Got incorrect number of lines in output - %s" % (stdout,))
-        self.assertEqual(output[self.host].exit_code, 0)
+        self.assertEqual(output[0].exit_code, 0)
         self.assertEqual(expected, stdout[0],
                          msg="Got unexpected output. Expected %s, got %s" % (
                              expected, stdout[0],))
@@ -936,14 +932,14 @@ class ParallelSSHClientTest(unittest.TestCase):
         """Test running command with backtics in it"""
         output = self.client.run_command("out=`ls` && echo $out")
         self.client.join(output, consume_output=True)
-        self.assertEqual(output[self.host].exit_code, 0)
+        self.assertEqual(output[0].exit_code, 0)
 
     def test_multiple_shell_commands(self):
         """Test running multiple shell commands in one go"""
         output = self.client.run_command("echo me; echo and; echo me")
-        stdout = list(output[self.host]['stdout'])
+        stdout = list(output[0]['stdout'])
         expected = ["me", "and", "me"]
-        self.assertEqual(output[self.host].exit_code, 0)
+        self.assertEqual(output[0].exit_code, 0)
         self.assertEqual(expected, stdout,
                          msg="Got unexpected output. Expected %s, got %s" % (
                              expected, stdout,))
@@ -951,9 +947,9 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_escaped_quotes(self):
         """Test escaped quotes in shell variable are handled correctly"""
         output = self.client.run_command('t="--flags=\\"this\\""; echo $t')
-        stdout = list(output[self.host]['stdout'])
+        stdout = list(output[0]['stdout'])
         expected = ['--flags="this"']
-        self.assertEqual(output[self.host].exit_code, 0)
+        self.assertEqual(output[0].exit_code, 0)
         self.assertEqual(expected, stdout,
                          msg="Got unexpected output. Expected %s, got %s" % (
                              expected, stdout,))
@@ -1054,9 +1050,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         expected_exit_code = 0
         expected_stdout = [self.resp]
         expected_stderr = []
-        stdout = list(output[self.host]['stdout'])
-        stderr = list(output[self.host]['stderr'])
-        exit_code = output[self.host].exit_code
+        stdout = list(output[0]['stdout'])
+        stderr = list(output[0]['stderr'])
+        exit_code = output[0].exit_code
         self.assertEqual(expected_exit_code, exit_code,
                          msg="Got unexpected exit code - %s, expected %s" %
                              (exit_code,
@@ -1161,12 +1157,12 @@ class ParallelSSHClientTest(unittest.TestCase):
         _utf16 = u'é'.encode('utf-8').decode('utf-16')
         cmd = u"echo 'é'"
         output = self.client.run_command(cmd)
-        stdout = list(output[self.host].stdout)
+        stdout = list(output[0].stdout)
         self.assertEqual(expected, stdout,
                          msg="Got unexpected unicode output %s - expected %s" % (
                              stdout, expected,))
         output = self.client.run_command(cmd, encoding='utf-16')
-        _stdout = list(output[self.host].stdout)
+        _stdout = list(output[0].stdout)
         self.assertEqual([_utf16], _stdout)
 
     def test_pty(self):
@@ -1174,16 +1170,16 @@ class ParallelSSHClientTest(unittest.TestCase):
         expected_stderr = ['asdf']
         output = self.client.run_command(cmd)
         self.client.join(output)
-        stdout = list(output[self.host].stdout)
-        stderr = list(output[self.host].stderr)
-        exit_code = output[self.host].exit_code
+        stdout = list(output[0].stdout)
+        stderr = list(output[0].stderr)
+        exit_code = output[0].exit_code
         self.assertEqual([], stdout)
         self.assertEqual(expected_stderr, stderr)
         self.assertTrue(exit_code == 0)
         output = self.client.run_command(cmd, use_pty=True)
-        stdout = list(output[self.host].stdout)
-        stderr = list(output[self.host].stderr)
-        exit_code = output[self.host].exit_code
+        stdout = list(output[0].stdout)
+        stderr = list(output[0].stderr)
+        exit_code = output[0].exit_code
         expected_stdout = []
         # With a PTY, stdout and stderr are combined into stdout
         self.assertEqual(expected_stderr, stdout)
@@ -1196,10 +1192,10 @@ class ParallelSSHClientTest(unittest.TestCase):
         expected_stdout = [self.resp]
         expected_stderr = []
         self.client.join(output)
-        exit_code = output[self.host].exit_code
-        stdout = list(output[self.host]['stdout'])
-        stderr = list(output[self.host]['stderr'])
-        host_output = output[self.host]
+        exit_code = output[0].exit_code
+        stdout = list(output[0]['stdout'])
+        stderr = list(output[0]['stderr'])
+        host_output = output[0]
         self.assertEqual(expected_exit_code, host_output.exit_code)
         self.assertEqual(host_output['cmd'], host_output.cmd)
         self.assertEqual(host_output['exception'], host_output.exception)
@@ -1208,27 +1204,27 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(host_output['stdin'], host_output.stdin)
         self.assertEqual(host_output['channel'], host_output.channel)
         self.assertEqual(host_output['host'], host_output.host)
-        self.assertTrue(hasattr(output[self.host], 'host'))
-        self.assertTrue(hasattr(output[self.host], 'cmd'))
-        self.assertTrue(hasattr(output[self.host], 'channel'))
-        self.assertTrue(hasattr(output[self.host], 'stdout'))
-        self.assertTrue(hasattr(output[self.host], 'stderr'))
-        self.assertTrue(hasattr(output[self.host], 'stdin'))
-        self.assertTrue(hasattr(output[self.host], 'exception'))
-        self.assertTrue(hasattr(output[self.host], 'exit_code'))
+        self.assertTrue(hasattr(output[0], 'host'))
+        self.assertTrue(hasattr(output[0], 'cmd'))
+        self.assertTrue(hasattr(output[0], 'channel'))
+        self.assertTrue(hasattr(output[0], 'stdout'))
+        self.assertTrue(hasattr(output[0], 'stderr'))
+        self.assertTrue(hasattr(output[0], 'stdin'))
+        self.assertTrue(hasattr(output[0], 'exception'))
+        self.assertTrue(hasattr(output[0], 'exit_code'))
 
     def test_run_command_user_sudo(self):
         user = 'fakey_fake_user'
         output = self.client.run_command(self.cmd, user=user)
         self.client.join(output)
-        stderr = list(output[self.host].stderr)
+        stderr = list(output[0].stderr)
         self.assertTrue(len(stderr) > 0)
-        self.assertEqual(output[self.host].exit_code, 1)
+        self.assertEqual(output[0].exit_code, 1)
 
     def test_run_command_shell(self):
         output = self.client.run_command(self.cmd, shell="bash -c")
         self.client.join(output)
-        stdout = list(output[self.host].stdout)
+        stdout = list(output[0].stdout)
         self.assertEqual(stdout, [self.resp])
 
     def test_run_command_shell_sudo(self):
@@ -1236,12 +1232,12 @@ class ParallelSSHClientTest(unittest.TestCase):
                                          shell="bash -c",
                                          sudo=True)
         self.assertTrue(self.host in output)
-        self.assertTrue(output[self.host].channel is not None)
+        self.assertTrue(output[0].channel is not None)
 
     def test_run_command_sudo(self):
         output = self.client.run_command(self.cmd, sudo=True)
         self.assertTrue(self.host in output)
-        self.assertTrue(output[self.host].channel is not None)
+        self.assertTrue(output[0].channel is not None)
 
     @unittest.skipUnless(bool(os.getenv('TRAVIS')), "Not on Travis CI - skipping")
     def test_run_command_sudo_var(self):
@@ -1293,11 +1289,11 @@ class ParallelSSHClientTest(unittest.TestCase):
         # Wait for long running command to start to avoid race condition
         time.sleep(.1)
         self.assertRaises(Timeout, client.join, output, timeout=1)
-        self.assertFalse(output[self.host].channel.eof())
+        self.assertFalse(output[0].channel.eof())
         # Ensure command has actually finished - avoid race conditions
         time.sleep(2)
         client.join(output, timeout=3, consume_output=True)
-        self.assertTrue(output[self.host].channel.eof())
+        self.assertTrue(output[0].channel.eof())
         self.assertTrue(client.finished(output))
 
     def test_join_timeout_set_no_timeout(self):
@@ -1308,7 +1304,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         time.sleep(.1)
         client.join(output, timeout=2)
         self.assertTrue(client.finished(output))
-        self.assertTrue(output[self.host].channel.eof())
+        self.assertTrue(output[0].channel.eof())
 
     def test_read_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
@@ -1316,12 +1312,12 @@ class ParallelSSHClientTest(unittest.TestCase):
         output = client.run_command('sleep 2; echo me; echo me; echo me', timeout=1)
         for host, host_out in output.items():
             self.assertRaises(Timeout, list, host_out.stdout)
-        self.assertFalse(output[self.host].channel.eof())
+        self.assertFalse(output[0].channel.eof())
         client.join(output)
         for host, host_out in output.items():
-            stdout = list(output[self.host].stdout)
+            stdout = list(output[0].stdout)
             self.assertEqual(len(stdout), 3)
-        self.assertTrue(output[self.host].channel.eof())
+        self.assertTrue(output[0].channel.eof())
 
     def test_timeout_file_read(self):
         dir_name = os.path.dirname(__file__)

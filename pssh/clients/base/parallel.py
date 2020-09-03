@@ -93,7 +93,7 @@ class BaseParallelSSHClient(object):
 
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
-                    encoding='utf-8', return_list=False,
+                    encoding='utf-8', return_list=True,
                     *args, **kwargs):
         greenlet_timeout = kwargs.pop('greenlet_timeout', None)
         if host_args:
@@ -122,38 +122,23 @@ class BaseParallelSSHClient(object):
                                           return_list=return_list)
 
     def _get_output_from_cmds(self, cmds, stop_on_errors=False, timeout=None,
-                              return_list=False):
-        if not return_list:
-            warn(_OUTPUT_DEPR_NOTICE)
-            output = {}
-            return self._get_output_dict(
-                cmds, output, stop_on_errors=stop_on_errors,
-                timeout=timeout)
+                              return_list=True):
         return [self._get_output_from_greenlet(cmd, timeout=timeout)
                 for cmd in cmds]
 
     def _get_output_from_greenlet(self, cmd, timeout=None):
         try:
-            (channel, host, stdout, stderr, stdin), _client = cmd.get(
-                timeout=timeout)
+            host_out = cmd.get(timeout=timeout)
+            return host_out
         except Exception as ex:
             host = ex.host
-            return HostOutput(host, cmd, None, None, None, None,
+            return HostOutput(host, None, None, None, None,
                               None, exception=ex)
-        return HostOutput(host, cmd, channel, stdout, stderr, stdin, _client)
-
-    def _get_output_dict(self, cmds, output, timeout=None,
-                         stop_on_errors=False):
-        for cmd in cmds:
-            try:
-                self.get_output(cmd, output, timeout=timeout)
-            except Exception:
-                if stop_on_errors:
-                    raise
-        return output
+        # return host_out
+        # return HostOutput(host, cmd, channel, stdout, stderr, stdin, _client)
 
     def get_last_output(self, cmds=None, greenlet_timeout=None,
-                        return_list=False):
+                        return_list=True):
         """Get output for last commands executed by ``run_command``
 
         :param cmds: Commands to get output for. Defaults to ``client.cmds``
@@ -238,58 +223,20 @@ class BaseParallelSSHClient(object):
         """Make SSHClient if needed, run command on host"""
         try:
             _client = self._make_ssh_client(host_i, host)
-            return _client.run_command(
+            host_out = _client.run_command(
                 command, sudo=sudo, user=user, shell=shell,
-                use_pty=use_pty, encoding=encoding, timeout=timeout), _client
+                use_pty=use_pty, encoding=encoding, timeout=timeout)
+            return host_out
         except Exception as ex:
             ex.host = host
             logger.error("Failed to run on host %s - %s", host, ex)
             raise ex
-
-    def get_output(self, cmd, output, timeout=None):
-        """Get output from command.
-
-        :param output: Dictionary containing
-          :py:class:`pssh.output.HostOutput` values to be updated with output
-          from cmd
-        :type output: dict
-        :rtype: None
-        """
-        warn(_GET_OUTPUT_DEPR_NOTICE)
-        if not isinstance(output, dict):
-            raise ValueError(
-                "get_output is for the deprecated dictionary output only. "
-                "To be removed in 2.0.0")
-        try:
-            (channel, host, stdout, stderr, stdin), _client = cmd.get(
-                timeout=timeout)
-        except Exception as ex:
-            host = ex.host
-            self._update_host_output(
-                output, host, None, None, None, None, cmd, None, exception=ex)
-            raise
-        self._update_host_output(
-            output, host, channel, stdout, stderr, stdin, cmd, _client)
 
     def _consume_output(self, stdout, stderr):
         for line in stdout:
             pass
         for line in stderr:
             pass
-
-    def _update_host_output(self, output, host, channel, stdout,
-                            stderr, stdin, cmd, client, exception=None):
-        """Update host output with given data"""
-        if host in output:
-            new_host = "_".join([host,
-                                 ''.join(random.choice(
-                                     string.ascii_lowercase + string.digits)
-                                         for _ in range(8))])
-            logger.warning("Already have output for host %s - changing host "
-                           "key for %s to %s", host, host, new_host)
-            host = new_host
-        output[host] = HostOutput(host, cmd, channel, stdout, stderr, stdin,
-                                  client, exception=exception)
 
     def join(self, output, consume_output=False, timeout=None,
              encoding='utf-8'):
@@ -322,19 +269,13 @@ class BaseParallelSSHClient(object):
 
         :rtype: ``None``"""
         cmds = []
-        if isinstance(output, list):
-            for host_i, host_out in enumerate(output):
-                host = self.hosts[host_i]
-                cmds.append(self.pool.spawn(
-                    self._join, host_out,
-                    consume_output=consume_output, timeout=timeout))
-        elif isinstance(output, dict):
-            for host_i, (host, host_out) in enumerate(output.items()):
-                cmds.append(self.pool.spawn(
-                    self._join, host_out,
-                    consume_output=consume_output, timeout=timeout))
-        else:
+        if not isinstance(output, list):
             raise ValueError("Unexpected output object type")
+        for host_i, host_out in enumerate(output):
+            host = self.hosts[host_i]
+            cmds.append(self.pool.spawn(
+                self._join, host_out,
+                consume_output=consume_output, timeout=timeout))            
         # Errors raised by self._join should be propagated.
         finished_cmds = joinall(cmds, raise_error=True, timeout=timeout)
         if timeout is None:
