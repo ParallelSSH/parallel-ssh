@@ -184,16 +184,16 @@ class Tunnel(Thread):
         self.tunnel_open.set()
 
     def cleanup(self):
-        if self.session is not None:
+        for i in range(len(self._sockets)):
+            _sock = self._sockets[i]
+            if _sock is not None and not _sock.closed:
+                _sock.close()
+            self._sockets[i] = None
+        self._sockets = None
+        if self.client is not None and self.session is not None:
             self.client.disconnect()
             self.session = None
-        for _sock in self._sockets:
-            if not _sock:
-                continue
-            try:
-                _sock.close()
-            except Exception as ex:
-                logger.error("Exception while closing sockets - %s", ex)
+            self.client = None
 
     def _consume_q(self):
         while True:
