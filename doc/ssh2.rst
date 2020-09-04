@@ -1,7 +1,7 @@
 Clients Feature Comparison
 ============================
 
-For the ``ssh2-python`` (``libssh2``) based clients, not all features supported by the paramiko based clients are currently supported by the underlying library or implemented in ``parallel-ssh``.
+The two available clients, default native client based on ``ssh2-python`` (``libssh2``) and clients under ``pssh.clients.ssh`` based on ``ssh-python`` (``libssh``) support different authentication mechanisms and features.
 
 Below is a comparison of feature support for the two client types.
 
@@ -15,9 +15,6 @@ Private key file authentication   Yes
 Agent authentication              Yes
 Password authentication           Yes
 SFTP copy to/from hosts           Yes
-Session timeout setting           Yes
-Per-channel timeout setting       Yes
-Programmatic SSH agent            Not supported
 OpenSSH config parsing            Not yet implemented
 ECDSA keys support                Yes
 ED25519 keys support              Yes
