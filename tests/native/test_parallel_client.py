@@ -1154,7 +1154,7 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_run_command_sudo_var(self):
         command = """for i in 1 2 3; do echo $i; done"""
         output = list(self.client.run_command(
-            command, sudo=True)[self.host].stdout)
+            command, sudo=True)[0].stdout)
         expected = ['1','2','3']
         self.assertListEqual(output, expected)
 
