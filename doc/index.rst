@@ -22,7 +22,52 @@ Parallel-SSH Documentation
 
 ``parallel-ssh`` is a non-blocking parallel SSH client library.
 
-It uses non-blocking asynchronous SSH sessions and is to date the only publicly available non-blocking SSH client library, as well as the only non-blocking *parallel* SSH client library available for Python.
+It uses clients based on C libraries with an easy to use Python API providing native code levels of performance and stability.
+
+
+In a nutshell
+**************
+
+Client will attempt to use all available keys under ``~/.ssh`` as well as any keys in an SSH agent, if one is available.
+
+.. code-block:: python
+
+   from pssh.clients import ParallelSSHClient
+
+   client = ParallelSSHClient(['localhost', 'localhost'])
+   output = client.run_command('uname')
+   for host_out in output:
+       for line in host_out.stdout:
+           print(line)
+       exit_code = host_out.exit_code
+
+:Output:
+   .. code-block:: python
+
+      <Uname output>
+      <Uname output>
+
+
+Single Host Client
+******************
+
+Single host client is also available with similar API.
+
+.. code-block:: python
+
+   from pssh.clients import SSHClient
+
+   client = SSHClient('localhost')
+   host_out = client.run_command('uname')
+   for line in host_out.stdout:
+       print(line)
+   exit_code = host_out.exit_code
+
+:Output:
+   .. code-block:: python
+
+      <Uname output>
+
 
 .. toctree::
    :maxdepth: 2
@@ -34,33 +79,7 @@ It uses non-blocking asynchronous SSH sessions and is to date the only publicly 
    advanced
    api
    Changelog
-
-In a nutshell
-**************
-
-Client will attempt to use all available keys under ``~/.ssh`` as well as any keys in an SSH agent, if one is available.
-
-.. code-block:: python
-
-   from __future__ import print_function
-
-   from pssh.clients import ParallelSSHClient
-
-   client = ParallelSSHClient(['localhost'])
-   output = client.run_command('whoami')
-   for line in output['localhost'].stdout:
-       print(line)
-
-:Output:
-   .. code-block:: python
-
-      <your username here>
-
-.. note::
-
-   There is also a now deprecated paramiko based client available under ``pssh.clients.miko`` that has much the same API. It supports some features not currently supported by the native client - see `feature comparison <ssh2.html>`_.
-
-   From version ``2.x.x`` onwards, the clients under ``pssh.clients.miko`` will be an optional ``extras`` install.
+   api_upgrade_2_0
 
 
 Indices and tables

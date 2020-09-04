@@ -5,25 +5,26 @@ For the ``ssh2-python`` (``libssh2``) based clients, not all features supported 
 
 Below is a comparison of feature support for the two client types.
 
-===============================  ==============  ====================== ===============================================================================
-Feature                          paramiko        ssh2-python (libssh2)  Notes
-===============================  ==============  ====================== ===============================================================================
-Agent forwarding                  Yes            Yes                    From source builds only - cython and embedded ssh2 required
-Proxying/tunnelling               Yes            Yes                    Current implementation has low performance - establishes connections serially
-Kerberos (GSS) authentication     Yes            Not supported
-Private key file authentication   Yes            Yes                    ECDSA supported, ED25519 pending upstream update
-Private key from memory           Yes            Not yet implemented
-Agent authentication              Yes            Yes
-Password authentication           Yes            Yes
-SFTP copy to/from hosts           Yes            Yes
-Session timeout setting           Yes            Yes
-Per-channel timeout setting       Yes            Yes
-Programmatic SSH agent            Yes            Not supported
-OpenSSH config parsing            Yes            Not yet implemented
-ECSA keys support                 Yes            Yes
-SCP functionality                 Not supported  Yes
-Keep-alive functionality          Unknown        Yes                     As of ``1.9.0``
-===============================  ==============  ====================== ===============================================================================
+===============================  ====================== ===============================================================================
+Feature                          ssh2-python (libssh2)  Notes
+===============================  ====================== ===============================================================================
+Agent forwarding                  No                     Not yet in a libssh2 release.
+Proxying/tunnelling               Yes                    Current implementation has low performance - establishes connections serially
+Kerberos (GSS) authentication     Not supported
+Private key file authentication   Yes                    
+Agent authentication              Yes
+Password authentication           Yes
+SFTP copy to/from hosts           Yes
+Session timeout setting           Yes
+Per-channel timeout setting       Yes
+Programmatic SSH agent            Not supported
+OpenSSH config parsing            Not yet implemented
+ECDSA keys support                Yes
+ED25519 keys support              Yes
+Certificate authentication        Not supported
+SCP functionality                 Yes
+Keep-alive functionality          Yes                     As of ``1.9.0``
+===============================  ====================== ===============================================================================
 
 If any of missing features are required for a use case, then the paramiko based clients should be used instead. Note there are several breaking bugs and low performance in some paramiko functionality, mileage may vary.
 

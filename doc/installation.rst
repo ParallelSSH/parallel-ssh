@@ -27,9 +27,9 @@ From ``2.0.0`` onwards, paramiko will become an _optional_ extra, with ``libssh2
 ===============    ================
 Dependency         Minimum Version
 ===============    ================
-``ssh2-python``    ``0.16.0``
+``ssh2-python``    ``0.19.0``
+``ssh-python``     ``0.6.0``
 ``gevent``         ``1.1``
-``paramiko``       ``1.15.3``
 ===============    ================
 
 
@@ -50,16 +50,18 @@ To install from source run:
 
   python setup.py install
 
-Or with ``pip``'s development mode which will ensure local changes are made available:
+Or for developing changes:
 
 .. code-block:: shell
 
-  pip install -e .
+  pip install -r requirements_dev.txt
 
 Building System Packages
 --------------------------
 
 For convenience, a script making use of Docker is provided at `ci/docker/build-packages.sh <https://github.com/ParallelSSH/parallel-ssh/blob/master/ci/docker/build-packages.sh>`_ that will build system packages for Centos/RedHat 6/7, Ubuntu 14.04/16.04, Debian 7/8 and Fedora 22/23/24.
+
+This script and docker files can be adapted for other distributions.
 
 Note that these packages make use of system libraries that may need to be updated to be compatible with ``parallel-ssh`` - see `Dependencies`_.
 
@@ -105,21 +107,3 @@ RPM based
 
 
 See `fpm <http://fpm.readthedocs.io/en/latest/>`_ for making system packages of various types.
-
-
-Deprecated Python Versions
----------------------------
-
-``1.1.x`` and above releases are not compatible with Python ``2.6``.
-
-If you are running a deprecated Python version such as ``2.6`` you may need to install an older version of ``parallel-ssh`` that is compatible with that Python platform.
-
-For example, to install the ``1.0.0`` version, run the following.
-
-.. code-block:: shell
-
-  pip install parallel-ssh==1.0.0
-
-``1.0.0`` is compatible with all Python versions over or equal to ``2.6``, including all of the ``3.x`` series.
-
-Older versions such as `0.70.x` are compatible with Python ``2.5`` and ``2.x`` but not the ``3.x`` series.

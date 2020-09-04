@@ -12,7 +12,6 @@ API Documentation
    base_single
    output
    config
-   agent
    tunnel
    utils
    exceptions

@@ -17,11 +17,9 @@ A private key can also be provided programmatically.
 
 .. code-block:: python
 
-   import os
-
    from pssh.clients import ParallelSSHClient
 
-   client = ParallelSSHClient(hosts, pkey=os.path.expanduser("~/.ssh/my_key"))
+   client = ParallelSSHClient(hosts, pkey="~/.ssh/my_key")
 
 Where ``my_key`` is a private key file under `.ssh` in the user's home directory.
 
@@ -102,7 +100,7 @@ GSS authentication allows logins using Windows LDAP configured user accounts via
 
 
 Tunneling
-===========
+**********
 
 This is used in cases where the client does not have direct access to the target host and has to authenticate via an intermediary, also called a bastion host, commonly used for additional security as only the bastion host needs to have access to the target host.
 
@@ -172,13 +170,12 @@ In the case of reading from output, timeout value is per output stream - meaning
 *New in 1.5.0*
 
 Distinguishing between finished and unfinished commands
---------------------------------------------------------
+=========================================================
 
 Commands that timed out before finishing can be distinguished by calling ``SSHClient.finished`` on them. This is a non-blocking function and does not use the network.
 
 <example>
 
-*New in 2.0.0*
 
 Reading Partial Output of Commands That Do Not Terminate
 ==========================================================
@@ -187,17 +184,18 @@ In some cases, such as when the remote command never terminates unless interrupt
 
 .. code-block:: python
 
-   output = client.run_command('tail -f /var/log/messages', use_pty=True, timeout=1)
+   output = client.run_command(
+       'tail -f /var/log/messages', use_pty=True, timeout=1)
 
    # Read as many lines of output as server has sent before the timeout
    stdout = []
-   for host, host_out in output.items():
-       for host, host_out in output.items():
-           try:
-               for line in host_out.stdout:
-                   stdout.append(line)
-           except Timeout:
-               pass
+   for host_out in output:
+       try:
+           for line in host_out.stdout:
+               stdout.append(line)
+       except Timeout:
+           # This allows client code to continue to read output after timeout
+           client.reset_output_generators(host_out, timeout=1)
 
    # Closing channel which has PTY has the effect of terminating
    # any running processes started on that channel.
@@ -209,18 +207,9 @@ In some cases, such as when the remote command never terminates unless interrupt
 
 Without a PTY, a ``join`` call with a timeout will complete with timeout exception raised but the remote process will be left running as per SSH protocol specifications.
 
-Furthermore, once reading output has timed out, it is necessary to restart the output generators as by Python design they only iterate once. This can be done as follows:
+Furthermore, once reading output has timed out, it is necessary to restart the output generators as by Python design they only iterate once. This is done by ``client.reset_output_generators`` in the above example.
 
-.. code-block:: python
-
-   output = client.run_command(<..>, timeout=1)
-   for host_out in output:
-       try:
-           stdout = list(host_out.stdout)
-       except Timeout:
-           client.reset_output_generators(host_out)
-
-Generator reset shown above is also performed automatically by calls to ``join`` and does not need to be done manually when ``join`` is used after output reading.
+Generator reset is also performed automatically by calls to ``join`` and does not need to be done manually when ``join`` is used after output reading.
 
 .. note::
 
@@ -240,8 +229,10 @@ Sometimes, different hosts require different configuration like user names and p
 
    hosts = ['localhost', 'localhost']
    host_config = [
-       HostConfig(port=2222, user='user1', password='pass', private_key='my_pkey.pem'),
-       HostConfig(port=2223, user='user2', password='pass', private_key='my_other_key.pem')
+       HostConfig(port=2222, user='user1',
+                  password='pass', private_key='my_pkey.pem'),
+       HostConfig(port=2223, user='user2',
+                  password='pass', private_key='my_other_key.pem'),
    ]
 
    client = ParallelSSHClient(hosts, host_config=host_config)
@@ -250,10 +241,13 @@ Sometimes, different hosts require different configuration like user names and p
 
 In the above example, the client is configured to connect to hostname ``localhost``, port ``2222`` with username ``user1``, password ``pass`` and private key file ``my_pkey.pem`` and hostname ``localhost``, port ``2222`` with username ``user1``, password ``pass`` and private key file ``my_other_pkey.pem``.
 
+When using ``host_config``, the number of ``HostConfig`` entries must match the number of hosts in ``client.hosts``. An exception is raised on client initialisation if not.
+
 
 .. note::
 
    Currently only ``port``, ``user``, ``password`` and ``private_key`` ``HostConfig`` values are used.
+
 
 .. note::
 
@@ -361,6 +355,25 @@ While not best practice and password-less ``sudo`` is best configured for a limi
    Note the inclusion of the new line ``\n`` when using sudo with a password.
 
 
+Run with configurable shell
+============================
+
+By default the client will use the login user's shell to execute commands per the SSH protocol.
+
+Shell to use is configurable:
+
+.. code-block:: python
+
+   client = <..>
+   
+   output = client.run_command(<..>, shell='zsh -c')
+   for host_out in output;
+       for line in host_out.stdout:
+           print(line)
+
+Commands will be run under the ``zsh`` shell in the above example. The command string syntax of the shell must be used, typically ``<shell> -c``.
+
+
 Output encoding
 ===============
 
@@ -377,7 +390,7 @@ Contents of ``stdout`` are `UTF-16` encoded.
 
 .. note::
 
-   Encoding must be valid `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
+   Encoding must be valid `Python codec <https://docs.python.org/3/library/codecs.html>`_
 
 Enabling use of pseudo terminal emulation
 ===========================================
@@ -414,7 +427,7 @@ No output from ``stderr``.
 SFTP and SCP
 *************
 
-SFTP and SCP are supported by ``parallel-ssh`` and functions are provided by the client for copying files with SFTP to and from remote servers.
+SFTP and SCP are both supported by ``parallel-ssh`` and functions are provided by the client for copying files with SFTP to and from remote servers - default native client only.
 
 Neither SFTP nor SCP have a shell interface and no output is provided for any SFTP/SCP commands.
 
