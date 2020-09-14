@@ -174,12 +174,12 @@ In the case of reading from output such as in the example above, timeout value i
 
 *New in 1.5.0*
 
-Reading Output From Finished Commands
-=====================================
+Reading Output from Partially Finished Commands
+===============================================
 
-Timeout exception when calling ``join`` will contain attributes for finished and unfinished commands.
+Timeout exception when calling ``join`` has finished and unfinished commands as arguments.
 
-This can be used to handle sets of commands that have finished and those that have not separately, for example to only gather output on finished commands to avoid blocking beyond a total timeout value.
+This can be used to handle sets of commands that have finished and those that have not separately, for example to only gather output on finished commands to avoid blocking.
 
 .. code-block:: python
 
@@ -196,8 +196,6 @@ This can be used to handle sets of commands that have finished and those that ha
        unfinished_output = None
    for host_out in finished_output:
        for line in host_out.stdout:
-           print(line)
-       for line in host_out.stderr:
            print(line)
    if unfinished_output is not None:
        <handle unfinished output>
@@ -287,6 +285,9 @@ When using ``host_config``, the number of ``HostConfig`` entries must match the 
 
    This feature will be provided in future releases.
 
+
+.. _per-host-cmds:
+
 Per-Host Command substitution
 ******************************
 
@@ -349,12 +350,6 @@ Run command features and options
 *********************************
 
 See :py:func:`run_command API documentation <pssh.clients.native.parallel.ParallelSSHClient.run_command>` for a complete list of features and options.
-
-.. note::
-
-   With a PTY, the default, stdout and stderr output is combined into stdout.
-
-   Without a PTY, separate output is given for stdout and stderr, although some programs and server configurations require a PTY.
 
 Run with sudo
 ===============
@@ -426,9 +421,11 @@ Contents of ``stdout`` are `UTF-16` encoded.
 Enabling use of pseudo terminal emulation
 ===========================================
 
-Pseudo Terminal Emulation (PTY) can be enabled when running commands. Enabling it has some side effects on the output and behaviour of commands such as combining stdout and stderr output - see bash man page for more information.
+Pseudo Terminal Emulation (PTY) can be enabled when running commands, defaults to off.
 
-All output, including stderr, is sent to the `stdout` channel with PTY enabled.
+Enabling it has some side effects on the output and behaviour of commands such as combining stdout and stderr output - see `bash` man page for more information.
+
+All output, including stderr, is sent to the ``stdout`` channel with PTY enabled.
 
 .. code-block:: python
 
@@ -511,9 +508,33 @@ Copying remote files in parallel requires that file names are de-duplicated othe
 The above will create files ``local.file_host1`` where ``host1`` is the host name the file was copied from.
 
 Configurable per host Filenames
---------------------------------
+=================================
 
-``copy arg`` example.
+File name arguments, for both local and remote files and for copying to and from remote hosts, can be configured on a per-host basis similarly to `host arguments <#per-host-cmds>`_ in ``run_command``.
+
+For example, to copy the local files ``['local_file_1', 'local_file_2']`` as remote files ``['remote_file_1', 'remote_file_2']`` on the two hosts ``['host1', 'host2']``
+
+.. code-block:: python
+
+   hosts = ['host1', 'host2']
+   
+   client = ParallelSSHClient(hosts)
+
+   copy_args = [{'local_file': 'local_file_1',
+                 'remote_file': 'remote_file_1',
+                 },
+                {'local_file': 'local_file_2',
+                 'remote_file': 'remote_file_2',
+                 }]
+   cmds = client.copy_file('%(local_file)s', '%(remote_file)s',
+                           copy_args=copy_args)
+   joinall(cmds)
+
+The client will copy ``local_file_1`` to ``host1`` as ``remote_file_1`` and ``local_file_2`` to ``host2`` as ``remote_file_2``.
+
+Items in ``copy_args`` list may be tuples or dictionaries as shown above. Number of ``copy_args`` must match length of ``client.hosts`` if provided.
+
+``copy_remote_file`` may be used in the same manner to configure remote and local file names per host.
 
 .. seealso::
 
