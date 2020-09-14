@@ -22,7 +22,7 @@ Parallel-SSH Documentation
 
 ``parallel-ssh`` is a non-blocking parallel SSH client library.
 
-It uses clients based on C libraries with an easy to use Python API providing native code levels of performance and stability.
+It provides clients based on C libraries with an easy to use Python API providing native code levels of performance and stability.
 
 
 In a nutshell
@@ -75,7 +75,7 @@ Single host client is also available with similar API.
    introduction
    installation
    quickstart
-   ssh2
+   clients
    advanced
    api
    Changelog

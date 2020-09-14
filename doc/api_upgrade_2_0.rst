@@ -1,6 +1,9 @@
 Upgrading to API 2.0
 ######################
 
+Here can be found code examples for the ``1.x`` API and how they can be migrated to the new ``2.x`` API.
+
+Code that was already making use of ``run_command(<..>, return_list=True`` is compatible with the ``2.x`` API - ``return_list=True`` parameter may now be removed.
 
 Parallel Client Run Command
 ***************************

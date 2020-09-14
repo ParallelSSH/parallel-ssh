@@ -10,7 +10,7 @@ Changes
 See `Upgrading to API 2.0 <upgrade-link>`_ for examples of code that will need updating.
 
 * Removed paramiko clients and dependency.
-* ``ParallelSSHClient.run_command`` now always returns a list of ``HostOutput``.
+* ``ParallelSSHClient.run_command`` now always returns a list of ``HostOutput`` - ``return_list`` argument is a no-op and may be removed.
 * ``ParallelSSHClient.get_last_output`` now always returns a list of ``HostOutput``.
 * ``SSHClient.run_command`` now returns ``HostOutput``.
 * Removed deprecated since `1.0.0` ``HostOutput`` dictionary attributes.

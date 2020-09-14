@@ -11,7 +11,7 @@ The most basic usage of ``parallel-ssh`` is, unsurprisingly, to run a command on
 
 A complete example is shown below.
 
-Examples all assume a valid key is available on a running SSH agent. See `Programmatic Private Key Authentication <quickstart.html#programmatic-private-key-authentication>`_ for authenticating without an SSH agent.
+Examples all assume a valid key is available on a running SSH agent. See `Programmatic Private Key Authentication <quickstart.html#pkey-auth>`_ for authenticating without an SSH agent.
 
 
 Complete Example
@@ -24,11 +24,10 @@ Host list can contain identical hosts. Commands are executed concurrently on eve
    from pssh.clients import ParallelSSHClient
 
    hosts = ['localhost', 'localhost', 'localhost', 'localhost']
-   client = ParallelSSHClient(hosts, timeout=1)
+   client = ParallelSSHClient(hosts)
    cmd = 'uname'
 
    output = client.run_command(cmd)
-   client.join(output)
    for host_out in output:
        for line in host_out.stdout:
            print(line)
@@ -116,6 +115,7 @@ Standard output, aka ``stdout``, for a given :py:class:`HostOutput <pssh.output.
 
       <line by line output>
       <line by line output>
+      <..>
 
 There is nothing special needed to ensure output is available.
 
@@ -156,7 +156,7 @@ Complete Example
   from pssh.clients import ParallelSSHClient
 
   client = ParallelSSHClient(['localhost', 'localhost'])
-  output = client.run_command('whoami', return_list=True)
+  output = client.run_command('whoami')
   client.join(output)
 
   for host_output in output:
@@ -221,6 +221,9 @@ User/password authentication can be used by providing user name and password cre
 
    On Windows, user name is required.
 
+
+.. _pkey-auth:
+
 Programmatic Private Key authentication
 ------------------------------------------
 
@@ -241,11 +244,11 @@ To use files under a user's ``.ssh`` directory:
 
    import os
 
-   client = ParallelSSHClient(hosts, pkey=os.expanduser('~/.ssh/my_pkey'))
+   client = ParallelSSHClient(hosts, pkey='~/.ssh/my_pkey')
 
 
 Output for Last Executed Commands
------------------------------------
+==================================
 
 Output for last executed commands can be retrieved by ``get_last_output``:
 
@@ -308,13 +311,13 @@ The ``stdin`` attribute on :py:class:`HostOutput <pssh.output.HostOutput>` is a 
 Errors and Exceptions
 ========================
 
-By default, ``parallel-ssh`` will fail early on any errors connecting to hosts, whether that be connection errors such as DNS resolution failure or unreachable host, SSH authentication failures or any other errors.
+By default, ``parallel-ssh`` will raise exception on any errors connecting to hosts, whether that be connection errors such as DNS resolution failure or unreachable host, SSH authentication failures or any other errors.
 
 Alternatively, the ``stop_on_errors`` flag is provided to tell the client to go ahead and attempt the command(s) anyway and return output for all hosts, including the exception on any hosts that failed:
 
 .. code-block:: python
 
-  output = client.run_command('whoami', return_list=True, stop_on_errors=False)
+  output = client.run_command('whoami', stop_on_errors=False)
 
 With this flag, the ``exception`` output attribute will contain the exception on any failed hosts, or ``None``:
 

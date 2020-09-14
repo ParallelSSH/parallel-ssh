@@ -11,7 +11,7 @@ Programmatic Private Keys
 
 By default, ``parallel-ssh`` will attempt to use loaded keys in an available SSH agent as well as default identity files under the user's home directory.
 
-See `IDENTITIES` in :py:class:`SSHClient <pssh.clients.base_ssh_client.BaseSSHClient>` for a list of identity files.
+See `IDENTITIES` in :py:class:`SSHClient <pssh.clients.base.single.BaseSSHClient.IDENTITIES>` for the list of default identity files.
 
 A private key can also be provided programmatically.
 
@@ -24,7 +24,7 @@ A private key can also be provided programmatically.
 Where ``my_key`` is a private key file under `.ssh` in the user's home directory.
 
 
-Native clients
+Native Clients
 ***************
 
 ssh2-python (libssh2)
@@ -50,7 +50,7 @@ See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a perf
 
 .. seealso::
 
-   `Feature comparison <clients.html>`_ for how the `2.x.x` client features compare.
+   `Feature comparison <clients.html>`_ for how the `2.x.x` client types compare.
 
    API documentation for `parallel <native_parallel.html>`_ and `single <native_single.html>`_ native clients.
 
@@ -96,13 +96,15 @@ GSS authentication allows logins using Windows LDAP configured user accounts via
            print(line)
 
 
-``ssh-python`` :py:class:`ParallelSSHClient <pssh.clients.ssh.ParallelSSHClient>` only.
+``ssh-python`` :py:class:`ParallelSSHClient <pssh.clients.ssh.parallel.ParallelSSHClient>` only.
 
 
-Tunneling
+Tunnelling
 **********
 
-This is used in cases where the client does not have direct access to the target host and has to authenticate via an intermediary, also called a bastion host, commonly used for additional security as only the bastion host needs to have access to the target host.
+This is used in cases where the client does not have direct access to the target host and has to authenticate via an intermediary, also called a bastion host.
+
+Commonly used for additional security as only the proxy or bastion host needs to have access to the target host.
 
 ParallelSSHClient       ------>        Proxy host         -------->         Target host
 
@@ -129,14 +131,16 @@ In the above example, connections to the target hosts are made via SSH through `
 
 .. note::
 
-   Proxy host connections are asynchronous and use the SSH protocol's native TCP tunneling - aka local port forward. No external commands or processes are used for the proxy connection, unlike the `ProxyCommand` directive in OpenSSH and other utilities.
+   The current implementation of tunnelling suffers from poor performance when first establishing connections to many hosts - this is due to be resolved in a future release.
+
+   Proxy host connections are asynchronous and use the SSH protocol's native TCP tunnelling - aka local port forward. No external commands or processes are used for the proxy connection, unlike the `ProxyCommand` directive in OpenSSH and other utilities.
 
    While connections initiated by ``parallel-ssh`` are asynchronous, connections from proxy host -> target hosts may not be, depending on SSH server implementation. If only one proxy host is used to connect to a large number of target hosts and proxy SSH server connections are *not* asynchronous, this may adversely impact performance on the proxy host.
 
 Join and Output Timeouts
 **************************
 
-The native clients have timeout functionality on reading output and ``client.join``. These is a timeout on the parallel commands as a whole and is separate from ``ParallelSSHClient(timeout=<..>)`` which is applied to each SSH session individually.
+Clients have timeout functionality on reading output and ``client.join``. Join timeout is a timeout on all parallel commands in total and is separate from ``ParallelSSHClient(timeout=<..>)`` which is applied to SSH session operations individually.
 
 Timeout exceptions contain attributes for which commands have finished and which have not so client code can get output from any finished commands when handling timeouts.
 
@@ -150,10 +154,13 @@ Timeout exceptions contain attributes for which commands have finished and which
    except Timeout:
        pass
 
+The client will raise a ``Timeout`` exception if *all* remote commands have not finished within five seconds in the above examples.
+
+
 .. code-block:: python
 
    output = client.run_command(.., timeout=5)
-   for host, host_out in output.items():
+   for host_out in output:
        try:
            for line in host_out.stdout:
 	       pass
@@ -163,18 +170,42 @@ Timeout exceptions contain attributes for which commands have finished and which
            pass
 
 
-The client will raise a ``Timeout`` exception if all remote commands have not finished within five seconds in the above examples.
-
-In the case of reading from output, timeout value is per output stream - meaning separate timeouts for stdout and stderr.
+In the case of reading from output such as in the example above, timeout value is per output stream - meaning separate timeouts for stdout and stderr as well as separate timeout per host remote command.
 
 *New in 1.5.0*
 
-Distinguishing between finished and unfinished commands
-=========================================================
+Reading Output From Finished Commands
+=====================================
 
-Commands that timed out before finishing can be distinguished by calling ``SSHClient.finished`` on them. This is a non-blocking function and does not use the network.
+Timeout exception when calling ``join`` will contain attributes for finished and unfinished commands.
 
-<example>
+This can be used to handle sets of commands that have finished and those that have not separately, for example to only gather output on finished commands to avoid blocking beyond a total timeout value.
+
+.. code-block:: python
+
+   output = client.run_command(..)
+   try:
+       client.join(output, timeout=5)
+   except Timeout as ex:
+       # Some commands timed out
+       finished_output = client.get_last_output(cmds=ex.finished_cmds)
+       unfinished_output = client.get_last_output(cmds=ex.unfinished_cmds)
+   else:
+       # No timeout, all commands finished within five seconds
+       finished_output = output
+       unfinished_output = None
+   for host_out in finished_output:
+       for line in host_out.stdout:
+           print(line)
+       for line in host_out.stderr:
+           print(line)
+   if unfinished_output is not None:
+       <handle unfinished cmds>
+
+
+In the above example, output is printed only for those commands which have completed within the five second timeout.
+
+Client code may choose to then join again only on the unfinished output if some commands have failed in order to gather remaining output.
 
 
 Reading Partial Output of Commands That Do Not Terminate

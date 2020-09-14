@@ -22,8 +22,6 @@ Dependencies
 
 When installing from source, dependencies must be satisfied by ``pip install -r requirements.txt``. For pre-built binary wheel packages with dependencies included, see `Pip Install`_.
 
-From ``2.0.0`` onwards, paramiko will become an _optional_ extra, with ``libssh2``, and for a limited set of functionality, ``libssh`` native library based clients via ``ssh2-python`` and ``ssh-python`` bindings respectively replacing it.
-
 ===============    ================
 Dependency         Minimum Version
 ===============    ================
