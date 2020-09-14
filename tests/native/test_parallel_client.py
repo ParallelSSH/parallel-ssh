@@ -25,10 +25,9 @@ import os
 import shutil
 import sys
 import string
+import random
 from datetime import datetime
 from platform import python_version
-import random
-import time
 
 from pytest import mark
 from gevent import joinall, spawn, socket, Greenlet, sleep
@@ -71,6 +70,7 @@ class ParallelSSHClientTest(unittest.TestCase):
     def tearDownClass(cls):
         del cls.client
         cls.server.stop()
+        del cls.server
 
     def setUp(self):
         self.long_cmd = lambda lines: 'for (( i=0; i<%s; i+=1 )) do echo $i; sleep 1; done' % (lines,)
@@ -1180,8 +1180,8 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    pkey=self.user_key)
         output = client.run_command(self.cmd, return_list=True)
         client.join(output)
-        client.host_clients[self.host].session.disconnect()
-        self.assertRaises(SessionError, client.host_clients[self.host].open_session)
+        output[0].client.session.disconnect()
+        self.assertRaises(SessionError, output[0].client.open_session)
         self.assertEqual(output[0].exit_code, None)
 
     def test_invalid_host_out(self):
@@ -1461,16 +1461,18 @@ class ParallelSSHClientTest(unittest.TestCase):
             [self.host], port=self.port, pkey=self.user_key,
             forward_ssh_agent=False,
             num_retries=1)
-        client.join(client.run_command(self.cmd))
-        self.assertFalse(client.host_clients[self.host].forward_ssh_agent)
+        output = client.run_command(self.cmd)
+        client.join(output)
+        self.assertFalse(output[0].client.forward_ssh_agent)
 
     def test_keepalive_off(self):
         client = ParallelSSHClient(
             [self.host], port=self.port, pkey=self.user_key,
             keepalive_seconds=0,
             num_retries=1)
-        client.join(client.run_command(self.cmd))
-        self.assertFalse(client.host_clients[self.host].keepalive_seconds)
+        output = client.run_command(self.cmd)
+        client.join(output)
+        self.assertFalse(output[0].client.keepalive_seconds)
 
     def test_return_list_last_output_multi_host(self):
         host2, host3 = '127.0.0.2', '127.0.0.3'

@@ -56,8 +56,6 @@ class BaseParallelSSHClient(object):
         self.pkey = pkey
         self.num_retries = num_retries
         self.timeout = timeout
-        # To hold host clients
-        self.host_clients = {}
         self._host_clients = {}
         self.host_config = host_config
         self.retry_delay = retry_delay

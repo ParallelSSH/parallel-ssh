@@ -21,7 +21,6 @@ import os
 import logging
 from sys import version_info
 
-from ssh2.session import Session
 from pssh.clients.native import SSHClient, logger as ssh_logger
 from ..embedded_server.openssh import OpenSSHServer
 
@@ -63,5 +62,6 @@ class SSH2TestCase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        del cls.client
         cls.server.stop()
         del cls.server

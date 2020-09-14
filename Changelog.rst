@@ -22,6 +22,7 @@ See `Upgrading to API 2.0 <upgrade-link>`_ for examples of code that will need u
 * Removed deprecated ``ParallelSSHClient.get_exit_code`` and ``get_exit_codes`` functions.
 * Removed deprecated ``ParallelSSHClient`` ``host_config`` dictionary implementation - now list of ``HostConfig``.
 * Removed ``HostOutput.cmd`` attribute.
+* Removed ``ParallelSSHClient.host_clients`` attribute.
 
 
 1.13.0

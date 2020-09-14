@@ -18,7 +18,6 @@
 import unittest
 import os
 import pwd
-import time
 from datetime import datetime
 from sys import version_info
 
@@ -77,15 +76,11 @@ class LibSSHParallelTest(unittest.TestCase):
     def test_join_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)
-        output = client.run_command('echo me; sleep 2')
-        # Wait for long running command to start to avoid race condition
-        time.sleep(.1)
+        output = client.run_command('echo me; sleep 1.5')
         self.assertRaises(Timeout, client.join, output, timeout=1)
         self.assertFalse(output[0].client.finished(output[0].channel))
         self.assertFalse(output[0].channel.is_eof())
-        # Ensure command has actually finished - avoid race conditions
-        time.sleep(2)
-        client.join(output, timeout=3)
+        client.join(output, timeout=2)
         self.assertTrue(output[0].channel.is_eof())
         self.assertTrue(client.finished(output))
 
@@ -366,7 +361,7 @@ class LibSSHParallelTest(unittest.TestCase):
                     raise Exception("Timeout should have been raised")
             self.assertRaises(Timeout, self.client.join, output, timeout=1)
             channel = output[0].channel
-            self.client.host_clients[self.host].close_channel(channel)
+            output[0].client.close_channel(channel)
             self.client.join(output)
         finally:
             os.unlink(_file)
