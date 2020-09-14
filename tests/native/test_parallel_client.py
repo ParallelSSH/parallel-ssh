@@ -345,8 +345,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         servers = [server2, server3]
         for server in servers:
             server.start_server()
-            # server.wait_for_port()
-        time.sleep(1)
         hosts = [self.host, host2, host3]
 
         local_file_prefix = 'test_file_'
@@ -637,8 +635,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         servers = [server2, server3]
         for server in servers:
             server.start_server()
-            # server.wait_for_port()
-        time.sleep(1)
         hosts = [self.host, host2, host3]
 
         remote_file_prefix = 'test_file_'
@@ -998,7 +994,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         servers = [server2, server3]
         for server in servers:
             server.start_server()
-        time.sleep(1)
         hosts = [self.host, host2, host3]
         host_args = ('arg1', 'arg2', 'arg3')
         cmd = 'echo %s'
@@ -1200,10 +1195,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         try:
             client.join(output, timeout=1)
         except Timeout as ex:
-            self.assertTrue(hasattr(ex, 'finished_cmds'))
-            self.assertTrue(hasattr(ex, 'unfinished_cmds'))
-            self.assertEqual(len(ex.unfinished_cmds), 1)
-            self.assertEqual(len(ex.finished_cmds), 0)
+            self.assertEqual(len(ex.args), 4)
+            self.assertTrue(isinstance(ex.args[2], list))
+            self.assertTrue(isinstance(ex.args[3], list))
         else:
             raise Exception("Expected timeout")
         self.assertFalse(output[0].channel.eof())
@@ -1230,7 +1224,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         finished_stdout = list(finished_output[0].stdout)
         self.assertEqual(finished_stdout, ['0.5'])
         # Should not timeout
-        client.join(unfinished_output, timeout=1)
+        client.join(unfinished_output, timeout=2)
         rest_stdout = list(unfinished_output[0].stdout)
         self.assertEqual(rest_stdout, ['1.5'])
 
@@ -1270,7 +1264,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                 try:
                     for line in host_out.stdout:
                         pass
-                except Timeout as ex:
+                except Timeout:
                     pass
                 else:
                     raise Exception("Timeout should have been raised")
