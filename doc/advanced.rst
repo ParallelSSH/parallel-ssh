@@ -188,8 +188,8 @@ This can be used to handle sets of commands that have finished and those that ha
        client.join(output, timeout=5)
    except Timeout as ex:
        # Some commands timed out
-       finished_output = client.get_last_output(cmds=ex.finished_cmds)
-       unfinished_output = client.get_last_output(cmds=ex.unfinished_cmds)
+       finished_output = ex.args[2]
+       unfinished_output = ex.args[3]
    else:
        # No timeout, all commands finished within five seconds
        finished_output = output
@@ -200,7 +200,7 @@ This can be used to handle sets of commands that have finished and those that ha
        for line in host_out.stderr:
            print(line)
    if unfinished_output is not None:
-       <handle unfinished cmds>
+       <handle unfinished output>
 
 
 In the above example, output is printed only for those commands which have completed within the five second timeout.

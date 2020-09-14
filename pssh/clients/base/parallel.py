@@ -256,22 +256,20 @@ class BaseParallelSSHClient(object):
           reached with commands still running.
 
         :rtype: ``None``"""
-        cmds = []
         if not isinstance(output, list):
             raise ValueError("Unexpected output object type")
-        for host_i, host_out in enumerate(output):
-            cmds.append(self.pool.spawn(
-                self._join, host_out,
-                consume_output=consume_output, timeout=timeout))
+        cmds = [self.pool.spawn(self._join, host_out, consume_output=consume_output)
+                for host_i, host_out in enumerate(output)]
         # Errors raised by self._join should be propagated.
         finished_cmds = joinall(cmds, raise_error=True, timeout=timeout)
         if timeout is None:
             return
         unfinished_cmds = set.difference(set(cmds), set(finished_cmds))
         if unfinished_cmds:
-            raise Timeout(
-                "Timeout of %s sec(s) reached with commands "
-                "still running", timeout, finished_cmds, unfinished_cmds)
+            finished_output = self.get_last_output(cmds=finished_cmds)
+            unfinished_output = list(set.difference(set(output), set(finished_output)))
+            raise Timeout("Timeout of %s sec(s) reached with commands "
+                          "still running", timeout, finished_output, unfinished_output)
 
     def _join(self, host_out, consume_output=False, timeout=None,
               encoding="utf-8"):

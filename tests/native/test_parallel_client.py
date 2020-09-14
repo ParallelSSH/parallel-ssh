@@ -1196,23 +1196,48 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_join_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)
-        output = client.run_command('echo me; sleep 2')
-        # Wait for long running command to start to avoid race condition
-        time.sleep(.1)
-        self.assertRaises(Timeout, client.join, output, timeout=1)
+        output = client.run_command('echo me; sleep 1.5')
+        try:
+            client.join(output, timeout=1)
+        except Timeout as ex:
+            self.assertTrue(hasattr(ex, 'finished_cmds'))
+            self.assertTrue(hasattr(ex, 'unfinished_cmds'))
+            self.assertEqual(len(ex.unfinished_cmds), 1)
+            self.assertEqual(len(ex.finished_cmds), 0)
+        else:
+            raise Exception("Expected timeout")
         self.assertFalse(output[0].channel.eof())
-        # Ensure command has actually finished - avoid race conditions
-        time.sleep(2)
-        client.join(output, timeout=3, consume_output=True)
+        client.join(output, timeout=2, consume_output=True)
         self.assertTrue(output[0].channel.eof())
         self.assertTrue(client.finished(output))
+
+    def test_join_timeout_subset_read(self):
+        hosts = [self.host, self.host]
+        cmd = 'sleep %(i)s; echo %(i)s'
+        host_args = [{'i': i+0.5} for i in range(len(hosts))]
+        client = ParallelSSHClient(hosts, port=self.port,
+                                   pkey=self.user_key)
+        output = client.run_command(cmd, host_args=host_args)
+        try:
+            client.join(output, timeout=1)
+        except Timeout as ex:
+            finished_output = ex.args[2]
+            unfinished_output = ex.args[3]
+        else:
+            raise Exception("Expected timeout")
+        self.assertEqual(len(finished_output), 1)
+        self.assertEqual(len(unfinished_output), 1)
+        finished_stdout = list(finished_output[0].stdout)
+        self.assertEqual(finished_stdout, ['0.5'])
+        # Should not timeout
+        client.join(unfinished_output, timeout=1)
+        rest_stdout = list(unfinished_output[0].stdout)
+        self.assertEqual(rest_stdout, ['1.5'])
 
     def test_join_timeout_set_no_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)
         output = client.run_command('sleep 1')
-        # Allow enough time for blocking command to start - avoid race condition
-        time.sleep(.1)
         client.join(output, timeout=2)
         self.assertTrue(client.finished(output))
         self.assertTrue(output[0].channel.eof())
@@ -1245,7 +1270,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                 try:
                     for line in host_out.stdout:
                         pass
-                except Timeout:
+                except Timeout as ex:
                     pass
                 else:
                     raise Exception("Timeout should have been raised")
