@@ -100,7 +100,6 @@ class TunnelTest(unittest.TestCase):
                     raise ProxyError
             self.assertTrue(tunnel.tunnel_open.is_set())
             self.assertIsNotNone(tunnel.client)
-            tunnel.cleanup()
             self.assertIsNone(tunnel._sockets)
         finally:
             server.stop()
@@ -132,9 +131,9 @@ class TunnelTest(unittest.TestCase):
             proxy_client = SSHClient(
                 '127.0.0.1', pkey=self.user_key, port=_port,
                 num_retries=1, _auth_thread_pool=False)
-            tunnel.cleanup()
-            spawn(proxy_client.execute, 'echo me')
+            cmd = spawn(proxy_client.execute, 'echo me')
             proxy_client.disconnect()
+            joinall([cmd])
             self.assertEqual(proxy_client.sock, None)
         finally:
             remote_server.stop()
@@ -205,35 +204,6 @@ class TunnelTest(unittest.TestCase):
         exc = output[0].exception
         self.assertIsInstance(exc, ProxyError)
         self.assertIsInstance(exc.args[1], ConnectionErrorException)
-
-    def test_tunnel_remote_host_timeout(self):
-        remote_host = '127.0.0.18'
-        proxy_host = '127.0.0.19'
-        server = ThreadedOpenSSHServer(listen_ip=proxy_host, port=self.port)
-        remote_server = ThreadedOpenSSHServer(listen_ip=remote_host, port=self.port)
-        for _server in (server, remote_server):
-            _server.start()
-            _server.wait_for_port()
-        try:
-            client = ParallelSSHClient(
-                [remote_host], port=self.port, pkey=self.user_key,
-                proxy_host=proxy_host, proxy_port=self.port, num_retries=1,
-                proxy_pkey=self.user_key)
-            output = client.run_command(self.cmd)
-            client.join(output)
-            client._tunnel.cleanup()
-            for _server in (server, remote_server):
-                _server.stop()
-                _server.join()
-            try:
-                client.run_command(self.cmd, greenlet_timeout=1)
-            except (GTimeout, Exception):
-                pass
-            else:
-                raise Exception("Command neither failed nor timeout raised")
-        finally:
-            for _server in (server, remote_server):
-                _server.stop()
 
     def test_single_tunnel_multi_hosts(self):
         remote_host = '127.0.0.8'
