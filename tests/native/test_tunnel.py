@@ -38,7 +38,7 @@ from pssh.exceptions import UnknownHostException, \
 from ssh2.exceptions import ChannelFailure, SocketSendError
 
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
-from ..embedded_server.openssh import ThreadedOpenSSHServer, OpenSSHServer
+from ..embedded_server.openssh import OpenSSHServer
 
 
 class TunnelTest(unittest.TestCase):
@@ -212,10 +212,9 @@ class TunnelTest(unittest.TestCase):
 
     def test_single_tunnel_multi_hosts_timeout(self):
         remote_host = '127.0.0.8'
-        remote_server = ThreadedOpenSSHServer(
+        remote_server = OpenSSHServer(
             listen_ip=remote_host, port=self.port)
-        remote_server.start()
-        remote_server.wait_for_port()
+        remote_server.start_server()
         hosts = [remote_host, remote_host, remote_host]
         try:
             client = ParallelSSHClient(
@@ -231,4 +230,3 @@ class TunnelTest(unittest.TestCase):
             sleep(1)
         finally:
             remote_server.stop()
-            remote_server.join()
