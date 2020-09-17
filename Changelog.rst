@@ -25,6 +25,12 @@ See `Upgrading to API 2.0 <upgrade-link>`_ for examples of code that will need u
 * Removed ``ParallelSSHClient.host_clients`` attribute.
 
 
+Fixes
+-----
+
+* Removed now unecessary locking around SSHClient initialisation so it can be parallelised - #219.
+
+
 1.13.0
 ++++++
 
