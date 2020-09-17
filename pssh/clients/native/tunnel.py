@@ -193,7 +193,6 @@ class Tunnel(Thread):
             self.session = None
             self.client = None
         self._sockets = None
-        self._hub.destroy()
 
     def _consume_q(self):
         while True:

@@ -82,7 +82,6 @@ class TunnelTest(unittest.TestCase):
             self.assertIsInstance(t.exception, ChannelFailure)
         finally:
             fw_socket.close()
-            sleep(1)
 
     def test_tunnel_channel_failure(self):
         remote_host = '127.0.0.8'
