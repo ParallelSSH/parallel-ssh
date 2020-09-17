@@ -78,10 +78,10 @@ class TunnelTest(unittest.TestCase):
         try:
             fw_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             fw_socket.connect(('127.0.0.1', _port))
-            sleep(1)
             self.assertIsInstance(t.exception, ChannelFailure)
         finally:
             fw_socket.close()
+            sleep(1)
 
     def test_tunnel_channel_failure(self):
         remote_host = '127.0.0.8'
@@ -117,6 +117,7 @@ class TunnelTest(unittest.TestCase):
             self.assertEqual(proxy_client.sock, None)
         finally:
             remote_server.stop()
+            sleep(1)
 
     def test_tunnel_server_failure(self):
         proxy_host = '127.0.0.9'
@@ -154,6 +155,7 @@ class TunnelTest(unittest.TestCase):
         finally:
             for _server in (server, remote_server):
                 _server.stop()
+            sleep(1)
 
     def test_tunnel(self):
         remote_host = '127.0.0.8'
@@ -174,6 +176,7 @@ class TunnelTest(unittest.TestCase):
             sleep(1)
         finally:
             remote_server.stop()
+            sleep(1)
 
     def test_tunnel_init_failure(self):
         proxy_host = '127.0.0.20'
@@ -210,6 +213,7 @@ class TunnelTest(unittest.TestCase):
             sleep(1)
         finally:
             remote_server.stop()
+            sleep(1)
 
     def test_single_tunnel_multi_hosts_timeout(self):
         remote_host = '127.0.0.8'
@@ -231,3 +235,4 @@ class TunnelTest(unittest.TestCase):
             sleep(1)
         finally:
             remote_server.stop()
+            sleep(1)
