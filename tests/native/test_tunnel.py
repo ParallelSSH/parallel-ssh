@@ -183,6 +183,7 @@ class TunnelTest(unittest.TestCase):
         exc = output[0].exception
         self.assertIsInstance(exc, ProxyError)
         self.assertIsInstance(exc.args[1], ConnectionErrorException)
+        del client
 
     def test_single_tunnel_multi_hosts(self):
         remote_host = '127.0.0.8'
@@ -224,6 +225,7 @@ class TunnelTest(unittest.TestCase):
             client.join(output)
             for host_out in output:
                 self.assertIsInstance(host_out.exception, Timeout)
+            del client
         finally:
             remote_server.stop()
             remote_server.join()
