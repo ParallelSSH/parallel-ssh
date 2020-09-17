@@ -169,6 +169,7 @@ class TunnelTest(unittest.TestCase):
                 self.assertListEqual(_stdout, [self.resp])
             self.assertEqual(remote_host, output[0].host)
             del client
+            sleep(1)
         finally:
             remote_server.stop()
 
@@ -184,6 +185,7 @@ class TunnelTest(unittest.TestCase):
         self.assertIsInstance(exc, ProxyError)
         self.assertIsInstance(exc.args[1], ConnectionErrorException)
         del client
+        sleep(1)
 
     def test_single_tunnel_multi_hosts(self):
         remote_host = '127.0.0.8'
