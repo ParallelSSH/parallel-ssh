@@ -118,7 +118,6 @@ class TunnelTest(unittest.TestCase):
             self.assertEqual(proxy_client.sock, None)
         finally:
             remote_server.stop()
-            sleep(1)
 
     def test_tunnel_server_failure(self):
         proxy_host = '127.0.0.9'
@@ -156,7 +155,6 @@ class TunnelTest(unittest.TestCase):
         finally:
             for _server in (server, remote_server):
                 _server.stop()
-            sleep(1)
 
     def test_tunnel(self):
         remote_host = '127.0.0.8'
@@ -177,7 +175,6 @@ class TunnelTest(unittest.TestCase):
             sleep(1)
         finally:
             remote_server.stop()
-            sleep(1)
 
     def test_tunnel_init_failure(self):
         proxy_host = '127.0.0.20'
@@ -214,7 +211,6 @@ class TunnelTest(unittest.TestCase):
             sleep(1)
         finally:
             remote_server.stop()
-            sleep(1)
 
     def test_single_tunnel_multi_hosts_timeout(self):
         remote_host = '127.0.0.8'
@@ -236,4 +232,3 @@ class TunnelTest(unittest.TestCase):
             sleep(1)
         finally:
             remote_server.stop()
-            sleep(1)
