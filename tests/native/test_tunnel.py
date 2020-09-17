@@ -110,6 +110,7 @@ class TunnelTest(unittest.TestCase):
             proxy_client = SSHClient(
                 '127.0.0.1', pkey=self.user_key, port=_port,
                 num_retries=1, _auth_thread_pool=False)
+            sleep(1)
             cmd = spawn(proxy_client.execute, 'echo me')
             proxy_client.disconnect()
             joinall([cmd])
@@ -192,7 +193,6 @@ class TunnelTest(unittest.TestCase):
         remote_server = OpenSSHServer(
             listen_ip=remote_host, port=self.port)
         remote_server.start_server()
-        remote_server.wait_for_port()
         hosts = [remote_host, remote_host, remote_host]
         try:
             client = ParallelSSHClient(
