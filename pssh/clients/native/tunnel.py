@@ -103,9 +103,6 @@ class Tunnel(Thread):
         self._dest_let = None
         self._hub = None
 
-    def __del__(self):
-        self.cleanup()
-
     def _read_forward_sock(self, forward_sock, channel):
         while True:
             if channel is None or channel.eof():
@@ -293,7 +290,7 @@ class Tunnel(Thread):
         try:
             self._init_tunnel_client()
         except Exception as ex:
-            # logger.error("Tunnel initilisation failed - %s", ex)
+            logger.error("Tunnel initilisation failed - %s", ex)
             self.exception = ex
             return
         logger.debug("Hub ID in run function: %s", self._hub.thread_ident)
