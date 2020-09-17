@@ -83,27 +83,6 @@ class TunnelTest(unittest.TestCase):
         finally:
             fw_socket.close()
 
-    def test_tunnel_init(self):
-        proxy_host = '127.0.0.49'
-        server = OpenSSHServer(listen_ip=proxy_host, port=self.port)
-        server.start_server()
-        in_q, out_q = deque(), deque()
-        try:
-            tunnel = Tunnel(proxy_host, in_q, out_q, port=self.port,
-                            pkey=self.user_key, num_retries=1)
-            tunnel.daemon = True
-            tunnel.start()
-            in_q.append((self.host, self.port))
-            while not tunnel.tunnel_open.is_set():
-                sleep(.1)
-                if not tunnel.is_alive():
-                    raise ProxyError
-            self.assertTrue(tunnel.tunnel_open.is_set())
-            self.assertIsNotNone(tunnel.client)
-            self.assertIsNone(tunnel._sockets)
-        finally:
-            server.stop()
-
     def test_tunnel_channel_failure(self):
         remote_host = '127.0.0.8'
         remote_server = OpenSSHServer(listen_ip=remote_host, port=self.port)
