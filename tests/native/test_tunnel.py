@@ -91,8 +91,8 @@ class TunnelTest(unittest.TestCase):
         try:
             tunnel = Tunnel(proxy_host, in_q, out_q, port=self.port,
                             pkey=self.user_key, num_retries=1)
-            tunnel._init_tunnel_client()
-            consume_let = spawn(tunnel._consume_q)
+            tunnel.daemon = True
+            tunnel.start()
             in_q.append((self.host, self.port))
             while not tunnel.tunnel_open.is_set():
                 sleep(.1)
