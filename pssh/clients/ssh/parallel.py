@@ -16,7 +16,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import logging
-from gevent.lock import RLock
 
 from .single import SSHClient
 from ..common import _validate_pkey_path
