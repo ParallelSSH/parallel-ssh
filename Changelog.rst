@@ -28,7 +28,7 @@ See `Upgrading to API 2.0 <upgrade-link>`_ for examples of code that will need u
 Fixes
 -----
 
-* Removed now unecessary locking around SSHClient initialisation so it can be parallelised - #219.
+* Removed now unnecessary locking around SSHClient initialisation so it can be parallelised - #219.
 
 
 1.13.0

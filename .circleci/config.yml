@@ -19,7 +19,7 @@ jobs:
       - run:
           name: Deps
           command: |
-            sudo apt-get install openssh-server
+            sudo apt-get install openssh-server --fix-missing
       - python/save-cache:
           dependency-file: requirements_dev.txt
           key: depsv3-{{ .Branch }}.{{ arch }}-PY<< parameters.python_ver >>

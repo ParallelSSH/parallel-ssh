@@ -99,13 +99,15 @@ class Tunnel(Thread):
         self.tunnel_open = Event()
         self._tunnels = []
         self.channel_retries = channel_retries
+        self._source_let = None
+        self._dest_let = None
 
     def __del__(self):
         self.cleanup()
 
     def _read_forward_sock(self, forward_sock, channel):
         while True:
-            if channel.eof():
+            if channel is None or channel.eof():
                 logger.debug("Channel closed")
                 return
             try:
@@ -131,7 +133,7 @@ class Tunnel(Thread):
 
     def _read_channel(self, forward_sock, channel):
         while True:
-            if channel.eof():
+            if channel is None or channel.eof():
                 logger.debug("Channel closed")
                 return
             try:
@@ -184,16 +186,15 @@ class Tunnel(Thread):
         self.tunnel_open.set()
 
     def cleanup(self):
-        for i in range(len(self._sockets)):
-            _sock = self._sockets[i]
-            if _sock is not None and not _sock.closed:
-                _sock.close()
-            self._sockets[i] = None
-        self._sockets = None
+        if self._source_let is not None:
+            self._source_let.kill(block=False)
+        if self._dest_let is not None:
+            self._dest_let.kill(block=False)
         if self.client is not None and self.session is not None:
             self.client.disconnect()
             self.session = None
             self.client = None
+        self._sockets = None
 
     def _consume_q(self):
         while True:
@@ -268,6 +269,8 @@ class Tunnel(Thread):
         source = spawn(self._read_forward_sock, forward_sock, channel)
         dest = spawn(self._read_channel, forward_sock, channel)
         logger.debug("Waiting for read/write greenlets")
+        self._source_let = source
+        self._dest_let = dest
         self._wait_send_receive_lets(source, dest, channel, forward_sock)
 
     def _wait_send_receive_lets(self, source, dest, channel, forward_sock):
