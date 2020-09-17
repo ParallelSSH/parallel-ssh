@@ -150,6 +150,7 @@ class TunnelTest(unittest.TestCase):
                                  num_retries=1, _auth_thread_pool=False)
             stop_cmd = spawn(remote_server.stop)
             joinall([proxy_client, stop_cmd])
+            sleep(1)
         finally:
             for _server in (server, remote_server):
                 _server.stop()
