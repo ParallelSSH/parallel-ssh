@@ -187,9 +187,9 @@ class TunnelTest(unittest.TestCase):
 
     def test_single_tunnel_multi_hosts(self):
         remote_host = '127.0.0.8'
-        remote_server = ThreadedOpenSSHServer(
+        remote_server = OpenSSHServer(
             listen_ip=remote_host, port=self.port)
-        remote_server.start()
+        remote_server.start_server()
         remote_server.wait_for_port()
         hosts = [remote_host, remote_host, remote_host]
         try:
@@ -204,9 +204,9 @@ class TunnelTest(unittest.TestCase):
                 self.assertListEqual(_stdout, [self.resp])
             self.assertEqual(len(hosts), len(output))
             del client
+            sleep(1)
         finally:
             remote_server.stop()
-            remote_server.join()
 
     def test_single_tunnel_multi_hosts_timeout(self):
         remote_host = '127.0.0.8'
@@ -226,6 +226,7 @@ class TunnelTest(unittest.TestCase):
             for host_out in output:
                 self.assertIsInstance(host_out.exception, Timeout)
             del client
+            sleep(1)
         finally:
             remote_server.stop()
             remote_server.join()
