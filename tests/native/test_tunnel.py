@@ -78,6 +78,7 @@ class TunnelTest(unittest.TestCase):
         try:
             fw_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             fw_socket.connect(('127.0.0.1', _port))
+            sleep(1)
             self.assertIsInstance(t.exception, ChannelFailure)
         finally:
             fw_socket.close()
