@@ -62,6 +62,61 @@ class TunnelTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.server.stop()
 
+    def _connect_client(self, _socket):
+        while True:
+            _socket.read()
+
+    def test_tunnel_channel_eof(self):
+        remote_host = '127.0.0.59'
+        server = OpenSSHServer(listen_ip=remote_host, port=self.port)
+        server.start_server()
+        in_q, out_q = deque(), deque()
+        tunnel = Tunnel(self.proxy_host, in_q, out_q, port=self.port,
+                        pkey=self.user_key, num_retries=1)
+        tunnel._init_tunnel_client()
+        channel = tunnel._open_channel_retries(self.proxy_host, self.port, 2150)
+        self.assertFalse(channel.eof())
+        channel.close()
+        listen_socket, listen_port = tunnel._init_tunnel_sock()
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect(('127.0.0.1', listen_port))
+        try:
+            client = spawn(self._connect_client, client_socket)
+            tunnel._read_channel(client_socket, channel)
+            tunnel._read_forward_sock(client_socket, channel)
+            self.assertTrue(channel.eof())
+            client.kill()
+        finally:
+            client_socket.close()
+            tunnel.cleanup()
+            server.stop()
+
+    def test_tunnel_sock_failure(self):
+        remote_host = '127.0.0.59'
+        server = OpenSSHServer(listen_ip=remote_host, port=self.port)
+        server.start_server()
+        in_q, out_q = deque(), deque()
+        tunnel = Tunnel(self.proxy_host, in_q, out_q, port=self.port,
+                        pkey=self.user_key, num_retries=1)
+        try:
+            tunnel._init_tunnel_client()
+            channel = tunnel._open_channel_retries(self.proxy_host, self.port, 2150)
+            self.assertFalse(channel.eof())
+            listen_socket, listen_port = tunnel._init_tunnel_sock()
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.connect(('127.0.0.1', listen_port))
+            client_socket.send(b'blah\n')
+            client_socket.close()
+            gl1 = spawn(tunnel._read_channel, client_socket, channel)
+            gl2 = spawn(tunnel._read_forward_sock, client_socket, channel)
+            sleep(1)
+            gl1.kill()
+            gl2.kill()
+            tunnel._sockets.append(None)
+        finally:
+            tunnel.cleanup()
+            server.stop()
+            
     def test_tunnel_retries(self):
         local_port = 3050
         fw_host, fw_port = '127.0.0.1', 2100
@@ -80,6 +135,7 @@ class TunnelTest(unittest.TestCase):
             fw_socket.connect(('127.0.0.1', _port))
             sleep(1)
             self.assertIsInstance(t.exception, ChannelFailure)
+            del t
         finally:
             fw_socket.close()
 
@@ -188,6 +244,33 @@ class TunnelTest(unittest.TestCase):
         self.assertIsInstance(exc.args[1], ConnectionErrorException)
         del client
         sleep(1)
+
+    def test_tunnel_remote_host_timeout(self):
+        remote_host = '127.0.0.18'
+        proxy_host = '127.0.0.19'
+        server = OpenSSHServer(listen_ip=proxy_host, port=self.port)
+        remote_server = OpenSSHServer(listen_ip=remote_host, port=self.port)
+        for _server in (server, remote_server):
+            _server.start_server()
+        try:
+            client = ParallelSSHClient(
+                [remote_host], port=self.port, pkey=self.user_key,
+                proxy_host=proxy_host, proxy_port=self.port, num_retries=1,
+                proxy_pkey=self.user_key)
+            output = client.run_command(self.cmd)
+            client.join(output)
+            client._tunnel.cleanup()
+            for _server in (server, remote_server):
+                _server.stop()
+            try:
+                client.run_command(self.cmd, greenlet_timeout=1)
+            except (GTimeout, Exception):
+                pass
+            else:
+                raise Exception("Command neither failed nor timeout raised")
+        finally:
+            for _server in (server, remote_server):
+                _server.stop()
 
     def test_single_tunnel_multi_hosts(self):
         remote_host = '127.0.0.8'
