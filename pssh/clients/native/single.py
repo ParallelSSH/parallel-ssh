@@ -109,7 +109,6 @@ class SSHClient(BaseSSHClient):
 
     def disconnect(self):
         """Disconnect session, close socket if needed."""
-        logger.debug("Disconnecting client for host %s", self.host)
         self._keepalive_greenlet = None
         if self.session is not None:
             try:
@@ -397,7 +396,7 @@ class SSHClient(BaseSSHClient):
         Parent paths in the directory are created if they do not exist.
 
         :param sftp: SFTP client object
-        :type sftp: :py:class:`paramiko.sftp_client.SFTPClient`
+        :type sftp: :py:class:`ssh2.sftp.SFTP`
         :param directory: Remote directory to create
         :type directory: str
 

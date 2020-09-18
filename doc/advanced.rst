@@ -11,26 +11,24 @@ Programmatic Private Keys
 
 By default, ``parallel-ssh`` will attempt to use loaded keys in an available SSH agent as well as default identity files under the user's home directory.
 
-See `IDENTITIES` in :py:class:`SSHClient <pssh.clients.base_ssh_client.BaseSSHClient>` for a list of identity files.
+See `IDENTITIES` in :py:class:`SSHClient <pssh.clients.base.single.BaseSSHClient.IDENTITIES>` for the list of default identity files.
 
 A private key can also be provided programmatically.
 
 .. code-block:: python
 
-   import os
-
    from pssh.clients import ParallelSSHClient
 
-   client = ParallelSSHClient(hosts, pkey=os.path.expanduser("~/.ssh/my_key"))
+   client = ParallelSSHClient(hosts, pkey="~/.ssh/my_key")
 
 Where ``my_key`` is a private key file under `.ssh` in the user's home directory.
 
 
-Native clients
+Native Clients
 ***************
 
-ssh2-python
-=============
+ssh2-python (libssh2)
+=====================
 
 Starting from version ``1.2.0``, the default client in ``parallel-ssh`` is based on `ssh2-python` (`libssh2`). It is a native client, offering C level performance with an easy to use Python API.
 
@@ -44,16 +42,15 @@ See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a perf
    hosts = ['my_host', 'my_other_host']
    client = ParallelSSHClient(hosts)
 
-   output = client.run_command('uname', return_list=True)
+   output = client.run_command('uname')
    for host_out in output:
        for line in host_out.stdout:
            print(line)
 
-`return_list=True` makes `run_command` return a list of `HostOutput` objects which will become the default in `2.0.0`. Dictionary output from `run_command` is deprecated.
 
 .. seealso::
 
-   `Feature comparison <ssh2.html>`_ for how the `1.x.x` client features compare.
+   `Feature comparison <clients.html>`_ for how the `2.x.x` client types compare.
 
    API documentation for `parallel <native_parallel.html>`_ and `single <native_single.html>`_ native clients.
 
@@ -63,18 +60,18 @@ ssh-python (libssh) Client
 
 From version `1.12.0` another client based on `libssh <https://libssh.org>`_ via `ssh-python` is provided for testing purposes.
 
-The API is similar to the default client, while `ssh-python` offers more supported authentication methods compared to the default client.
+The API is similar to the default client, while ``ssh-python`` offers more supported authentication methods compared to the default client.
 
-On the other hand, this client lacks SCP and SFTP functionality.
+On the other hand, this client lacks SCP, SFTP and proxy functionality.
 
 .. code-block:: python
 
-   from pssh.clients.ssh_lib import ParallelSSHClient
+   from pssh.clients.ssh import ParallelSSHClient
 
    hosts = ['localhost', 'localhost']
    client = ParallelSSHClient(hosts)
 
-   output = client.run_command('uname', return_list=True)
+   output = client.run_command('uname')
    client.join(output)
    for host_out in output:
        for line in host_out.stdout:
@@ -88,24 +85,26 @@ GSS authentication allows logins using Windows LDAP configured user accounts via
 
 .. code-block:: python
 
-   from pssh.clients.ssh_lib import ParallelSSHClient
+   from pssh.clients.ssh import ParallelSSHClient
 
    client = ParallelSSHClient(hosts, gssapi_auth=True, gssapi_server_identity='gss_server_id')
 
-   output = client.run_command('id', return_list)
+   output = client.run_command('id')
    client.join(output)
    for host_out in output:
        for line in output.stdout:
            print(line)
 
 
-This functionality is only supported in the ssh-python client :py:class:`ssh lib Client <pssh.clients.ssh_lib.ParallelSSHClient>`.
+``ssh-python`` :py:class:`ParallelSSHClient <pssh.clients.ssh.parallel.ParallelSSHClient>` only.
 
 
-Tunneling
-===========
+Tunnelling
+**********
 
-This is used in cases where the client does not have direct access to the target host and has to authenticate via an intermediary, also called a bastion host, commonly used for additional security as only the bastion host needs to have access to the target host.
+This is used in cases where the client does not have direct access to the target host and has to authenticate via an intermediary, also called a bastion host.
+
+Commonly used for additional security as only the proxy or bastion host needs to have access to the target host.
 
 ParallelSSHClient       ------>        Proxy host         -------->         Target host
 
@@ -115,8 +114,8 @@ Proxy host can be configured as follows in the simplest case:
 
   hosts = [<..>]
   client = ParallelSSHClient(hosts, proxy_host='bastion')
-  
-Configuration for the proxy host's user name, port, password and private key can also be provided, separate from target host user name.
+
+Configuration for the proxy host's user name, port, password and private key can also be provided, separate from target host configuration.
 
 .. code-block:: python
    
@@ -132,16 +131,18 @@ In the above example, connections to the target hosts are made via SSH through `
 
 .. note::
 
-   Proxy host connections are asynchronous and use the SSH protocol's native TCP tunneling - aka local port forward. No external commands or processes are used for the proxy connection, unlike the `ProxyCommand` directive in OpenSSH and other utilities.
+   The current implementation of tunnelling suffers from poor performance when first establishing connections to many hosts - this is due to be resolved in a future release.
+
+   Proxy host connections are asynchronous and use the SSH protocol's native TCP tunnelling - aka local port forward. No external commands or processes are used for the proxy connection, unlike the `ProxyCommand` directive in OpenSSH and other utilities.
 
    While connections initiated by ``parallel-ssh`` are asynchronous, connections from proxy host -> target hosts may not be, depending on SSH server implementation. If only one proxy host is used to connect to a large number of target hosts and proxy SSH server connections are *not* asynchronous, this may adversely impact performance on the proxy host.
 
 Join and Output Timeouts
 **************************
 
-*New in 1.5.0*
+Clients have timeout functionality on reading output and ``client.join``. Join timeout is a timeout on all parallel commands in total and is separate from ``ParallelSSHClient(timeout=<..>)`` which is applied to SSH session operations individually.
 
-The native clients have timeout functionality on reading output and ``client.join``.
+Timeout exceptions contain attributes for which commands have finished and which have not so client code can get output from any finished commands when handling timeouts.
 
 .. code-block:: python
 
@@ -153,10 +154,13 @@ The native clients have timeout functionality on reading output and ``client.joi
    except Timeout:
        pass
 
+The client will raise a ``Timeout`` exception if *all* remote commands have not finished within five seconds in the above examples.
+
+
 .. code-block:: python
 
    output = client.run_command(.., timeout=5)
-   for host, host_out in output.items():
+   for host_out in output:
        try:
            for line in host_out.stdout:
 	       pass
@@ -165,7 +169,42 @@ The native clients have timeout functionality on reading output and ``client.joi
        except Timeout:
            pass
 
-The client will raise a ``Timeout`` exception if remote commands have not finished within five seconds in the above examples.
+
+In the case of reading from output such as in the example above, timeout value is per output stream - meaning separate timeouts for stdout and stderr as well as separate timeout per host remote command.
+
+*New in 1.5.0*
+
+Reading Output from Partially Finished Commands
+===============================================
+
+Timeout exception when calling ``join`` has finished and unfinished commands as arguments.
+
+This can be used to handle sets of commands that have finished and those that have not separately, for example to only gather output on finished commands to avoid blocking.
+
+.. code-block:: python
+
+   output = client.run_command(..)
+   try:
+       client.join(output, timeout=5)
+   except Timeout as ex:
+       # Some commands timed out
+       finished_output = ex.args[2]
+       unfinished_output = ex.args[3]
+   else:
+       # No timeout, all commands finished within five seconds
+       finished_output = output
+       unfinished_output = None
+   for host_out in finished_output:
+       for line in host_out.stdout:
+           print(line)
+   if unfinished_output is not None:
+       <handle unfinished output>
+
+
+In the above example, output is printed only for those commands which have completed within the five second timeout.
+
+Client code may choose to then join again only on the unfinished output if some commands have failed in order to gather remaining output.
+
 
 Reading Partial Output of Commands That Do Not Terminate
 ==========================================================
@@ -174,57 +213,38 @@ In some cases, such as when the remote command never terminates unless interrupt
 
 .. code-block:: python
 
-   output = client.run_command('tail -f /var/log/messages', use_pty=True, timeout=1)
+   output = client.run_command(
+       'tail -f /var/log/messages', use_pty=True, timeout=1)
 
    # Read as many lines of output as server has sent before the timeout
    stdout = []
-   for host, host_out in output.items():
-       for host, host_out in output.items():
-           try:
-               for line in host_out.stdout:
-                   stdout.append(line)
-           except Timeout:
-               pass
+   for host_out in output:
+       try:
+           for line in host_out.stdout:
+               stdout.append(line)
+       except Timeout:
+           # This allows client code to continue to read output after timeout
+           client.reset_output_generators(host_out, timeout=1)
 
    # Closing channel which has PTY has the effect of terminating
    # any running processes started on that channel.
-   for host, host_out in output.items():
-       client.host_clients[host].close_channel(host_out.channel)
+   for host_out in output:
+       host_out.client.close_channel(host_out.channel)
    # Join is not strictly needed here as channel has already been closed and
    # command has finished, but is safe to use regardless.
    client.join(output)
 
 Without a PTY, a ``join`` call with a timeout will complete with timeout exception raised but the remote process will be left running as per SSH protocol specifications.
 
-Furthermore, once reading output has timed out, it is necessary to restart the output generators as by Python design they only iterate once. This can be done as follows:
+Furthermore, once reading output has timed out, it is necessary to restart the output generators as by Python design they only iterate once. This is done by ``client.reset_output_generators`` in the above example.
 
-.. code-block:: python
-
-   output = client.run_command(<..>, timeout=1)
-   for host, host_out in output.items():
-       try:
-           stdout = list(host_out.stdout)
-       except Timeout:
-           client.reset_output_generators(host_out)
-
-Generator reset shown above is also performed automatically by calls to ``join`` and does not need to be done manually when ``join`` is used after output reading.
+Generator reset is also performed automatically by calls to ``join`` and does not need to be done manually when ``join`` is used after output reading.
 
 .. note::
 
    ``join`` with a timeout forces output to be consumed as otherwise the pending output will keep the channel open and make it appear as if command has not yet finished.
 
    To capture output when using ``join`` with a timeout, gather output first before calling ``join``, making use of output timeout as well, and/or make use of :ref:`host logger` functionality.
-
-
-.. warning::
-
-   Beware of race conditions when using timeout functionality. For best results, only send one command per call to ``run_command`` when using timeout functionality.
-
-   As the timeouts are performed on ``select`` calls on the socket which is responsible for all client <-> server communication, whether or not a timeout will occur depends on what the socket is doing at that time.
-
-   Multiple commands like ``run_command('echo blah; sleep 5')`` where ``sleep 5`` is a placeholder for something taking five seconds to complete will result in a race condition as the second command may or may not have started by the time ``join`` is called or output is read which will cause timeout to *not* be raised even if the second command has not started or completed.
-
-   It is responsibility of developer to avoid these race conditions such as by only sending one command in such cases.
 
 
 Per-Host Configuration
@@ -238,8 +258,10 @@ Sometimes, different hosts require different configuration like user names and p
 
    hosts = ['localhost', 'localhost']
    host_config = [
-       HostConfig(port=2222, user='user1', password='pass', private_key='my_pkey.pem'),
-       HostConfig(port=2223, user='user2', password='pass', private_key='my_other_key.pem')
+       HostConfig(port=2222, user='user1',
+                  password='pass', private_key='my_pkey.pem'),
+       HostConfig(port=2223, user='user2',
+                  password='pass', private_key='my_other_key.pem'),
    ]
 
    client = ParallelSSHClient(hosts, host_config=host_config)
@@ -248,40 +270,23 @@ Sometimes, different hosts require different configuration like user names and p
 
 In the above example, the client is configured to connect to hostname ``localhost``, port ``2222`` with username ``user1``, password ``pass`` and private key file ``my_pkey.pem`` and hostname ``localhost``, port ``2222`` with username ``user1``, password ``pass`` and private key file ``my_other_pkey.pem``.
 
+When using ``host_config``, the number of ``HostConfig`` entries must match the number of hosts in ``client.hosts``. An exception is raised on client initialisation if not.
+
 
 .. note::
 
-   For versions under ``2.0.0`` only ``port``, ``user``, ``password`` and ``private_key`` ``HostConfig`` values are used.
+   Currently only ``port``, ``user``, ``password`` and ``private_key`` ``HostConfig`` values are used.
 
-
-Deprecated Host Config type
-=============================
-
-This per host configuration is deprecated as of ``1.13.0`` - please migrate to :py:class:`HostConfig <pssh.config.HostConfig>`
-
-Versions `1.12.x` and below only.
-
-.. code-block:: python
-
-   host_config = {'host1' : {'user': 'user1', 'password': 'pass',
-                             'port': 2222,
-                             'private_key': 'my_key.pem'},
-                  'host2' : {'user': 'user2', 'password': 'pass',
-		             'port': 2223,
-			     'private_key': 'my_other_key.pem'},
-		 }
-   hosts = host_config.keys()
-
-   client = ParallelSSHClient(hosts, host_config=host_config)
-   client.run_command('uname')
-   <..>
-
-In the above example, ``host1`` will use user name ``user1`` and private key from ``my_key.pem`` and ``host2`` will use user name ``user2`` and private key from ``my_other_key.pem``.
 
 .. note::
 
-   Proxy host configuration is per `ParallelSSHClient` and cannot be provided via per-host configuration.
+   Proxy host configuration is currently per ``ParallelSSHClient`` and cannot yet be provided via per-host configuration.
    Multiple clients can be used to make use of multiple proxy hosts.
+
+   This feature will be provided in future releases.
+
+
+.. _per-host-cmds:
 
 Per-Host Command substitution
 ******************************
@@ -346,12 +351,6 @@ Run command features and options
 
 See :py:func:`run_command API documentation <pssh.clients.native.parallel.ParallelSSHClient.run_command>` for a complete list of features and options.
 
-.. note::
-
-   With a PTY, the default, stdout and stderr output is combined into stdout.
-
-   Without a PTY, separate output is given for stdout and stderr, although some programs and server configurations require a PTY.
-
 Run with sudo
 ===============
 
@@ -381,6 +380,26 @@ While not best practice and password-less ``sudo`` is best configured for a limi
 
    Note the inclusion of the new line ``\n`` when using sudo with a password.
 
+
+Run with configurable shell
+============================
+
+By default the client will use the login user's shell to execute commands per the SSH protocol.
+
+Shell to use is configurable:
+
+.. code-block:: python
+
+   client = <..>
+   
+   output = client.run_command(<..>, shell='zsh -c')
+   for host_out in output;
+       for line in host_out.stdout:
+           print(line)
+
+Commands will be run under the ``zsh`` shell in the above example. The command string syntax of the shell must be used, typically ``<shell> -c``.
+
+
 Output encoding
 ===============
 
@@ -391,33 +410,33 @@ By default, output is encoded as ``UTF-8``. This can be configured with the ``en
    client = <..>
 
    client.run_command(<..>, encoding='utf-16')
-   stdout = list(output[client.hosts[0]].stdout)
+   stdout = list(output[0].stdout)
 
-Contents of ``stdout`` will be `UTF-16` encoded.
+Contents of ``stdout`` are `UTF-16` encoded.
 
 .. note::
 
-   Encoding must be valid `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
+   Encoding must be valid `Python codec <https://docs.python.org/3/library/codecs.html>`_
 
 Enabling use of pseudo terminal emulation
 ===========================================
 
-Pseudo Terminal Emulation (PTY) can be enabled when running commands. Enabling it has some side effects on the output and behaviour of commands such as combining stdout and stderr output - see bash man page for more information.
+Pseudo Terminal Emulation (PTY) can be enabled when running commands, defaults to off.
 
-All output, including stderr, is sent to the `stdout` channel with PTY enabled.
+Enabling it has some side effects on the output and behaviour of commands such as combining stdout and stderr output - see `bash` man page for more information.
+
+All output, including stderr, is sent to the ``stdout`` channel with PTY enabled.
 
 .. code-block:: python
-
-   from __future__ import print_function
 
    client = <..>
 
    client.run_command("echo 'asdf' >&2", use_pty=True)
-   for line in output[client.hosts[0]].stdout: 
+   for line in output[0].stdout:
        print(line)
 
 
-Note output is from the ``stdout`` channel.
+Note output is from the ``stdout`` channel while it was writeen to ``stderr``.
 
 :Output:
    .. code-block:: shell
@@ -436,9 +455,9 @@ No output from ``stderr``.
 SFTP and SCP
 *************
 
-SFTP and SCP are supported by ``parallel-ssh`` and two functions are provided by the client for copying files with SFTP to and from remote servers.
+SFTP and SCP are both supported by ``parallel-ssh`` and functions are provided by the client for copying files with SFTP to and from remote servers - default native client only.
 
-Neither SFTP nor SCP do not have a shell interface and no output is provided for any SFTP/SCP commands.
+Neither SFTP nor SCP have a shell interface and no output is provided for any SFTP/SCP commands.
 
 As such, SFTP functions in ``ParallelSSHClient`` return greenlets that will need to be joined to raise any exceptions from them. :py:func:`gevent.joinall` may be used for that.
 
@@ -488,6 +507,35 @@ Copying remote files in parallel requires that file names are de-duplicated othe
 
 The above will create files ``local.file_host1`` where ``host1`` is the host name the file was copied from.
 
+Configurable per host Filenames
+=================================
+
+File name arguments, for both local and remote files and for copying to and from remote hosts, can be configured on a per-host basis similarly to `host arguments <#per-host-cmds>`_ in ``run_command``.
+
+For example, to copy the local files ``['local_file_1', 'local_file_2']`` as remote files ``['remote_file_1', 'remote_file_2']`` on the two hosts ``['host1', 'host2']``
+
+.. code-block:: python
+
+   hosts = ['host1', 'host2']
+   
+   client = ParallelSSHClient(hosts)
+
+   copy_args = [{'local_file': 'local_file_1',
+                 'remote_file': 'remote_file_1',
+                 },
+                {'local_file': 'local_file_2',
+                 'remote_file': 'remote_file_2',
+                 }]
+   cmds = client.copy_file('%(local_file)s', '%(remote_file)s',
+                           copy_args=copy_args)
+   joinall(cmds)
+
+The client will copy ``local_file_1`` to ``host1`` as ``remote_file_1`` and ``local_file_2`` to ``host2`` as ``remote_file_2``.
+
+Items in ``copy_args`` list may be tuples or dictionaries as shown above. Number of ``copy_args`` must match length of ``client.hosts`` if provided.
+
+``copy_remote_file`` may be used in the same manner to configure remote and local file names per host.
+
 .. seealso::
 
    :py:func:`copy_remote_file <pssh.clients.native.parallel.ParallelSSHClient.copy_remote_file>`  API documentation and exceptions raised.
@@ -495,7 +543,7 @@ The above will create files ``local.file_host1`` where ``host1`` is the host nam
 Single host copy
 ==================
 
-If wanting to copy a file from a single remote host and retain the original filename, can use the single host :py:class:`SSHClient <pssh.clients.native.single.SSHClient>` and its :py:func:`copy_file <pssh.clients.native.single.SSHClient.copy_remote_file>` directly.
+If wanting to copy a file from a single remote host and retain the original filename, can use the single host :py:class:`SSHClient <pssh.clients.native.single.SSHClient>` and its :py:func:`copy_remote_file <pssh.clients.native.single.SSHClient.copy_remote_file>` directly.
 
 .. code-block:: python
 
@@ -551,25 +599,6 @@ Hosts list can be modified in place. A call to ``run_command`` will create new c
 
    client.hosts = ['otherhost']
    print(client.run_command('exit 0'))
-   {'otherhost': exit_code=None, <..>}
-
-
-Paramiko based clients (``pssh.clients.miko``)
-==============================================
-
-.. warning::
-
-   Paramiko based clients are deprecated and will be *removed* in the ``2.0.0`` release.
-
-
-.. note::
-
-   When using the paramiko based clients, ``parallel-ssh`` makes use of gevent's monkey patching to enable asynchronous use of the Python standard library's network I/O as paramiko does not and cannot natively support non-blocking mode.
-
-   Monkey patching is only done for the clients under ``pssh.clients.miko`` and the deprecated imports ``pssh.pssh_client`` and ``pssh.ssh_client``.
-
-   Default client imports from ``pssh.clients`` do not do any monkey patching.
-
-   Make sure that these imports come **before** any other imports in your code in this case. Otherwise, patching may not be done before the standard library is loaded which will then cause the (g)event loop to be blocked.
-
-   If you are seeing messages like ``This operation would block forever``, this is the cause.
+       host='otherhost'
+       exit_code=None
+       <..>

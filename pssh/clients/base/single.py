@@ -32,6 +32,7 @@ from ..common import _validate_pkey_path
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import UnknownHostException, AuthenticationException, \
     ConnectionErrorException
+from ...output import HostOutput
 
 
 Hub.NOT_ERROR = (Exception,)
@@ -281,13 +282,15 @@ class BaseSSHClient(object):
             _shell = shell if shell else '$SHELL -c'
             _command += "%s '%s'" % (_shell, command,)
         channel = self.execute(_command, use_pty=use_pty)
-        return channel, self.host, \
-            self.read_output_buffer(
-                self.read_output(channel, timeout=timeout),
-                encoding=encoding), \
-            self.read_output_buffer(
+        stdout = self.read_output_buffer(
+            self.read_output(channel, timeout=timeout),
+            encoding=encoding)
+        stderr = self.read_output_buffer(
                 self.read_stderr(channel, timeout=timeout), encoding=encoding,
-                prefix='\t[err]'), channel
+                prefix='\t[err]')
+        stdin = channel
+        host_out = HostOutput(self.host, channel, stdout, stderr, stdin, self)
+        return host_out
 
     def _eagain(self, func, *args, **kwargs):
         raise NotImplementedError
