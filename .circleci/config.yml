@@ -102,9 +102,6 @@ jobs:
           key: manylinuxdepsv6-{{ .Branch }}.{{ arch }}
           dependency-file: requirements.txt
       - run:
-          name: sdist
-          command: python setup.py sdist
-      - run:
           name: Build Wheels
           command: |
             if [[ -z "${CIRCLE_PULL_REQUEST}" ]]; then
@@ -114,6 +111,7 @@ jobs:
       - run:
           name: PyPi Upload
           command: |
+            python setup.py sdist
             ls -lh dist wheelhouse
             twine upload --skip-existing -u $PYPI_USER -p $PYPI_PASSWORD dist/* wheelhouse/*
 
