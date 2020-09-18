@@ -32,8 +32,6 @@ else:
 
 ON_WINDOWS = platform.system() == 'Windows'
 
-gevent_req = 'gevent<=1.1' if python_version() < '2.7' else 'gevent>=1.1'
-
 cython_directives = {'embedsignature': True,
                      'boundscheck': False,
                      'optimize.use_switch': True,
@@ -71,7 +69,7 @@ setup(name='parallel-ssh',
                         '*.tests', '*.tests.*')
       ),
       install_requires=[
-          'paramiko', gevent_req, 'ssh2-python>=0.17.0', 'ssh-python>=0.4.0'],
+          'gevent>=1.1', 'ssh2-python>=0.19.0', 'ssh-python>=0.6.0'],
       classifiers=[
           'Development Status :: 5 - Production/Stable',
           'License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)',

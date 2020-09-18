@@ -18,14 +18,7 @@
 
 """Module containing static utility functions for parallel-ssh."""
 
-
 import logging
-import os
-
-from paramiko.rsakey import RSAKey
-from paramiko.dsskey import DSSKey
-from paramiko.ecdsakey import ECDSAKey
-from paramiko import SSHException, SSHConfig
 
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger('pssh')
@@ -51,57 +44,3 @@ def enable_host_logger():
 
     """
     enable_logger(host_logger)
-
-
-def load_private_key(_pkey):
-    """Load private key from pkey file object or filename.
-
-    For Paramiko based clients only.
-
-    :param pkey: File object or file name containing private key
-    :type pkey: file/str"""
-    if not hasattr(_pkey, 'read'):
-        _pkey = open(_pkey)
-    try:
-        for keytype in [RSAKey, DSSKey, ECDSAKey]:
-            try:
-                pkey = keytype.from_private_key(_pkey)
-            except SSHException:
-                _pkey.seek(0)
-                continue
-            else:
-                return pkey
-    finally:
-        _pkey.close()
-    logger.error("Failed to load private key using all available key types "
-                 "- giving up..")
-
-
-def read_openssh_config(host, config_file=None):
-    """Parses user's OpenSSH config for per hostname configuration for
-    hostname, user, port and private key values
-
-    :param host: Hostname to lookup in config
-    """
-    _ssh_config_file = config_file if config_file else \
-        os.path.sep.join([os.path.expanduser('~'), '.ssh', 'config'])
-    # Load ~/.ssh/config if it exists to pick up username
-    # and host address if set
-    if not os.path.isfile(_ssh_config_file):
-        return
-    ssh_config = SSHConfig()
-    ssh_config.parse(open(_ssh_config_file))
-    host_config = ssh_config.lookup(host)
-    host = (host_config['hostname'] if
-            'hostname' in host_config
-            else host)
-    user = host_config['user'] if 'user' in host_config else None
-    port = int(host_config['port']) if 'port' in host_config else 22
-    pkey = None
-    # Try configured keys, pick first one that loads
-    if 'identityfile' in host_config:
-        for file_name in host_config['identityfile']:
-            pkey = load_private_key(file_name)
-            if pkey:
-                break
-    return host, user, port, pkey

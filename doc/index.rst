@@ -22,18 +22,8 @@ Parallel-SSH Documentation
 
 ``parallel-ssh`` is a non-blocking parallel SSH client library.
 
-It uses non-blocking asynchronous SSH sessions and is to date the only publicly available non-blocking SSH client library, as well as the only non-blocking *parallel* SSH client library available for Python.
+It provides clients based on C libraries with an easy to use Python API providing native code levels of performance and stability.
 
-.. toctree::
-   :maxdepth: 2
-
-   introduction
-   installation
-   quickstart
-   ssh2
-   advanced
-   api
-   Changelog
 
 In a nutshell
 **************
@@ -42,25 +32,54 @@ Client will attempt to use all available keys under ``~/.ssh`` as well as any ke
 
 .. code-block:: python
 
-   from __future__ import print_function
-
    from pssh.clients import ParallelSSHClient
 
-   client = ParallelSSHClient(['localhost'])
-   output = client.run_command('whoami')
-   for line in output['localhost'].stdout:
-       print(line)
+   client = ParallelSSHClient(['localhost', 'localhost'])
+   output = client.run_command('uname')
+   for host_out in output:
+       for line in host_out.stdout:
+           print(line)
+       exit_code = host_out.exit_code
 
 :Output:
    .. code-block:: python
 
-      <your username here>
+      <Uname output>
+      <Uname output>
 
-.. note::
 
-   There is also a now deprecated paramiko based client available under ``pssh.clients.miko`` that has much the same API. It supports some features not currently supported by the native client - see `feature comparison <ssh2.html>`_.
+Single Host Client
+******************
 
-   From version ``2.x.x`` onwards, the clients under ``pssh.clients.miko`` will be an optional ``extras`` install.
+Single host client is also available with similar API.
+
+.. code-block:: python
+
+   from pssh.clients import SSHClient
+
+   client = SSHClient('localhost')
+   host_out = client.run_command('uname')
+   for line in host_out.stdout:
+       print(line)
+   exit_code = host_out.exit_code
+
+:Output:
+   .. code-block:: python
+
+      <Uname output>
+
+
+.. toctree::
+   :maxdepth: 2
+
+   introduction
+   installation
+   quickstart
+   clients
+   advanced
+   api
+   Changelog
+   api_upgrade_2_0
 
 
 Indices and tables

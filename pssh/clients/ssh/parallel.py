@@ -16,7 +16,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import logging
-from gevent.lock import RLock
 
 from .single import SSHClient
 from ..common import _validate_pkey_path
@@ -128,7 +127,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
             identity_auth=identity_auth)
         self.pkey = _validate_pkey_path(pkey)
         self.forward_ssh_agent = forward_ssh_agent
-        self._clients_lock = RLock()
         self.gssapi_auth = gssapi_auth
         self.gssapi_server_identity = gssapi_server_identity
         self.gssapi_client_identity = gssapi_client_identity
@@ -232,47 +230,25 @@ class ParallelSSHClient(BaseParallelSSHClient):
             greenlet_timeout=greenlet_timeout, return_list=return_list)
 
     def _make_ssh_client(self, host_i, host):
-        logger.debug(
-            "Make client request for host %s, (host_i, host) in clients: %s",
-            host, (host_i, host) in self._host_clients)
-        with self._clients_lock:
-            if (host_i, host) not in self._host_clients \
-               or self._host_clients[(host_i, host)] is None:
-                _user, _port, _password, _pkey = self._get_host_config_values(
-                    host_i, host)
-                _client = SSHClient(
-                    host, user=_user, password=_password, port=_port,
-                    pkey=_pkey, num_retries=self.num_retries,
-                    timeout=self.timeout,
-                    allow_agent=self.allow_agent, retry_delay=self.retry_delay,
-                    gssapi_auth=self.gssapi_auth,
-                    gssapi_server_identity=self.gssapi_server_identity,
-                    gssapi_client_identity=self.gssapi_client_identity,
-                    gssapi_delegate_credentials=self.gssapi_delegate_credentials,
-                    identity_auth=self.identity_auth,
-                )
-                self.host_clients[host] = _client
-                self._host_clients[(host_i, host)] = _client
-                # TODO - Add forward agent functionality
-                # forward_ssh_agent=self.forward_ssh_agent)
-                return _client
+        logger.debug("Make client request for host %s, (host_i, host) in clients: %s",
+                     host, (host_i, host) in self._host_clients)
+        if (host_i, host) not in self._host_clients \
+           or self._host_clients[(host_i, host)] is None:
+            _user, _port, _password, _pkey = self._get_host_config_values(
+                host_i, host)
+            _client = SSHClient(
+                host, user=_user, password=_password, port=_port,
+                pkey=_pkey, num_retries=self.num_retries,
+                timeout=self.timeout,
+                allow_agent=self.allow_agent, retry_delay=self.retry_delay,
+                gssapi_auth=self.gssapi_auth,
+                gssapi_server_identity=self.gssapi_server_identity,
+                gssapi_client_identity=self.gssapi_client_identity,
+                gssapi_delegate_credentials=self.gssapi_delegate_credentials,
+                identity_auth=self.identity_auth,
+            )
+            self._host_clients[(host_i, host)] = _client
+            # TODO - Add forward agent functionality
+            # forward_ssh_agent=self.forward_ssh_agent)
+            return _client
         return self._host_clients[(host_i, host)]
-
-    def finished(self, output):
-        """Check if commands have finished without blocking
-
-        :param output: As returned by
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
-        :rtype: bool
-        """
-        if isinstance(output, dict):
-            for host_out in output.values():
-                chan = host_out.channel
-                if host_out.client and not host_out.client.finished(chan):
-                    return False
-        elif isinstance(output, list):
-            for host_out in output:
-                chan = host_out.channel
-                if host_out.client and not host_out.client.finished(chan):
-                    return False
-        return True

@@ -36,6 +36,7 @@ del get_versions
 from .exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SSHException
 
+
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger('pssh')
 if hasattr(logging, 'NullHandler'):

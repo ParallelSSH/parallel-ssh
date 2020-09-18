@@ -6,7 +6,6 @@ sphinx_rtd_theme
 pytest
 pytest-cov
 pytest-rerunfailures
-python-gssapi
 jinja2
 -r requirements.txt
 -e .

@@ -99,13 +99,13 @@ class Tunnel(Thread):
         self.tunnel_open = Event()
         self._tunnels = []
         self.channel_retries = channel_retries
-
-    def __del__(self):
-        self.cleanup()
+        self._source_let = None
+        self._dest_let = None
+        self._hub = None
 
     def _read_forward_sock(self, forward_sock, channel):
         while True:
-            if channel.eof():
+            if channel is None or channel.eof():
                 logger.debug("Channel closed")
                 return
             try:
@@ -131,7 +131,7 @@ class Tunnel(Thread):
 
     def _read_channel(self, forward_sock, channel):
         while True:
-            if channel.eof():
+            if channel is None or channel.eof():
                 logger.debug("Channel closed")
                 return
             try:
@@ -184,16 +184,15 @@ class Tunnel(Thread):
         self.tunnel_open.set()
 
     def cleanup(self):
-        for i in range(len(self._sockets)):
-            _sock = self._sockets[i]
-            if _sock is not None and not _sock.closed:
-                _sock.close()
-            self._sockets[i] = None
-        self._sockets = None
+        if self._source_let is not None:
+            self._source_let.kill(block=False)
+        if self._dest_let is not None:
+            self._dest_let.kill(block=False)
         if self.client is not None and self.session is not None:
             self.client.disconnect()
             self.session = None
             self.client = None
+        self._sockets = None
 
     def _consume_q(self):
         while True:
@@ -242,7 +241,7 @@ class Tunnel(Thread):
             self.exception = ex
             return
         logger.debug("Tunnel listening on 127.0.0.1:%s on hub %s",
-                     listen_port, get_hub().thread_ident)
+                     listen_port, self._hub.thread_ident)
         self.out_q.append(listen_port)
         try:
             forward_sock, forward_addr = listen_socket.accept()
@@ -268,6 +267,8 @@ class Tunnel(Thread):
         source = spawn(self._read_forward_sock, forward_sock, channel)
         dest = spawn(self._read_channel, forward_sock, channel)
         logger.debug("Waiting for read/write greenlets")
+        self._source_let = source
+        self._dest_let = dest
         self._wait_send_receive_lets(source, dest, channel, forward_sock)
 
     def _wait_send_receive_lets(self, source, dest, channel, forward_sock):
@@ -283,13 +284,15 @@ class Tunnel(Thread):
     def run(self):
         """Thread run target. Starts tunnel client and waits for incoming
         tunnel connection requests from ``Tunnel.in_q``."""
+        self._hub = get_hub()
+        assert self._hub.main_hub is False
         try:
             self._init_tunnel_client()
         except Exception as ex:
-            # logger.error("Tunnel initilisation failed - %s", ex)
+            logger.error("Tunnel initilisation failed - %s", ex)
             self.exception = ex
             return
-        logger.debug("Hub ID in run function: %s", get_hub().thread_ident)
+        logger.debug("Hub ID in run function: %s", self._hub.thread_ident)
         consume_let = spawn(self._consume_q)
         try:
             consume_let.get()

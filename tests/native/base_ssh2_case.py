@@ -19,16 +19,23 @@ import unittest
 import pwd
 import os
 import logging
-import socket
 from sys import version_info
 
-from ssh2.session import Session
 from pssh.clients.native import SSHClient, logger as ssh_logger
 from ..embedded_server.openssh import OpenSSHServer
 
 
-ssh_logger.setLevel(logging.DEBUG)
-logging.basicConfig()
+def setup_root_logger():
+    log = logging.getLogger()
+    log.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    log.addHandler(handler)
+
+
+setup_root_logger()
+
 
 PKEY_FILENAME = os.path.sep.join([os.path.dirname(__file__), '..', 'client_pkey'])
 PUB_FILE = "%s.pub" % (PKEY_FILENAME,)
@@ -55,5 +62,6 @@ class SSH2TestCase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        del cls.client
         cls.server.stop()
         del cls.server

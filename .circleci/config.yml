@@ -19,29 +19,39 @@ jobs:
       - run:
           name: Deps
           command: |
-            sudo apt-get install openssh-server
+            sudo apt-get install openssh-server --fix-missing
       - python/save-cache:
           dependency-file: requirements_dev.txt
           key: depsv3-{{ .Branch }}.{{ arch }}-PY<< parameters.python_ver >>
+      - run:
+          command: |
+            python setup.py check --restructuredtext
+          name: Check readme
       - run:
           command: |
             pip install -U -r requirements_dev.txt
           name: Build
       - run:
           command: |
+            flake8 pssh
+          name: flake
+      - run:
+          command: |
             eval "$(ssh-agent -s)"
-            pytest --cov-append --cov=pssh tests/test_imports.py tests/test_output.py tests/test_utils.py
-            pytest --reruns 5 --cov-append --cov=pssh tests/miko
+            pytest --cov-append --cov=pssh tests/test_output.py tests/test_utils.py tests/test_host_config.py
             pytest --reruns 10 --cov-append --cov=pssh tests/native/test_tunnel.py tests/native/test_agent.py
             pytest --reruns 5 --cov-append --cov=pssh tests/native/test_*_client.py
             pytest --reruns 5 --cov-append --cov=pssh tests/ssh
-            flake8 pssh
+          name: Integration tests
+      - run:
+          command: |
             cd doc; make html; cd ..
-            # Test building from source distribution
+          name: make docs
+      - run:
+          command: |
             python setup.py sdist
             cd dist; pip install *; cd ..
-            python setup.py check --restructuredtext
-          name: Test
+          name: Source dist install
       - run:
           command: codecov
           name: Coverage
@@ -71,7 +81,7 @@ jobs:
       - run:
           name: Upload Wheel
           command: |
-            twine upload --skip-existing -u $PYPI_U -p $PYPI_P wheels/*
+            twine upload --skip-existing -u $PYPI_USER -p $PYPI_PASSWORD wheels/*
 
   manylinux:
     machine:
