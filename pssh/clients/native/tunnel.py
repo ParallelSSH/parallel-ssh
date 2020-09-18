@@ -292,9 +292,9 @@ class Tunnel(Thread):
             logger.error("Tunnel initilisation failed - %s", ex)
             self.exception = ex
             return
-        logger.debug("Hub ID in run function: %s", self._hub.thread_ident)
-        consume_let = spawn(self._consume_q)
         try:
+            logger.debug("Hub ID in run function: %s", self._hub.thread_ident)
+            consume_let = spawn(self._consume_q)
             consume_let.get()
         except Exception as ex:
             logger.error("Tunnel thread caught exception and will exit:",

@@ -70,7 +70,7 @@ jobs:
       - run:
           name: deps
           command: |
-            pip3 install twine
+            pip3 install -U twine
             which twine
       - run:
           name: Build Wheel
@@ -88,9 +88,6 @@ jobs:
       image: ubuntu-1604:201903-01
     steps:
       - checkout
-      - run:
-          name: sdist
-          command: python setup.py sdist
       - python/load-cache:
           key: manylinuxdepsv6-{{ .Branch }}.{{ arch }}
           dependency-file: requirements.txt
@@ -99,11 +96,14 @@ jobs:
           command: |
             sudo apt-get install python-pip
             pip install -U pip
-            pip install twine
+            pip install -U twine
             which twine
       - python/save-cache:
           key: manylinuxdepsv6-{{ .Branch }}.{{ arch }}
           dependency-file: requirements.txt
+      - run:
+          name: sdist
+          command: python setup.py sdist
       - run:
           name: Build Wheels
           command: |
@@ -114,6 +114,7 @@ jobs:
       - run:
           name: PyPi Upload
           command: |
+            ls -lh dist wheelhouse
             twine upload --skip-existing -u $PYPI_USER -p $PYPI_PASSWORD dist/* wheelhouse/*
 
 workflows:
