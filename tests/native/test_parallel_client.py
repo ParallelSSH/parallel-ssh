@@ -1080,6 +1080,14 @@ class ParallelSSHClientTest(unittest.TestCase):
         _stdout = list(output[0].stdout)
         self.assertEqual([_utf16], _stdout)
 
+    def test_ssh_client_utf_encoding_join(self):
+        _utf16 = u'é'.encode('utf-8').decode('utf-16')
+        cmd = u"echo 'é'"
+        output = self.client.run_command(cmd, encoding='utf-16')
+        self.client.join(output, encoding='utf-16')
+        stdout = list(output[0].stdout)
+        self.assertEqual([_utf16], stdout)
+
     def test_pty(self):
         cmd = "echo 'asdf' >&2"
         expected_stderr = ['asdf']

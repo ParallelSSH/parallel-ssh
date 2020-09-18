@@ -29,6 +29,7 @@ Fixes
 -----
 
 * Removed now unnecessary locking around SSHClient initialisation so it can be parallelised - #219.
+* ``ParallelSSHClient.join`` with encoding would not pass on encoding when reading from output buffers - #214.
 
 
 1.13.0
