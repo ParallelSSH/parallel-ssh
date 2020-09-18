@@ -257,7 +257,7 @@ class BaseParallelSSHClient(object):
         if not isinstance(output, list):
             raise ValueError("Unexpected output object type")
         cmds = [self.pool.spawn(self._join, host_out, timeout=timeout,
-                                consume_output=consume_output)
+                                consume_output=consume_output, encoding=encoding)
                 for host_i, host_out in enumerate(output)]
         # Errors raised by self._join should be propagated.
         finished_cmds = joinall(cmds, raise_error=True, timeout=timeout)
