@@ -27,6 +27,7 @@ from socket import gaierror as sock_gaierror, error as sock_error
 
 from gevent import sleep, socket
 from gevent.hub import Hub
+from gevent.select import poll
 
 from ..common import _validate_pkey_path
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
@@ -404,3 +405,15 @@ class BaseSSHClient(object):
         _sep = file_path.rfind('/')
         if _sep > 0:
             return file_path[:_sep]
+
+    def poll(timeout=None):
+        raise NotImplementedError
+
+    def _poll_socket(self, events, timeout=None):
+        # gevent.select.poll converts seconds to miliseconds to match python socket
+        # implementation
+        timeout = timeout * 1000 if timeout is not None else None
+        poller = poll()
+        poller.register(self.sock, eventmask=events)
+        logger.debug("Polling socket with timeout %s", timeout)
+        poller.poll(timeout=timeout)
