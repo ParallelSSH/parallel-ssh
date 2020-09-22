@@ -136,23 +136,13 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertEqual(len(dir_list), len(output) - 3)
 
     def test_file_output_parsing(self):
-        import cProfile, pstats, io, logging
-        log = logging.getLogger()
-        log.handlers = []
-        pr = cProfile.Profile()
         lines = int(subprocess.check_output(
             ['wc', '-l', 'pssh/native/_ssh2.c']).split()[0])
         dir_name = os.path.dirname(__file__)
         ssh2_file = os.sep.join((dir_name, '..', '..', 'pssh', 'native', '_ssh2.c'))
-        pr.enable()
-        for _ in range(100):
-            host_out = self.client.run_command('cat %s' % ssh2_file)
-            output = list(host_out.stdout)
-        pr.disable()
-        s = io.StringIO()
-        ps = pstats.Stats(pr, stream=s).sort_stats('tottime')
-        ps.print_stats()
-        print(s.getvalue())
+        cmd = 'cat %s' % ssh2_file
+        host_out = self.client.run_command(cmd)
+        output = list(host_out.stdout)
         self.assertEqual(lines, len(output))
 
     def test_identity_auth_failure(self):
