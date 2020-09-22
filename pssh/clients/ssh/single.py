@@ -21,9 +21,10 @@ try:
 except ImportError:
     from cStringIO import StringIO as BytesIO
 
-from gevent import sleep, spawn, Timeout as GeventTimeout
+from gevent import sleep, spawn, Timeout as GTimeout, joinall
+from gevent.select import POLLIN, POLLOUT
 from ssh import options
-from ssh.session import Session
+from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
 from ssh.key import import_privkey_file
 from ssh.exceptions import EOF
 from ssh.error_codes import SSH_AGAIN
@@ -226,8 +227,8 @@ class SSHClient(BaseSSHClient):
         :type channel: :py:class:`ssh.channel.Channel`"""
         channel = self.open_session() if not channel else channel
         if use_pty:
-            self.eagain(channel.request_pty, timeout=self.timeout)
-        self.eagain(channel.request_exec, cmd, timeout=self.timeout)
+            self._eagain(channel.request_pty, timeout=self.timeout)
+        self._eagain(channel.request_exec, cmd, timeout=self.timeout)
         self._stderr_read = False
         self._stdout_read = False
         self._stdout_buffer = BytesIO()
@@ -280,7 +281,7 @@ class SSHClient(BaseSSHClient):
         timeout = timeout if timeout else self.timeout
         try:
             _reader.get(timeout=timeout)
-        except GeventTimeout as ex:
+        except GTimeout as ex:
             raise Timeout(ex)
         if _buffer.getvalue() == '':
             logger.debug("Reader finished and output empty for %s",
@@ -336,15 +337,10 @@ class SSHClient(BaseSSHClient):
         if channel is None:
             return
         logger.debug("Sending EOF on channel %s", channel)
-        self.eagain(channel.send_eof, timeout=self.timeout)
-        if timeout is not None:
-            with GeventTimeout(seconds=timeout, exception=Timeout):
-                logger.debug("Waiting for readers, timeout %s", timeout)
-                self._stdout_reader.get(timeout=timeout)
-                self._stderr_reader.get(timeout=timeout)
-        else:
-            self._stdout_reader.get()
-            self._stderr_reader.get()
+        self._eagain(channel.send_eof, timeout=self.timeout)
+        logger.debug("Waiting for readers, timeout %s", timeout)
+        with GTimeout(seconds=timeout, exception=Timeout):
+            joinall((self._stdout_reader, self._stderr_reader))
         logger.debug("Readers finished, closing channel")
         # Close channel
         self.close_channel(channel)
@@ -375,7 +371,7 @@ class SSHClient(BaseSSHClient):
         :type channel: :py:class:`ssh.channel.Channel`
         """
         logger.debug("Closing channel")
-        self.eagain(channel.close, timeout=self.timeout)
+        self._eagain(channel.close, timeout=self.timeout)
 
     def poll(self, timeout=None):
         """ssh-python based co-operative gevent select on session socket."""
@@ -383,13 +379,13 @@ class SSHClient(BaseSSHClient):
         if directions == 0:
             return
         events = 0
-        if directions & _SSH_READ_PENDING:
-            events = _POLLIN
-        if directions & _SSH_WRITE_PENDING:
-            events |= _POLLOUT
+        if directions & SSH_READ_PENDING:
+            events = POLLIN
+        if directions & SSH_WRITE_PENDING:
+            events |= POLLOUT
         self._poll_socket(events, timeout=timeout)
 
-    def _eagain(session, func, *args, **kwargs):
+    def _eagain(self, func, *args, **kwargs):
         """Run function given and handle EAGAIN for an ssh-python session"""
         timeout = kwargs.pop('timeout', self.timeout)
         with GTimeout(seconds=timeout, exception=Timeout):
