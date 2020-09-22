@@ -22,8 +22,6 @@ import versioneer
 
 
 cmdclass = versioneer.get_cmdclass()
-if USING_CYTHON:
-    cmdclass['build_ext'] = build_ext
 
 setup(name='parallel-ssh',
       version=versioneer.get_version(),
