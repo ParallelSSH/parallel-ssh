@@ -389,13 +389,12 @@ class SSHClient(BaseSSHClient):
             events |= _POLLOUT
         self._poll_socket(events, timeout=timeout)
 
-    def eagain(session, func, *args, **kwargs):
+    def _eagain(session, func, *args, **kwargs):
         """Run function given and handle EAGAIN for an ssh-python session"""
-        timeout = kwargs.pop('timeout', None)
-        ret = func(*args, **kwargs)
-        while ret == SSH_AGAIN:
-            self.poll(timeout=timeout)
+        timeout = kwargs.pop('timeout', self.timeout)
+        with GTimeout(seconds=timeout, exception=Timeout):
             ret = func(*args, **kwargs)
-        if ret == SSH_AGAIN and timeout is not None:
-            raise Timeout
-        return ret
+            while ret == SSH_AGAIN:
+                self.poll(timeout=timeout)
+                ret = func(*args, **kwargs)
+            return ret

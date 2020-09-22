@@ -252,19 +252,19 @@ class SSHClient(BaseSSHClient):
                 while size > 0:
                     while pos < size:
                         linesep, new_line_pos = find_eol(data, pos)
-                        end_of_line = pos+linesep
-                        if linesep >= 0:
-                            if remainder_len > 0:
-                                yield remainder + data[pos:end_of_line]
-                                remainder = b""
-                                remainder_len = 0
-                            else:
-                                yield data[pos:end_of_line]
-                            pos += linesep + new_line_pos
-                        else:
+                        if linesep == -1:
                             remainder += data[pos:]
                             remainder_len = len(remainder)
                             break
+                        end_of_line = pos+linesep
+                        if remainder_len > 0:
+                            line = remainder + data[pos:end_of_line]
+                            remainder = b""
+                            remainder_len = 0
+                        else:
+                            line = data[pos:end_of_line]
+                        yield line
+                        pos += linesep + new_line_pos
                     size, data = read_func()
                     pos = 0
             if remainder_len > 0:
@@ -309,15 +309,7 @@ class SSHClient(BaseSSHClient):
         """
         if channel is None:
             return
-        # If wait_eof() returns EAGAIN after a select with a timeout, it means
-        # it reached timeout without EOF and _select_timeout will raise
-        # timeout exception causing the channel to appropriately
-        # not be closed as the command is still running.
-        if timeout is not None:
-            with GTimeout(seconds=timeout, exception=Timeout):
-                self._eagain(channel.wait_eof)
-        else:
-            self._eagain(channel.wait_eof)
+        self._eagain(channel.wait_eof, timeout=timeout)
         # Close channel to indicate no more commands will be sent over it
         self.close_channel(channel)
 
@@ -326,11 +318,13 @@ class SSHClient(BaseSSHClient):
         self._eagain(channel.close)
 
     def _eagain(self, func, *args, **kwargs):
-        ret = func(*args, **kwargs)
-        while ret == LIBSSH2_ERROR_EAGAIN:
-            self.poll()
+        timeout = kwargs.pop('timeout', self.timeout)
+        with GTimeout(seconds=timeout, exception=Timeout):
             ret = func(*args, **kwargs)
-        return ret
+            while ret == LIBSSH2_ERROR_EAGAIN:
+                self.poll()
+                ret = func(*args, **kwargs)
+            return ret
 
     def _make_sftp(self):
         """Make SFTP client from open transport"""

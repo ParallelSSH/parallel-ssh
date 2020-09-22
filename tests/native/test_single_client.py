@@ -137,10 +137,10 @@ class SSH2ClientTest(SSH2TestCase):
 
     def test_file_output_parsing(self):
         lines = int(subprocess.check_output(
-            ['wc', '-l', 'pssh/native/_ssh2.c']).split()[0])
+            ['wc', '-l', 'README.rst']).split()[0])
         dir_name = os.path.dirname(__file__)
-        ssh2_file = os.sep.join((dir_name, '..', '..', 'pssh', 'native', '_ssh2.c'))
-        cmd = 'cat %s' % ssh2_file
+        _file = os.sep.join((dir_name, '..', '..', 'README.rst'))
+        cmd = 'cat %s' % _file
         host_out = self.client.run_command(cmd)
         output = list(host_out.stdout)
         self.assertEqual(lines, len(output))
