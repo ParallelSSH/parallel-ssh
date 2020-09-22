@@ -242,7 +242,7 @@ class SSHClient(BaseSSHClient):
         remainder = b""
         remainder_len = 0
         size, data = read_func()
-        t = GTimeout(timeout)
+        t = GTimeout(seconds=timeout, exception=Timeout)
         t.start()
         try:
             while size == LIBSSH2_ERROR_EAGAIN or size > 0:
@@ -251,15 +251,16 @@ class SSHClient(BaseSSHClient):
                     size, data = read_func()
                 while size > 0:
                     while pos < size:
-                        linesep = data[:size].find(LINESEP, pos)
+                        linesep, new_line_pos = find_eol(data, pos)
+                        end_of_line = pos+linesep
                         if linesep >= 0:
                             if remainder_len > 0:
-                                yield remainder + data[pos:linesep].rstrip()
+                                yield remainder + data[pos:end_of_line]
                                 remainder = b""
                                 remainder_len = 0
                             else:
-                                yield data[pos:linesep].rstrip()
-                            pos = linesep + 1
+                                yield data[pos:end_of_line]
+                            pos += linesep + new_line_pos
                         else:
                             remainder += data[pos:]
                             remainder_len = len(remainder)
@@ -269,8 +270,6 @@ class SSHClient(BaseSSHClient):
             if remainder_len > 0:
                 # Finished reading without finding ending linesep
                 yield remainder
-        except GTimeout:
-            raise Timeout
         finally:
             t.close()
 
