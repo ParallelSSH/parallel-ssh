@@ -41,6 +41,7 @@ from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 logger = logging.getLogger(__name__)
 THREAD_POOL = get_hub().threadpool
+LINESEP = b'\n'
 
 
 class SSHClient(BaseSSHClient):
@@ -250,16 +251,15 @@ class SSHClient(BaseSSHClient):
                     size, data = read_func()
                 while size > 0:
                     while pos < size:
-                        linesep, new_line_pos = find_eol(data, pos)
-                        end_of_line = pos+linesep
+                        linesep = data[:size].find(LINESEP, pos)
                         if linesep >= 0:
                             if remainder_len > 0:
-                                yield remainder + data[pos:end_of_line]
+                                yield remainder + data[pos:linesep].rstrip()
                                 remainder = b""
                                 remainder_len = 0
                             else:
-                                yield data[pos:end_of_line]
-                            pos += linesep + new_line_pos
+                                yield data[pos:linesep].rstrip()
+                            pos = linesep + 1
                         else:
                             remainder += data[pos:]
                             remainder_len = len(remainder)

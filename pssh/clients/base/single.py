@@ -410,9 +410,11 @@ class BaseSSHClient(object):
         raise NotImplementedError
 
     def _poll_socket(self, events, timeout=None):
+        if self.sock is None:
+            return
         # gevent.select.poll converts seconds to miliseconds to match python socket
         # implementation
-        timeout = timeout * 1000 if timeout is not None else None
+        timeout = timeout * 1000 if timeout is not None else 100
         poller = poll()
         poller.register(self.sock, eventmask=events)
         logger.debug("Polling socket with timeout %s", timeout)
