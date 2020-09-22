@@ -31,6 +31,7 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR, LIBSSH2_SFTP_S_IRGRP, \
     LIBSSH2_SFTP_S_IWUSR, LIBSSH2_SFTP_S_IXUSR, LIBSSH2_SFTP_S_IROTH, \
     LIBSSH2_SFTP_S_IXGRP, LIBSSH2_SFTP_S_IXOTH
+from ssh2.utils import find_eol
 
 from ..base.single import BaseSSHClient
 from ...exceptions import AuthenticationException, SessionError, SFTPError, \
@@ -40,7 +41,6 @@ from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 logger = logging.getLogger(__name__)
 THREAD_POOL = get_hub().threadpool
-LINESEP = '\n'
 
 
 class SSHClient(BaseSSHClient):
@@ -237,34 +237,35 @@ class SSHClient(BaseSSHClient):
         return channel
 
     def _read_output(self, read_func, timeout=None):
-        _pos = 0
+        pos = 0
         remainder = b""
         remainder_len = 0
-        _size, _data = read_func()
+        size, data = read_func()
         t = GTimeout(timeout)
         t.start()
         try:
-            while _size == LIBSSH2_ERROR_EAGAIN or _size > 0:
-                if _size == LIBSSH2_ERROR_EAGAIN:
+            while size == LIBSSH2_ERROR_EAGAIN or size > 0:
+                if size == LIBSSH2_ERROR_EAGAIN:
                     self.poll(timeout=timeout)
-                    _size, _data = read_func()
-                while _size > 0:
-                    while _pos < _size:
-                        linesep = _data[:_size].find(LINESEP, _pos)
+                    size, data = read_func()
+                while size > 0:
+                    while pos < size:
+                        linesep, new_line_pos = find_eol(data, pos)
+                        end_of_line = pos+linesep
                         if linesep >= 0:
                             if remainder_len > 0:
-                                yield remainder + _data[_pos:linesep].rstrip()
+                                yield remainder + data[pos:end_of_line]
                                 remainder = b""
                                 remainder_len = 0
                             else:
-                                yield _data[_pos:linesep].rstrip()
-                            _pos = linesep + 1
+                                yield data[pos:end_of_line]
+                            pos += linesep + new_line_pos
                         else:
-                            remainder += _data[_pos:]
+                            remainder += data[pos:]
                             remainder_len = len(remainder)
                             break
-                    _size, _data = read_func()
-                    _pos = 0
+                    size, data = read_func()
+                    pos = 0
             if remainder_len > 0:
                 # Finished reading without finding ending linesep
                 yield remainder
