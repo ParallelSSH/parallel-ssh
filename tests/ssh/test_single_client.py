@@ -80,13 +80,6 @@ class SSHClientTest(SSHTestCase):
         self.client.wait_finished(channel)
         self.assertTrue(self.client.finished(channel))
 
-    def test_client_exec_timeout(self):
-        client = SSHClient(self.host, port=self.port,
-                           pkey=self.user_key,
-                           num_retries=1,
-                           timeout=0.00001)
-        self.assertRaises(Timeout, client.execute, self.cmd)
-
     def test_client_disconnect_on_del(self):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
@@ -98,11 +91,9 @@ class SSHClientTest(SSHTestCase):
     def test_client_read_timeout(self):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
-                           num_retries=1,
-                           timeout=0.2)
-        host_out = client.run_command('sleep 2; echo me')
-        output_gen = client.read_output(host_out.channel)
-        self.assertRaises(Timeout, list, output_gen)
+                           num_retries=1)
+        host_out = client.run_command('sleep 2; echo me', timeout=0.2)
+        self.assertRaises(Timeout, list, host_out.stdout)
 
     def test_multiple_clients_exec_terminates_channels(self):
         # See #200 - Multiple clients should not interfere with

@@ -116,28 +116,6 @@ class TunnelTest(unittest.TestCase):
         finally:
             tunnel.cleanup()
             server.stop()
-            
-    def test_tunnel_retries(self):
-        local_port = 3050
-        fw_host, fw_port = '127.0.0.1', 2100
-        in_q = deque()
-        out_q = deque()
-        t = Tunnel(self.proxy_host, in_q, out_q, port=self.port,
-                   pkey=self.user_key, num_retries=2)
-        t.daemon = True
-        t.start()
-        in_q.append((fw_host, fw_port))
-        while not t.tunnel_open.is_set():
-            sleep(.1)
-        _port = out_q.pop()
-        try:
-            fw_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            fw_socket.connect(('127.0.0.1', _port))
-            sleep(1)
-            self.assertIsInstance(t.exception, ChannelFailure)
-            del t
-        finally:
-            fw_socket.close()
 
     def test_tunnel_channel_failure(self):
         remote_host = '127.0.0.8'

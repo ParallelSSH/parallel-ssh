@@ -183,6 +183,13 @@ class SSH2ClientTest(SSH2TestCase):
         # raise timeout which will fail the test
         self.assertRaises(ConnectionErrorException, cmd.get, timeout=2)
 
+    def test_client_read_timeout(self):
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1)
+        host_out = client.run_command('sleep 2; echo me', timeout=0.2)
+        self.assertRaises(Timeout, list, host_out.stdout)
+
     def test_multiple_clients_exec_terminates_channels(self):
         # See #200 - Multiple clients should not interfere with
         # each other. session.disconnect can leave state in libssh2
