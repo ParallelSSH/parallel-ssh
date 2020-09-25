@@ -333,22 +333,28 @@ class SSH2ClientTest(SSH2TestCase):
         copy_to_file_path = '///'.join([dir_name_to_copy, file_to_copy])
         copy_to_abs_path = os.path.abspath(os.path.expanduser('~/' + copy_to_file_path))
         copy_to_abs_dir = os.path.abspath(os.path.expanduser('~/' + dir_base_dir))
-        for _path in (copy_from_file_path, copy_to_abs_dir):
-            try:
-                shutil.rmtree(_path, ignore_errors=True)
-            except Exception:
-                pass
+        try:
+            os.unlink(copy_from_file_path)
+        except Exception:
+            pass
+        try:
+            shutil.rmtree(copy_to_abs_dir, ignore_errors=True)
+        except Exception:
+            pass
         try:
             with open(copy_from_file_path, 'w') as fh:
                 fh.writelines(['asdf'])
             self.client.copy_file(copy_from_file_path, copy_to_file_path)
             self.assertTrue(os.path.isfile(copy_to_abs_path))
         finally:
-            for _path in (copy_from_file_path, copy_to_abs_dir):
-                try:
-                    shutil.rmtree(_path, ignore_errors=True)
-                except Exception:
-                    pass
+            try:
+                os.unlink(copy_from_file_path)
+            except Exception:
+                pass
+            try:
+                shutil.rmtree(copy_to_abs_dir, ignore_errors=True)
+            except Exception:
+                pass
 
     def test_sftp_mkdir_abspath(self):
         remote_dir = '/tmp/dir_to_create/dir1/dir2/dir3'

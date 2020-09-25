@@ -250,7 +250,7 @@ class BaseSSHClient(object):
 
     def run_command(self, command, sudo=False, user=None,
                     use_pty=False, shell=None,
-                    encoding='utf-8', timeout=None):
+                    encoding='utf-8', timeout=None, read_timeout=None):
         """Run remote command.
 
         :param command: Command to run.
@@ -268,8 +268,10 @@ class BaseSSHClient(object):
         :param encoding: Encoding to use for output. Must be valid
           `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
         :type encoding: str
+        :param read_timeout: (Optional) Timeout in seconds for reading output.
+        :type read_timeout: float
 
-        :rtype: (channel, host, stdout, stderr, stdin) tuple.
+        :rtype: :py:class:`pssh.output.HostOutput`
         """
         # Fast path for no command substitution needed
         if not sudo and not user and not shell:
@@ -282,12 +284,13 @@ class BaseSSHClient(object):
                 _command = 'sudo -u %s -S ' % (user,)
             _shell = shell if shell else '$SHELL -c'
             _command += "%s '%s'" % (_shell, command,)
+        _timeout = read_timeout if read_timeout else timeout
         channel = self.execute(_command, use_pty=use_pty)
         stdout = self.read_output_buffer(
-            self.read_output(channel, timeout=timeout),
+            self.read_output(channel, timeout=_timeout),
             encoding=encoding)
         stderr = self.read_output_buffer(
-                self.read_stderr(channel, timeout=timeout), encoding=encoding,
+                self.read_stderr(channel, timeout=_timeout), encoding=encoding,
                 prefix='\t[err]')
         stdin = channel
         host_out = HostOutput(self.host, channel, stdout, stderr, stdin, self)

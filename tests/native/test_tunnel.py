@@ -227,28 +227,22 @@ class TunnelTest(unittest.TestCase):
         remote_host = '127.0.0.18'
         proxy_host = '127.0.0.19'
         server = OpenSSHServer(listen_ip=proxy_host, port=self.port)
-        remote_server = OpenSSHServer(listen_ip=remote_host, port=self.port)
-        for _server in (server, remote_server):
-            _server.start_server()
+        server.start_server()
         try:
             client = ParallelSSHClient(
                 [remote_host], port=self.port, pkey=self.user_key,
                 proxy_host=proxy_host, proxy_port=self.port, num_retries=1,
-                proxy_pkey=self.user_key)
-            output = client.run_command(self.cmd)
-            client.join(output)
-            client._tunnel.cleanup()
-            for _server in (server, remote_server):
-                _server.stop()
+                proxy_pkey=self.user_key, timeout=2)
             try:
-                client.run_command(self.cmd, greenlet_timeout=1)
+                client.run_command(self.cmd)
             except (GTimeout, Exception):
                 pass
             else:
                 raise Exception("Command neither failed nor timeout raised")
+            client._tunnel.cleanup()
+            server.stop()
         finally:
-            for _server in (server, remote_server):
-                _server.stop()
+            server.stop()
 
     def test_single_tunnel_multi_hosts(self):
         remote_host = '127.0.0.8'
@@ -283,7 +277,8 @@ class TunnelTest(unittest.TestCase):
                 hosts, port=self.port, pkey=self.user_key,
                 proxy_host=self.proxy_host, proxy_port=self.port, num_retries=1,
                 proxy_pkey=self.user_key,
-                timeout=.001)
+                timeout=.001,
+                tunnel_timeout=1)
             output = client.run_command(self.cmd, stop_on_errors=False)
             client.join(output)
             for host_out in output:

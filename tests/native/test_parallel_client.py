@@ -230,8 +230,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    pkey=self.user_key,
                                    timeout=client_timeout,
                                    num_retries=1)
-        cmd = spawn(client.run_command, 'sleep 1', stop_on_errors=False)
-        output = cmd.get(timeout=client_timeout * 200)
+        output = client.run_command('sleep 1', stop_on_errors=False)
         self.assertIsInstance(output[0].exception, ConnectionErrorException)
 
     def test_zero_timeout(self):
