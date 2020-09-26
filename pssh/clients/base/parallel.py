@@ -109,7 +109,7 @@ class BaseParallelSSHClient(object):
     def _get_output_from_cmds(self, cmds, raise_error=False,
                               return_list=True):
         _cmds = [spawn(self._get_output_from_greenlet, cmd, raise_error=raise_error)
-                for cmd in cmds]
+                 for cmd in cmds]
         finished = joinall(_cmds, raise_error=True)
         return [f.get() for f in finished]
 

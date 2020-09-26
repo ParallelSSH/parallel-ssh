@@ -41,7 +41,6 @@ from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 logger = logging.getLogger(__name__)
 THREAD_POOL = get_hub().threadpool
-LINESEP = b'\n'
 
 
 class SSHClient(BaseSSHClient):
@@ -238,7 +237,6 @@ class SSHClient(BaseSSHClient):
         return channel
 
     def _read_output(self, read_func, timeout=None):
-        pos = 0
         remainder = b""
         remainder_len = 0
         size, data = read_func()
@@ -246,10 +244,11 @@ class SSHClient(BaseSSHClient):
         t.start()
         try:
             while size == LIBSSH2_ERROR_EAGAIN or size > 0:
-                if size == LIBSSH2_ERROR_EAGAIN:
+                while size == LIBSSH2_ERROR_EAGAIN:
                     self.poll(timeout=timeout)
                     size, data = read_func()
                 while size > 0:
+                    pos = 0
                     while pos < size:
                         linesep, new_line_pos = find_eol(data, pos)
                         if linesep == -1:
@@ -266,7 +265,6 @@ class SSHClient(BaseSSHClient):
                         yield line
                         pos += linesep + new_line_pos
                     size, data = read_func()
-                    pos = 0
             if remainder_len > 0:
                 # Finished reading without finding ending linesep
                 yield remainder

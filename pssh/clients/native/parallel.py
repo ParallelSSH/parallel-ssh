@@ -62,7 +62,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           to :py:class:`pssh.constants.RETRY_DELAY`
         :type retry_delay: int
         :param timeout: (Optional) Global timeout setting in seconds for all remote
-          operations including all SSH client operations DNS, opening connections, 
+          operations including all SSH client operations DNS, opening connections,
           reading output from remote servers,  et al.
 
           For concurrent functions this is a cumulative timeout
@@ -188,9 +188,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
           `Python codec <https://docs.python.org/library/codecs.html>`_
         :type encoding: str
         :param read_timeout: (Optional) Timeout in seconds for reading from stdout
-          or stderr. Defaults to `self.timeout`. Reading from stdout/stderr will
+          or stderr. Reading from stdout/stderr will
           raise :py:class:`pssh.exceptions.Timeout`
-          after ``timeout`` number seconds if remote output is not ready.
+          after ``timeout`` seconds when set if remote output is not ready.
         :type read_timeout: float
         :param timeout: Deprecated - use read_timeout. Same as
           read_timeout and kept for backwards compatibility - to be removed
@@ -276,7 +276,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
             proxy_host = None if self.proxy_host is None else '127.0.0.1'
             if proxy_host is not None:
                 auth_thread_pool = False
-                _wait = 0.0
                 max_wait = self.timeout if self.timeout is not None else 60
                 with self._tunnel_lock:
                     self._tunnel_in_q.append((host, _port))
