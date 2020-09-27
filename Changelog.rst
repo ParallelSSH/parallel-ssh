@@ -26,6 +26,8 @@ See `Upgrading to API 2.0 <upgrade-link>`_ for examples of code that will need u
 * Made ``ParallelSSHClient(timeout=<seconds>)`` a global timeout setting for all operations.
 * Removed ``run_command(greenlet_timeout=<..>)`` argument - now uses global timeout setting.
 * Renamed ``run_command`` ``timeout`` to ``read_timeout=<seconds>)`` for setting output read timeout individually - defaults to global timeout setting.
+* Removed ``pssh.native`` package and native code.
+* No native code means package architecture has changed to ``none-any``.
 
 
 Fixes
