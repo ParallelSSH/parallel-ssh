@@ -3,7 +3,7 @@ codecov
 flake8
 sphinx
 sphinx_rtd_theme
-pytest
+pytest<6.1.0
 pytest-cov
 pytest-rerunfailures
 jinja2
