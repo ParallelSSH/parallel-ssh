@@ -104,8 +104,8 @@ workflows:
               ignore: /.*/
       - manylinux:
           context: Docker
-          # filters:
-          #   tags:
-          #     only: /.*/
-          #   branches:
-          #     ignore: /.*/
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
