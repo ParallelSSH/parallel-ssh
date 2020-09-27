@@ -143,13 +143,12 @@ class ParallelSSHClientTest(unittest.TestCase):
                           expected_exit_code,))
 
     def test_pssh_client_no_stdout_non_zero_exit_code_immediate_exit_no_join(self):
-        output = self.client.run_command('echo me && exit 1', return_list=True)
+        output = self.client.run_command('exit 1', return_list=True)
         expected_exit_code = 1
         for host_out in output:
             for line in host_out.stdout:
                 pass
         exit_code = output[0].exit_code
-        self.client.join(output)
         self.assertEqual(expected_exit_code, exit_code)
 
     def test_pssh_client_run_command_get_output(self):
