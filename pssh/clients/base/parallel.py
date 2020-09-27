@@ -21,7 +21,7 @@ import logging
 
 import gevent.pool
 
-from gevent import joinall
+from gevent import joinall, spawn, Timeout as GTimeout
 from gevent.hub import Hub
 
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
@@ -82,7 +82,6 @@ class BaseParallelSSHClient(object):
                     host_args=None, use_pty=False, shell=None,
                     encoding='utf-8', return_list=True,
                     *args, **kwargs):
-        greenlet_timeout = kwargs.pop('greenlet_timeout', None)
         if host_args:
             try:
                 cmds = [self.pool.spawn(
@@ -103,28 +102,31 @@ class BaseParallelSSHClient(object):
                 *args, **kwargs)
                     for host_i, host in enumerate(self.hosts)]
         self.cmds = cmds
-        joinall(cmds, raise_error=False, timeout=greenlet_timeout)
-        return self._get_output_from_cmds(cmds, stop_on_errors=stop_on_errors,
-                                          timeout=greenlet_timeout,
+        joinall(cmds, timeout=self.timeout)
+        return self._get_output_from_cmds(cmds, raise_error=stop_on_errors,
                                           return_list=return_list)
 
-    def _get_output_from_cmds(self, cmds, stop_on_errors=False, timeout=None,
+    def _get_output_from_cmds(self, cmds, raise_error=False,
                               return_list=True):
-        return [self._get_output_from_greenlet(cmd, timeout=timeout, raise_error=stop_on_errors)
-                for cmd in cmds]
+        _cmds = [spawn(self._get_output_from_greenlet, cmd, raise_error=raise_error)
+                 for cmd in cmds]
+        finished = joinall(_cmds, raise_error=True)
+        return [f.get() for f in finished]
 
-    def _get_output_from_greenlet(self, cmd, timeout=None, raise_error=False):
+    def _get_output_from_greenlet(self, cmd, raise_error=False):
         try:
-            host_out = cmd.get(timeout=timeout)
+            host_out = cmd.get()
             return host_out
-        except Exception as ex:
-            host = ex.host
+        except (GTimeout, Exception) as ex:
+            host = ex.host if hasattr(ex, 'host') else None
+            if isinstance(ex, GTimeout):
+                ex = Timeout()
             if raise_error:
                 raise ex
             return HostOutput(host, None, None, None, None,
                               None, exception=ex)
 
-    def get_last_output(self, cmds=None, greenlet_timeout=None,
+    def get_last_output(self, cmds=None, timeout=None,
                         return_list=True):
         """Get output for last commands executed by ``run_command``
 
@@ -153,8 +155,8 @@ class BaseParallelSSHClient(object):
         if cmds is None:
             return
         return self._get_output_from_cmds(
-            cmds, timeout=greenlet_timeout, return_list=return_list,
-            stop_on_errors=False)
+            cmds, return_list=return_list,
+            raise_error=False)
 
     def reset_output_generators(self, host_out, timeout=None,
                                 client=None, channel=None,
@@ -205,16 +207,17 @@ class BaseParallelSSHClient(object):
 
     def _run_command(self, host_i, host, command, sudo=False, user=None,
                      shell=None, use_pty=False,
-                     encoding='utf-8', timeout=None):
+                     encoding='utf-8', read_timeout=None):
         """Make SSHClient if needed, run command on host"""
+        logger.debug("_run_command with read timeout %s", read_timeout)
         try:
             _client = self._make_ssh_client(host_i, host)
             host_out = _client.run_command(
                 command, sudo=sudo, user=user, shell=shell,
-                use_pty=use_pty, encoding=encoding, timeout=timeout)
+                use_pty=use_pty, encoding=encoding, read_timeout=read_timeout)
             return host_out
-        except Exception as ex:
-            ex.host = host
+        except (GTimeout, Exception) as ex:
+            host = ex.host if hasattr(ex, 'host') else None
             logger.error("Failed to run on host %s - %s", host, ex)
             raise ex
 

@@ -26,7 +26,7 @@ from ..embedded_server.openssh import OpenSSHServer
 
 
 def setup_root_logger():
-    log = logging.getLogger()
+    log = logging.getLogger('pssh.clients')
     log.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
     handler = logging.StreamHandler()

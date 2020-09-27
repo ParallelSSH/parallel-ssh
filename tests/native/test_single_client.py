@@ -137,10 +137,11 @@ class SSH2ClientTest(SSH2TestCase):
 
     def test_file_output_parsing(self):
         lines = int(subprocess.check_output(
-            ['wc', '-l', 'pssh/native/_ssh2.c']).split()[0])
+            ['wc', '-l', 'README.rst']).split()[0])
         dir_name = os.path.dirname(__file__)
-        ssh2_file = os.sep.join((dir_name, '..', '..', 'pssh', 'native', '_ssh2.c'))
-        host_out = self.client.run_command('cat %s' % ssh2_file)
+        _file = os.sep.join((dir_name, '..', '..', 'README.rst'))
+        cmd = 'cat %s' % _file
+        host_out = self.client.run_command(cmd)
         output = list(host_out.stdout)
         self.assertEqual(lines, len(output))
 
@@ -181,6 +182,13 @@ class SSH2ClientTest(SSH2TestCase):
         # Should fail within greenlet timeout, otherwise greenlet will
         # raise timeout which will fail the test
         self.assertRaises(ConnectionErrorException, cmd.get, timeout=2)
+
+    def test_client_read_timeout(self):
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1)
+        host_out = client.run_command('sleep 2; echo me', timeout=0.2)
+        self.assertRaises(Timeout, list, host_out.stdout)
 
     def test_multiple_clients_exec_terminates_channels(self):
         # See #200 - Multiple clients should not interfere with
@@ -325,22 +333,28 @@ class SSH2ClientTest(SSH2TestCase):
         copy_to_file_path = '///'.join([dir_name_to_copy, file_to_copy])
         copy_to_abs_path = os.path.abspath(os.path.expanduser('~/' + copy_to_file_path))
         copy_to_abs_dir = os.path.abspath(os.path.expanduser('~/' + dir_base_dir))
-        for _path in (copy_from_file_path, copy_to_abs_dir):
-            try:
-                shutil.rmtree(_path, ignore_errors=True)
-            except Exception:
-                pass
+        try:
+            os.unlink(copy_from_file_path)
+        except Exception:
+            pass
+        try:
+            shutil.rmtree(copy_to_abs_dir, ignore_errors=True)
+        except Exception:
+            pass
         try:
             with open(copy_from_file_path, 'w') as fh:
                 fh.writelines(['asdf'])
             self.client.copy_file(copy_from_file_path, copy_to_file_path)
             self.assertTrue(os.path.isfile(copy_to_abs_path))
         finally:
-            for _path in (copy_from_file_path, copy_to_abs_dir):
-                try:
-                    shutil.rmtree(_path, ignore_errors=True)
-                except Exception:
-                    pass
+            try:
+                os.unlink(copy_from_file_path)
+            except Exception:
+                pass
+            try:
+                shutil.rmtree(copy_to_abs_dir, ignore_errors=True)
+            except Exception:
+                pass
 
     def test_sftp_mkdir_abspath(self):
         remote_dir = '/tmp/dir_to_create/dir1/dir2/dir3'

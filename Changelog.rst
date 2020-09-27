@@ -23,6 +23,11 @@ See `Upgrading to API 2.0 <upgrade-link>`_ for examples of code that will need u
 * Removed deprecated ``ParallelSSHClient`` ``host_config`` dictionary implementation - now list of ``HostConfig``.
 * Removed ``HostOutput.cmd`` attribute.
 * Removed ``ParallelSSHClient.host_clients`` attribute.
+* Made ``ParallelSSHClient(timeout=<seconds>)`` a global timeout setting for all operations.
+* Removed ``run_command(greenlet_timeout=<..>)`` argument - now uses global timeout setting.
+* Renamed ``run_command`` ``timeout`` to ``read_timeout=<seconds>)`` for setting output read timeout individually - defaults to global timeout setting.
+* Removed ``pssh.native`` package and native code.
+* No native code means package architecture has changed to ``none-any``.
 
 
 Fixes
@@ -30,6 +35,7 @@ Fixes
 
 * Removed now unnecessary locking around SSHClient initialisation so it can be parallelised - #219.
 * ``ParallelSSHClient.join`` with encoding would not pass on encoding when reading from output buffers - #214.
+* Clients could raise ``Timeout`` early when timeout settings were used with many hosts.
 
 
 1.13.0

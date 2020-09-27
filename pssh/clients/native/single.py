@@ -21,21 +21,22 @@ from collections import deque
 from warnings import warn
 
 from gevent import sleep, spawn, get_hub, Timeout as GTimeout
+from gevent.select import POLLIN, POLLOUT
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
     Timeout as SSH2Timeout, AgentConnectionError, AgentListIdentitiesError, \
     AgentAuthenticationError, AgentGetIdentityError
-from ssh2.session import Session
+from ssh2.session import Session, LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND
 from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR, LIBSSH2_SFTP_S_IRGRP, \
     LIBSSH2_SFTP_S_IWUSR, LIBSSH2_SFTP_S_IXUSR, LIBSSH2_SFTP_S_IROTH, \
     LIBSSH2_SFTP_S_IXGRP, LIBSSH2_SFTP_S_IXOTH
+from ssh2.utils import find_eol
 
 from ..base.single import BaseSSHClient
 from ...exceptions import AuthenticationException, SessionError, SFTPError, \
     SFTPIOError, Timeout, SCPError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-from ...native._ssh2 import wait_select, eagain_write, _read_output
 
 
 logger = logging.getLogger(__name__)
@@ -201,7 +202,7 @@ class SSHClient(BaseSSHClient):
         except Exception as ex:
             raise SessionError(ex)
         while chan == LIBSSH2_ERROR_EAGAIN:
-            wait_select(self.session)
+            self.poll()
             try:
                 chan = self.session.open_session()
             except Exception as ex:
@@ -235,6 +236,41 @@ class SSHClient(BaseSSHClient):
         self._eagain(channel.execute, cmd)
         return channel
 
+    def _read_output(self, read_func, timeout=None):
+        remainder = b""
+        remainder_len = 0
+        size, data = read_func()
+        t = GTimeout(seconds=timeout, exception=Timeout)
+        t.start()
+        try:
+            while size == LIBSSH2_ERROR_EAGAIN or size > 0:
+                while size == LIBSSH2_ERROR_EAGAIN:
+                    self.poll(timeout=timeout)
+                    size, data = read_func()
+                while size > 0:
+                    pos = 0
+                    while pos < size:
+                        linesep, new_line_pos = find_eol(data, pos)
+                        if linesep == -1:
+                            remainder += data[pos:]
+                            remainder_len = len(remainder)
+                            break
+                        end_of_line = pos+linesep
+                        if remainder_len > 0:
+                            line = remainder + data[pos:end_of_line]
+                            remainder = b""
+                            remainder_len = 0
+                        else:
+                            line = data[pos:end_of_line]
+                        yield line
+                        pos += linesep + new_line_pos
+                    size, data = read_func()
+            if remainder_len > 0:
+                # Finished reading without finding ending linesep
+                yield remainder
+        finally:
+            t.close()
+
     def read_stderr(self, channel, timeout=None):
         """Read standard error buffer from channel.
         Returns a generator of line by line output.
@@ -243,7 +279,7 @@ class SSHClient(BaseSSHClient):
         :type channel: :py:class:`ssh2.channel.Channel`
         :rtype: generator
         """
-        return _read_output(self.session, channel.read_stderr, timeout=timeout)
+        return self._read_output(channel.read_stderr, timeout=timeout)
 
     def read_output(self, channel, timeout=None):
         """Read standard output buffer from channel.
@@ -253,7 +289,7 @@ class SSHClient(BaseSSHClient):
         :type channel: :py:class:`ssh2.channel.Channel`
         :rtype: generator
         """
-        return _read_output(self.session, channel.read, timeout=timeout)
+        return self._read_output(channel.read, timeout=timeout)
 
     def wait_finished(self, channel, timeout=None):
         """Wait for EOF from channel and close channel.
@@ -271,15 +307,7 @@ class SSHClient(BaseSSHClient):
         """
         if channel is None:
             return
-        # If wait_eof() returns EAGAIN after a select with a timeout, it means
-        # it reached timeout without EOF and _select_timeout will raise
-        # timeout exception causing the channel to appropriately
-        # not be closed as the command is still running.
-        if timeout is not None:
-            with GTimeout(seconds=timeout, exception=Timeout):
-                self._eagain(channel.wait_eof)
-        else:
-            self._eagain(channel.wait_eof)
+        self._eagain(channel.wait_eof, timeout=timeout)
         # Close channel to indicate no more commands will be sent over it
         self.close_channel(channel)
 
@@ -288,11 +316,13 @@ class SSHClient(BaseSSHClient):
         self._eagain(channel.close)
 
     def _eagain(self, func, *args, **kwargs):
-        ret = func(*args, **kwargs)
-        while ret == LIBSSH2_ERROR_EAGAIN:
-            wait_select(self.session)
+        timeout = kwargs.pop('timeout', self.timeout)
+        with GTimeout(seconds=timeout, exception=Timeout):
             ret = func(*args, **kwargs)
-        return ret
+            while ret == LIBSSH2_ERROR_EAGAIN:
+                self.poll()
+                ret = func(*args, **kwargs)
+            return ret
 
     def _make_sftp(self):
         """Make SFTP client from open transport"""
@@ -301,7 +331,7 @@ class SSHClient(BaseSSHClient):
         except Exception as ex:
             raise SFTPError(ex)
         while sftp == LIBSSH2_ERROR_EAGAIN:
-            wait_select(self.session)
+            self.poll()
             try:
                 sftp = self.session.sftp_init()
             except Exception as ex:
@@ -371,7 +401,7 @@ class SSHClient(BaseSSHClient):
     def _sftp_put(self, remote_fh, local_file):
         with open(local_file, 'rb', 2097152) as local_fh:
             for data in local_fh:
-                eagain_write(remote_fh.write, data, self.session)
+                self.eagain_write(remote_fh.write, data)
 
     def sftp_put(self, sftp, local_file, remote_file):
         mode = LIBSSH2_SFTP_S_IRUSR | \
@@ -537,7 +567,7 @@ class SSHClient(BaseSSHClient):
             while total < fileinfo.st_size:
                 size, data = file_chan.read(size=fileinfo.st_size - total)
                 if size == LIBSSH2_ERROR_EAGAIN:
-                    wait_select(self.session)
+                    self.poll()
                     continue
                 total += size
                 local_fh.write(data)
@@ -609,7 +639,7 @@ class SSHClient(BaseSSHClient):
         try:
             with open(local_file, 'rb', 2097152) as local_fh:
                 for data in local_fh:
-                    eagain_write(chan.write, data, self.session)
+                    self.eagain_write(chan.write, data)
         except Exception as ex:
             msg = "Error writing to remote file %s on host %s - %s"
             logger.error(msg, remote_file, self.host, ex)
@@ -623,7 +653,7 @@ class SSHClient(BaseSSHClient):
         except Exception as ex:
             raise SFTPError(ex)
         while fh == LIBSSH2_ERROR_EAGAIN:
-            wait_select(self.session, timeout=0.1)
+            self.poll(timeout=0.1)
             try:
                 fh = open_func(remote_file, *args)
             except Exception as ex:
@@ -634,7 +664,7 @@ class SSHClient(BaseSSHClient):
         with open(local_file, 'wb') as local_fh:
             for size, data in remote_fh:
                 if size == LIBSSH2_ERROR_EAGAIN:
-                    wait_select(self.session)
+                    self.poll()
                     continue
                 local_fh.write(data)
 
@@ -668,3 +698,32 @@ class SSHClient(BaseSSHClient):
         if channel is None:
             return
         return channel.eof()
+
+    def poll(self, timeout=None):
+        """Perform co-operative gevent poll on ssh2 session socket.
+
+        Blocks current greenlet only if socket has pending read or write operations
+        in the appropriate direction.
+        """
+        directions = self.session.block_directions()
+        if directions == 0:
+            return
+        events = 0
+        if directions & LIBSSH2_SESSION_BLOCK_INBOUND:
+            events = POLLIN
+        if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:
+            events |= POLLOUT
+        self._poll_socket(events, timeout=timeout)
+
+    def eagain_write(self, write_func, data, timeout=None):
+        """Write data with given write_func for an ssh2-python session while
+        handling EAGAIN and resuming writes from last written byte on each call to
+        write_func.
+        """
+        data_len = len(data)
+        total_written = 0
+        while total_written < data_len:
+            rc, bytes_written = write_func(data[total_written:])
+            total_written += bytes_written
+            if rc == LIBSSH2_ERROR_EAGAIN:
+                self.poll(timeout=timeout)

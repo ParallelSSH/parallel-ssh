@@ -134,7 +134,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8', timeout=None, greenlet_timeout=None,
+                    encoding='utf-8', timeout=None, read_timeout=None,
                     return_list=False):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output.
@@ -179,11 +179,15 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param encoding: Encoding to use for output. Must be valid
           `Python codec <https://docs.python.org/library/codecs.html>`_
         :type encoding: str
-        :param timeout: (Optional) Timeout in seconds for reading from stdout
-          or stderr. Defaults to no timeout. Reading from stdout/stderr will
+        :param read_timeout: (Optional) Timeout in seconds for reading from stdout
+          or stderr. Defaults to `self.timeout`. Reading from stdout/stderr will
           raise :py:class:`pssh.exceptions.Timeout`
           after ``timeout`` number seconds if remote output is not ready.
-        :type timeout: int
+        :type read_timeout: float
+        :param timeout: Deprecated - use read_timeout. Same as
+          read_timeout and kept for backwards compatibility - to be removed
+          in future release.
+        :type timeout: float
         :param greenlet_timeout: (Optional) Greenlet timeout setting.
           Defaults to no timeout. If set, this function will raise
           :py:class:`gevent.Timeout` after ``greenlet_timeout`` seconds
@@ -226,8 +230,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
         return BaseParallelSSHClient.run_command(
             self, command, stop_on_errors=stop_on_errors, host_args=host_args,
             user=user, shell=shell, sudo=sudo,
-            encoding=encoding, use_pty=use_pty, timeout=timeout,
-            greenlet_timeout=greenlet_timeout, return_list=return_list)
+            encoding=encoding, use_pty=use_pty,
+            return_list=return_list,
+            read_timeout=read_timeout if read_timeout else timeout,
+        )
 
     def _make_ssh_client(self, host_i, host):
         logger.debug("Make client request for host %s, (host_i, host) in clients: %s",

@@ -20,40 +20,8 @@ from platform import python_version
 
 import versioneer
 
-try:
-    from Cython.Distutils.extension import Extension
-    from Cython.Distutils import build_ext
-except ImportError:
-    from setuptools import Extension
-    USING_CYTHON = False
-else:
-    USING_CYTHON = True
-
-
-ON_WINDOWS = platform.system() == 'Windows'
-
-cython_directives = {'embedsignature': True,
-                     'boundscheck': False,
-                     'optimize.use_switch': True,
-                     'wraparound': False,
-                     'language_level': 3,
-}
-
-cython_args = {'cython_directives': cython_directives} if USING_CYTHON else {}
-
-ext = 'pyx' if USING_CYTHON else 'c'
-_comp_args = ["-O3"] if not ON_WINDOWS else None
-
-extensions = [
-    Extension('pssh.native._ssh2',
-              sources=['pssh/native/_ssh2.%s' % ext],
-              extra_compile_args=_comp_args,
-              **cython_args
-    )]
 
 cmdclass = versioneer.get_cmdclass()
-if USING_CYTHON:
-    cmdclass['build_ext'] = build_ext
 
 setup(name='parallel-ssh',
       version=versioneer.get_version(),
@@ -61,7 +29,7 @@ setup(name='parallel-ssh',
       description='Asynchronous parallel SSH library',
       long_description=open('README.rst').read(),
       author='Panos Kittenis',
-      author_email='22e889d8@opayq.com',
+      author_email='zuboci@yandex.com',
       url="https://github.com/ParallelSSH/parallel-ssh",
       packages=find_packages(
           '.', exclude=('embedded_server', 'embedded_server.*',
@@ -91,5 +59,4 @@ setup(name='parallel-ssh',
           'Operating System :: Microsoft :: Windows',
           'Operating System :: MacOS :: MacOS X',
       ],
-      ext_modules=extensions,
 )

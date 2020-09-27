@@ -17,7 +17,7 @@
 
 import logging
 from collections import deque
-from gevent import sleep
+from gevent import sleep, Timeout as GTimeout
 from gevent.lock import RLock
 
 from .single import SSHClient
@@ -61,21 +61,20 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param retry_delay: Number of seconds to wait between retries. Defaults
           to :py:class:`pssh.constants.RETRY_DELAY`
         :type retry_delay: int
-        :param timeout: (Optional) SSH session timeout setting in seconds.
-          This controls timeout setting of socket operations used for SSH
-          sessions. Defaults to OS default - usually 60 seconds.
-        :param timeout: (Optional) Individual SSH client timeout setting in
-          seconds passed on to each SSH client spawned by `ParallelSSHClient`.
+        :param timeout: (Optional) Global timeout setting in seconds for all remote
+          operations including all SSH client operations DNS, opening connections,
+          reading output from remote servers,  et al.
 
-          This controls timeout setting of socket operations used for SSH
-          sessions *on a per session basis* meaning for each individual
-          SSH session.
+          For concurrent functions this is a cumulative timeout
+          setting for all concurrent operations. These functions, eg ``run_command`` and
+          ``join``, also allow timeout to be set just for those functions if not
+          set globally via this option.
 
+          For per host operations like
+          ``list(host_out.stdout)`` for reading output it is applied per host if set.
+          Host output read timeout can also be set separately via
+          ``run_command(<..>, read_timeout=<seconds>)``
           Defaults to OS default - usually 60 seconds.
-
-          Parallel functions like `run_command` and `join` have a cummulative
-          timeout setting that is separate to and
-          not affected by `self.timeout`.
         :type timeout: float
         :param pool_size: (Optional) Greenlet pool size. Controls
           concurrency, on how many hosts to execute tasks in parallel.
@@ -114,8 +113,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
           Defaults to False if not set.
           Requires agent forwarding implementation in libssh2 version used.
         :type forward_ssh_agent: bool
-        :param tunnel_timeout: (Optional) Timeout setting for proxy tunnel
-          connections.
+        :param tunnel_timeout: (Optional) Override timeout setting for proxy tunnel
+          connections alone. Defaults to `self.timeout`.
         :type tunnel_timeout: float
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
@@ -138,12 +137,12 @@ class ParallelSSHClient(BaseParallelSSHClient):
         self._tunnel_in_q = None
         self._tunnel_out_q = None
         self._tunnel_lock = None
-        self._tunnel_timeout = tunnel_timeout
+        self._tunnel_timeout = tunnel_timeout if tunnel_timeout else self.timeout
         self.keepalive_seconds = keepalive_seconds
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8', timeout=None, greenlet_timeout=None,
+                    encoding='utf-8', timeout=None, read_timeout=None,
                     return_list=False):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output.
@@ -188,23 +187,15 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param encoding: Encoding to use for output. Must be valid
           `Python codec <https://docs.python.org/library/codecs.html>`_
         :type encoding: str
-        :param timeout: (Optional) Timeout in seconds for reading from stdout
-          or stderr. Defaults to no timeout. Reading from stdout/stderr will
+        :param read_timeout: (Optional) Timeout in seconds for reading from stdout
+          or stderr. Reading from stdout/stderr will
           raise :py:class:`pssh.exceptions.Timeout`
-          after ``timeout`` number seconds if remote output is not ready.
-        :type timeout: int
-        :param greenlet_timeout: (Optional) Greenlet timeout setting.
-          Defaults to no timeout. If set, this function will raise
-          :py:class:`gevent.Timeout` after ``greenlet_timeout`` seconds
-          if no result is available from greenlets.
-          In some cases, such as when using proxy hosts, connection timeout
-          is controlled by proxy server and getting result from greenlets may
-          hang indefinitely if remote server is unavailable. Use this setting
-          to avoid blocking in such circumstances.
-          Note that ``gevent.Timeout`` is a special class that inherits from
-          ``BaseException`` and thus **can not be caught** by
-          ``stop_on_errors=False``.
-        :type greenlet_timeout: float
+          after ``timeout`` seconds when set if remote output is not ready.
+        :type read_timeout: float
+        :param timeout: Deprecated - use read_timeout. Same as
+          read_timeout and kept for backwards compatibility - to be removed
+          in future release.
+        :type timeout: float
         :param return_list: No-op - list of ``HostOutput`` always returned.
           Parameter kept for backwards compatibility - to be removed in future
           releases.
@@ -236,8 +227,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
         return BaseParallelSSHClient.run_command(
             self, command, stop_on_errors=stop_on_errors, host_args=host_args,
             user=user, shell=shell, sudo=sudo,
-            encoding=encoding, use_pty=use_pty, timeout=timeout,
-            greenlet_timeout=greenlet_timeout, return_list=return_list)
+            encoding=encoding, use_pty=use_pty,
+            return_list=return_list, read_timeout=read_timeout if read_timeout else timeout,
+        )
 
     def __del__(self):
         if not hasattr(self, '_host_clients'):
@@ -284,22 +276,18 @@ class ParallelSSHClient(BaseParallelSSHClient):
             proxy_host = None if self.proxy_host is None else '127.0.0.1'
             if proxy_host is not None:
                 auth_thread_pool = False
-                _wait = 0.0
                 max_wait = self.timeout if self.timeout is not None else 60
                 with self._tunnel_lock:
                     self._tunnel_in_q.append((host, _port))
-                while True:
-                    if _wait >= max_wait:
-                        raise Timeout("Timed out waiting on tunnel to "
-                                      "open listening port")
-                    try:
-                        _port = self._tunnel_out_q.pop()
-                    except IndexError:
-                        logger.debug("Waiting on tunnel to open listening port")
-                        sleep(.5)
-                        _wait += .5
-                    else:
-                        break
+                with GTimeout(seconds=max_wait, exception=Timeout):
+                    while True:
+                        try:
+                            _port = self._tunnel_out_q.pop()
+                        except IndexError:
+                            logger.debug("Waiting on tunnel to open listening port")
+                            sleep(.1)
+                        else:
+                            break
             _client = SSHClient(
                 host, user=_user, password=_password, port=_port,
                 pkey=_pkey, num_retries=self.num_retries,
