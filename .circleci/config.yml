@@ -56,13 +56,13 @@ jobs:
           command: codecov
           name: Coverage
 
-  manylinux:
-    machine:
-      image: ubuntu-1604:201903-01
+  release:
+    docker:
+      - image: circleci/python:3.8
     steps:
       - checkout
       - python/load-cache:
-          key: manylinuxdepsv6-{{ .Branch }}.{{ arch }}
+          key: releasedepsv1-{{ .Branch }}.{{ arch }}
           dependency-file: requirements.txt
       - run:
           name: Deps
@@ -72,21 +72,18 @@ jobs:
             pip install -U twine
             which twine
       - python/save-cache:
-          key: manylinuxdepsv6-{{ .Branch }}.{{ arch }}
+          key: releasedepsv1-{{ .Branch }}.{{ arch }}
           dependency-file: requirements.txt
       - run:
-          name: Build Wheels
+          name: Build Wheels/Source Dist
           command: |
-            if [[ -z "${CIRCLE_PULL_REQUEST}" ]]; then
-              echo "$DOCKER_PASSWORD" | docker login -u="$DOCKER_USERNAME" --password-stdin;
-            fi
-            ./ci/travis/build-manylinux.sh
+            pip wheel --no-deps . -w dist
+            python setup.py sdist
+            ls -lh dist
       - run:
           name: PyPi Upload
           command: |
-            python setup.py sdist
-            ls -lh dist wheelhouse
-            twine upload --skip-existing -u $PYPI_USER -p $PYPI_PASSWORD dist/* wheelhouse/*
+            twine upload --skip-existing -u $PYPI_USER -p $PYPI_PASSWORD dist/*
 
 workflows:
   version: 2.1
@@ -102,9 +99,8 @@ workflows:
           filters:
             tags:
               ignore: /.*/
-      - manylinux:
-          context: Docker
-          filters:
+      - release:
+          filters:            
             tags:
               only: /.*/
             branches:
