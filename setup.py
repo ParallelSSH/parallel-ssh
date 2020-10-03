@@ -1,14 +1,14 @@
-# Copyright (C) 2014-2018 Panos Kittenis.
-
+# Copyright (C) 2014-2020 Panos Kittenis.
+#
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation, version 2.1.
-
+#
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
-
+#
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
@@ -37,7 +37,7 @@ setup(name='parallel-ssh',
                         '*.tests', '*.tests.*')
       ),
       install_requires=[
-          'gevent>=1.1', 'ssh2-python>=0.19.0', 'ssh-python>=0.6.0'],
+          'gevent>=1.1', 'ssh2-python>=0.22.0', 'ssh-python>=0.7.0'],
       classifiers=[
           'Development Status :: 5 - Production/Stable',
           'License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)',
