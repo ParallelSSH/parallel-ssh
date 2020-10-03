@@ -7,7 +7,7 @@ Change Log
 Changes
 --------
 
-See `Upgrading to API 2.0 <upgrade-link>`_ for examples of code that will need updating.
+See `Upgrading to API 2.0 <https://parallel-ssh.readthedocs.io/en/latest/api_upgrade_2_0.html>`_ for examples of code that will need updating.
 
 * Removed paramiko clients and dependency.
 * ``ParallelSSHClient.run_command`` now always returns a list of ``HostOutput`` - ``return_list`` argument is a no-op and may be removed.
