@@ -437,7 +437,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self._host_clients[(host_i, host)].scp_recv, host,
             remote_file, local_file, recurse=recurse)
 
-    def scp_send(self, local_file, remote_file, recurse=False):
+    def scp_send(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel via SCP.
 
         This function returns a list of greenlets which can be
@@ -469,9 +469,22 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :raises: :py:class:`pss.exceptions.SCPError` on errors copying file.
         :raises: :py:class:`OSError` on local OS errors like permission denied.
         """
-        return [self.pool.spawn(self._scp_send, host_i, host, local_file,
-                                remote_file, recurse=recurse)
-                for host_i, host in enumerate(self.hosts)]
+        copy_args = [{'local_file': local_file,
+                      'remote_file': remote_file}
+                     for i, host in enumerate(self.hosts)] \
+            if copy_args is None else copy_args
+        local_file = "%(local_file)s"
+        remote_file = "%(remote_file)s"
+        try:
+            return [self.pool.spawn(self._scp_send, host_i, host,
+                                    local_file % copy_args[host_i],
+                                    remote_file % copy_args[host_i],
+                                    recurse=recurse)
+                    for host_i, host in enumerate(self.hosts)]
+        except IndexError:
+            raise HostArgumentException(
+                "Number of per-host copy arguments provided does not match "
+                "number of hosts")
 
     def scp_recv(self, remote_file, local_file, recurse=False, copy_args=None,
                  suffix_separator='_'):

@@ -26,10 +26,10 @@ import shutil
 import sys
 import string
 import random
+from hashlib import sha256
 from datetime import datetime
 from platform import python_version
 
-from pytest import mark
 from gevent import joinall, spawn, socket, Greenlet, sleep
 from pssh.config import HostConfig
 from pssh.clients.native import ParallelSSHClient
@@ -1354,26 +1354,51 @@ class ParallelSSHClientTest(unittest.TestCase):
                 pass
 
     def test_scp_send(self):
-        test_file_data = 'test'
+        server2_host = '127.0.0.11'
+        server3_host = '127.0.0.12'
+        server2 = OpenSSHServer(server2_host, port=self.port)
+        server3 = OpenSSHServer(server3_host, port=self.port)
+        for server in (server2, server3):
+            server.start_server()
+        hosts = [self.host, server2_host, server3_host]
+        client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key, num_retries=1)
         local_filename = 'test_file'
-        remote_test_dir, remote_filepath = 'remote_test_dir', 'test_file_copy'
-        with open(local_filename, 'w') as file_h:
-            file_h.writelines([test_file_data + os.linesep])
-        remote_file_abspath = os.path.expanduser('~/' + remote_filepath)
-        cmds = self.client.scp_send(local_filename, remote_filepath)
+        remote_filepath = 'file_copy'
+        copy_args = [{
+            'local_file': local_filename,
+            'remote_file': 'host_%s_%s' % (n, remote_filepath)}
+                     for n in range(len(hosts))]
+        remote_file_names = [arg['remote_file'] for arg in copy_args]
+        sha = sha256()
+        with open(local_filename, 'wb') as file_h:
+            for _ in range(10000):
+                data = os.urandom(1024)
+                file_h.write(data)
+                sha.update(data)
+        source_file_sha = sha.hexdigest()
+        sha = sha256()
+        cmds = client.scp_send('%(local_file)s', '%(remote_file)s', copy_args=copy_args)
         try:
             joinall(cmds, raise_error=True)
         except Exception:
             raise
         else:
-            self.assertTrue(os.path.isfile(remote_file_abspath))
-            remote_contents = open(remote_file_abspath, 'rb').read()
-            local_contents = open(local_filename, 'rb').read()
-            self.assertEqual(local_contents, remote_contents)
+            sleep(.2)
+            for remote_file_name in remote_file_names:
+                remote_file_abspath = os.path.expanduser('~/' + remote_file_name)
+                self.assertTrue(os.path.isfile(remote_file_abspath))
+                with open(remote_file_abspath, 'rb') as remote_fh:
+                    for data in remote_fh:
+                        sha.update(data)
+                remote_file_sha = sha.hexdigest()
+                sha = sha256()
+                self.assertEqual(source_file_sha, remote_file_sha)
         finally:
             try:
                 os.unlink(local_filename)
-                os.unlink(remote_file_abspath)
+                for remote_file_name in remote_file_names:
+                    remote_file_abspath = os.path.expanduser('~/' + remote_file_name)
+                    os.unlink(remote_file_abspath)
             except OSError:
                 pass
 
