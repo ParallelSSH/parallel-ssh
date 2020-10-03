@@ -99,9 +99,8 @@ workflows:
           filters:
             tags:
               ignore: /.*/
-      - release:
-          filters:
-            
+      - release
+          # filters:            
           #   tags:
           #     only: /.*/
           #   branches:
