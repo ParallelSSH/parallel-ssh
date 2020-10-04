@@ -27,7 +27,6 @@ See `Upgrading to API 2.0 <https://parallel-ssh.readthedocs.io/en/latest/api_upg
 * Removed ``run_command(greenlet_timeout=<..>)`` argument - now uses global timeout setting.
 * Renamed ``run_command`` ``timeout`` to ``read_timeout=<seconds>)`` for setting output read timeout individually - defaults to global timeout setting.
 * Removed ``pssh.native`` package and native code.
-* No native code means package architecture has changed to ``none-any``.
 * ``ParallelSSHClient.scp_send`` now supports ``copy_args`` keyword argument for providing per-host file name arguments like rest of ``scp_*`` and ``copy_*`` functionality.
 
 
@@ -37,6 +36,12 @@ Fixes
 * Removed now unnecessary locking around SSHClient initialisation so it can be parallelised - #219.
 * ``ParallelSSHClient.join`` with encoding would not pass on encoding when reading from output buffers - #214.
 * Clients could raise ``Timeout`` early when timeout settings were used with many hosts.
+
+
+Packaging
+---------
+
+* Package architecture has changed to ``none-any``.
 
 
 1.13.0
