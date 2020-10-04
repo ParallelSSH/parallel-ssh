@@ -1402,6 +1402,26 @@ class ParallelSSHClientTest(unittest.TestCase):
             except OSError:
                 pass
 
+    def test_scp_send_exc(self):
+        client = ParallelSSHClient([self.host], pkey=self.user_key, num_retries=1)
+        def _scp_send(*args):
+            raise Exception
+        def _client_send(*args):
+            return client._handle_greenlet_exc(_scp_send, 'fake')
+        client._scp_send = _client_send
+        cmds = client.scp_send('local_file', 'remote_file')
+        self.assertRaises(Exception, joinall, cmds, raise_error=True)
+
+    def test_scp_recv_exc(self):
+        client = ParallelSSHClient([self.host], pkey=self.user_key, num_retries=1)
+        def _scp_recv(*args):
+            raise Exception
+        def _client_recv(*args):
+            return client._handle_greenlet_exc(_scp_recv, 'fake')
+        client._scp_recv = _client_recv
+        cmds = client.scp_recv('remote_file', 'local_file')
+        self.assertRaises(Exception, joinall, cmds, raise_error=True)
+
     def test_scp_recv_failure(self):
         cmds = self.client.scp_recv(
             'fakey fakey fake fake', 'equally fake')
