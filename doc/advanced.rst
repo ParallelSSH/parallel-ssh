@@ -512,6 +512,8 @@ Configurable per host Filenames
 
 File name arguments, for both local and remote files and for copying to and from remote hosts, can be configured on a per-host basis similarly to `host arguments <#per-host-cmds>`_ in ``run_command``.
 
+Example shown applies to all file copy functionality, all of ``scp_send``, ``scp_recv``, ``copy_file`` and ``copy_remote_file``.
+
 For example, to copy the local files ``['local_file_1', 'local_file_2']`` as remote files ``['remote_file_1', 'remote_file_2']`` on the two hosts ``['host1', 'host2']``
 
 .. code-block:: python
@@ -532,9 +534,9 @@ For example, to copy the local files ``['local_file_1', 'local_file_2']`` as rem
 
 The client will copy ``local_file_1`` to ``host1`` as ``remote_file_1`` and ``local_file_2`` to ``host2`` as ``remote_file_2``.
 
-Items in ``copy_args`` list may be tuples or dictionaries as shown above. Number of ``copy_args`` must match length of ``client.hosts`` if provided.
+Each item in ``copy_args`` list should be a dictionary as shown above. Number of ``copy_args`` must match length of ``client.hosts`` if provided or exception will be raised.
 
-``copy_remote_file`` may be used in the same manner to configure remote and local file names per host.
+``copy_remote_file``, ``scp_send`` and ``scp_recv`` may all be used in the same manner to configure remote and local file names per host.
 
 .. seealso::
 
