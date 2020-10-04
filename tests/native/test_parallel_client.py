@@ -1402,6 +1402,13 @@ class ParallelSSHClientTest(unittest.TestCase):
             except OSError:
                 pass
 
+    def test_scp_send_bad_copy_args(self):
+        client = ParallelSSHClient([self.host, self.host])
+        copy_args = [{'local_file': 'test', 'remote_file': 'test'}]
+        self.assertRaises(HostArgumentException,
+                          client.scp_send, '%(local_file)s', '%(remote_file)s',
+                          copy_args=copy_args)
+
     def test_scp_send_exc(self):
         client = ParallelSSHClient([self.host], pkey=self.user_key, num_retries=1)
         def _scp_send(*args):
