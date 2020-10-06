@@ -27,15 +27,13 @@ See also `pssh.clients.ParallelSSHClient` and pssh.clients.SSHClient`
 for class documentation.
 """
 
-# flake8: noqa: E402, F401, F402
 
-import logging
+from logging import getLogger, NullHandler
 from ._version import get_versions
 __version__ = get_versions()['version']
 del get_versions
 
-host_logger = logging.getLogger('pssh.host_logger')
-logger = logging.getLogger('pssh')
-if hasattr(logging, 'NullHandler'):
-    host_logger.addHandler(logging.NullHandler())
-    logger.addHandler(logging.NullHandler())
+host_logger = getLogger('pssh.host_logger')
+logger = getLogger('pssh')
+host_logger.addHandler(NullHandler())
+logger.addHandler(NullHandler())
