@@ -333,7 +333,7 @@ With this flag, the ``exception`` output attribute will contain the exception on
    .. code-block:: python
 
       host1: 0, None
-      host2: None, AuthenticationException <..>
+      host2: None, AuthenticationError <..>
 
 .. seealso::
 

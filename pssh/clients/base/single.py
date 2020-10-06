@@ -31,8 +31,8 @@ from gevent.select import poll
 
 from ..common import _validate_pkey_path
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-from ...exceptions import UnknownHostException, AuthenticationException, \
-    ConnectionErrorException
+from ...exceptions import UnknownHostError, AuthenticationError, \
+    ConnectionError
 from ...output import HostOutput
 
 
@@ -98,7 +98,7 @@ class BaseSSHClient(object):
                 sleep(self.retry_delay)
                 return self._auth_retry(retries=retries+1)
             msg = "Authentication error while connecting to %s:%s - %s"
-            raise AuthenticationException(msg, self.host, self.port, ex)
+            raise AuthenticationError(msg, self.host, self.port, ex)
 
     def disconnect(self):
         raise NotImplementedError
@@ -143,9 +143,9 @@ class BaseSSHClient(object):
             if retries < self.num_retries:
                 sleep(self.retry_delay)
                 return self._connect(host, port, retries=retries+1)
-            ex = UnknownHostException("Unknown host %s - %s - retry %s/%s",
-                                      host, str(ex.args[1]), retries,
-                                      self.num_retries)
+            ex = UnknownHostError("Unknown host %s - %s - retry %s/%s",
+                                  host, str(ex.args[1]), retries,
+                                  self.num_retries)
             ex.host = host
             ex.port = port
             raise ex
@@ -156,7 +156,7 @@ class BaseSSHClient(object):
                 sleep(self.retry_delay)
                 return self._connect(host, port, retries=retries+1)
             error_type = ex.args[1] if len(ex.args) > 1 else ex.args[0]
-            ex = ConnectionErrorException(
+            ex = ConnectionError(
                 "Error connecting to host '%s:%s' - %s - retry %s/%s",
                 host, port, str(error_type), retries,
                 self.num_retries,)
@@ -182,7 +182,7 @@ class BaseSSHClient(object):
                 logger.debug("Authentication succeeded with identity file %s",
                              identity_file)
                 return
-        raise AuthenticationException("No authentication methods succeeded")
+        raise AuthenticationError("No authentication methods succeeded")
 
     def _init_session(self, retries=1):
         raise NotImplementedError

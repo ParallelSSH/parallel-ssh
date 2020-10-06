@@ -30,7 +30,7 @@ from ssh.exceptions import EOF
 from ssh.error_codes import SSH_AGAIN
 
 from ..base.single import BaseSSHClient
-from ...exceptions import AuthenticationException, SessionError, Timeout
+from ...exceptions import AuthenticationError, SessionError, Timeout
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 
@@ -179,7 +179,7 @@ class SSHClient(BaseSSHClient):
         if self.identity_auth:
             try:
                 self._identity_auth()
-            except AuthenticationException:
+            except AuthenticationError:
                 if self.password is None:
                     raise
         logger.debug("Private key auth failed, trying password")
@@ -187,11 +187,11 @@ class SSHClient(BaseSSHClient):
 
     def _password_auth(self):
         if not self.password:
-            raise AuthenticationException("All authentication methods failed")
+            raise AuthenticationError("All authentication methods failed")
         try:
             self.session.userauth_password(self.password)
         except Exception as ex:
-            raise AuthenticationException("Password authentication failed - %s", ex)
+            raise AuthenticationError("Password authentication failed - %s", ex)
 
     def _pkey_auth(self, pkey, password=None):
         password = b'' if not password else password

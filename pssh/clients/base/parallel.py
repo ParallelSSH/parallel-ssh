@@ -25,7 +25,7 @@ from gevent import joinall, spawn, Timeout as GTimeout
 from gevent.hub import Hub
 
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-from ...exceptions import HostArgumentException, Timeout
+from ...exceptions import HostArgumentError, Timeout
 from ...output import HostOutput
 
 
@@ -92,7 +92,7 @@ class BaseParallelSSHClient(object):
                     *args, **kwargs)
                         for host_i, host in enumerate(self.hosts)]
             except IndexError:
-                raise HostArgumentException(
+                raise HostArgumentError(
                     "Number of host arguments provided does not match "
                     "number of hosts ")
         else:
@@ -328,7 +328,7 @@ class BaseParallelSSHClient(object):
         :param copy_args: (Optional) format local_file and remote_file strings
           with per-host arguments in ``copy_args``. ``copy_args`` length must
           equal length of host list -
-          :py:class:`pssh.exceptions.HostArgumentException` is raised otherwise
+          :py:class:`pssh.exceptions.HostArgumentError` is raised otherwise
         :type copy_args: tuple or list
 
         :rtype: List(:py:class:`gevent.Greenlet`) of greenlets for remote copy
@@ -336,7 +336,7 @@ class BaseParallelSSHClient(object):
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           local_file and recurse is not set
-        :raises: :py:class:`pssh.exceptions.HostArgumentException` on number of
+        :raises: :py:class:`pssh.exceptions.HostArgumentError` on number of
           per-host copy arguments not equal to number of hosts
         :raises: :py:class:`IOError` on I/O errors writing files
         :raises: :py:class:`OSError` on OS errors like permission denied
@@ -355,7 +355,7 @@ class BaseParallelSSHClient(object):
                                         {'recurse': recurse})
                         for host_i, host in enumerate(self.hosts)]
             except IndexError:
-                raise HostArgumentException(
+                raise HostArgumentError(
                     "Number of per-host copy arguments provided does not match "
                     "number of hosts")
         else:
@@ -412,13 +412,13 @@ class BaseParallelSSHClient(object):
         :param copy_args: (Optional) Format remote_file and local_file strings
           with per-host arguments in ``copy_args``. ``copy_args`` length must
           equal length of host list -
-          :py:class:`pssh.exceptions.HostArgumentException` is raised otherwise
+          :py:class:`pssh.exceptions.HostArgumentError` is raised otherwise
         :type copy_args: tuple or list
         :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy
           commands
         :raises: :py:class:`ValueError` when a directory is supplied to
           local_file and recurse is not set
-        :raises: :py:class:`pssh.exceptions.HostArgumentException` on number of
+        :raises: :py:class:`pssh.exceptions.HostArgumentError` on number of
           per-host copy arguments not equal to number of hosts
         :raises: :py:class:`IOError` on I/O errors writing files
         :raises: :py:class:`OSError` on OS errors like permission denied
@@ -440,7 +440,7 @@ class BaseParallelSSHClient(object):
                     local_file % copy_args[host_i], recurse=recurse, **kwargs)
                     for host_i, host in enumerate(self.hosts)]
             except IndexError:
-                raise HostArgumentException(
+                raise HostArgumentError(
                     "Number of per-host copy arguments provided does not match "
                     "number of hosts")
         else:

@@ -28,6 +28,8 @@ See `Upgrading to API 2.0 <https://parallel-ssh.readthedocs.io/en/latest/api_upg
 * Renamed ``run_command`` ``timeout`` to ``read_timeout=<seconds>)`` for setting output read timeout individually - defaults to global timeout setting.
 * Removed ``pssh.native`` package and native code.
 * ``ParallelSSHClient.scp_send`` now supports ``copy_args`` keyword argument for providing per-host file name arguments like rest of ``scp_*`` and ``copy_*`` functionality.
+* Changed exception names to end in ``Error`` from ``Exception`` - backwards compatible.
+* ``UnknownHostException``, ``AuthenticationException``, ``ConnectionErrorException``, ``SSHException`` no longer available as imports ``from pssh`` - use ``from pssh.exceptions``.
 
 
 Fixes
