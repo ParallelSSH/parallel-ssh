@@ -25,7 +25,7 @@ from .tunnel import Tunnel
 from ..common import _validate_pkey_path
 from ..base.parallel import BaseParallelSSHClient
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-from ...exceptions import ProxyError, Timeout, HostArgumentException
+from ...exceptions import ProxyError, Timeout, HostArgumentError
 
 
 logger = logging.getLogger(__name__)
@@ -181,7 +181,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type use_pty: bool
         :param host_args: (Optional) Format command string with per-host
           arguments in ``host_args``. ``host_args`` length must equal length of
-          host list - :py:class:`pssh.exceptions.HostArgumentException` is
+          host list - :py:class:`pssh.exceptions.HostArgumentError` is
           raised otherwise
         :type host_args: tuple or list
         :param encoding: Encoding to use for output. Must be valid
@@ -204,13 +204,13 @@ class ParallelSSHClient(BaseParallelSSHClient):
           :py:class:`pssh.output.HostOutput` as value
           *or* list(:py:class:`pssh.output.HostOutput`) when
           ``return_list=True``
-        :raises: :py:class:`pssh.exceptions.AuthenticationException` on
+        :raises: :py:class:`pssh.exceptions.AuthenticationError` on
           authentication error
-        :raises: :py:class:`pssh.exceptions.UnknownHostException` on DNS
+        :raises: :py:class:`pssh.exceptions.UnknownHostError` on DNS
           resolution error
-        :raises: :py:class:`pssh.exceptions.ConnectionErrorException` on error
+        :raises: :py:class:`pssh.exceptions.ConnectionError` on error
           connecting
-        :raises: :py:class:`pssh.exceptions.HostArgumentException` on number of
+        :raises: :py:class:`pssh.exceptions.HostArgumentError` on number of
           host arguments not equal to number of hosts
         :raises: :py:class:`TypeError` on not enough host arguments for cmd
           string format
@@ -328,7 +328,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param copy_args: (Optional) format local_file and remote_file strings
           with per-host arguments in ``copy_args``. ``copy_args`` length must
           equal length of host list -
-          :py:class:`pssh.exceptions.HostArgumentException` is raised otherwise
+          :py:class:`pssh.exceptions.HostArgumentError` is raised otherwise
         :type copy_args: tuple or list
 
         :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy
@@ -336,7 +336,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           local_file and recurse is not set
-        :raises: :py:class:`pssh.exceptions.HostArgumentException` on number of
+        :raises: :py:class:`pssh.exceptions.HostArgumentError` on number of
           per-host copy arguments not equal to number of hosts
         :raises: :py:class:`pss.exceptions.SFTPError` on SFTP initialisation
           errors
@@ -393,7 +393,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param copy_args: (Optional) format remote_file and local_file strings
           with per-host arguments in ``copy_args``.   ``copy_args`` length must
           equal length of host list -
-          :py:class:`pssh.exceptions.HostArgumentException` is raised otherwise
+          :py:class:`pssh.exceptions.HostArgumentError` is raised otherwise
         :type copy_args: tuple or list
         :param encoding: Encoding to use for file paths.
         :type encoding: str
@@ -403,7 +403,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           local_file and recurse is not set
-        :raises: :py:class:`pssh.exceptions.HostArgumentException` on number of
+        :raises: :py:class:`pssh.exceptions.HostArgumentError` on number of
           per-host copy arguments not equal to number of hosts
         :raises: :py:class:`pss.exceptions.SFTPError` on SFTP initialisation
           errors
@@ -482,7 +482,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                                     recurse=recurse)
                     for host_i, host in enumerate(self.hosts)]
         except IndexError:
-            raise HostArgumentException(
+            raise HostArgumentError(
                 "Number of per-host copy arguments provided does not match "
                 "number of hosts")
 
@@ -528,7 +528,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param copy_args: (Optional) format remote_file and local_file strings
           with per-host arguments in ``copy_args``. ``copy_args`` length *must*
           equal length of host list -
-          :py:class:`pssh.exceptions.HostArgumentException` is raised otherwise
+          :py:class:`pssh.exceptions.HostArgumentError` is raised otherwise
         :type copy_args: tuple or list
 
         :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy
@@ -536,7 +536,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           local_file and recurse is not set.
-        :raises: :py:class:`pssh.exceptions.HostArgumentException` on number of
+        :raises: :py:class:`pssh.exceptions.HostArgumentError` on number of
           per-host copy arguments not equal to number of hosts.
         :raises: :py:class:`pss.exceptions.SCPError` on errors copying file.
         :raises: :py:class:`OSError` on local OS errors like permission denied.
@@ -563,6 +563,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 local_file % copy_args[host_i], recurse=recurse)
                     for host_i, host in enumerate(self.hosts)]
         except IndexError:
-            raise HostArgumentException(
+            raise HostArgumentError(
                 "Number of per-host copy arguments provided does not match "
                 "number of hosts")

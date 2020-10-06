@@ -173,7 +173,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type use_pty: bool
         :param host_args: (Optional) Format command string with per-host
           arguments in ``host_args``. ``host_args`` length must equal length of
-          host list - :py:class:`pssh.exceptions.HostArgumentException` is
+          host list - :py:class:`pssh.exceptions.HostArgumentError` is
           raised otherwise
         :type host_args: tuple or list
         :param encoding: Encoding to use for output. Must be valid
@@ -207,13 +207,13 @@ class ParallelSSHClient(BaseParallelSSHClient):
           :py:class:`pssh.output.HostOutput` as value as per
           :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
 
-        :raises: :py:class:`pssh.exceptions.AuthenticationException` on
+        :raises: :py:class:`pssh.exceptions.AuthenticationError` on
           authentication error
-        :raises: :py:class:`pssh.exceptions.UnknownHostException` on DNS
+        :raises: :py:class:`pssh.exceptions.UnknownHostError` on DNS
           resolution error
-        :raises: :py:class:`pssh.exceptions.ConnectionErrorException` on error
+        :raises: :py:class:`pssh.exceptions.ConnectionError` on error
           connecting
-        :raises: :py:class:`pssh.exceptions.HostArgumentException` on number of
+        :raises: :py:class:`pssh.exceptions.HostArgumentError` on number of
           host arguments not equal to number of hosts
         :raises: :py:class:`TypeError` on not enough host arguments for cmd
           string format
@@ -223,9 +223,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
           to proxy if a proxy host has been set.
         :raises: :py:class:`gevent.Timeout` on greenlet timeout. Gevent timeout
           can not be caught by ``stop_on_errors=False``.
-        :raises: Exceptions from :py:mod:`ssh2.exceptions` for all other
-          specific errors such as
-          :py:class:`ssh2.exceptions.SocketDisconnectError` et al.
+        :raises: Exceptions from :py:mod:`ssh.exceptions` for all other
+          specific errors.
         """
         return BaseParallelSSHClient.run_command(
             self, command, stop_on_errors=stop_on_errors, host_args=host_args,
