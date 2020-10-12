@@ -15,3 +15,4 @@ API Documentation
    tunnel
    utils
    exceptions
+   constants

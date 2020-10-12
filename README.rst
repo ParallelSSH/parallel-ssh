@@ -66,18 +66,16 @@ Run ``uname`` on two remote hosts in parallel.
       Linux
 
 **************
-Native client
+Native clients
 **************
 
-Starting from version ``1.2.0``, the default client in ``parallel-ssh`` has changed to the native client which offers much greater performance and reduced overhead.
+Starting from version ``1.2.0``, the default client in ``parallel-ssh`` has changed to a native client based on ``ssh2-python`` - ``libssh2`` C library - which offers much greater performance and reduced overhead compared to other Python SSH libraries.
 
-The new default client is based on ``libssh2`` via the ``ssh2-python`` extension library and supports non-blocking mode natively. Binary wheel packages with ``libssh2`` included are provided for Linux, OSX and Windows platforms and all supported Python versions.
+See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of different Python SSH libraries.
 
-See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of the available clients.
+An alternative client based on ``ssh-python`` (``libssh``) is also available. See `documentation <http://parallel-ssh.readthedocs.io/en/latest/clients.html>`_ for a feature comparison of the available clients in the library.
 
-The paramiko based client under ``pssh.clients.miko`` and the old ``pssh.pssh_client`` imports will be **removed** on the release of ``2.0.0``.
-
-See `documentation <http://parallel-ssh.readthedocs.io/en/latest/ssh2.html>`_ for a feature comparison of the two clients.
+``parallel-ssh`` makes use of clients and an event loop solely based on C libraries providing native code levels of performance and stability with an easy to use Python API.
 
 
 ****************************
@@ -86,7 +84,7 @@ Native Code Client Features
 
 * Highest performance and least overhead of any Python SSH library
 * Thread safe - makes use of native threads for CPU bound calls like authentication
-* Natively non-blocking utilising ``libssh2`` via ``ssh2-python`` - **no monkey patching of the Python standard library**
+* Natively non-blocking utilising ``libssh2`` via ``ssh2-python``
 * Significantly reduced overhead in CPU and memory usage
 
 
@@ -181,7 +179,7 @@ To log output without having to iterate over output generators, the ``consume_ou
 SCP
 ****
 
-SCP is supported - native clients only - and provides the best performance for file copying.
+SCP is supported - native client only - and provides the best performance for file copying.
 
 Unlike with the SFTP functionality, remote files that already exist are *not* overwritten and an exception is raised instead.
 
@@ -199,14 +197,13 @@ To copy a local file to remote hosts in parallel with SCP:
   cmds = client.scp_send('../test', 'test_dir/test')
   joinall(cmds, raise_error=True)
 
-
-See also documentation for SCP recv.
+See `SFTP and SCP documentation <http://parallel-ssh.readthedocs.io/en/latest/advanced.html#sftp-scp>`_ for more examples.
 
 
 SFTP
 *****
 
-SFTP is supported natively. In the case of the deprecated paramiko clients, several bugs exist with SFTP performance and behaviour - avoid if at all possible.
+SFTP is supported in the native client.
 
 To copy a local file to remote hosts in parallel:
 
@@ -230,16 +227,18 @@ To copy a local file to remote hosts in parallel:
 
 There is similar capability to copy remote files to local ones suffixed with the host's name with the ``copy_remote_file`` function.
 
+In addition, per-host configurable file name functionality is provided for both SFTP and SCP  - see `documentation <http://parallel-ssh.readthedocs.io/en/latest/advanced.html#copy-args>`_.
+
 Directory recursion is supported in both cases via the ``recurse`` parameter - defaults to off.
 
-See `SFTP documentation <http://parallel-ssh.readthedocs.io/en/latest/advanced.html#sftp>`_ for more examples.
+See `SFTP and SCP documentation <http://parallel-ssh.readthedocs.io/en/latest/advanced.html#sftp-scp>`_ for more examples.
 
 
 *****************
 Design And Goals
 *****************
 
-``parallel-ssh``'s design goals and motivation are to provide a *library* for running *non-blocking* asynchronous SSH commands in parallel with little to no load induced on the system by doing so with the intended usage being completely programmatic and non-interactive.
+``parallel-ssh``'s design goals and motivation are to provide a *library* for running *non-blocking* asynchronous SSH commands in parallel and on single hosts with little to no load induced on the system by doing so with the intended usage being completely programmatic and non-interactive.
 
 To meet these goals, API driven solutions are preferred first and foremost. This frees up developers to drive the library via any method desired, be that environment variables, CI driven tasks, command line tools, existing OpenSSH or new configuration files, from within an application et al.
 
@@ -258,12 +257,12 @@ The default SSH client library in ``parallel-ssh`` <=``1.6.x`` series.
 
 Pure Python code, while having native extensions as dependencies, with poor performance and numerous bugs compared to both OpenSSH binaries and the ``libssh2`` based native clients in ``parallel-ssh`` ``1.2.x`` and above. Recent versions have regressed in performance and have `blocker issues <https://github.com/ParallelSSH/parallel-ssh/issues/83>`_.
 
-It does not support non-blocking mode, so to make it non-blocking monkey patching must be used which affects all other uses of the Python standard library. However, some functionality like Kerberos (GSS-API) authentication is not currently provided by other libraries.
+It does not support non-blocking mode, so to make it non-blocking monkey patching must be used which affects all other uses of the Python standard library.
 
 asyncssh
 ________
 
-Python 3 only ``asyncio`` framework using client library. License (`EPL`) is not compatible with GPL, BSD or other open source licenses and `combined works cannot be distributed <https://www.eclipse.org/legal/eplfaq.php#USEINANOTHER>`_.
+Pure Python ``asyncio`` framework using client library. License (`EPL`) is not compatible with GPL, BSD or other open source licenses and `combined works cannot be distributed <https://www.eclipse.org/legal/eplfaq.php#USEINANOTHER>`_.
 
 Therefore unsuitable for use in many projects, including ``parallel-ssh``.
 
@@ -292,7 +291,7 @@ Again similar to Fabric, its intended and documented use is interactive via comm
 ssh2-python
 ___________
 
-Wrapper to ``libssh2`` C library. Used by ``parallel-ssh`` as of ``1.2.0`` and is by same author.
+Bindings for ``libssh2`` C library. Used by ``parallel-ssh`` as of ``1.2.0`` and is by same author.
 
 Does not do parallelisation out of the box but can be made parallel via Python's ``threading`` library relatively easily and as it is a wrapper to a native library that releases Python's GIL, can scale to multiple cores.
 
@@ -305,6 +304,15 @@ In addition, ``parallel-ssh`` uses native threads to offload CPU blocked tasks l
 Out of all the available Python SSH libraries, ``libssh2`` and ``ssh2-python`` have been shown, see benchmarks above, to perform the best with the least resource utilisation and ironically for a native code extension the least amount of dependencies. Only ``libssh2`` C library and its dependencies which are included in binary wheels.
 
 However, it lacks support for some SSH features present elsewhere like GSS-API and certificate authentication.
+
+ssh-python
+----------
+
+Bindings for ``libssh`` C library. A client option in ``parallel-ssh``, same author. Similar performance to ssh2-python above.
+
+For non-blocking use, only certain functions are supported. SCP/SFTP in particular cannot be used in non-blocking mode, nor can tunnels.
+
+Supports more authentication options compared to ``ssh2-python`` like GSS-API (Kerberos) and certificate authentication.
 
 
 ********
