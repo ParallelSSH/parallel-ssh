@@ -20,7 +20,8 @@
 
 
 DEFAULT_RETRIES = 3
-"""Default number of retry attempts for SSH client initialisation - authentication, establishing connections et al."""
+"""Default number of retry attempts for SSH client initialisation - authentication, establishing
+connections et al."""
 
 
 RETRY_DELAY = 5
