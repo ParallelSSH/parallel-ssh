@@ -19,29 +19,44 @@
 """Exceptions raised by parallel-ssh classes."""
 
 
-class UnknownHostException(Exception):
+class UnknownHostError(Exception):
     """Raised when a host is unknown (dns failure)"""
     pass
 
 
-class ConnectionErrorException(Exception):
+UnknownHostException = UnknownHostError
+
+
+class ConnectionError(Exception):
     """Raised on error connecting (connection refused/timed out)"""
     pass
 
 
-class AuthenticationException(Exception):
+ConnectionErrorException = ConnectionError
+
+
+class AuthenticationError(Exception):
     """Raised on authentication error (user/password/ssh key error)"""
     pass
 
 
-class SSHException(Exception):
-    """Raised on SSHException error - error authenticating with SSH server"""
+AuthenticationException = AuthenticationError
+
+
+class SSHError(Exception):
+    """Raised on error authenticating with SSH server"""
     pass
 
 
-class HostArgumentException(Exception):
+SSHException = SSHError
+
+
+class HostArgumentError(Exception):
     """Raised on errors with per-host arguments to parallel functions"""
     pass
+
+
+HostArgumentException = HostArgumentError
 
 
 class SessionError(Exception):
