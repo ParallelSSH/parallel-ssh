@@ -452,6 +452,8 @@ Stderr is empty:
 
 No output from ``stderr``.
 
+.. _sftp-scp:
+
 SFTP and SCP
 *************
 
@@ -506,6 +508,8 @@ Copying remote files in parallel requires that file names are de-duplicated othe
    joinall(greenlets, raise_error=True)
 
 The above will create files ``local.file_host1`` where ``host1`` is the host name the file was copied from.
+
+.. _copy-args:
 
 Configurable per host Filenames
 =================================
