@@ -25,13 +25,14 @@ from gevent import sleep, spawn, Timeout as GTimeout, joinall
 from gevent.select import POLLIN, POLLOUT
 from ssh import options
 from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
-from ssh.key import import_privkey_file
+from ssh.key import import_privkey_file, import_cert_file, copy_cert_to_privkey
 from ssh.exceptions import EOF
 from ssh.error_codes import SSH_AGAIN
 
 from ..base.single import BaseSSHClient
 from ...exceptions import AuthenticationError, SessionError, Timeout
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
+from ...common import _validate_pkey_path
 
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ class SSHClient(BaseSSHClient):
     def __init__(self, host,
                  user=None, password=None, port=None,
                  pkey=None,
+                 cert_file=None,
                  num_retries=DEFAULT_RETRIES,
                  retry_delay=RETRY_DELAY,
                  allow_agent=True, timeout=None,
@@ -64,6 +66,12 @@ class SSHClient(BaseSSHClient):
           be either absolute path or relative to user home directory
           like ``~/<path>``.
         :type pkey: str
+        :param cert_file: Public key signed certificate file to use for
+          authentication. The corresponding private key must also be provided
+          via ``pkey`` parameter.
+          For example ``pkey='id_rsa',cert_file='id_rsa-cert.pub'`` for RSA
+          signed certificate.
+          Path must be absolute or relative to user home directory.
         :param num_retries: (Optional) Number of connection and authentication
           attempts before the client gives up. Defaults to 3.
         :type num_retries: int
@@ -96,6 +104,7 @@ class SSHClient(BaseSSHClient):
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
         """
+        self.cert_file = _validate_pkey_path(cert_file, host)
         self.gssapi_auth = gssapi_auth
         self.gssapi_server_identity = gssapi_server_identity
         self.gssapi_client_identity = gssapi_client_identity
@@ -194,9 +203,16 @@ class SSHClient(BaseSSHClient):
             raise AuthenticationError("Password authentication failed - %s", ex)
 
     def _pkey_auth(self, pkey, password=None):
-        password = b'' if not password else password
         pkey = import_privkey_file(pkey, passphrase=password)
+        if self.cert_file is not None:
+            self._import_cert_file(pkey)
         self.session.userauth_publickey(pkey)
+
+    def _import_cert_file(self, pkey):
+        cert_file = import_cert_file(self.cert_file)
+        self.session.userauth_try_publickey(cert_key)
+        copy_cert_to_privkey(cert_file, pkey)
+        logger.debug("Imported certificate file %s for pkey %s", self.cert_file, self.pkey)
 
     def open_session(self):
         """Open new channel from session."""
