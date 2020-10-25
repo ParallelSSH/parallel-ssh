@@ -37,8 +37,9 @@ extensions = [
     # 'sphinx.ext.viewcode',
 ]
 
-intersphinx_mapping = {'paramiko': ('http://paramiko-docs.readthedocs.io/en/stable/', None),
-                       'gevent': ('http://www.gevent.org', None),
+intersphinx_mapping = {'ssh2-python': ('https://ssh2-python.readthedocs.io/en/latest/', None),
+                       'ssh-python': ('https://ssh-python.readthedocs.io/en/latest/', None),
+                       'gevent': ('https://www.gevent.org', None),
                        'python': ('https://docs.python.org/2', None),
                        }
 
