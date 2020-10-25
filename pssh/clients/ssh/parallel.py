@@ -30,6 +30,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
     """ssh-python based parallel client."""
 
     def __init__(self, hosts, user=None, password=None, port=22, pkey=None,
+                 cert_file=None,
                  num_retries=DEFAULT_RETRIES, timeout=None, pool_size=100,
                  allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
                  forward_ssh_agent=False,
@@ -52,6 +53,13 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param pkey: Private key file path to use. Path must be either absolute
           path or relative to user home directory like ``~/<path>``.
         :type pkey: str
+        :param cert_file: Public key signed certificate file to use for
+          authentication. The corresponding private key must also be provided
+          via ``pkey`` parameter.
+          For example ``pkey='id_rsa',cert_file='id_rsa-cert.pub'`` for RSA
+          signed certificate.
+          Path must be absolute or relative to user home directory.
+        :type cert_file: str
         :param num_retries: (Optional) Number of connection and authentication
           attempts before the client gives up. Defaults to 3.
         :type num_retries: int
@@ -126,6 +134,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             host_config=host_config, retry_delay=retry_delay,
             identity_auth=identity_auth)
         self.pkey = _validate_pkey_path(pkey)
+        self.cert_file = _validate_pkey_path(cert_file)
         self.forward_ssh_agent = forward_ssh_agent
         self.gssapi_auth = gssapi_auth
         self.gssapi_server_identity = gssapi_server_identity
@@ -243,7 +252,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 host_i, host)
             _client = SSHClient(
                 host, user=_user, password=_password, port=_port,
-                pkey=_pkey, num_retries=self.num_retries,
+                pkey=_pkey,
+                cert_file=self.cert_file,
+                num_retries=self.num_retries,
                 timeout=self.timeout,
                 allow_agent=self.allow_agent, retry_delay=self.retry_delay,
                 gssapi_auth=self.gssapi_auth,

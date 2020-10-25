@@ -20,6 +20,7 @@ import socket
 import random
 import string
 import logging
+import pwd
 from threading import Thread
 from subprocess import Popen
 from time import sleep
@@ -36,9 +37,12 @@ DIR_NAME = os.path.dirname(__file__)
 PDIR_NAME = os.path.dirname(DIR_NAME)
 PPDIR_NAME = os.path.dirname(PDIR_NAME)
 SERVER_KEY = os.path.abspath(os.path.sep.join([DIR_NAME, 'rsa.key']))
+CA_HOST_KEY = os.path.abspath(os.path.sep.join([DIR_NAME, 'ca_host_key']))
 SSHD_CONFIG_TMPL = os.path.abspath(os.path.sep.join(
     [DIR_NAME, 'sshd_config.tmpl']))
 SSHD_CONFIG = os.path.abspath(os.path.sep.join([DIR_NAME, 'sshd_config']))
+PRINCIPALS_TMPL = os.path.abspath(os.path.sep.join([DIR_NAME, 'principals.tmpl']))
+PRINCIPALS = os.path.abspath(os.path.sep.join([DIR_NAME, 'principals']))
 
 
 class OpenSSHServer(object):
@@ -56,11 +60,13 @@ class OpenSSHServer(object):
     def _fix_masks(self):
         _mask = int('0600') if version_info <= (2,) else 0o600
         dir_mask = int('0755') if version_info <= (2,) else 0o755
-        os.chmod(SERVER_KEY, _mask)
+        for _file in [SERVER_KEY, CA_HOST_KEY]:
+            os.chmod(_file, _mask)
         for _dir in [DIR_NAME, PDIR_NAME, PPDIR_NAME]:
             os.chmod(_dir, dir_mask)
 
     def make_config(self):
+        user = pwd.getpwuid(os.geteuid()).pw_name
         with open(SSHD_CONFIG_TMPL) as fh:
             tmpl = fh.read()
         template = Template(tmpl)
@@ -69,6 +75,12 @@ class OpenSSHServer(object):
                                      listen_ip=self.listen_ip,
                                      random_server=self.random_server,
             ))
+            fh.write(os.linesep)
+        with open(PRINCIPALS_TMPL) as fh:
+            _princ_tmpl = fh.read()
+        princ_tmpl = Template(_princ_tmpl)
+        with open(PRINCIPALS, 'w') as fh:
+            fh.write(princ_tmpl.render(user=user))
             fh.write(os.linesep)
 
     def start_server(self):

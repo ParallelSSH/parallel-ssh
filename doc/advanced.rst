@@ -99,6 +99,25 @@ GSS authentication allows logins using Windows LDAP configured user accounts via
 ``ssh-python`` :py:class:`ParallelSSHClient <pssh.clients.ssh.parallel.ParallelSSHClient>` only.
 
 
+Certificate authentication
+--------------------------
+
+In the ``pssh.clients.ssh`` clients, certificate authentication is supported.
+
+.. code-block:: python
+
+   from pssh.clients.ssh import ParallelSSHClient
+
+   client = ParallelSSHClient(hosts, pkey='id_rsa', cert_file='id_rsa-cert.pub')
+
+
+Where ``id_rsa-cert.pub`` is an RSA signed certificate file for the ``id_rsa`` private key.
+
+Both private key and corresponding signed public certificate file must be provided.
+
+``ssh-python`` :py:mod:`ParallelSSHClient <pssh.clients.ssh>` clients only.
+
+
 Tunnelling
 **********
 

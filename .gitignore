@@ -44,3 +44,6 @@ pypy
 
 # Documentation builds
 doc/_build
+
+tests/unit_test_cert_key-cert.pub
+tests/embedded_server/principals

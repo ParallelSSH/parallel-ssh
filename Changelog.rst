@@ -1,6 +1,14 @@
 Change Log
 ============
 
+2.1.0
++++++
+
+Changes
+-------
+
+* Added certificate authentication support for the ``pssh.clients.ssh`` clients.
+
 2.0.0
 +++++
 
