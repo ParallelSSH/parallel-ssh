@@ -3,6 +3,10 @@ UsePAM no
 HostbasedAuthentication no
 IgnoreUserKnownHosts yes
 ListenAddress {{listen_ip}}
+HostKey {{parent_dir}}/ca_host_key
+HostCertificate {{parent_dir}}/ca_host_key-cert.pub
+TrustedUserCAKeys {{parent_dir}}/ca_user_key.pub
+AuthorizedPrincipalsFile {{parent_dir}}/principals
 
 AcceptEnv LANG LC_*
 Subsystem sftp internal-sftp

@@ -17,7 +17,7 @@
 
 import unittest
 import os
-import pwd
+import subprocess
 from datetime import datetime
 from sys import version_info
 
@@ -29,7 +29,8 @@ from pssh.exceptions import UnknownHostException, \
     ProxyError, PKeyFileError
 from pssh.clients.ssh.parallel import ParallelSSHClient
 
-from .base_ssh_case import PKEY_FILENAME, PUB_FILE
+from .base_ssh_case import PKEY_FILENAME, PUB_FILE, USER_CERT_PRIV_KEY, \
+    USER_CERT_PUB_KEY, USER_CERT_FILE, CA_USER_KEY, USER, sign_cert
 from ..embedded_server.openssh import OpenSSHServer
 
 
@@ -38,7 +39,9 @@ class LibSSHParallelTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         _mask = int('0600') if version_info <= (2,) else 0o600
-        os.chmod(PKEY_FILENAME, _mask)
+        for _file in [PKEY_FILENAME, USER_CERT_PRIV_KEY, CA_USER_KEY]:
+            os.chmod(_file, _mask)
+        sign_cert()
         cls.host = '127.0.0.1'
         cls.port = 2422
         cls.server = OpenSSHServer(listen_ip=cls.host, port=cls.port)
@@ -47,7 +50,9 @@ class LibSSHParallelTest(unittest.TestCase):
         cls.resp = u'me'
         cls.user_key = PKEY_FILENAME
         cls.user_pub_key = PUB_FILE
-        cls.user = pwd.getpwuid(os.geteuid()).pw_name
+        cls.cert_pkey = USER_CERT_PRIV_KEY
+        cls.cert_file = USER_CERT_FILE
+        cls.user = USER
         # Single client for all tests ensures that the client does not do
         # anything that causes server to disconnect the session and
         # affect all subsequent uses of the same session.
@@ -432,6 +437,15 @@ class LibSSHParallelTest(unittest.TestCase):
         self.assertRaises(Timeout, client.join, output, timeout=1, consume_output=True)
         for host_out in output:
             self.assertFalse(host_out.client.finished(host_out.channel))
+
+    def test_cert_auth(self):
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.cert_pkey,
+                                   cert_file=self.cert_file)
+        output = client.run_command(self.cmd)
+        client.join(output)
+        resp = list(output[0].stdout)
+        self.assertListEqual(resp, [self.resp])
 
     # def test_multiple_run_command_timeout(self):
     #     client = ParallelSSHClient([self.host], port=self.port,

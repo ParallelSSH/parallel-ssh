@@ -32,7 +32,7 @@ from ssh.error_codes import SSH_AGAIN
 from ..base.single import BaseSSHClient
 from ...exceptions import AuthenticationError, SessionError, Timeout
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-from ...common import _validate_pkey_path
+from ..common import _validate_pkey_path
 
 
 logger = logging.getLogger(__name__)
@@ -72,6 +72,7 @@ class SSHClient(BaseSSHClient):
           For example ``pkey='id_rsa',cert_file='id_rsa-cert.pub'`` for RSA
           signed certificate.
           Path must be absolute or relative to user home directory.
+        :type cert_file: str
         :param num_retries: (Optional) Number of connection and authentication
           attempts before the client gives up. Defaults to 3.
         :type num_retries: int
@@ -205,13 +206,14 @@ class SSHClient(BaseSSHClient):
     def _pkey_auth(self, pkey, password=None):
         pkey = import_privkey_file(pkey, passphrase=password)
         if self.cert_file is not None:
+            logger.debug("Certificate file set - trying certificate authentication")
             self._import_cert_file(pkey)
         self.session.userauth_publickey(pkey)
 
     def _import_cert_file(self, pkey):
-        cert_file = import_cert_file(self.cert_file)
+        cert_key = import_cert_file(self.cert_file)
         self.session.userauth_try_publickey(cert_key)
-        copy_cert_to_privkey(cert_file, pkey)
+        copy_cert_to_privkey(cert_key, pkey)
         logger.debug("Imported certificate file %s for pkey %s", self.cert_file, self.pkey)
 
     def open_session(self):
