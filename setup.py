@@ -31,6 +31,7 @@ setup(name='parallel-ssh',
       author='Panos Kittenis',
       author_email='zuboci@yandex.com',
       url="https://github.com/ParallelSSH/parallel-ssh",
+      license='LGPLv2.1',
       packages=find_packages(
           '.', exclude=('embedded_server', 'embedded_server.*',
                         'tests', 'tests.*',
