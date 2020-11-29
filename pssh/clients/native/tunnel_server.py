@@ -18,6 +18,7 @@
 import logging
 
 from gevent import socket, spawn, joinall, get_hub, sleep, Timeout as GTimeout
+from gevent.pool import Pool
 from gevent.server import StreamServer
 from gevent.select import poll, select, POLLIN, POLLOUT
 from ssh2.session import Session, LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND
@@ -32,12 +33,12 @@ logger = logging.getLogger(__name__)
 
 class TunnelServer(StreamServer):
 
-    def __init__(self, client):
+    def __init__(self, client, timeout=0.1):
         StreamServer.__init__(self, ('127.0.0.1', 0), self.read_rw)
         self.client = client
         self.session = client.session
         self._retries = DEFAULT_RETRIES
-        # logger.debug("Started server on %s")
+        self.timeout = timeout
 
     def read_rw(self, socket, address):
         logger.debug("Client connected, forwarding %s:%s on"
@@ -52,12 +53,40 @@ class TunnelServer(StreamServer):
                          self.client.host, self.client.port, ex)
             self.exception = ex
             return
-        source = spawn(self._read_forward_sock, socket, channel)
-        dest = spawn(self._read_channel, socket, channel)
-        logger.debug("Waiting for read/write greenlets")
-        self._source_let = source
-        self._dest_let = dest
-        self._wait_send_receive_lets(source, dest, channel, socket)
+        events = POLLIN
+        sockets = [socket, self.session.sock]
+        while True:
+            # import ipdb; ipdb.set_trace()
+            read_s, write_s, x_sock = select([socket, self.session.sock], [], [], self.timeout)
+            # self.poll()
+            # self._poll_sockets(sockets, events)
+            size, data = channel.read()
+            if size > 0:
+                socket.sendall(data)
+            # self._poll_sockets(sockets, events)
+            if socket in read_s:
+                with GTimeout(seconds=1):
+                    try:
+                        data = socket.recv(1024)
+                    except GTimeout:
+                        continue
+                data_len = len(data)
+                total_written = 0
+                if data_len > 0:
+                    while total_written < data_len:
+                        rc, written = channel.write(data[total_written:])
+                        total_written += written
+                        if rc == LIBSSH2_ERROR_EAGAIN:
+                            self.poll()
+        while channel.close() == LIBSSH2_ERROR_EAGAIN:
+            self.poll()
+        socket.close()
+        # source = spawn(self._read_forward_sock, socket, channel)
+        # dest = spawn(self._read_channel, socket, channel)
+        # logger.debug("Waiting for read/write greenlets")
+        # self._source_let = source
+        # self._dest_let = dest
+        # self._wait_send_receive_lets(source, dest, channel, socket)
 
     def _wait_send_receive_lets(self, source, dest, channel, forward_sock):
         try:
@@ -194,15 +223,16 @@ class TunnelServer(StreamServer):
             events = POLLIN
         if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:
             events |= POLLOUT
-        self._poll_socket(self.session.sock, events, timeout=timeout)
+        self._poll_sockets([self.session.sock], events, timeout=timeout)
 
-    def _poll_socket(self, sock, events, timeout=None):
-        if sock is None:
+    def _poll_sockets(self, sockets, events, timeout=None):
+        if len(sockets) == 0:
             return
         # gevent.select.poll converts seconds to miliseconds to match python socket
         # implementation
         timeout = timeout * 1000 if timeout is not None else 100
         poller = poll()
-        poller.register(sock, eventmask=events)
+        for sock in sockets:
+            poller.register(sock, eventmask=events)
         logger.debug("Polling socket with timeout %s", timeout)
-        poller.poll(timeout=timeout)
+        return poller.poll(timeout=timeout)

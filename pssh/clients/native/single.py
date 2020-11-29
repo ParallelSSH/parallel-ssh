@@ -58,7 +58,7 @@ class SSHClient(BaseSSHClient):
                  proxy_host=None,
                  proxy_port=None,
                  proxy_pkey=None,
-                 _auth_thread_pool=True, keepalive_seconds=60,
+                 _auth_thread_pool=False, keepalive_seconds=60,
                  identity_auth=True,):
         """:param host: Host name or IP to connect to.
         :type host: str

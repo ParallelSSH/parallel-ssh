@@ -64,14 +64,16 @@ class TunnelTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.server.stop()
 
-    def test_tunnel(self):
+    def test_tunnel_server(self):
         remote_host = '127.0.0.8'
         remote_server = OpenSSHServer(listen_ip=remote_host, port=self.port)
         remote_server.start_server()
         proxy_client = SSHClient(self.proxy_host, port=self.port, pkey=self.user_key,
                                  num_retries=1,
-                                 proxy_pkey=self.user_key)
+                                 proxy_pkey=self.user_key,
+                                 _auth_thread_pool=False)
         tunnel_server = TunnelServer(proxy_client)
+        # tunnel_server.start()
         server_let = spawn(tunnel_server.serve_forever)
         while not tunnel_server.started:
             sleep(0.2)
@@ -81,11 +83,13 @@ class TunnelTest(unittest.TestCase):
         try:
             client = SSHClient(
                 proxy_local_addr, port=proxy_local_port, pkey=self.user_key,
-                num_retries=1)
+                num_retries=1,
+                _auth_thread_pool=True)
             output = client.run_command(self.cmd)
             _stdout = list(output.stdout)
             self.assertListEqual(_stdout, [self.resp])
+        finally:
+            tunnel_server.stop()
             server_let.kill()
             joinall((server_let,))
-        finally:
             remote_server.stop()
