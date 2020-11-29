@@ -27,6 +27,8 @@ from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
     Timeout as SSH2Timeout, AgentConnectionError, AgentListIdentitiesError, \
     AgentAuthenticationError, AgentGetIdentityError
 from ssh2.session import Session, LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND
+from ssh2.session import LIBSSH2_TRACE_SOCKET, LIBSSH2_TRACE_ERROR, \
+    LIBSSH2_TRACE_CONN
 from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR, LIBSSH2_SFTP_S_IRGRP, \
     LIBSSH2_SFTP_S_IWUSR, LIBSSH2_SFTP_S_IXUSR, LIBSSH2_SFTP_S_IROTH, \
@@ -54,6 +56,8 @@ class SSHClient(BaseSSHClient):
                  allow_agent=True, timeout=None,
                  forward_ssh_agent=False,
                  proxy_host=None,
+                 proxy_port=None,
+                 proxy_pkey=None,
                  _auth_thread_pool=True, keepalive_seconds=60,
                  identity_auth=True,):
         """:param host: Host name or IP to connect to.
@@ -88,9 +92,10 @@ class SSHClient(BaseSSHClient):
           equivalent to `ssh -A` from the `ssh` command line utility.
           Defaults to True if not set.
         :type forward_ssh_agent: bool
-        :param proxy_host: Connection to host is via provided proxy host
-          and client should use self.proxy_host for connection attempts.
+        :param proxy_host: Connect to target host via given proxy host.
         :type proxy_host: str
+        :param proxy_port: Port to use for proxy connection. Defaults to self.port
+        :type proxy_port: int
         :param keepalive_seconds: Interval of keep alive messages being sent to
           server. Set to ``0`` or ``False`` to disable.
 
@@ -133,6 +138,10 @@ class SSHClient(BaseSSHClient):
 
     def _init_session(self, retries=1):
         self.session = Session()
+        bitmask = LIBSSH2_TRACE_SOCKET | \
+                  LIBSSH2_TRACE_ERROR | \
+                  LIBSSH2_TRACE_CONN
+        self.session.trace(bitmask)
         if self.timeout:
             # libssh2 timeout is in ms
             self.session.set_timeout(self.timeout * 1000)
@@ -184,6 +193,7 @@ class SSHClient(BaseSSHClient):
             self._password_auth()
 
     def _pkey_auth(self, password=None):
+        # import ipdb; ipdb.set_trace()
         self.session.userauth_publickey_fromfile(
             self.user,
             self.pkey,

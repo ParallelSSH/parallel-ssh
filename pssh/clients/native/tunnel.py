@@ -127,7 +127,8 @@ class Tunnel(Thread):
                     continue
                 data_written += bytes_written
                 if rc == LIBSSH2_ERROR_EAGAIN:
-                    select((), ((self.client.sock,)), (), timeout=0.001)
+                    sleep(0.1)
+                    # select((), ((self.client.sock,)), (), timeout=0.001)
 
     def _read_channel(self, forward_sock, channel):
         while True:
@@ -142,7 +143,8 @@ class Tunnel(Thread):
                 continue
             while size == LIBSSH2_ERROR_EAGAIN or size > 0:
                 if size == LIBSSH2_ERROR_EAGAIN:
-                    select((self.client.sock,), (), (), timeout=0.001)
+                    sleep(0.1)
+                    # select((self.client.sock,), (), (), timeout=0.001)
                     try:
                         size, data = channel.read()
                     except Exception as ex:

@@ -84,7 +84,9 @@ class BaseSSHClient(object):
     def _init(self):
         self._connect(self._host, self.port)
         self._init_session()
-        self._auth_retry()
+        # self.session.set_blocking(0)
+        self.auth()
+        # self._auth_retry()
         self._keepalive()
         logger.debug("Authentication completed successfully - "
                      "setting session to non-blocking mode")
