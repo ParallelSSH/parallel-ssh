@@ -192,14 +192,22 @@ class BaseParallelSSHClient(object):
         if self.host_config is None:
             return self.user, self.port, self.password, self.pkey, self.proxy_host, \
                 self.proxy_port, self.proxy_user, self.proxy_password, self.proxy_pkey
-        config = self.host_config[host_i]
-        return config.user or self.user, config.port or self.port, \
-            config.password or self.password, config.private_key or self.pkey, \
-            config.proxy_host or self.proxy_host, \
-            config.proxy_port or self.proxy_port, \
-            config.proxy_user or self.proxy_user, \
-            config.proxy_password or self.proxy_password, \
-            config.proxy_pkey or self.proxy_pkey
+        elif isinstance(self.host_config, list):
+            config = self.host_config[host_i]
+            return config.user or self.user, config.port or self.port, \
+                config.password or self.password, config.private_key or self.pkey, \
+                config.proxy_host or self.proxy_host, \
+                config.proxy_port or self.proxy_port, \
+                config.proxy_user or self.proxy_user, \
+                config.proxy_password or self.proxy_password, \
+                config.proxy_pkey or self.proxy_pkey
+        elif isinstance(self.host_config, dict):
+            _user = self.host_config.get(host, {}).get('user', self.user)
+            _port = self.host_config.get(host, {}).get('port', self.port)
+            _password = self.host_config.get(host, {}).get(
+                'password', self.password)
+            _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
+            return _user, _port, _password, _pkey, None, None, None, None, None
 
     def _run_command(self, host_i, host, command, sudo=False, user=None,
                      shell=None, use_pty=False,

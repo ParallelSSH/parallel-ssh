@@ -86,8 +86,7 @@ class ParallelSSHClientTest(unittest.TestCase):
 
     def test_connect_auth(self):
         client = ParallelSSHClient([self.host], pkey=self.user_key, port=self.port, num_retries=1)
-        client.connect_auth()
-        self.assertTrue(client._host_clients[(0, self.host)].session.userauth_authenticated())
+        joinall(client.connect_auth(), raise_error=True)
 
     def test_client_join_consume_output(self):
         output = self.client.run_command(self.cmd)
