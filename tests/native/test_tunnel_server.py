@@ -29,7 +29,7 @@ from sys import version_info
 from collections import deque
 
 from gevent import sleep, spawn, Timeout as GTimeout, socket, joinall
-from pssh.clients.native.tunnel_server import TunnelServer
+from pssh.clients.native.tunnel_server import TunnelServer, ThreadedServer
 from pssh.clients.native import SSHClient, ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
@@ -72,12 +72,15 @@ class TunnelTest(unittest.TestCase):
                                  num_retries=1,
                                  proxy_pkey=self.user_key,
                                  _auth_thread_pool=False)
-        tunnel_server = TunnelServer(proxy_client)
-        # tunnel_server.start()
-        server_let = spawn(tunnel_server.serve_forever)
-        while not tunnel_server.started:
+        # tunnel_server = TunnelServer(proxy_client)
+        tunnel_server = ThreadedServer(proxy_client)
+        tunnel_server.daemon = True
+        tunnel_server.start()
+        tunnel_server.started.wait()
+        # server_let = spawn(tunnel_server.serve_forever)
+        while not tunnel_server.server.started:
             sleep(0.2)
-        proxy_local_port = tunnel_server.socket.getsockname()[1]
+        proxy_local_port = tunnel_server.server.socket.getsockname()[1]
         proxy_local_addr = '127.0.0.1'
         # import ipdb; ipdb.set_trace()
         try:
@@ -89,7 +92,5 @@ class TunnelTest(unittest.TestCase):
             _stdout = list(output.stdout)
             self.assertListEqual(_stdout, [self.resp])
         finally:
-            tunnel_server.stop()
-            server_let.kill()
-            joinall((server_let,))
+            tunnel_server.server.stop()
             remote_server.stop()

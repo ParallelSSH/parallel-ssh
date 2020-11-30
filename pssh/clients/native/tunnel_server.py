@@ -17,6 +17,8 @@
 
 import logging
 
+from threading import Thread, Event
+
 from gevent import socket, spawn, joinall, get_hub, sleep, Timeout as GTimeout
 from gevent.pool import Pool
 from gevent.server import StreamServer
@@ -29,6 +31,36 @@ from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 
 logger = logging.getLogger(__name__)
+
+
+class ThreadedServer(Thread):
+
+    def __init__(self, client):
+        Thread.__init__(self)
+        self.server = None
+        self._hub = None
+        self.client = client
+        self.started = Event()
+    
+    def run(self):
+        """Thread run target. Starts tunnel client and waits for incoming
+        tunnel connection requests from ``Tunnel.in_q``."""
+        self._hub = get_hub()
+        assert self._hub.main_hub is False
+        self.server = TunnelServer(self.client)
+        self.started.set()
+        # try:
+        #     self._init_tunnel_client()
+        # except Exception as ex:
+        #     logger.error("Tunnel initilisation failed - %s", ex)
+        #     self.exception = ex
+        #     return
+        logger.debug("Hub in server runner is main hub: %s", self._hub.main_hub)
+        try:
+            self.server.serve_forever()
+        except Exception as ex:
+            logger.error("Tunnel thread caught exception and will exit:",
+                         exc_info=1)
 
 
 class TunnelServer(StreamServer):
@@ -53,40 +85,40 @@ class TunnelServer(StreamServer):
                          self.client.host, self.client.port, ex)
             self.exception = ex
             return
-        events = POLLIN
-        sockets = [socket, self.session.sock]
-        while True:
-            # import ipdb; ipdb.set_trace()
-            read_s, write_s, x_sock = select([socket, self.session.sock], [], [], self.timeout)
-            # self.poll()
-            # self._poll_sockets(sockets, events)
-            size, data = channel.read()
-            if size > 0:
-                socket.sendall(data)
-            # self._poll_sockets(sockets, events)
-            if socket in read_s:
-                with GTimeout(seconds=1):
-                    try:
-                        data = socket.recv(1024)
-                    except GTimeout:
-                        continue
-                data_len = len(data)
-                total_written = 0
-                if data_len > 0:
-                    while total_written < data_len:
-                        rc, written = channel.write(data[total_written:])
-                        total_written += written
-                        if rc == LIBSSH2_ERROR_EAGAIN:
-                            self.poll()
-        while channel.close() == LIBSSH2_ERROR_EAGAIN:
-            self.poll()
-        socket.close()
-        # source = spawn(self._read_forward_sock, socket, channel)
-        # dest = spawn(self._read_channel, socket, channel)
-        # logger.debug("Waiting for read/write greenlets")
-        # self._source_let = source
-        # self._dest_let = dest
-        # self._wait_send_receive_lets(source, dest, channel, socket)
+        # events = POLLIN
+        # sockets = [socket, self.session.sock]
+        # while True:
+        #     # import ipdb; ipdb.set_trace()
+        #     read_s, write_s, x_sock = select([socket, self.session.sock], [], [], self.timeout)
+        #     # self.poll()
+        #     # self._poll_sockets(sockets, events)
+        #     size, data = channel.read()
+        #     if size > 0:
+        #         socket.sendall(data)
+        #     # self._poll_sockets(sockets, events)
+        #     if socket in read_s:
+        #         with GTimeout(seconds=1):
+        #             try:
+        #                 data = socket.recv(1024)
+        #             except GTimeout:
+        #                 continue
+        #         data_len = len(data)
+        #         total_written = 0
+        #         if data_len > 0:
+        #             while total_written < data_len:
+        #                 rc, written = channel.write(data[total_written:])
+        #                 total_written += written
+        #                 if rc == LIBSSH2_ERROR_EAGAIN:
+        #                     self.poll()
+        # while channel.close() == LIBSSH2_ERROR_EAGAIN:
+        #     self.poll()
+        # socket.close()
+        source = spawn(self._read_forward_sock, socket, channel)
+        dest = spawn(self._read_channel, socket, channel)
+        logger.debug("Waiting for read/write greenlets")
+        self._source_let = source
+        self._dest_let = dest
+        self._wait_send_receive_lets(source, dest, channel, socket)
 
     def _wait_send_receive_lets(self, source, dest, channel, forward_sock):
         try:
