@@ -131,18 +131,19 @@ class TunnelServer(StreamServer):
     def _read_forward_sock(self, forward_sock, channel):
         while True:
             if channel.eof():
-                logger.debug("Channel closed")
+                logger.debug("Channel closed, tunnel forward socket reader exiting")
                 return
             try:
-                # logger.debug("Trying to read from socket")
+                logger.debug("Trying to read from socket")
                 data = forward_sock.recv(1024)
             except Exception as ex:
                 logger.error("Forward socket read error: %s", ex)
                 sleep(1)
                 continue
             data_len = len(data)
-            # logger.debug("Read %s data from forward socket", data_len,)
+            logger.debug("Read %s data from forward socket", data_len,)
             if data_len == 0:
+                sleep(1)
                 continue
             data_written = 0
             while data_written < data_len:
@@ -155,12 +156,12 @@ class TunnelServer(StreamServer):
                 data_written += bytes_written
                 if rc == LIBSSH2_ERROR_EAGAIN:
                     self.poll()
-            # logger.debug("Wrote all data to channel")
+            logger.debug("Wrote all data to channel")
 
     def _read_channel(self, forward_sock, channel):
         while True:
             if channel.eof():
-                logger.debug("Channel closed")
+                logger.debug("Channel closed, tunnel reader exiting")
                 return
             try:
                 size, data = channel.read()
@@ -168,9 +169,12 @@ class TunnelServer(StreamServer):
                 logger.error("Error reading from channel - %s", ex)
                 sleep(1)
                 continue
-            # logger.debug("Read %s data from channel" % (size,))
+            logger.debug("Read %s data from channel" % (size,))
             if size == LIBSSH2_ERROR_EAGAIN:
                 self.poll()
+                continue
+            elif size == 0:
+                sleep(1)
                 continue
             try:
                 forward_sock.sendall(data)
@@ -179,7 +183,7 @@ class TunnelServer(StreamServer):
                     "Error sending data to forward socket - %s", ex)
                 sleep(.5)
                 continue
-            # logger.debug("Wrote %s data to forward socket", len(data))
+            logger.debug("Wrote %s data to forward socket", len(data))
 
     def _open_channel(self, fw_host, fw_port, local_port):
         channel = self.session.direct_tcpip_ex(
