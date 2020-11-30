@@ -58,6 +58,7 @@ class BaseSSHClient(object):
                  retry_delay=RETRY_DELAY,
                  allow_agent=True, timeout=None,
                  proxy_host=None,
+                 proxy_port=None,
                  _auth_thread_pool=True,
                  identity_auth=True):
         self._auth_thread_pool = _auth_thread_pool
@@ -76,17 +77,16 @@ class BaseSSHClient(object):
         self.allow_agent = allow_agent
         self.session = None
         self._host = proxy_host if proxy_host else host
+        self._port = proxy_port if proxy_port else port
         self.pkey = _validate_pkey_path(pkey, self.host)
         self.identity_auth = identity_auth
         self._keepalive_greenlet = None
         self._init()
 
     def _init(self):
-        self._connect(self._host, self.port)
+        self._connect(self._host, self._port)
         self._init_session()
-        # self.session.set_blocking(0)
-        self.auth()
-        # self._auth_retry()
+        self._auth_retry()
         self._keepalive()
         logger.debug("Authentication completed successfully - "
                      "setting session to non-blocking mode")

@@ -35,6 +35,8 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_SFTP_S_IXGRP, LIBSSH2_SFTP_S_IXOTH
 from ssh2.utils import find_eol
 
+
+from .tunnel_server import LocalForwarder
 from ..base.single import BaseSSHClient
 from ...exceptions import AuthenticationException, SessionError, SFTPError, \
     SFTPIOError, Timeout, SCPError
@@ -58,7 +60,7 @@ class SSHClient(BaseSSHClient):
                  proxy_host=None,
                  proxy_port=None,
                  proxy_pkey=None,
-                 _auth_thread_pool=False, keepalive_seconds=60,
+                 _auth_thread_pool=True, keepalive_seconds=60,
                  identity_auth=True,):
         """:param host: Host name or IP to connect to.
         :type host: str
@@ -96,6 +98,9 @@ class SSHClient(BaseSSHClient):
         :type proxy_host: str
         :param proxy_port: Port to use for proxy connection. Defaults to self.port
         :type proxy_port: int
+        :param proxy_pkey: Private key to use for proxy authentication. Defaults to
+          self.pkey
+        :type proxy_pkey: str
         :param keepalive_seconds: Interval of keep alive messages being sent to
           server. Set to ``0`` or ``False`` to disable.
 
@@ -106,12 +111,32 @@ class SSHClient(BaseSSHClient):
         self._forward_requested = False
         self.keepalive_seconds = keepalive_seconds
         self._keepalive_greenlet = None
+        self._proxy_client = None
+        if proxy_host is not None:
+            proxy_port = self._connect_proxy(proxy_host, proxy_port, proxy_pkey, num_retries)
+            proxy_host = '127.0.0.1'
         super(SSHClient, self).__init__(
             host, user=user, password=password, port=port, pkey=pkey,
             num_retries=num_retries, retry_delay=retry_delay,
             allow_agent=allow_agent, _auth_thread_pool=_auth_thread_pool,
             timeout=timeout,
-            proxy_host=proxy_host, identity_auth=identity_auth)
+            proxy_host=proxy_host, proxy_port=proxy_port,
+            identity_auth=identity_auth)
+
+    def _connect_proxy(self, proxy_host, proxy_port, proxy_pkey, num_retries):
+        port = self.port if proxy_port is None else proxy_port
+        pkey = self.pkey if proxy_pkey is None else proxy_pkey
+        tunnel_server = LocalForwarder()
+        tunnel_server.daemon = True
+        tunnel_server.start()
+        self._proxy_client = SSHClient(
+            proxy_host, port=port, pkey=pkey,
+            num_retries=num_retries,
+            _auth_thread_pool=False)
+        tunnel_server.started.wait()
+        tunnel_server.in_q.put(self._proxy_client)
+        proxy_local_port = tunnel_server.out_q.get()
+        return proxy_local_port
 
     def disconnect(self):
         """Disconnect session, close socket if needed."""

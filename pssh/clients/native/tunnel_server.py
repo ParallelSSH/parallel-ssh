@@ -27,46 +27,61 @@ from gevent.select import poll, POLLIN, POLLOUT
 from ssh2.session import Session, LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 
-from .single import SSHClient
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 
 logger = logging.getLogger(__name__)
 
 
-class ThreadedServer(Thread):
+class LocalForwarder(Thread):
 
     def __init__(self):
         Thread.__init__(self)
         self.in_q = Queue(1)
         self.out_q = Queue(1)
         self._servers = {}
-        self._clients = {}
         self._hub = None
         self.started = Event()
+        self._cleanup_let = None
+
+    def _start_server(self):
+        client = self.in_q.get()
+        server = TunnelServer(client)
+        server.start()
+        self._servers[client] = server
+        while not server.started:
+            sleep(0.1)
+        local_port = server.socket.getsockname()[1]
+        self.out_q.put(local_port)
+
+    def _shutdown(self):
+        for client, server in self._servers.items():
+            server.stop()
+
+    def _cleanup_servers(self):
+        while True:
+            for client, server in self._servers.items():
+                if client.sock.closed:
+                    server.stop()
+                    del self._servers[client]
+            sleep(60)
 
     def run(self):
         self._hub = get_hub()
         assert self._hub.main_hub is False
         self.started.set()
+        self._cleanup_let = spawn(self._cleanup_servers)
         logger.debug("Hub in server runner is main hub: %s", self._hub.main_hub)
         try:
             while True:
                 if self.in_q.empty():
                     sleep(1)
                     continue
-                client = self.in_q.get()
-                server = TunnelServer(client)
-                server.start()
-                self._servers[client] = server
-                self._clients[server] = client
-                while not server.started:
-                    sleep(0.2)
-                local_port = server.socket.getsockname()[1]
-                self.out_q.put(local_port)
+                self._start_server()
         except Exception as ex:
             logger.error("Tunnel thread caught exception and will exit:",
                          exc_info=1)
+            self._shutdown()
 
 
 class TunnelServer(StreamServer):

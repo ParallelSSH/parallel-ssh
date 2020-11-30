@@ -29,7 +29,7 @@ from sys import version_info
 from collections import deque
 
 from gevent import sleep, spawn, Timeout as GTimeout, socket, joinall
-from pssh.clients.native.tunnel_server import TunnelServer, ThreadedServer
+from pssh.clients.native.tunnel_server import TunnelServer, LocalForwarder
 from pssh.clients.native import SSHClient, ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
@@ -57,7 +57,8 @@ class TunnelTest(unittest.TestCase):
         cls.user_pub_key = PUB_FILE
         cls.user = pwd.getpwuid(os.geteuid()).pw_name
         cls.proxy_host = '127.0.0.9'
-        cls.server = OpenSSHServer(listen_ip=cls.proxy_host, port=cls.port)
+        cls.proxy_port = cls.port + 1
+        cls.server = OpenSSHServer(listen_ip=cls.proxy_host, port=cls.proxy_port)
         cls.server.start_server()
 
     @classmethod
@@ -68,25 +69,18 @@ class TunnelTest(unittest.TestCase):
         remote_host = '127.0.0.8'
         remote_server = OpenSSHServer(listen_ip=remote_host, port=self.port)
         remote_server.start_server()
-        proxy_client = SSHClient(self.proxy_host, port=self.port, pkey=self.user_key,
-                                 num_retries=1,
-                                 proxy_pkey=self.user_key,
-                                 _auth_thread_pool=False)
-        tunnel_server = ThreadedServer()
-        tunnel_server.daemon = True
-        tunnel_server.start()
-        tunnel_server.started.wait()
-        tunnel_server.in_q.put(proxy_client)
-        proxy_local_port = tunnel_server.out_q.get()
-        proxy_local_addr = '127.0.0.1'
         try:
             client = SSHClient(
-                proxy_local_addr, port=proxy_local_port, pkey=self.user_key,
+                self.host, port=self.port, pkey=self.user_key,
                 num_retries=1,
-                _auth_thread_pool=True)
+                proxy_host=self.proxy_host,
+                proxy_pkey=self.user_key,
+                proxy_port=self.proxy_port,
+            )
             output = client.run_command(self.cmd)
             _stdout = list(output.stdout)
             self.assertListEqual(_stdout, [self.resp])
+            self.assertEqual(self.host, client.host)
+            self.assertEqual(self.port, client.port)
         finally:
-            # tunnel_server.server.stop()
             remote_server.stop()
