@@ -113,7 +113,9 @@ class SSHClient(BaseSSHClient):
         self._keepalive_greenlet = None
         self._proxy_client = None
         if proxy_host is not None:
-            proxy_port = self._connect_proxy(proxy_host, proxy_port, proxy_pkey, num_retries)
+            _port = port if proxy_port is None else proxy_port
+            _pkey = pkey if proxy_pkey is None else proxy_pkey
+            proxy_port = self._connect_proxy(proxy_host, _port, _pkey, num_retries)
             proxy_host = '127.0.0.1'
         super(SSHClient, self).__init__(
             host, user=user, password=password, port=port, pkey=pkey,
@@ -124,10 +126,8 @@ class SSHClient(BaseSSHClient):
             identity_auth=identity_auth)
 
     def _connect_proxy(self, proxy_host, proxy_port, proxy_pkey, num_retries):
-        port = self.port if proxy_port is None else proxy_port
-        pkey = self.pkey if proxy_pkey is None else proxy_pkey
         self._proxy_client = SSHClient(
-            proxy_host, port=port, pkey=pkey,
+            proxy_host, port=proxy_port, pkey=proxy_pkey,
             num_retries=num_retries,
             _auth_thread_pool=False)
         FORWARDER.started.wait()

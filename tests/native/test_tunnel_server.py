@@ -84,3 +84,21 @@ class TunnelTest(unittest.TestCase):
             self.assertEqual(self.port, client.port)
         finally:
             remote_server.stop()
+
+    def test_tunnel_server_same_port(self):
+        remote_host = '127.0.0.7'
+        remote_server = OpenSSHServer(listen_ip=remote_host, port=self.proxy_port)
+        remote_server.start_server()
+        try:
+            client = SSHClient(
+                self.host, port=self.proxy_port, pkey=self.user_key,
+                num_retries=1,
+                proxy_host=self.proxy_host,
+            )
+            output = client.run_command(self.cmd)
+            _stdout = list(output.stdout)
+            self.assertListEqual(_stdout, [self.resp])
+            self.assertEqual(self.host, client.host)
+            self.assertEqual(self.proxy_port, client.port)
+        finally:
+            remote_server.stop()
