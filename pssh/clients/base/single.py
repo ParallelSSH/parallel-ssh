@@ -59,9 +59,6 @@ class BaseSSHClient(object):
                  allow_agent=True, timeout=None,
                  proxy_host=None,
                  proxy_port=None,
-                 proxy_user=None,
-                 proxy_password=None,
-                 proxy_pkey=None,
                  _auth_thread_pool=True,
                  identity_auth=True):
         self._auth_thread_pool = _auth_thread_pool
