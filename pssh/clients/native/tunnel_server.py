@@ -18,6 +18,7 @@
 import logging
 
 from threading import Thread, Event
+from queue import Queue
 
 from gevent import socket, spawn, joinall, get_hub, sleep, Timeout as GTimeout
 from gevent.pool import Pool
@@ -35,25 +36,34 @@ logger = logging.getLogger(__name__)
 
 class ThreadedServer(Thread):
 
-    def __init__(self, client):
+    def __init__(self):
         Thread.__init__(self)
-        self.servers = []
-        self.clients = []
-        self.server = None
+        self.in_q = Queue(1)
+        self.out_q = Queue(1)
+        self._servers = {}
+        self._clients = {}
         self._hub = None
-        self.client = client
         self.started = Event()
 
     def run(self):
-        """Thread run target. Starts tunnel client and waits for incoming
-        tunnel connection requests from ``Tunnel.in_q``."""
         self._hub = get_hub()
         assert self._hub.main_hub is False
-        self.server = TunnelServer(self.client)
         self.started.set()
         logger.debug("Hub in server runner is main hub: %s", self._hub.main_hub)
         try:
-            self.server.serve_forever()
+            while True:
+                if self.in_q.empty():
+                    sleep(1)
+                    continue
+                client = self.in_q.get()
+                server = TunnelServer(client)
+                server.start()
+                self._servers[client] = server
+                self._clients[server] = client
+                while not server.started:
+                    sleep(0.2)
+                local_port = server.socket.getsockname()[1]
+                self.out_q.put(local_port)
         except Exception as ex:
             logger.error("Tunnel thread caught exception and will exit:",
                          exc_info=1)

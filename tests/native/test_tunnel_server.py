@@ -72,17 +72,13 @@ class TunnelTest(unittest.TestCase):
                                  num_retries=1,
                                  proxy_pkey=self.user_key,
                                  _auth_thread_pool=False)
-        # tunnel_server = TunnelServer(proxy_client)
-        tunnel_server = ThreadedServer(proxy_client)
+        tunnel_server = ThreadedServer()
         tunnel_server.daemon = True
         tunnel_server.start()
         tunnel_server.started.wait()
-        # server_let = spawn(tunnel_server.serve_forever)
-        while not tunnel_server.server.started:
-            sleep(0.2)
-        proxy_local_port = tunnel_server.server.socket.getsockname()[1]
+        tunnel_server.in_q.put(proxy_client)
+        proxy_local_port = tunnel_server.out_q.get()
         proxy_local_addr = '127.0.0.1'
-        # import ipdb; ipdb.set_trace()
         try:
             client = SSHClient(
                 proxy_local_addr, port=proxy_local_port, pkey=self.user_key,
@@ -92,5 +88,5 @@ class TunnelTest(unittest.TestCase):
             _stdout = list(output.stdout)
             self.assertListEqual(_stdout, [self.resp])
         finally:
-            tunnel_server.server.stop()
+            # tunnel_server.server.stop()
             remote_server.stop()
