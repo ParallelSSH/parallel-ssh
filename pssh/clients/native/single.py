@@ -115,7 +115,14 @@ class SSHClient(BaseSSHClient):
         if proxy_host is not None:
             _port = port if proxy_port is None else proxy_port
             _pkey = pkey if proxy_pkey is None else proxy_pkey
-            proxy_port = self._connect_proxy(proxy_host, _port, _pkey, num_retries)
+            proxy_port = self._connect_proxy(
+                proxy_host, _port, _pkey, user=user, password=password,
+                num_retries=num_retries, retry_delay=retry_delay,
+                allow_agent=allow_agent,
+                timeout=timeout,
+                keepalive_seconds=keepalive_seconds,
+                identity_auth=identity_auth,
+            )
             proxy_host = '127.0.0.1'
         super(SSHClient, self).__init__(
             host, user=user, password=password, port=port, pkey=pkey,
@@ -125,10 +132,21 @@ class SSHClient(BaseSSHClient):
             proxy_host=proxy_host, proxy_port=proxy_port,
             identity_auth=identity_auth)
 
-    def _connect_proxy(self, proxy_host, proxy_port, proxy_pkey, num_retries):
+    def _connect_proxy(self, proxy_host, proxy_port, proxy_pkey,
+                       user=None, password=None,
+                       num_retries=DEFAULT_RETRIES,
+                       retry_delay=RETRY_DELAY,
+                       allow_agent=True, timeout=None,
+                       forward_ssh_agent=False,
+                       keepalive_seconds=60,
+                       identity_auth=True):
         self._proxy_client = SSHClient(
             proxy_host, port=proxy_port, pkey=proxy_pkey,
-            num_retries=num_retries,
+            num_retries=num_retries, user=user, password=password,
+            retry_delay=retry_delay, allow_agent=allow_agent,
+            timeout=timeout, forward_ssh_agent=forward_ssh_agent,
+            identity_auth=identity_auth,
+            keepalive_seconds=keepalive_seconds,
             _auth_thread_pool=False)
         FORWARDER.started.wait()
         FORWARDER.in_q.put(self._proxy_client)

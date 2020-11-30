@@ -20,14 +20,14 @@ import logging
 from threading import Thread, Event
 from queue import Queue
 
-from gevent import socket, spawn, joinall, get_hub, sleep, Timeout as GTimeout
+from gevent import spawn, joinall, get_hub, sleep
 from gevent.pool import Pool
 from gevent.server import StreamServer
 from gevent.select import poll, POLLIN, POLLOUT
-from ssh2.session import Session, LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND
+from ssh2.session import LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 
-from ...constants import DEFAULT_RETRIES, RETRY_DELAY
+from ...constants import DEFAULT_RETRIES
 
 
 logger = logging.getLogger(__name__)
@@ -78,13 +78,18 @@ class LocalForwarder(Thread):
                     sleep(1)
                     continue
                 self._start_server()
-        except Exception as ex:
+        except Exception:
             logger.error("Tunnel thread caught exception and will exit:",
                          exc_info=1)
             self._shutdown()
 
 
 class TunnelServer(StreamServer):
+    """Local port forwarding server for tunneling connections from remote SSH server.
+
+    Accepts connections on an available localhost port once started and tunnels data
+    to/from remote SSH host for each connection.
+    """
 
     def __init__(self, client, timeout=0.1):
         StreamServer.__init__(self, ('127.0.0.1', 0), self.read_rw)
@@ -123,17 +128,6 @@ class TunnelServer(StreamServer):
             while channel.close() == LIBSSH2_ERROR_EAGAIN:
                 self.poll(timeout=.5)
             forward_sock.close()
-
-    def _open_channel(self, fw_host, fw_port, local_port):
-        channel = self.session.direct_tcpip_ex(
-            fw_host, fw_port, '127.0.0.1',
-            local_port)
-        while channel == LIBSSH2_ERROR_EAGAIN:
-            self.poll()
-            channel = self.session.direct_tcpip_ex(
-                fw_host, fw_port, '127.0.0.1',
-                local_port)
-        return channel
 
     def _read_forward_sock(self, forward_sock, channel):
         while True:
