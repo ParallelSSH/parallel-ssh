@@ -1,6 +1,18 @@
 Change Log
 ============
 
+2.2.0 (unreleased)
++++++++++++++++++++
+
+Changes
+-------
+
+* New single host tunneling, SSH proxy, implementation for increased performance.
+* Native ``SSHClient`` now accepts ``proxy_host``, ``proxy_port`` and associated parameters - see `API documentation <https://parallel-ssh.readthedocs.io/en/latest/config.html>`_.
+* Proxy configuration can now be provided via ``HostConfig``.
+* Added ``ParallelSSHClient.connect_auth`` function for connecting and authenticating to hosts in parallel.
+
+
 2.1.0
 +++++
 

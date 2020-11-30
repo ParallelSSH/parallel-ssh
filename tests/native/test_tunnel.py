@@ -29,6 +29,7 @@ from socket import timeout as socket_timeout
 from sys import version_info
 from collections import deque
 
+from pssh.config import HostConfig
 from pssh.clients.native import SSHClient, ParallelSSHClient
 from pssh.clients.native.tunnel import LocalForwarder
 from pssh.exceptions import UnknownHostException, \
@@ -205,6 +206,26 @@ class TunnelTest(unittest.TestCase):
         finally:
             for server in servers:
                 server.stop()
+
+    def test_tunnel_host_config(self):
+        hosts = ['127.0.0.11', '127.0.0.12']
+        servers = [OpenSSHServer(listen_ip=_host, port=self.port) for _host in hosts]
+        for server in servers:
+            server.start_server()
+        host_config = [
+            HostConfig(proxy_host=self.proxy_host,
+                       proxy_port=self.proxy_port,
+                       proxy_pkey=self.user_key),
+            HostConfig(proxy_host='127.0.0.155',
+                       proxy_port=123),
+            ]
+        client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key,
+                                   host_config=host_config, num_retries=1)
+        output = client.run_command(self.cmd, stop_on_errors=False)
+        client.join(output)
+        self.assertIsInstance(output[1].exception, ProxyError)
+        stdout = list(output[0].stdout)
+        self.assertListEqual(stdout, [self.resp])
 
     def test_proxy_error(self):
         client = ParallelSSHClient([self.proxy_host], self.port, pkey=self.user_key,

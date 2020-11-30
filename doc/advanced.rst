@@ -118,14 +118,14 @@ Both private key and corresponding signed public certificate file must be provid
 ``ssh-python`` :py:mod:`ParallelSSHClient <pssh.clients.ssh>` clients only.
 
 
-Tunnelling
-**********
+Proxy Hosts and Tunneling
+**************************
 
-This is used in cases where the client does not have direct access to the target host and has to authenticate via an intermediary, also called a bastion host.
+This is used in cases where the client does not have direct access to the target host(s) and has to authenticate via an intermediary proxy, also called a bastion host.
 
-Commonly used for additional security as only the proxy or bastion host needs to have access to the target host.
+Commonly used for additional security as only the proxy host needs to have access to the target host.
 
-ParallelSSHClient       ------>        Proxy host         -------->         Target host
+Client       ------>        Proxy host         -------->         Target host
 
 Proxy host can be configured as follows in the simplest case:
 
@@ -134,27 +134,56 @@ Proxy host can be configured as follows in the simplest case:
   hosts = [<..>]
   client = ParallelSSHClient(hosts, proxy_host='bastion')
 
+For single host clients:
+
+.. code-block:: python
+
+   host = '<..>'
+   client = SSHClient(host, proxy_host='proxy')
+
 Configuration for the proxy host's user name, port, password and private key can also be provided, separate from target host configuration.
 
 .. code-block:: python
-   
+
    hosts = [<..>]
-   client = ParallelSSHClient(hosts, user='target_host_user', 
-                              proxy_host='bastion', proxy_user='my_proxy_user',
- 			      proxy_port=2222, 
- 			      proxy_pkey='proxy.key')
+   client = ParallelSSHClient(
+                hosts, user='target_host_user',
+                proxy_host='bastion',
+                proxy_user='my_proxy_user',
+                proxy_port=2222,
+                proxy_pkey='proxy.key')
 
 Where ``proxy.key`` is a filename containing private key to use for proxy host authentication.
 
 In the above example, connections to the target hosts are made via SSH through ``my_proxy_user@bastion:2222`` -> ``target_host_user@<host>``.
 
+
+Per Host Proxy Configuration
+=============================
+
+Proxy host can be configured in Per-Host Configuration:
+
+.. code-block:: python
+
+   hosts = [<..>]
+   host_config = [
+       HostConfig(proxy_host='127.0.0.1'),
+       HostConfig(proxy_host='127.0.0.2'),
+       HostConfig(proxy_host='127.0.0.3'),
+       HostConfig(proxy_host='127.0.0.4'),
+       ]
+   clieent = ParallelSSHClient(hosts, host_config=host_config)
+   output = client.run_command('echo me')
+
+See :py:mod:`HostConfig <pssh.config.HostConfig>` for all possible configuration.
+
 .. note::
 
-   The current implementation of tunnelling suffers from poor performance when first establishing connections to many hosts - this is due to be resolved in a future release.
+   New tunneling implementation from `2.2.0` for highest performance.
 
-   Proxy host connections are asynchronous and use the SSH protocol's native TCP tunnelling - aka local port forward. No external commands or processes are used for the proxy connection, unlike the `ProxyCommand` directive in OpenSSH and other utilities.
+   Connecting to dozens or more hosts via a single proxy host will impact performance considerably.
 
-   While connections initiated by ``parallel-ssh`` are asynchronous, connections from proxy host -> target hosts may not be, depending on SSH server implementation. If only one proxy host is used to connect to a large number of target hosts and proxy SSH server connections are *not* asynchronous, this may adversely impact performance on the proxy host.
+   See above for using host specific proxy configuration.
 
 Join and Output Timeouts
 **************************

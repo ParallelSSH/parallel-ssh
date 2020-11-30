@@ -237,17 +237,18 @@ class ParallelSSHClient(BaseParallelSSHClient):
                      host, (host_i, host) in self._host_clients)
         if (host_i, host) not in self._host_clients \
            or self._host_clients[(host_i, host)] is None:
-            _user, _port, _password, _pkey = self._get_host_config_values(host_i, host)
+            _user, _port, _password, _pkey, proxy_host, proxy_port, proxy_user, \
+                proxy_password, proxy_pkey = self._get_host_config_values(host_i, host)
             _client = SSHClient(
                 host, user=_user, password=_password, port=_port,
                 pkey=_pkey, num_retries=self.num_retries,
                 timeout=self.timeout,
                 allow_agent=self.allow_agent, retry_delay=self.retry_delay,
-                proxy_host=self.proxy_host,
-                proxy_port=self.proxy_port,
-                proxy_user=self.proxy_user,
-                proxy_password=self.proxy_password,
-                proxy_pkey=self.proxy_pkey,
+                proxy_host=proxy_host,
+                proxy_port=proxy_port,
+                proxy_user=proxy_user,
+                proxy_password=proxy_password,
+                proxy_pkey=proxy_pkey,
                 _auth_thread_pool=auth_thread_pool,
                 forward_ssh_agent=self.forward_ssh_agent,
                 keepalive_seconds=self.keepalive_seconds,

@@ -190,20 +190,16 @@ class BaseParallelSSHClient(object):
 
     def _get_host_config_values(self, host_i, host):
         if self.host_config is None:
-            return self.user, self.port, self.password, self.pkey
-        elif isinstance(self.host_config, list):
-            _user = self.host_config[host_i].user
-            _port = self.host_config[host_i].port
-            _password = self.host_config[host_i].password
-            _pkey = self.host_config[host_i].private_key
-            return _user, _port, _password, _pkey
-        elif isinstance(self.host_config, dict):
-            _user = self.host_config.get(host, {}).get('user', self.user)
-            _port = self.host_config.get(host, {}).get('port', self.port)
-            _password = self.host_config.get(host, {}).get(
-                'password', self.password)
-            _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
-            return _user, _port, _password, _pkey
+            return self.user, self.port, self.password, self.pkey, self.proxy_host, \
+                self.proxy_port, self.proxy_user, self.proxy_password, self.proxy_pkey
+        config = self.host_config[host_i]
+        return config.user or self.user, config.port or self.port, \
+            config.password or self.password, config.private_key or self.pkey, \
+            config.proxy_host or self.proxy_host, \
+            config.proxy_port or self.proxy_port, \
+            config.proxy_user or self.proxy_user, \
+            config.proxy_password or self.proxy_password, \
+            config.proxy_pkey or self.proxy_pkey
 
     def _run_command(self, host_i, host, command, sudo=False, user=None,
                      shell=None, use_pty=False,
@@ -232,9 +228,12 @@ class BaseParallelSSHClient(object):
 
         Connections and authentication is performed in parallel by this and all other
         functions.
+
+        :returns: list of greenlets to ``joinall`` with.
+        :rtype: list(:py:mod:`gevent.greenlet.Greenlet`)
         """
         cmds = [spawn(self._make_ssh_client, i, host) for i, host in enumerate(self.hosts)]
-        return joinall(cmds, raise_error=True)
+        return cmds
 
     def _consume_output(self, stdout, stderr):
         for line in stdout:
