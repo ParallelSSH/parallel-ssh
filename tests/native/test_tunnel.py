@@ -29,7 +29,6 @@ from socket import timeout as socket_timeout
 from sys import version_info
 from collections import deque
 
-from gevent import sleep, spawn, Timeout as GTimeout, socket, joinall
 from pssh.clients.native import SSHClient, ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
@@ -182,3 +181,12 @@ class TunnelTest(unittest.TestCase):
         finally:
             for server in servers:
                 server.stop()
+
+    def test_proxy_error(self):
+        client = ParallelSSHClient([self.proxy_host], self.port, pkey=self.user_key,
+                                   proxy_host='127.0.0.155',
+                                   proxy_port=123,
+                                   num_retries=1)
+        output = client.run_command(self.cmd, stop_on_errors=False)
+        client.join(output)
+        self.assertIsInstance(output[0].exception, ProxyError)

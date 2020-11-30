@@ -236,7 +236,6 @@ class SSHClient(BaseSSHClient):
             self._password_auth()
 
     def _pkey_auth(self, password=None):
-        # import ipdb; ipdb.set_trace()
         self.session.userauth_publickey_fromfile(
             self.user,
             self.pkey,

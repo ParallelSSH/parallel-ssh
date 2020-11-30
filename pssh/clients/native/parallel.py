@@ -103,7 +103,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param proxy_pkey: (Optional) Private key file to be used for
           authentication with ``proxy_host``. Defaults to available keys from
           SSHAgent and user's SSH identities.
-        :type proxy_pkey: Private key file path to use.
+        :type proxy_pkey: str
         :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
           equivalent to `ssh -A` from the `ssh` command line utility.
           Defaults to False if not set.
@@ -245,6 +245,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 allow_agent=self.allow_agent, retry_delay=self.retry_delay,
                 proxy_host=self.proxy_host,
                 proxy_port=self.proxy_port,
+                proxy_user=self.proxy_user,
+                proxy_password=self.proxy_password,
                 proxy_pkey=self.proxy_pkey,
                 _auth_thread_pool=auth_thread_pool,
                 forward_ssh_agent=self.forward_ssh_agent,
