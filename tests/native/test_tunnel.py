@@ -30,6 +30,7 @@ from sys import version_info
 from collections import deque
 
 from pssh.clients.native import SSHClient, ParallelSSHClient
+from pssh.clients.native.tunnel import LocalForwarder
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
@@ -62,6 +63,18 @@ class TunnelTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.server.stop()
+
+    def test_forwarder(self):
+        forwarder = LocalForwarder()
+        forwarder.daemon = True
+        forwarder.start()
+        forwarder.started.wait()
+        client = SSHClient(
+            self.proxy_host, port=self.proxy_port, pkey=self.user_key)
+        forwarder.in_q.put((client, self.proxy_host, self.port))
+        forwarder.out_q.get()
+        self.assertTrue(len(forwarder._servers) > 0)
+        forwarder.shutdown()
 
     def test_tunnel_server(self):
         remote_host = '127.0.0.8'
@@ -201,3 +214,6 @@ class TunnelTest(unittest.TestCase):
         output = client.run_command(self.cmd, stop_on_errors=False)
         client.join(output)
         self.assertIsInstance(output[0].exception, ProxyError)
+
+    # TODO:
+    # * channel/socket read/write failure tests

@@ -221,6 +221,21 @@ class BaseParallelSSHClient(object):
             logger.error("Failed to run on host %s - %s", host, ex)
             raise ex
 
+    def connect_auth(self):
+        """Connect to and authenticate with all hosts in parallel.
+
+        This function can be used to perform connection and authentication outside of
+        command functions like ``run_command`` or ``copy_file`` so the two operations,
+        login and running a remote command, can be separated.
+
+        It is not required to be called prior to any other functions.
+
+        Connections and authentication is performed in parallel by this and all other
+        functions.
+        """
+        cmds = [spawn(self._make_ssh_client, i, host) for i, host in enumerate(self.hosts)]
+        return joinall(cmds, raise_error=True)
+
     def _consume_output(self, stdout, stderr):
         for line in stdout:
             pass

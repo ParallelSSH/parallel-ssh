@@ -47,13 +47,13 @@ class LocalForwarder(Thread):
         client, host, port = self.in_q.get()
         server = TunnelServer(client, host, port)
         server.start()
-        self._servers[client] = server
         while not server.started:
             sleep(0.01)
+        self._servers[client] = server
         local_port = server.socket.getsockname()[1]
         self.out_q.put(local_port)
 
-    def _shutdown(self):
+    def shutdown(self):
         for client, server in self._servers.items():
             server.stop()
 
@@ -80,7 +80,7 @@ class LocalForwarder(Thread):
         except Exception:
             logger.error("Tunnel thread caught exception and will exit:",
                          exc_info=1)
-            self._shutdown()
+            self.shutdown()
 
 
 class TunnelServer(StreamServer):
@@ -126,7 +126,7 @@ class TunnelServer(StreamServer):
             logger.error(ex)
         finally:
             logger.debug("Closing channel and forward socket")
-            while channel.close() == LIBSSH2_ERROR_EAGAIN:
+            while channel is not None and channel.close() == LIBSSH2_ERROR_EAGAIN:
                 self.poll(timeout=.5)
             forward_sock.close()
 
@@ -224,17 +224,14 @@ class TunnelServer(StreamServer):
             events = POLLIN
         if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:
             events |= POLLOUT
-        self._poll_sockets([self.session.sock], events, timeout=timeout)
+        self._poll_socket(self.session.sock, events, timeout=timeout)
 
-    def _poll_sockets(self, sockets, events, timeout=None):
-        if len(sockets) == 0:
-            return
+    def _poll_socket(self, sock, events, timeout=None):
         # gevent.select.poll converts seconds to miliseconds to match python socket
         # implementation
         timeout = timeout * 1000 if timeout is not None else 100
         poller = poll()
-        for sock in sockets:
-            poller.register(sock, eventmask=events)
+        poller.register(sock, eventmask=events)
         return poller.poll(timeout=timeout)
 
 

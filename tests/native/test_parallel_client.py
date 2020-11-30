@@ -84,6 +84,11 @@ class ParallelSSHClientTest(unittest.TestCase):
         sock.close()
         return listen_port
 
+    def test_connect_auth(self):
+        client = ParallelSSHClient([self.host], pkey=self.user_key, port=self.port, num_retries=1)
+        client.connect_auth()
+        self.assertTrue(client._host_clients[(0, self.host)].session.userauth_authenticated())
+
     def test_client_join_consume_output(self):
         output = self.client.run_command(self.cmd)
         expected_exit_code = 0
