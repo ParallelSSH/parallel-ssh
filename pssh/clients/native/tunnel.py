@@ -240,4 +240,3 @@ class TunnelServer(StreamServer):
 
 FORWARDER = LocalForwarder()
 FORWARDER.daemon = True
-FORWARDER.start()

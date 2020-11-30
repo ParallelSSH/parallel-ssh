@@ -155,7 +155,9 @@ class SSHClient(BaseSSHClient):
                   "Exception from tunnel client: %s"
             logger.error(msg, ex)
             raise ProxyError(msg, ex)
-        FORWARDER.started.wait()
+        if not FORWARDER.started.is_set():
+            FORWARDER.start()
+            FORWARDER.started.wait()
         FORWARDER.in_q.put((self._proxy_client, self.host, self.port))
         proxy_local_port = FORWARDER.out_q.get()
         return proxy_local_port

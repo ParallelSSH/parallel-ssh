@@ -33,7 +33,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
     def __init__(self, hosts, user=None, password=None, port=22, pkey=None,
                  num_retries=DEFAULT_RETRIES, timeout=None, pool_size=100,
                  allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
-                 proxy_host=None, proxy_port=22,
+                 proxy_host=None, proxy_port=None,
                  proxy_user=None, proxy_password=None, proxy_pkey=None,
                  forward_ssh_agent=False, tunnel_timeout=None,
                  keepalive_seconds=60, identity_auth=True):
