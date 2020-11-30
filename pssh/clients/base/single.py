@@ -77,7 +77,7 @@ class BaseSSHClient(object):
         self.allow_agent = allow_agent
         self.session = None
         self._host = proxy_host if proxy_host else host
-        self._port = proxy_port if proxy_port else port
+        self._port = proxy_port if proxy_port else self.port
         self.pkey = _validate_pkey_path(pkey, self.host)
         self.identity_auth = identity_auth
         self._keepalive_greenlet = None
