@@ -35,6 +35,15 @@ logger = logging.getLogger(__name__)
 class LocalForwarder(Thread):
 
     def __init__(self):
+        """Thread runner for a group of local port forwarding proxies.
+
+        Starts servers in their own gevent hub via thread run target.
+
+        Input ``(SSHClient, target_host, target_port)`` tuples to ``in_q`` to create new servers
+        and get port to connect to via ``out_q`` once a target has been put into the input queue.
+
+        ``SSHClient`` is the client for the SSH host that will be proxying.
+        """
         Thread.__init__(self)
         self.in_q = Queue(1)
         self.out_q = Queue(1)
@@ -66,6 +75,12 @@ class LocalForwarder(Thread):
             sleep(60)
 
     def run(self):
+        """Thread runner ensures a non main hub has been created for all subsequent
+        greenlets and waits for (client, host, port) tuples to be put into self.in_q.
+
+        A server is created once something is in the queue and the port to connect to
+        is put into self.out_q.
+        """
         self._hub = get_hub()
         assert self._hub.main_hub is False
         self.started.set()
@@ -86,12 +101,12 @@ class LocalForwarder(Thread):
 class TunnelServer(StreamServer):
     """Local port forwarding server for tunneling connections from remote SSH server.
 
-    Accepts connections on an available localhost port once started and tunnels data
+    Accepts connections on an available bind_address port once started and tunnels data
     to/from remote SSH host for each connection.
     """
 
-    def __init__(self, client, host, port, timeout=0.1):
-        StreamServer.__init__(self, ('127.0.0.1', 0), self.read_rw)
+    def __init__(self, client, host, port, bind_address='127.0.0.1', timeout=0.1):
+        StreamServer.__init__(self, (bind_address, 0), self._read_rw)
         self.client = client
         self.host = host
         self.port = port
@@ -99,7 +114,7 @@ class TunnelServer(StreamServer):
         self._retries = DEFAULT_RETRIES
         self.timeout = timeout
 
-    def read_rw(self, socket, address):
+    def _read_rw(self, socket, address):
         local_addr, local_port = address
         logger.debug("Client connected, forwarding %s:%s on"
                      " remote host to %s:%s",

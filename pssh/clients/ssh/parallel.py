@@ -248,8 +248,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
                      host, (host_i, host) in self._host_clients)
         if (host_i, host) not in self._host_clients \
            or self._host_clients[(host_i, host)] is None:
-            _user, _port, _password, _pkey = self._get_host_config_values(
-                host_i, host)
+            _user, _port, _password, _pkey, _, _, _, _, _ = \
+                self._get_host_config_values(host_i, host)
             _client = SSHClient(
                 host, user=_user, password=_password, port=_port,
                 pkey=_pkey,

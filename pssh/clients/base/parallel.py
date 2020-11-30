@@ -190,17 +190,19 @@ class BaseParallelSSHClient(object):
 
     def _get_host_config_values(self, host_i, host):
         if self.host_config is None:
-            return self.user, self.port, self.password, self.pkey, self.proxy_host, \
-                self.proxy_port, self.proxy_user, self.proxy_password, self.proxy_pkey
+            return self.user, self.port, self.password, self.pkey, \
+                getattr(self, 'proxy_host', None), \
+                getattr(self, 'proxy_port', None), getattr(self, 'proxy_user', None), \
+                getattr(self, 'proxy_password', None), getattr(self, 'proxy_pkey', None)
         elif isinstance(self.host_config, list):
             config = self.host_config[host_i]
             return config.user or self.user, config.port or self.port, \
                 config.password or self.password, config.private_key or self.pkey, \
-                config.proxy_host or self.proxy_host, \
-                config.proxy_port or self.proxy_port, \
-                config.proxy_user or self.proxy_user, \
-                config.proxy_password or self.proxy_password, \
-                config.proxy_pkey or self.proxy_pkey
+                config.proxy_host or getattr(self, 'proxy_host', None), \
+                config.proxy_port or getattr(self, 'proxy_port', None), \
+                config.proxy_user or getattr(self, 'proxy_user', None), \
+                config.proxy_password or getattr(self, 'proxy_password', None), \
+                config.proxy_pkey or getattr(self, 'proxy_pkey', None)
         elif isinstance(self.host_config, dict):
             _user = self.host_config.get(host, {}).get('user', self.user)
             _port = self.host_config.get(host, {}).get('port', self.port)
