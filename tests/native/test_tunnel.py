@@ -106,7 +106,18 @@ class TunnelTest(unittest.TestCase):
         servers = [OpenSSHServer(listen_ip=_host, port=self.port) for _host in hosts]
         for server in servers:
             server.start_server()
+        hosts_5 = [hosts[0], hosts[1], hosts[2], hosts[3], hosts[4]]
         try:
+            client = ParallelSSHClient(hosts_5, port=self.port, pkey=self.user_key,
+                                       proxy_host=self.proxy_host,
+                                       proxy_pkey=self.user_key,
+                                       proxy_port=self.proxy_port,
+                                       num_retries=1,
+                                       )
+            start = datetime.now()
+            output = client.run_command(self.cmd)
+            end = datetime.now()
+            dt_5 = end - start
             client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key,
                                        proxy_host=self.proxy_host,
                                        proxy_pkey=self.user_key,
@@ -116,8 +127,9 @@ class TunnelTest(unittest.TestCase):
             start = datetime.now()
             output = client.run_command(self.cmd)
             end = datetime.now()
-            dt = end - start
-            self.assertTrue(dt.total_seconds() < 2)
+            dt_10 = end - start
+            dt = dt_10.total_seconds() / dt_5.total_seconds()
+            self.assertTrue(dt < 2)
             client.join(output)
             self.assertEqual(len(hosts), len(output))
             for i, host_out in enumerate(output):

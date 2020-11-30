@@ -74,7 +74,7 @@ class LocalForwarder(Thread):
         try:
             while True:
                 if self.in_q.empty():
-                    sleep(.1)
+                    sleep(.01)
                     continue
                 self._start_server()
         except Exception:
