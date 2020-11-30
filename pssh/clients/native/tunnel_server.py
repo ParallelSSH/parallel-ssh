@@ -241,5 +241,9 @@ class TunnelServer(StreamServer):
         poller = poll()
         for sock in sockets:
             poller.register(sock, eventmask=events)
-        logger.debug("Polling socket with timeout %s", timeout)
         return poller.poll(timeout=timeout)
+
+
+FORWARDER = LocalForwarder()
+FORWARDER.daemon = True
+FORWARDER.start()

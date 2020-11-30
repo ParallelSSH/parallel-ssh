@@ -36,7 +36,7 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
 from ssh2.utils import find_eol
 
 
-from .tunnel_server import LocalForwarder
+from .tunnel_server import FORWARDER
 from ..base.single import BaseSSHClient
 from ...exceptions import AuthenticationException, SessionError, SFTPError, \
     SFTPIOError, Timeout, SCPError
@@ -126,16 +126,13 @@ class SSHClient(BaseSSHClient):
     def _connect_proxy(self, proxy_host, proxy_port, proxy_pkey, num_retries):
         port = self.port if proxy_port is None else proxy_port
         pkey = self.pkey if proxy_pkey is None else proxy_pkey
-        tunnel_server = LocalForwarder()
-        tunnel_server.daemon = True
-        tunnel_server.start()
         self._proxy_client = SSHClient(
             proxy_host, port=port, pkey=pkey,
             num_retries=num_retries,
             _auth_thread_pool=False)
-        tunnel_server.started.wait()
-        tunnel_server.in_q.put(self._proxy_client)
-        proxy_local_port = tunnel_server.out_q.get()
+        FORWARDER.started.wait()
+        FORWARDER.in_q.put(self._proxy_client)
+        proxy_local_port = FORWARDER.out_q.get()
         return proxy_local_port
 
     def disconnect(self):
@@ -163,10 +160,10 @@ class SSHClient(BaseSSHClient):
 
     def _init_session(self, retries=1):
         self.session = Session()
-        bitmask = LIBSSH2_TRACE_SOCKET | \
-                  LIBSSH2_TRACE_ERROR | \
-                  LIBSSH2_TRACE_CONN
-        self.session.trace(bitmask)
+        # bitmask = LIBSSH2_TRACE_SOCKET | \
+        #           LIBSSH2_TRACE_ERROR | \
+        #           LIBSSH2_TRACE_CONN
+        # self.session.trace(bitmask)
         if self.timeout:
             # libssh2 timeout is in ms
             self.session.set_timeout(self.timeout * 1000)
