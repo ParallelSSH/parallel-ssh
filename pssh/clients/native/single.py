@@ -36,10 +36,10 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
 from ssh2.utils import find_eol
 
 
-from .tunnel_server import FORWARDER
+from .tunnel import FORWARDER
 from ..base.single import BaseSSHClient
 from ...exceptions import AuthenticationException, SessionError, SFTPError, \
-    SFTPIOError, Timeout, SCPError
+    SFTPIOError, Timeout, SCPError, ProxyError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 
@@ -60,6 +60,8 @@ class SSHClient(BaseSSHClient):
                  proxy_host=None,
                  proxy_port=None,
                  proxy_pkey=None,
+                 proxy_user=None,
+                 proxy_password=None,
                  _auth_thread_pool=True, keepalive_seconds=60,
                  identity_auth=True,):
         """:param host: Host name or IP to connect to.
@@ -140,14 +142,20 @@ class SSHClient(BaseSSHClient):
                        forward_ssh_agent=False,
                        keepalive_seconds=60,
                        identity_auth=True):
-        self._proxy_client = SSHClient(
-            proxy_host, port=proxy_port, pkey=proxy_pkey,
-            num_retries=num_retries, user=user, password=password,
-            retry_delay=retry_delay, allow_agent=allow_agent,
-            timeout=timeout, forward_ssh_agent=forward_ssh_agent,
-            identity_auth=identity_auth,
-            keepalive_seconds=keepalive_seconds,
-            _auth_thread_pool=False)
+        try:
+            self._proxy_client = SSHClient(
+                proxy_host, port=proxy_port, pkey=proxy_pkey,
+                num_retries=num_retries, user=user, password=password,
+                retry_delay=retry_delay, allow_agent=allow_agent,
+                timeout=timeout, forward_ssh_agent=forward_ssh_agent,
+                identity_auth=identity_auth,
+                keepalive_seconds=keepalive_seconds,
+                _auth_thread_pool=False)
+        except Exception as ex:
+            msg = "Proxy authentication failed. " \
+                  "Exception from tunnel client: %s"
+            logger.error(msg, ex)
+            raise ProxyError(msg, ex)
         FORWARDER.started.wait()
         FORWARDER.in_q.put(self._proxy_client)
         proxy_local_port = FORWARDER.out_q.get()

@@ -16,16 +16,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import logging
-from collections import deque
-from gevent import sleep, Timeout as GTimeout
-from gevent.lock import RLock
 
 from .single import SSHClient
-from .tunnel import Tunnel
 from ..common import _validate_pkey_path
 from ..base.parallel import BaseParallelSSHClient
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-from ...exceptions import ProxyError, Timeout, HostArgumentError
+from ...exceptions import HostArgumentError
 
 
 logger = logging.getLogger(__name__)
@@ -133,11 +129,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
         self.proxy_user = proxy_user
         self.proxy_password = proxy_password
         self.forward_ssh_agent = forward_ssh_agent
-        self._tunnel = None
-        self._tunnel_in_q = None
-        self._tunnel_out_q = None
-        self._tunnel_lock = None
-        self._tunnel_timeout = tunnel_timeout if tunnel_timeout else self.timeout
         self.keepalive_seconds = keepalive_seconds
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
@@ -242,58 +233,22 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 pass
             del s_client
 
-    def _start_tunnel_thread(self):
-        self._tunnel_lock = RLock()
-        self._tunnel_in_q = deque()
-        self._tunnel_out_q = deque()
-        self._tunnel = Tunnel(
-            self.proxy_host, self._tunnel_in_q, self._tunnel_out_q,
-            user=self.proxy_user,
-            password=self.proxy_password, port=self.proxy_port,
-            pkey=self.proxy_pkey, num_retries=self.num_retries,
-            timeout=self._tunnel_timeout, retry_delay=self.retry_delay,
-            allow_agent=self.allow_agent)
-        self._tunnel.daemon = True
-        self._tunnel.start()
-        while not self._tunnel.tunnel_open.is_set():
-            logger.debug("Waiting for tunnel to become active")
-            sleep(.1)
-            if not self._tunnel.is_alive():
-                msg = "Proxy authentication failed. " \
-                      "Exception from tunnel client: %s"
-                logger.error(msg, self._tunnel.exception)
-                raise ProxyError(msg, self._tunnel.exception)
-
     def _make_ssh_client(self, host_i, host):
         auth_thread_pool = True
-        if self.proxy_host is not None and self._tunnel is None:
-            self._start_tunnel_thread()
         logger.debug("Make client request for host %s, (host_i, host) in clients: %s",
                      host, (host_i, host) in self._host_clients)
         if (host_i, host) not in self._host_clients \
            or self._host_clients[(host_i, host)] is None:
             _user, _port, _password, _pkey = self._get_host_config_values(host_i, host)
-            proxy_host = None if self.proxy_host is None else '127.0.0.1'
-            if proxy_host is not None:
-                auth_thread_pool = False
-                max_wait = self.timeout if self.timeout is not None else 60
-                with self._tunnel_lock:
-                    self._tunnel_in_q.append((host, _port))
-                with GTimeout(seconds=max_wait, exception=Timeout):
-                    while True:
-                        try:
-                            _port = self._tunnel_out_q.pop()
-                        except IndexError:
-                            logger.debug("Waiting on tunnel to open listening port")
-                            sleep(.1)
-                        else:
-                            break
             _client = SSHClient(
                 host, user=_user, password=_password, port=_port,
                 pkey=_pkey, num_retries=self.num_retries,
                 timeout=self.timeout,
                 allow_agent=self.allow_agent, retry_delay=self.retry_delay,
-                proxy_host=proxy_host, _auth_thread_pool=auth_thread_pool,
+                proxy_host=self.proxy_host,
+                proxy_port=self.proxy_port,
+                proxy_pkey=self.proxy_pkey,
+                _auth_thread_pool=auth_thread_pool,
                 forward_ssh_agent=self.forward_ssh_agent,
                 keepalive_seconds=self.keepalive_seconds,
                 identity_auth=self.identity_auth,

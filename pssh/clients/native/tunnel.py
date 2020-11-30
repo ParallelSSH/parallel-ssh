@@ -15,106 +15,133 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from threading import Thread, Event
 import logging
 
-from gevent import socket, spawn, joinall, get_hub, sleep
-from gevent.select import select
+from threading import Thread, Event
+from queue import Queue
 
+from gevent import spawn, joinall, get_hub, sleep
+from gevent.server import StreamServer
+from gevent.select import poll, POLLIN, POLLOUT
+from ssh2.session import LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 
-from .single import SSHClient
-from ...constants import DEFAULT_RETRIES, RETRY_DELAY
+from ...constants import DEFAULT_RETRIES
 
 
 logger = logging.getLogger(__name__)
 
 
-class Tunnel(Thread):
-    """SSH proxy implementation with direct TCP/IP tunnels.
+class LocalForwarder(Thread):
 
-    Each tunnel object runs in its own thread and can open any number of
-    direct tunnels to remote host:port destinations on local ports over
-    the same SSH connection.
-
-    To use, append ``(host, port)`` tuples into ``Tunnel.in_q`` and read
-    listen port for tunnel connection from ``Tunnel.out_q``.
-
-    ``Tunnel.tunnel_open`` is a *thread* event that will be set once tunnel is
-    ready."""
-
-    def __init__(self, host, in_q, out_q, user=None,
-                 password=None, port=None, pkey=None,
-                 num_retries=DEFAULT_RETRIES,
-                 retry_delay=RETRY_DELAY,
-                 allow_agent=True, timeout=None,
-                 channel_retries=5):
-        """
-        :param host: Remote SSH host to open tunnels with.
-        :type host: str
-        :param in_q: Deque for requesting new tunnel to given ``((host, port))``
-        :type in_q: :py:class:`collections.deque`
-        :param out_q: Deque for feeding back tunnel listening ports.
-        :type out_q: :py:class:`collections.deque`
-        :param user: (Optional) User to login as. Defaults to logged in user
-        :type user: str
-        :param password: (Optional) Password to use for login. Defaults to
-          no password
-        :type password: str
-        :param port: (Optional) Port number to use for SSH connection. Defaults
-          to ``None`` which uses SSH default (22)
-        :type port: int
-        :param pkey: Private key file path to use. Note that the public key file
-          pair *must* also exist in the same location with name ``<pkey>.pub``
-        :type pkey: str
-        :param num_retries: (Optional) Number of connection and authentication
-          attempts before the client gives up. Defaults to 3.
-        :type num_retries: int
-        :param retry_delay: Number of seconds to wait between retries. Defaults
-          to :py:class:`pssh.constants.RETRY_DELAY`
-        :type retry_delay: int
-        :param timeout: SSH session timeout setting in seconds. This controls
-          timeout setting of authenticated SSH sessions.
-        :type timeout: int
-        :param allow_agent: (Optional) set to False to disable connecting to
-          the system's SSH agent.
-        :type allow_agent: bool
-        """
+    def __init__(self):
         Thread.__init__(self)
-        self.client = None
-        self.session = None
-        self._sockets = []
-        self.in_q = in_q
-        self.out_q = out_q
-        self.host = host
-        self.port = port
-        self.user = user
-        self.password = password
-        self.pkey = pkey
-        self.num_retries = num_retries
-        self.retry_delay = retry_delay
-        self.allow_agent = allow_agent
-        self.timeout = timeout
-        self.exception = None
-        self.tunnel_open = Event()
-        self._tunnels = []
-        self.channel_retries = channel_retries
-        self._source_let = None
-        self._dest_let = None
+        self.in_q = Queue(1)
+        self.out_q = Queue(1)
+        self._servers = {}
         self._hub = None
+        self.started = Event()
+        self._cleanup_let = None
+
+    def _start_server(self):
+        client = self.in_q.get()
+        server = TunnelServer(client)
+        server.start()
+        self._servers[client] = server
+        while not server.started:
+            sleep(0.1)
+        local_port = server.socket.getsockname()[1]
+        self.out_q.put(local_port)
+
+    def _shutdown(self):
+        for client, server in self._servers.items():
+            server.stop()
+
+    def _cleanup_servers(self):
+        while True:
+            for client, server in self._servers.items():
+                if client.sock.closed:
+                    server.stop()
+                    del self._servers[client]
+            sleep(60)
+
+    def run(self):
+        self._hub = get_hub()
+        assert self._hub.main_hub is False
+        self.started.set()
+        self._cleanup_let = spawn(self._cleanup_servers)
+        logger.debug("Hub in server runner is main hub: %s", self._hub.main_hub)
+        try:
+            while True:
+                if self.in_q.empty():
+                    sleep(.1)
+                    continue
+                self._start_server()
+        except Exception:
+            logger.error("Tunnel thread caught exception and will exit:",
+                         exc_info=1)
+            self._shutdown()
+
+
+class TunnelServer(StreamServer):
+    """Local port forwarding server for tunneling connections from remote SSH server.
+
+    Accepts connections on an available localhost port once started and tunnels data
+    to/from remote SSH host for each connection.
+    """
+
+    def __init__(self, client, timeout=0.1):
+        StreamServer.__init__(self, ('127.0.0.1', 0), self.read_rw)
+        self.client = client
+        self.session = client.session
+        self._retries = DEFAULT_RETRIES
+        self.timeout = timeout
+
+    def read_rw(self, socket, address):
+        logger.debug("Client connected, forwarding %s:%s on"
+                     " remote host to %s",
+                     self.client.host, self.client.port, address)
+        local_port = address[1]
+        try:
+            channel = self._open_channel_retries(
+                self.client.host, self.client.port, local_port)
+        except Exception as ex:
+            logger.error("Could not establish channel to %s:%s: %s",
+                         self.client.host, self.client.port, ex)
+            self.exception = ex
+            return
+        source = spawn(self._read_forward_sock, socket, channel)
+        dest = spawn(self._read_channel, socket, channel)
+        logger.debug("Waiting for read/write greenlets")
+        self._source_let = source
+        self._dest_let = dest
+        self._wait_send_receive_lets(source, dest, channel, socket)
+
+    def _wait_send_receive_lets(self, source, dest, channel, forward_sock):
+        try:
+            joinall((source, dest), raise_error=True)
+        except Exception as ex:
+            logger.error(ex)
+        finally:
+            logger.debug("Closing channel and forward socket")
+            while channel.close() == LIBSSH2_ERROR_EAGAIN:
+                self.poll(timeout=.5)
+            forward_sock.close()
 
     def _read_forward_sock(self, forward_sock, channel):
         while True:
-            if channel is None or channel.eof():
+            if channel.eof():
                 logger.debug("Channel closed")
                 return
             try:
+                # logger.debug("Trying to read from socket")
                 data = forward_sock.recv(1024)
             except Exception as ex:
                 logger.error("Forward socket read error: %s", ex)
                 sleep(1)
                 continue
             data_len = len(data)
+            # logger.debug("Read %s data from forward socket", data_len,)
             if data_len == 0:
                 continue
             data_written = 0
@@ -127,12 +154,12 @@ class Tunnel(Thread):
                     continue
                 data_written += bytes_written
                 if rc == LIBSSH2_ERROR_EAGAIN:
-                    sleep(0.1)
-                    # select((), ((self.client.sock,)), (), timeout=0.001)
+                    self.poll()
+            # logger.debug("Wrote all data to channel")
 
     def _read_channel(self, forward_sock, channel):
         while True:
-            if channel is None or channel.eof():
+            if channel.eof():
                 logger.debug("Channel closed")
                 return
             try:
@@ -141,78 +168,25 @@ class Tunnel(Thread):
                 logger.error("Error reading from channel - %s", ex)
                 sleep(1)
                 continue
-            while size == LIBSSH2_ERROR_EAGAIN or size > 0:
-                if size == LIBSSH2_ERROR_EAGAIN:
-                    sleep(0.1)
-                    # select((self.client.sock,), (), (), timeout=0.001)
-                    try:
-                        size, data = channel.read()
-                    except Exception as ex:
-                        logger.error("Error reading from channel - %s", ex)
-                        sleep(1)
-                        continue
-                while size > 0:
-                    try:
-                        forward_sock.sendall(data)
-                    except Exception as ex:
-                        logger.error(
-                            "Error sending data to forward socket - %s", ex)
-                        sleep(.5)
-                        continue
-                    try:
-                        size, data = channel.read()
-                    except Exception as ex:
-                        logger.error("Error reading from channel - %s", ex)
-                        sleep(.5)
-
-    def _init_tunnel_sock(self):
-        tunnel_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        tunnel_socket.settimeout(self.timeout)
-        tunnel_socket.bind(('127.0.0.1', 0))
-        tunnel_socket.listen(0)
-        listen_port = tunnel_socket.getsockname()[1]
-        self._sockets.append(tunnel_socket)
-        return tunnel_socket, listen_port
-
-    def _init_tunnel_client(self):
-        self.client = SSHClient(self.host, user=self.user, port=self.port,
-                                password=self.password, pkey=self.pkey,
-                                num_retries=self.num_retries,
-                                retry_delay=self.retry_delay,
-                                allow_agent=self.allow_agent,
-                                timeout=self.timeout,
-                                _auth_thread_pool=False)
-        self.session = self.client.session
-        self.tunnel_open.set()
-
-    def cleanup(self):
-        if self._source_let is not None:
-            self._source_let.kill(block=False)
-        if self._dest_let is not None:
-            self._dest_let.kill(block=False)
-        if self.client is not None and self.session is not None:
-            self.client.disconnect()
-            self.session = None
-            self.client = None
-        self._sockets = None
-
-    def _consume_q(self):
-        while True:
-            try:
-                host, port = self.in_q.pop()
-            except IndexError:
-                sleep(1)
+            # logger.debug("Read %s data from channel" % (size,))
+            if size == LIBSSH2_ERROR_EAGAIN:
+                self.poll()
                 continue
-            logger.debug("Got request for tunnel to %s:%s", host, port)
-            tunnel = spawn(self._start_tunnel, host, port)
-            self._tunnels.append(tunnel)
+            try:
+                forward_sock.sendall(data)
+            except Exception as ex:
+                logger.error(
+                    "Error sending data to forward socket - %s", ex)
+                sleep(.5)
+                continue
+            # logger.debug("Wrote %s data to forward socket", len(data))
 
     def _open_channel(self, fw_host, fw_port, local_port):
         channel = self.session.direct_tcpip_ex(
             fw_host, fw_port, '127.0.0.1',
             local_port)
         while channel == LIBSSH2_ERROR_EAGAIN:
-            select((self.client.sock,), (self.client.sock,), ())
+            self.poll()
             channel = self.session.direct_tcpip_ex(
                 fw_host, fw_port, '127.0.0.1',
                 local_port)
@@ -221,86 +195,48 @@ class Tunnel(Thread):
     def _open_channel_retries(self, fw_host, fw_port, local_port,
                               wait_time=0.1):
         num_tries = 0
-        while num_tries < self.channel_retries:
+        while num_tries < self._retries:
             try:
                 channel = self._open_channel(fw_host, fw_port, local_port)
             except Exception:
                 num_tries += 1
-                if num_tries > self.num_retries:
+                if num_tries > self._retries:
                     raise
                 logger.error("Error opening channel to %s:%s, retries %s/%s",
-                             fw_host, fw_port, num_tries, self.num_retries)
+                             fw_host, fw_port, num_tries, self._retries)
                 sleep(wait_time)
                 wait_time *= 5
                 continue
             return channel
 
-    def _start_tunnel(self, fw_host, fw_port):
-        try:
-            listen_socket, listen_port = self._init_tunnel_sock()
-        except Exception as ex:
-            logger.error("Error initialising tunnel listen socket - %s", ex)
-            self.exception = ex
-            return
-        logger.debug("Tunnel listening on 127.0.0.1:%s on hub %s",
-                     listen_port, self._hub.thread_ident)
-        self.out_q.append(listen_port)
-        try:
-            forward_sock, forward_addr = listen_socket.accept()
-        except Exception as ex:
-            logger.error("Error accepting connection from client - %s", ex)
-            self.exception = ex
-            listen_socket.close()
-            return
-        forward_sock.settimeout(self.timeout)
-        logger.debug("Client connected, forwarding %s:%s on"
-                     " remote host to %s",
-                     fw_host, fw_port, forward_addr)
-        local_port = forward_addr[1]
-        try:
-            channel = self._open_channel_retries(fw_host, fw_port, local_port)
-        except Exception as ex:
-            logger.error("Could not establish channel to %s:%s: %s",
-                         fw_host, fw_port, ex)
-            self.exception = ex
-            forward_sock.close()
-            listen_socket.close()
-            return
-        source = spawn(self._read_forward_sock, forward_sock, channel)
-        dest = spawn(self._read_channel, forward_sock, channel)
-        logger.debug("Waiting for read/write greenlets")
-        self._source_let = source
-        self._dest_let = dest
-        self._wait_send_receive_lets(source, dest, channel, forward_sock)
+    def poll(self, timeout=None):
+        """Perform co-operative gevent poll on ssh2 session socket.
 
-    def _wait_send_receive_lets(self, source, dest, channel, forward_sock):
-        try:
-            joinall((source, dest), raise_error=True)
-        except Exception as ex:
-            logger.error(ex)
-        finally:
-            logger.debug("Closing channel and forward socket")
-            channel.close()
-            forward_sock.close()
-
-    def run(self):
-        """Thread run target. Starts tunnel client and waits for incoming
-        tunnel connection requests from ``Tunnel.in_q``."""
-        self._hub = get_hub()
-        assert self._hub.main_hub is False
-        try:
-            self._init_tunnel_client()
-        except Exception as ex:
-            logger.error("Tunnel initilisation failed - %s", ex)
-            self.exception = ex
+        Blocks current greenlet only if socket has pending read or write operations
+        in the appropriate direction.
+        """
+        directions = self.session.block_directions()
+        if directions == 0:
             return
-        try:
-            logger.debug("Hub ID in run function: %s", self._hub.thread_ident)
-            consume_let = spawn(self._consume_q)
-            consume_let.get()
-        except Exception as ex:
-            logger.error("Tunnel thread caught exception and will exit:",
-                         exc_info=1)
-            self.exception = ex
-        finally:
-            self.cleanup()
+        events = 0
+        if directions & LIBSSH2_SESSION_BLOCK_INBOUND:
+            events = POLLIN
+        if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:
+            events |= POLLOUT
+        self._poll_sockets([self.session.sock], events, timeout=timeout)
+
+    def _poll_sockets(self, sockets, events, timeout=None):
+        if len(sockets) == 0:
+            return
+        # gevent.select.poll converts seconds to miliseconds to match python socket
+        # implementation
+        timeout = timeout * 1000 if timeout is not None else 100
+        poller = poll()
+        for sock in sockets:
+            poller.register(sock, eventmask=events)
+        return poller.poll(timeout=timeout)
+
+
+FORWARDER = LocalForwarder()
+FORWARDER.daemon = True
+FORWARDER.start()
