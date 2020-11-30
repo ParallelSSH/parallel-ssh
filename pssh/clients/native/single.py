@@ -27,8 +27,6 @@ from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
     Timeout as SSH2Timeout, AgentConnectionError, AgentListIdentitiesError, \
     AgentAuthenticationError, AgentGetIdentityError
 from ssh2.session import Session, LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND
-from ssh2.session import LIBSSH2_TRACE_SOCKET, LIBSSH2_TRACE_ERROR, \
-    LIBSSH2_TRACE_CONN
 from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR, LIBSSH2_SFTP_S_IRGRP, \
     LIBSSH2_SFTP_S_IWUSR, LIBSSH2_SFTP_S_IXUSR, LIBSSH2_SFTP_S_IROTH, \
@@ -187,10 +185,6 @@ class SSHClient(BaseSSHClient):
 
     def _init_session(self, retries=1):
         self.session = Session()
-        # bitmask = LIBSSH2_TRACE_SOCKET | \
-        #           LIBSSH2_TRACE_ERROR | \
-        #           LIBSSH2_TRACE_CONN
-        # self.session.trace(bitmask)
         if self.timeout:
             # libssh2 timeout is in ms
             self.session.set_timeout(self.timeout * 1000)
