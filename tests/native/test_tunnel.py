@@ -24,6 +24,7 @@ import string
 import random
 import time
 
+from datetime import datetime
 from socket import timeout as socket_timeout
 from sys import version_info
 from collections import deque
@@ -102,7 +103,7 @@ class TunnelTest(unittest.TestCase):
             remote_server.stop()
 
     def test_tunnel_parallel_client(self):
-        hosts = ['127.0.0.11', '127.0.0.12', '127.0.0.13', '127.0.0.14']
+        hosts = ['127.0.0.1%s' % (d,) for d in range(10)]
         servers = [OpenSSHServer(listen_ip=_host, port=self.port) for _host in hosts]
         for server in servers:
             server.start_server()
@@ -113,7 +114,11 @@ class TunnelTest(unittest.TestCase):
                                        proxy_port=self.proxy_port,
                                        num_retries=1,
                                        )
+            start = datetime.now()
             output = client.run_command(self.cmd)
+            end = datetime.now()
+            dt = end - start
+            self.assertTrue(dt.total_seconds() < 2)
             client.join(output)
             self.assertEqual(len(hosts), len(output))
             for i, host_out in enumerate(output):
