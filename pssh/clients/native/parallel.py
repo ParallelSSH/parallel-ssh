@@ -109,9 +109,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           Defaults to False if not set.
           Requires agent forwarding implementation in libssh2 version used.
         :type forward_ssh_agent: bool
-        :param tunnel_timeout: (Optional) Override timeout setting for proxy tunnel
-          connections alone. Defaults to `self.timeout`.
-        :type tunnel_timeout: float
+        :param tunnel_timeout: No-op - to be removed.
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.

@@ -48,7 +48,6 @@ class TunnelTest(unittest.TestCase):
     def setUpClass(cls):
         _mask = int('0600') if version_info <= (2,) else 0o600
         os.chmod(PKEY_FILENAME, _mask)
-        cls.host = '127.0.0.1'
         cls.port = 2225
         cls.cmd = 'echo me'
         cls.resp = u'me'
@@ -70,7 +69,7 @@ class TunnelTest(unittest.TestCase):
         remote_server.start_server()
         try:
             client = SSHClient(
-                self.host, port=self.port, pkey=self.user_key,
+                remote_host, port=self.port, pkey=self.user_key,
                 num_retries=1,
                 proxy_host=self.proxy_host,
                 proxy_pkey=self.user_key,
@@ -79,7 +78,7 @@ class TunnelTest(unittest.TestCase):
             output = client.run_command(self.cmd)
             _stdout = list(output.stdout)
             self.assertListEqual(_stdout, [self.resp])
-            self.assertEqual(self.host, client.host)
+            self.assertEqual(remote_host, client.host)
             self.assertEqual(self.port, client.port)
         finally:
             remote_server.stop()
@@ -90,14 +89,14 @@ class TunnelTest(unittest.TestCase):
         remote_server.start_server()
         try:
             client = SSHClient(
-                self.host, port=self.proxy_port, pkey=self.user_key,
+                remote_host, port=self.proxy_port, pkey=self.user_key,
                 num_retries=1,
                 proxy_host=self.proxy_host,
             )
             output = client.run_command(self.cmd)
             _stdout = list(output.stdout)
             self.assertListEqual(_stdout, [self.resp])
-            self.assertEqual(self.host, client.host)
+            self.assertEqual(remote_host, client.host)
             self.assertEqual(self.proxy_port, client.port)
         finally:
             remote_server.stop()
@@ -112,6 +111,7 @@ class TunnelTest(unittest.TestCase):
                                        proxy_host=self.proxy_host,
                                        proxy_pkey=self.user_key,
                                        proxy_port=self.proxy_port,
+                                       num_retries=1,
                                        )
             output = client.run_command(self.cmd)
             client.join(output)
@@ -120,6 +120,60 @@ class TunnelTest(unittest.TestCase):
                 _stdout = list(host_out.stdout)
                 self.assertListEqual(_stdout, [self.resp])
                 self.assertEqual(hosts[i], host_out.host)
+        finally:
+            for server in servers:
+                server.stop()
+
+    def test_tunnel_parallel_client_part_failure(self):
+        hosts = ['127.0.0.11', '127.0.0.12', '127.0.0.13', '127.0.0.14']
+        servers = [OpenSSHServer(listen_ip=_host, port=self.port) for _host in hosts]
+        servers[0].start_server()
+        servers[1].start_server()
+        try:
+            client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key,
+                                       proxy_host=self.proxy_host,
+                                       proxy_pkey=self.user_key,
+                                       proxy_port=self.proxy_port,
+                                       num_retries=1,
+                                       )
+            output = client.run_command(self.cmd, stop_on_errors=False)
+            client.join(output)
+            self.assertEqual(len(hosts), len(output))
+            self.assertTrue(output[2].exception is not None)
+            self.assertTrue(output[3].exception is not None)
+            self.assertListEqual(list(output[0].stdout), [self.resp])
+            self.assertListEqual(list(output[1].stdout), [self.resp])
+        finally:
+            for server in servers:
+                server.stop()
+
+    def test_tunnel_parallel_client_running_fail(self):
+        hosts = ['127.0.0.11', '127.0.0.12', '127.0.0.13', '127.0.0.14']
+        servers = [OpenSSHServer(listen_ip=_host, port=self.port) for _host in hosts]
+        for server in servers:
+            server.start_server()
+        try:
+            client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key,
+                                       proxy_host=self.proxy_host,
+                                       proxy_pkey=self.user_key,
+                                       proxy_port=self.proxy_port,
+                                       num_retries=1,
+                                       timeout=1,
+                                       )
+            output = client.run_command(self.cmd)
+            client.join(output)
+            for server in (servers[2], servers[3]):
+                server.stop()
+                server.server_proc.communicate()
+            client._host_clients[(2, hosts[2])].disconnect()
+            client._host_clients[(3, hosts[3])].disconnect()
+            output = client.run_command(self.cmd, stop_on_errors=False)
+            client.join(output)
+            self.assertEqual(len(hosts), len(output))
+            self.assertTrue(output[2].exception is not None)
+            self.assertTrue(output[3].exception is not None)
+            self.assertListEqual(list(output[0].stdout), [self.resp])
+            self.assertListEqual(list(output[1].stdout), [self.resp])
         finally:
             for server in servers:
                 server.stop()

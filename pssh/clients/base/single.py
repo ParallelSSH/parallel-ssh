@@ -61,6 +61,7 @@ class BaseSSHClient(object):
                  proxy_port=None,
                  proxy_user=None,
                  proxy_password=None,
+                 proxy_pkey=None,
                  _auth_thread_pool=True,
                  identity_auth=True):
         self._auth_thread_pool = _auth_thread_pool
@@ -80,8 +81,6 @@ class BaseSSHClient(object):
         self.session = None
         self._host = proxy_host if proxy_host else host
         self._port = proxy_port if proxy_port else port
-        self._user = proxy_user if proxy_user else user
-        self._password = proxy_password if proxy_password else password
         self.pkey = _validate_pkey_path(pkey, self.host)
         self.identity_auth = identity_auth
         self._keepalive_greenlet = None
@@ -133,7 +132,7 @@ class BaseSSHClient(object):
             except Exception:
                 pass
         sleep(self.retry_delay)
-        self._connect(self._host, self.port, retries=retries)
+        self._connect(self._host, self._port, retries=retries)
         return self._init_session(retries=retries)
 
     def _connect(self, host, port, retries=1):

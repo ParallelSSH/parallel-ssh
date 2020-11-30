@@ -100,9 +100,6 @@ class SSHClient(BaseSSHClient):
         :type proxy_host: str
         :param proxy_port: Port to use for proxy connection. Defaults to self.port
         :type proxy_port: int
-        :param proxy_pkey: Private key to use for proxy authentication. Defaults to
-          self.pkey
-        :type proxy_pkey: str
         :param keepalive_seconds: Interval of keep alive messages being sent to
           server. Set to ``0`` or ``False`` to disable.
 
@@ -114,11 +111,15 @@ class SSHClient(BaseSSHClient):
         self.keepalive_seconds = keepalive_seconds
         self._keepalive_greenlet = None
         self._proxy_client = None
+        self.host = host
+        self.port = port
         if proxy_host is not None:
             _port = port if proxy_port is None else proxy_port
             _pkey = pkey if proxy_pkey is None else proxy_pkey
+            _user = user if proxy_user is None else proxy_user
+            _password = password if proxy_password is None else proxy_password
             proxy_port = self._connect_proxy(
-                proxy_host, _port, _pkey, user=user, password=password,
+                proxy_host, _port, _pkey, user=_user, password=_password,
                 num_retries=num_retries, retry_delay=retry_delay,
                 allow_agent=allow_agent,
                 timeout=timeout,
@@ -157,7 +158,7 @@ class SSHClient(BaseSSHClient):
             logger.error(msg, ex)
             raise ProxyError(msg, ex)
         FORWARDER.started.wait()
-        FORWARDER.in_q.put(self._proxy_client)
+        FORWARDER.in_q.put((self._proxy_client, self.host, self.port))
         proxy_local_port = FORWARDER.out_q.get()
         return proxy_local_port
 

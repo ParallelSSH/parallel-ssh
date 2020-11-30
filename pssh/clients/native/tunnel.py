@@ -44,12 +44,12 @@ class LocalForwarder(Thread):
         self._cleanup_let = None
 
     def _start_server(self):
-        client = self.in_q.get()
-        server = TunnelServer(client)
+        client, host, port = self.in_q.get()
+        server = TunnelServer(client, host, port)
         server.start()
         self._servers[client] = server
         while not server.started:
-            sleep(0.1)
+            sleep(0.01)
         local_port = server.socket.getsockname()[1]
         self.out_q.put(local_port)
 
@@ -90,24 +90,26 @@ class TunnelServer(StreamServer):
     to/from remote SSH host for each connection.
     """
 
-    def __init__(self, client, timeout=0.1):
+    def __init__(self, client, host, port, timeout=0.1):
         StreamServer.__init__(self, ('127.0.0.1', 0), self.read_rw)
         self.client = client
+        self.host = host
+        self.port = port
         self.session = client.session
         self._retries = DEFAULT_RETRIES
         self.timeout = timeout
 
     def read_rw(self, socket, address):
+        local_addr, local_port = address
         logger.debug("Client connected, forwarding %s:%s on"
-                     " remote host to %s",
-                     self.client.host, self.client.port, address)
-        local_port = address[1]
+                     " remote host to %s:%s",
+                     self.host, self.port, local_addr, local_port)
         try:
             channel = self._open_channel_retries(
-                self.client.host, self.client.port, local_port)
+                self.host, self.port, local_port)
         except Exception as ex:
             logger.error("Could not establish channel to %s:%s: %s",
-                         self.client.host, self.client.port, ex)
+                         self.host, self.port, ex)
             self.exception = ex
             return
         source = spawn(self._read_forward_sock, socket, channel)
@@ -130,18 +132,16 @@ class TunnelServer(StreamServer):
 
     def _read_forward_sock(self, forward_sock, channel):
         while True:
-            if channel.eof():
+            if channel is None or channel.eof():
                 logger.debug("Channel closed, tunnel forward socket reader exiting")
                 return
             try:
-                logger.debug("Trying to read from socket")
                 data = forward_sock.recv(1024)
             except Exception as ex:
                 logger.error("Forward socket read error: %s", ex)
-                sleep(1)
-                continue
+                raise
             data_len = len(data)
-            logger.debug("Read %s data from forward socket", data_len,)
+            # logger.debug("Read %s data from forward socket", data_len,)
             if data_len == 0:
                 sleep(1)
                 continue
@@ -151,8 +151,7 @@ class TunnelServer(StreamServer):
                     rc, bytes_written = channel.write(data[data_written:])
                 except Exception as ex:
                     logger.error("Channel write error: %s", ex)
-                    sleep(1)
-                    continue
+                    raise
                 data_written += bytes_written
                 if rc == LIBSSH2_ERROR_EAGAIN:
                     self.poll()
@@ -160,16 +159,15 @@ class TunnelServer(StreamServer):
 
     def _read_channel(self, forward_sock, channel):
         while True:
-            if channel.eof():
+            if channel is None or channel.eof():
                 logger.debug("Channel closed, tunnel reader exiting")
                 return
             try:
                 size, data = channel.read()
             except Exception as ex:
                 logger.error("Error reading from channel - %s", ex)
-                sleep(1)
-                continue
-            logger.debug("Read %s data from channel" % (size,))
+                raise
+            # logger.debug("Read %s data from channel" % (size,))
             if size == LIBSSH2_ERROR_EAGAIN:
                 self.poll()
                 continue
@@ -181,8 +179,7 @@ class TunnelServer(StreamServer):
             except Exception as ex:
                 logger.error(
                     "Error sending data to forward socket - %s", ex)
-                sleep(.5)
-                continue
+                raise
             logger.debug("Wrote %s data to forward socket", len(data))
 
     def _open_channel(self, fw_host, fw_port, local_port):
@@ -204,10 +201,10 @@ class TunnelServer(StreamServer):
                 channel = self._open_channel(fw_host, fw_port, local_port)
             except Exception:
                 num_tries += 1
-                if num_tries > self._retries:
-                    raise
                 logger.error("Error opening channel to %s:%s, retries %s/%s",
                              fw_host, fw_port, num_tries, self._retries)
+                if num_tries >= self._retries:
+                    raise
                 sleep(wait_time)
                 wait_time *= 5
                 continue
