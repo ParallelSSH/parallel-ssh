@@ -262,6 +262,18 @@ class LibSSHParallelTest(unittest.TestCase):
         self.assertTrue(self.client.finished(output))
         self.assertEqual(output[0].exit_code, 0)
 
+    def test_pssh_client_long_running_command_exit_codes_no_stdout(self):
+        expected_lines = 2
+        output = self.client.run_command(self.long_cmd(expected_lines))
+        self.assertEqual(len(output), len(self.client.hosts))
+        self.assertTrue(output[0].exit_code is None)
+        self.assertFalse(self.client.finished(output))
+        self.client.join(output)
+        self.assertTrue(self.client.finished(output))
+        self.assertEqual(output[0].exit_code, 0)
+        stdout = list(output[0].stdout)
+        self.assertEqual(expected_lines, len(stdout))
+
     def test_connection_error_exception(self):
         """Test that we get connection error exception in output with correct arguments"""
         # Make port with no server listening on it on separate ip

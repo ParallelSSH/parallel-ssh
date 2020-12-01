@@ -19,6 +19,9 @@ try:
     from io import BytesIO
 except ImportError:
     from cStringIO import StringIO as BytesIO
+
+from gevent import sleep
+from gevent.event import Event
 from gevent.lock import RLock
 
 
@@ -28,6 +31,7 @@ class ConcurrentRWBuffer(object):
         self._buffer = BytesIO()
         self._read_pos = 0
         self._write_pos = 0
+        self.eof = Event()
         self._lock = RLock()
 
     def write(self, data):
@@ -40,6 +44,16 @@ class ConcurrentRWBuffer(object):
         with self._lock:
             if not self._buffer.tell() == self._read_pos:
                 self._buffer.seek(self._read_pos)
-            data = self._buffer.read()
-            self._read_pos += len(data)
+            data = None
+            if self._write_pos > 0 and self._read_pos != self._write_pos:
+                data = self._buffer.read()
+                self._read_pos += len(data)
         return data
+
+    def __iter__(self):
+        while not self.eof.is_set() or self._read_pos != self._write_pos:
+            data = self.read()
+            if data:
+                yield data
+            elif self._read_pos == self._write_pos:
+                sleep(.1)

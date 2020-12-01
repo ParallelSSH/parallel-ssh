@@ -16,10 +16,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import logging
-try:
-    from io import BytesIO
-except ImportError:
-    from cStringIO import StringIO as BytesIO
 
 from gevent import sleep, spawn, Timeout as GTimeout, joinall
 from gevent.select import POLLIN, POLLOUT
@@ -28,11 +24,13 @@ from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
 from ssh.key import import_privkey_file, import_cert_file, copy_cert_to_privkey
 from ssh.exceptions import EOF
 from ssh.error_codes import SSH_AGAIN
+from ssh2.utils import find_eol
 
 from ..base.single import BaseSSHClient
+from ..common import _validate_pkey_path
+from ..reader import ConcurrentRWBuffer
 from ...exceptions import AuthenticationError, SessionError, Timeout
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-from ..common import _validate_pkey_path
 
 
 logger = logging.getLogger(__name__)
@@ -117,8 +115,8 @@ class SSHClient(BaseSSHClient):
             _auth_thread_pool=_auth_thread_pool,
             timeout=timeout,
             identity_auth=identity_auth)
-        self._stdout_buffer = BytesIO()
-        self._stderr_buffer = BytesIO()
+        self._stdout_buffer = ConcurrentRWBuffer()
+        self._stderr_buffer = ConcurrentRWBuffer()
         self._stdout_reader = None
         self._stderr_reader = None
         self._stdout_read = False
@@ -249,8 +247,8 @@ class SSHClient(BaseSSHClient):
         self._eagain(channel.request_exec, cmd, timeout=self.timeout)
         self._stderr_read = False
         self._stdout_read = False
-        self._stdout_buffer = BytesIO()
-        self._stderr_buffer = BytesIO()
+        self._stdout_buffer = ConcurrentRWBuffer()
+        self._stderr_buffer = ConcurrentRWBuffer()
         self._stdout_reader = spawn(
             self._read_output_to_buffer, channel)
         self._stderr_reader = spawn(
@@ -295,23 +293,39 @@ class SSHClient(BaseSSHClient):
         if _flag is True:
             logger.debug("Output for %s has already been read", _buffer_name)
             raise StopIteration
-        logger.debug("Waiting for %s reader", _buffer_name)
-        timeout = timeout if timeout else self.timeout
-        try:
-            _reader.get(timeout=timeout)
-        except GTimeout as ex:
-            raise Timeout(ex)
-        if _buffer.getvalue() == '':
-            logger.debug("Reader finished and output empty for %s",
-                         _buffer_name)
-            raise StopIteration
         logger.debug("Reading from %s buffer", _buffer_name)
-        for line in _buffer.getvalue().splitlines():
-            yield line
-        if is_stderr:
-            self._stderr_read = True
-        else:
-            self._stdout_read = True
+        timer = GTimeout(seconds=timeout, exception=Timeout)
+        remainder = b""
+        remainder_len = 0
+        timer.start()
+        try:
+            for data in _buffer:
+                pos = 0
+                size = len(data)
+                while pos < size:
+                    linesep, new_line_pos = find_eol(data, pos)
+                    if linesep == -1:
+                        remainder += data[pos:]
+                        remainder_len = len(remainder)
+                        break
+                    end_of_line = pos+linesep
+                    if remainder_len > 0:
+                        line = remainder + data[pos:end_of_line]
+                        remainder = b""
+                        remainder_len = 0
+                    else:
+                        line = data[pos:end_of_line]
+                    yield line
+                    pos += linesep + new_line_pos
+            if remainder_len > 0:
+                # Finished reading without finding ending linesep
+                yield remainder
+            if is_stderr:
+                self._stderr_read = True
+            else:
+                self._stdout_read = True
+        finally:
+            timer.close()
 
     def _read_output_to_buffer(self, channel, is_stderr=False):
         _buffer_name = 'stderr' if is_stderr else 'stdout'
@@ -325,6 +339,7 @@ class SSHClient(BaseSSHClient):
             except EOF:
                 logger.debug("Channel is at EOF trying to read %s - "
                              "reader exiting", _buffer_name)
+                _buffer.eof.set()
                 sleep(.1)
                 return
             if size > 0:
