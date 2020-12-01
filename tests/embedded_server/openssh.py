@@ -111,14 +111,3 @@ class OpenSSHServer(object):
 
     def __del__(self):
         self.stop()
-
-
-class ThreadedOpenSSHServer(Thread, OpenSSHServer):
-
-    def __init__(self, listen_ip='127.0.0.1', port=2222):
-        Thread.__init__(self)
-        OpenSSHServer.__init__(self, listen_ip=listen_ip, port=port)
-
-    def run(self):
-        self.start_server()
-        self.server_proc.wait()

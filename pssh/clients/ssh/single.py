@@ -204,7 +204,7 @@ class SSHClient(BaseSSHClient):
             raise AuthenticationError("Password authentication failed - %s", ex)
 
     def _pkey_auth(self, pkey, password=None):
-        pkey = import_privkey_file(pkey, passphrase=password)
+        pkey = import_privkey_file(pkey, passphrase=password if password is not None else '')
         if self.cert_file is not None:
             logger.debug("Certificate file set - trying certificate authentication")
             self._import_cert_file(pkey)

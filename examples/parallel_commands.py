@@ -12,7 +12,7 @@ start = datetime.datetime.now()
 for cmd in cmds:
     output.append(client.run_command(cmd, stop_on_errors=False, return_list=True))
 end = datetime.datetime.now()
-print("Started %s commands on %s host(s) in %s" % (
+print("Started %s 'sleep 5' commands on %s host(s) in %s" % (
     len(cmds), len(hosts), end-start,))
 start = datetime.datetime.now()
 for _output in output:

@@ -23,17 +23,20 @@ class HostConfig(object):
     """Host configuration for ParallelSSHClient.
 
     Used to hold individual configuration for each host in ParallelSSHClient host list.
-
-    Currently only user, port, password and private_key attributes can be configured for backwards
-    compatibility with dictionary host_config implementation in the 1.x.x series.
     """
     __slots__ = ('user', 'port', 'password', 'private_key', 'allow_agent',
                  'num_retries', 'retry_delay', 'timeout', 'identity_auth',
-                 'proxy_host', 'keepalive_seconds')
+                 'proxy_host', 'proxy_port', 'proxy_user', 'proxy_password', 'proxy_pkey',
+                 'keepalive_seconds',
+                 )
 
     def __init__(self, user=None, port=None, password=None, private_key=None,
                  allow_agent=None, num_retries=None, retry_delay=None, timeout=None,
-                 identity_auth=None, proxy_host=None, keepalive_seconds=None):
+                 identity_auth=None,
+                 proxy_host=None, proxy_port=None, proxy_user=None, proxy_password=None,
+                 proxy_pkey=None,
+                 keepalive_seconds=None,
+                 ):
         """
         :param user: Username to login as.
         :type user: str
@@ -58,6 +61,14 @@ class HostConfig(object):
         :param proxy_host: Proxy SSH host to use for connecting to target SSH host.
           client -> proxy_host -> SSH host
         :type proxy_host: str
+        :param proxy_port: Port for proxy host.
+        :type proxy_port: int
+        :param proxy_user: Username for proxy host.
+        :type proxy_user: str
+        :param proxy_password: Password for proxy host.
+        :type proxy_password: str
+        :param proxy_pkey: Private key for proxy host.
+        :type proxy_pkey: str
         :param keepalive_seconds: Seconds between keepalive packets being sent.
           0 to disable.
         :type keepalive_seconds: int
@@ -72,6 +83,10 @@ class HostConfig(object):
         self.retry_delay = retry_delay
         self.identity_auth = identity_auth
         self.proxy_host = proxy_host
+        self.proxy_port = proxy_port
+        self.proxy_user = proxy_user
+        self.proxy_password = proxy_password
+        self.proxy_pkey = proxy_pkey
         self.keepalive_seconds = keepalive_seconds
         self._sanity_checks()
 
@@ -96,5 +111,13 @@ class HostConfig(object):
             raise ValueError("Identity auth %s is not a boolean" % (self.identity_auth,))
         if self.proxy_host is not None and not isinstance(self.proxy_host, str):
             raise ValueError("Proxy host %s is not a string" % (self.proxy_host,))
+        if self.proxy_port is not None and not isinstance(self.proxy_port, int):
+            raise ValueError("Proxy port %s is not an integer" % (self.proxy_port,))
+        if self.proxy_user is not None and not isinstance(self.proxy_user, str):
+            raise ValueError("Proxy user %s is not a string" % (self.proxy_user,))
+        if self.proxy_password is not None and not isinstance(self.proxy_password, str):
+            raise ValueError("Proxy password %s is not a string" % (self.proxy_password,))
+        if self.proxy_pkey is not None and not isinstance(self.proxy_pkey, str):
+            raise ValueError("Proxy pkey %s is not a string" % (self.proxy_pkey,))
         if self.keepalive_seconds is not None and not isinstance(self.keepalive_seconds, int):
             raise ValueError("Keepalive seconds %s is not an integer" % (self.keepalive_seconds,))

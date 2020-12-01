@@ -20,30 +20,31 @@ attempt to perform an `ls` and copy a test file with both SSHClient
 and ParallelSSHClient.
 """
 
-from pssh import SSHClient, ParallelSSHClient, utils
 import logging
+
 from pprint import pprint
 
-utils.enable_host_logger()
-utils.enable_logger(utils.logger)
+from pssh.clients import SSHClient, ParallelSSHClient
+
 
 def test():
     """Perform ls and copy file with SSHClient on localhost"""
     client = SSHClient('localhost')
-    channel, host, stdout, stderr = client.exec_command('ls -ltrh')
-    for line in stdout:
-        pprint(line.strip())
+    output = client.run_command('ls -ltrh')
+    for line in output.stdout:
+        print(line)
     client.copy_file('../test', 'test_dir/test')
+
 
 def test_parallel():
     """Perform ls and copy file with ParallelSSHClient on localhost.
-    
+
     Two identical hosts cause the same command to be executed
     twice on the same host in two parallel connections.
     In printed output there will be two identical lines per printed per
     line of `ls -ltrh` output as output is printed by host_logger as it
     becomes available and commands are executed in parallel
-    
+
     Host output key is de-duplicated so that output for the two
     commands run on the same host(s) is not lost
     """
@@ -52,7 +53,8 @@ def test_parallel():
     client.join(output)
     pprint(output)
     cmds = client.copy_file('../test', 'test_dir/test')
-    client.pool.join()
+    joinall(cmds, raise_error=True)
+
 
 if __name__ == "__main__":
     test()
