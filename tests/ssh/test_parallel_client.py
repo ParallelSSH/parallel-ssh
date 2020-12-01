@@ -23,6 +23,7 @@ from sys import version_info
 
 from gevent import joinall, spawn, socket, Greenlet
 from pssh import logger as pssh_logger
+from pssh.output import HostOutput
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
@@ -129,13 +130,21 @@ class LibSSHParallelTest(unittest.TestCase):
             client.run_command(self.cmd)
             self.assertTrue(client.cmds is not None)
             self.assertEqual(len(client.cmds), len(hosts))
+            expected_stdout = [self.resp]
+            expected_stderr = []
             output = client.get_last_output()
-            self.assertTrue(len(output), len(hosts))
+            self.assertIsInstance(output, list)
+            self.assertEqual(len(output), len(hosts))
+            self.assertIsInstance(output[0], HostOutput)
             client.join(output)
             for i, host in enumerate(hosts):
                 self.assertEqual(output[i].host, host)
                 exit_code = output[i].exit_code
+                _stdout = list(output[i].stdout)
+                _stderr = list(output[i].stderr)
                 self.assertEqual(exit_code, 0)
+                self.assertListEqual(expected_stdout, _stdout)
+                self.assertListEqual(expected_stderr, _stderr)
         finally:
             server.stop()
 
@@ -256,7 +265,7 @@ class LibSSHParallelTest(unittest.TestCase):
         expected_lines = 2
         output = self.client.run_command(self.long_cmd(expected_lines))
         self.assertEqual(len(output), len(self.client.hosts))
-        self.assertTrue(output[0].exit_code is None)
+        self.assertIsNone(output[0].exit_code)
         self.assertFalse(self.client.finished(output))
         self.client.join(output, consume_output=True)
         self.assertTrue(self.client.finished(output))
@@ -266,7 +275,7 @@ class LibSSHParallelTest(unittest.TestCase):
         expected_lines = 2
         output = self.client.run_command(self.long_cmd(expected_lines))
         self.assertEqual(len(output), len(self.client.hosts))
-        self.assertTrue(output[0].exit_code is None)
+        self.assertIsNone(output[0].exit_code)
         self.assertFalse(self.client.finished(output))
         self.client.join(output)
         self.assertTrue(self.client.finished(output))

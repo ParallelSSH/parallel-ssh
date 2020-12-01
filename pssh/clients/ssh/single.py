@@ -115,12 +115,6 @@ class SSHClient(BaseSSHClient):
             _auth_thread_pool=_auth_thread_pool,
             timeout=timeout,
             identity_auth=identity_auth)
-        self._stdout_buffer = None
-        self._stderr_buffer = None
-        self._stdout_reader = None
-        self._stderr_reader = None
-        self._stdout_read = False
-        self._stderr_read = False
 
     def disconnect(self):
         """Close socket if needed."""
@@ -256,76 +250,6 @@ class SSHClient(BaseSSHClient):
         self._stdout_reader.start()
         self._stderr_reader.start()
         return channel
-
-    def read_stderr(self, channel, timeout=None):
-        """Read standard error buffer from channel.
-        Returns a generator of line by line output.
-
-        :param channel: Channel to read output from.
-        :type channel: :py:class:`ssh2.channel.Channel`
-        :rtype: generator
-        """
-        _buffer_name = 'stderr'
-        _buffer = self._stderr_buffer
-        _flag = self._stderr_read
-        _reader = self._stderr_reader
-        return self._read_output(
-            _buffer, _buffer_name, _flag, _reader, channel, timeout=timeout,
-            is_stderr=True)
-
-    def read_output(self, channel, timeout=None, is_stderr=False):
-        """Read standard output buffer from channel.
-        Returns a generator of line by line output.
-
-        :param channel: Channel to read output from.
-        :type channel: :py:class:`ssh2.channel.Channel`
-        :rtype: generator
-        """
-        _buffer_name = 'stdout'
-        _buffer = self._stdout_buffer
-        _flag = self._stdout_read
-        _reader = self._stdout_reader
-        return self._read_output(
-            _buffer, _buffer_name, _flag, _reader, channel, timeout=timeout)
-
-    def _read_output(self, _buffer, _buffer_name, _flag, _reader, channel,
-                     timeout=None, is_stderr=False):
-        if _flag is True:
-            logger.debug("Output for %s has already been read", _buffer_name)
-            raise StopIteration
-        logger.debug("Reading from %s buffer", _buffer_name)
-        timer = GTimeout(seconds=timeout, exception=Timeout)
-        remainder = b""
-        remainder_len = 0
-        timer.start()
-        try:
-            for data in _buffer:
-                pos = 0
-                size = len(data)
-                while pos < size:
-                    linesep, new_line_pos = find_eol(data, pos)
-                    if linesep == -1:
-                        remainder += data[pos:]
-                        remainder_len = len(remainder)
-                        break
-                    end_of_line = pos+linesep
-                    if remainder_len > 0:
-                        line = remainder + data[pos:end_of_line]
-                        remainder = b""
-                        remainder_len = 0
-                    else:
-                        line = data[pos:end_of_line]
-                    yield line
-                    pos += linesep + new_line_pos
-            if remainder_len > 0:
-                # Finished reading without finding ending linesep
-                yield remainder
-            if is_stderr:
-                self._stderr_read = True
-            else:
-                self._stdout_read = True
-        finally:
-            timer.close()
 
     def _read_output_to_buffer(self, channel, is_stderr=False):
         _buffer_name = 'stderr' if is_stderr else 'stdout'

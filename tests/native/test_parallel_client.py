@@ -251,14 +251,25 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_pssh_client_long_running_command_exit_codes(self):
         expected_lines = 2
         output = self.client.run_command(self.long_cmd(expected_lines))
-        self.client.join(output)
-        self.assertIsNone(output[0].exit_code,
-                        msg="Got exit code %s for still running cmd.." % (
-                            output[0].exit_code,))
+        self.assertIsNone(output[0].exit_code)
         self.assertFalse(self.client.finished(output))
         self.client.join(output, consume_output=True)
         self.assertTrue(self.client.finished(output))
         self.assertEqual(output[0].exit_code, 0)
+        stdout = list(output[0].stdout)
+        self.assertEqual(len(stdout), 0)
+
+    def test_pssh_client_long_running_command_exit_codes_no_stdout(self):
+        expected_lines = 2
+        output = self.client.run_command(self.long_cmd(expected_lines))
+        self.assertEqual(len(output), len(self.client.hosts))
+        self.assertIsNone(output[0].exit_code)
+        self.assertFalse(self.client.finished(output))
+        self.client.join(output)
+        self.assertTrue(self.client.finished(output))
+        self.assertEqual(output[0].exit_code, 0)
+        stdout = list(output[0].stdout)
+        self.assertEqual(expected_lines, len(stdout))
 
     def test_pssh_client_retries(self):
         """Test connection error retries"""
@@ -1192,7 +1203,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         client.join(output)
         output[0].client.session.disconnect()
         self.assertRaises(SessionError, output[0].client.open_session)
-        self.assertEqual(output[0].exit_code, None)
+        self.assertEqual(output[0].exit_code, 0)
 
     def test_invalid_host_out(self):
         output = {'blah': None}
@@ -1548,22 +1559,24 @@ class ParallelSSHClientTest(unittest.TestCase):
             client = ParallelSSHClient(hosts, port=self.port,
                                        pkey=self.user_key,
                                        num_retries=1)
+            self.assertTrue(client.cmds is None)
+            self.assertTrue(client.get_last_output() is None)
             client.run_command(self.cmd)
-            expected_exit_code = 0
             expected_stdout = [self.resp]
             expected_stderr = []
-            last_out = client.get_last_output(return_list=True)
-            self.assertIsInstance(last_out, list)
-            self.assertEqual(len(last_out), len(hosts))
-            self.assertIsInstance(last_out[0], HostOutput)
-            for host_i, host_output in enumerate(last_out):
-                self.assertEqual(host_output.host, client.hosts[host_i])
-                self.assertEqual(host_output.exit_code, None)
-                _stdout = list(host_output.stdout)
-                _stderr = list(host_output.stderr)
+            output = client.get_last_output()
+            self.assertIsInstance(output, list)
+            self.assertEqual(len(output), len(hosts))
+            self.assertIsInstance(output[0], HostOutput)
+            client.join(output)
+            for i, host in enumerate(hosts):
+                self.assertEqual(output[i].host, host)
+                exit_code = output[i].exit_code
+                _stdout = list(output[i].stdout)
+                _stderr = list(output[i].stderr)
+                self.assertEqual(exit_code, 0)
                 self.assertListEqual(expected_stdout, _stdout)
                 self.assertListEqual(expected_stderr, _stderr)
-                self.assertEqual(host_output.exit_code, expected_exit_code)
         finally:
             for server in servers:
                 server.stop()

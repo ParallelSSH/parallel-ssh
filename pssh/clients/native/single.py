@@ -36,6 +36,7 @@ from ssh2.utils import find_eol
 
 from .tunnel import FORWARDER
 from ..base.single import BaseSSHClient
+from ..reader import ConcurrentRWBuffer
 from ...exceptions import AuthenticationException, SessionError, SFTPError, \
     SFTPIOError, Timeout, SCPError, ProxyError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
@@ -288,7 +289,28 @@ class SSHClient(BaseSSHClient):
             self._eagain(channel.pty)
         logger.debug("Executing command '%s'", cmd)
         self._eagain(channel.execute, cmd)
+        self._stdout_buffer = ConcurrentRWBuffer()
+        self._stderr_buffer = ConcurrentRWBuffer()
+        self._stdout_reader = spawn(
+            self._read_output_to_buffer, channel.read, self._stdout_buffer)
+        self._stderr_reader = spawn(
+            self._read_output_to_buffer, channel.read_stderr, self._stderr_buffer)
+        self._stdout_reader.start()
+        self._stderr_reader.start()
         return channel
+
+    def _read_output_to_buffer(self, read_func, _buffer):
+        try:
+            while True:
+                size, data = read_func()
+                while size == LIBSSH2_ERROR_EAGAIN:
+                    self.poll()
+                    size, data = read_func()
+                if size <= 0:
+                    break
+                _buffer.write(data)
+        finally:
+            _buffer.eof.set()
 
     def _read_output(self, read_func, timeout=None):
         remainder = b""
@@ -324,26 +346,6 @@ class SSHClient(BaseSSHClient):
                 yield remainder
         finally:
             t.close()
-
-    def read_stderr(self, channel, timeout=None):
-        """Read standard error buffer from channel.
-        Returns a generator of line by line output.
-
-        :param channel: Channel to read output from.
-        :type channel: :py:class:`ssh2.channel.Channel`
-        :rtype: generator
-        """
-        return self._read_output(channel.read_stderr, timeout=timeout)
-
-    def read_output(self, channel, timeout=None):
-        """Read standard output buffer from channel.
-        Returns a generator of line by line output.
-
-        :param channel: Channel to read output from.
-        :type channel: :py:class:`ssh2.channel.Channel`
-        :rtype: generator
-        """
-        return self._read_output(channel.read, timeout=timeout)
 
     def wait_finished(self, channel, timeout=None):
         """Wait for EOF from channel and close channel.

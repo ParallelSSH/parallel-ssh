@@ -43,7 +43,11 @@ class ConcurrentRWBuffer(object):
         self._lock = RLock()
 
     def write(self, data):
-        """Write data to buffer"""
+        """Write data to buffer
+
+        :param data: Data to write
+        :type data: bytes
+        """
         with self._lock:
             if not self._buffer.tell() == self._write_pos:
                 self._buffer.seek(self._write_pos)
