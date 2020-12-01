@@ -190,20 +190,26 @@ class BaseParallelSSHClient(object):
 
     def _get_host_config_values(self, host_i, host):
         if self.host_config is None:
-            return self.user, self.port, self.password, self.pkey
+            return self.user, self.port, self.password, self.pkey, \
+                getattr(self, 'proxy_host', None), \
+                getattr(self, 'proxy_port', None), getattr(self, 'proxy_user', None), \
+                getattr(self, 'proxy_password', None), getattr(self, 'proxy_pkey', None)
         elif isinstance(self.host_config, list):
-            _user = self.host_config[host_i].user
-            _port = self.host_config[host_i].port
-            _password = self.host_config[host_i].password
-            _pkey = self.host_config[host_i].private_key
-            return _user, _port, _password, _pkey
+            config = self.host_config[host_i]
+            return config.user or self.user, config.port or self.port, \
+                config.password or self.password, config.private_key or self.pkey, \
+                config.proxy_host or getattr(self, 'proxy_host', None), \
+                config.proxy_port or getattr(self, 'proxy_port', None), \
+                config.proxy_user or getattr(self, 'proxy_user', None), \
+                config.proxy_password or getattr(self, 'proxy_password', None), \
+                config.proxy_pkey or getattr(self, 'proxy_pkey', None)
         elif isinstance(self.host_config, dict):
             _user = self.host_config.get(host, {}).get('user', self.user)
             _port = self.host_config.get(host, {}).get('port', self.port)
             _password = self.host_config.get(host, {}).get(
                 'password', self.password)
             _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
-            return _user, _port, _password, _pkey
+            return _user, _port, _password, _pkey, None, None, None, None, None
 
     def _run_command(self, host_i, host, command, sudo=False, user=None,
                      shell=None, use_pty=False,
@@ -220,6 +226,24 @@ class BaseParallelSSHClient(object):
             host = ex.host if hasattr(ex, 'host') else None
             logger.error("Failed to run on host %s - %s", host, ex)
             raise ex
+
+    def connect_auth(self):
+        """Connect to and authenticate with all hosts in parallel.
+
+        This function can be used to perform connection and authentication outside of
+        command functions like ``run_command`` or ``copy_file`` so the two operations,
+        login and running a remote command, can be separated.
+
+        It is not required to be called prior to any other functions.
+
+        Connections and authentication is performed in parallel by this and all other
+        functions.
+
+        :returns: list of greenlets to ``joinall`` with.
+        :rtype: list(:py:mod:`gevent.greenlet.Greenlet`)
+        """
+        cmds = [spawn(self._make_ssh_client, i, host) for i, host in enumerate(self.hosts)]
+        return cmds
 
     def _consume_output(self, stdout, stderr):
         for line in stdout:

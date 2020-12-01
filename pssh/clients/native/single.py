@@ -33,9 +33,11 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_SFTP_S_IXGRP, LIBSSH2_SFTP_S_IXOTH
 from ssh2.utils import find_eol
 
+
+from .tunnel import FORWARDER
 from ..base.single import BaseSSHClient
 from ...exceptions import AuthenticationException, SessionError, SFTPError, \
-    SFTPIOError, Timeout, SCPError
+    SFTPIOError, Timeout, SCPError, ProxyError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 
@@ -54,6 +56,10 @@ class SSHClient(BaseSSHClient):
                  allow_agent=True, timeout=None,
                  forward_ssh_agent=False,
                  proxy_host=None,
+                 proxy_port=None,
+                 proxy_pkey=None,
+                 proxy_user=None,
+                 proxy_password=None,
                  _auth_thread_pool=True, keepalive_seconds=60,
                  identity_auth=True,):
         """:param host: Host name or IP to connect to.
@@ -88,9 +94,10 @@ class SSHClient(BaseSSHClient):
           equivalent to `ssh -A` from the `ssh` command line utility.
           Defaults to True if not set.
         :type forward_ssh_agent: bool
-        :param proxy_host: Connection to host is via provided proxy host
-          and client should use self.proxy_host for connection attempts.
+        :param proxy_host: Connect to target host via given proxy host.
         :type proxy_host: str
+        :param proxy_port: Port to use for proxy connection. Defaults to self.port
+        :type proxy_port: int
         :param keepalive_seconds: Interval of keep alive messages being sent to
           server. Set to ``0`` or ``False`` to disable.
 
@@ -101,12 +108,59 @@ class SSHClient(BaseSSHClient):
         self._forward_requested = False
         self.keepalive_seconds = keepalive_seconds
         self._keepalive_greenlet = None
+        self._proxy_client = None
+        self.host = host
+        self.port = port
+        if proxy_host is not None:
+            _port = port if proxy_port is None else proxy_port
+            _pkey = pkey if proxy_pkey is None else proxy_pkey
+            _user = user if proxy_user is None else proxy_user
+            _password = password if proxy_password is None else proxy_password
+            proxy_port = self._connect_proxy(
+                proxy_host, _port, _pkey, user=_user, password=_password,
+                num_retries=num_retries, retry_delay=retry_delay,
+                allow_agent=allow_agent,
+                timeout=timeout,
+                keepalive_seconds=keepalive_seconds,
+                identity_auth=identity_auth,
+            )
+            proxy_host = '127.0.0.1'
         super(SSHClient, self).__init__(
             host, user=user, password=password, port=port, pkey=pkey,
             num_retries=num_retries, retry_delay=retry_delay,
             allow_agent=allow_agent, _auth_thread_pool=_auth_thread_pool,
             timeout=timeout,
-            proxy_host=proxy_host, identity_auth=identity_auth)
+            proxy_host=proxy_host, proxy_port=proxy_port,
+            identity_auth=identity_auth)
+
+    def _connect_proxy(self, proxy_host, proxy_port, proxy_pkey,
+                       user=None, password=None,
+                       num_retries=DEFAULT_RETRIES,
+                       retry_delay=RETRY_DELAY,
+                       allow_agent=True, timeout=None,
+                       forward_ssh_agent=False,
+                       keepalive_seconds=60,
+                       identity_auth=True):
+        try:
+            self._proxy_client = SSHClient(
+                proxy_host, port=proxy_port, pkey=proxy_pkey,
+                num_retries=num_retries, user=user, password=password,
+                retry_delay=retry_delay, allow_agent=allow_agent,
+                timeout=timeout, forward_ssh_agent=forward_ssh_agent,
+                identity_auth=identity_auth,
+                keepalive_seconds=keepalive_seconds,
+                _auth_thread_pool=False)
+        except Exception as ex:
+            msg = "Proxy authentication failed. " \
+                  "Exception from tunnel client: %s"
+            logger.error(msg, ex)
+            raise ProxyError(msg, ex)
+        if not FORWARDER.started.is_set():
+            FORWARDER.start()
+            FORWARDER.started.wait()
+        FORWARDER.in_q.put((self._proxy_client, self.host, self.port))
+        proxy_local_port = FORWARDER.out_q.get()
+        return proxy_local_port
 
     def disconnect(self):
         """Disconnect session, close socket if needed."""

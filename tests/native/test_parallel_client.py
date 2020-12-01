@@ -36,7 +36,7 @@ from pssh.clients.native import ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
-    ProxyError, PKeyFileError
+    PKeyFileError
 from pssh.output import HostOutput
 
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
@@ -83,6 +83,10 @@ class ParallelSSHClientTest(unittest.TestCase):
         listen_port = sock.getsockname()[1]
         sock.close()
         return listen_port
+
+    def test_connect_auth(self):
+        client = ParallelSSHClient([self.host], pkey=self.user_key, port=self.port, num_retries=1)
+        joinall(client.connect_auth(), raise_error=True)
 
     def test_client_join_consume_output(self):
         output = self.client.run_command(self.cmd)
