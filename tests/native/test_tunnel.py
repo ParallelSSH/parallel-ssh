@@ -24,13 +24,14 @@ import string
 import random
 import time
 
+from datetime import datetime
 from socket import timeout as socket_timeout
 from sys import version_info
 from collections import deque
 
-from gevent import sleep, spawn, Timeout as GTimeout, socket, joinall
-from pssh.clients.native.tunnel import Tunnel
+from pssh.config import HostConfig
 from pssh.clients.native import SSHClient, ParallelSSHClient
+from pssh.clients.native.tunnel import LocalForwarder
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
@@ -47,7 +48,6 @@ class TunnelTest(unittest.TestCase):
     def setUpClass(cls):
         _mask = int('0600') if version_info <= (2,) else 0o600
         os.chmod(PKEY_FILENAME, _mask)
-        cls.host = '127.0.0.1'
         cls.port = 2225
         cls.cmd = 'echo me'
         cls.resp = u'me'
@@ -55,235 +55,184 @@ class TunnelTest(unittest.TestCase):
         cls.user_pub_key = PUB_FILE
         cls.user = pwd.getpwuid(os.geteuid()).pw_name
         cls.proxy_host = '127.0.0.9'
-        cls.server = OpenSSHServer(listen_ip=cls.proxy_host, port=cls.port)
+        cls.proxy_port = cls.port + 1
+        cls.server = OpenSSHServer(listen_ip=cls.proxy_host, port=cls.proxy_port)
         cls.server.start_server()
 
     @classmethod
     def tearDownClass(cls):
         cls.server.stop()
 
-    def _connect_client(self, _socket):
-        while True:
-            _socket.read()
+    def test_forwarder(self):
+        forwarder = LocalForwarder()
+        forwarder.daemon = True
+        forwarder.start()
+        forwarder.started.wait()
+        client = SSHClient(
+            self.proxy_host, port=self.proxy_port, pkey=self.user_key)
+        forwarder.in_q.put((client, self.proxy_host, self.port))
+        forwarder.out_q.get()
+        self.assertTrue(len(forwarder._servers) > 0)
+        forwarder.shutdown()
 
-    def test_tunnel_channel_eof(self):
-        remote_host = '127.0.0.59'
-        server = OpenSSHServer(listen_ip=remote_host, port=self.port)
-        server.start_server()
-        in_q, out_q = deque(), deque()
-        tunnel = Tunnel(self.proxy_host, in_q, out_q, port=self.port,
-                        pkey=self.user_key, num_retries=1)
-        tunnel._init_tunnel_client()
-        channel = tunnel._open_channel_retries(self.proxy_host, self.port, 2150)
-        self.assertFalse(channel.eof())
-        channel.close()
-        listen_socket, listen_port = tunnel._init_tunnel_sock()
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.connect(('127.0.0.1', listen_port))
-        try:
-            client = spawn(self._connect_client, client_socket)
-            tunnel._read_channel(client_socket, channel)
-            tunnel._read_forward_sock(client_socket, channel)
-            self.assertTrue(channel.eof())
-            client.kill()
-        finally:
-            client_socket.close()
-            tunnel.cleanup()
-            server.stop()
-
-    def test_tunnel_sock_failure(self):
-        remote_host = '127.0.0.59'
-        server = OpenSSHServer(listen_ip=remote_host, port=self.port)
-        server.start_server()
-        in_q, out_q = deque(), deque()
-        tunnel = Tunnel(self.proxy_host, in_q, out_q, port=self.port,
-                        pkey=self.user_key, num_retries=1)
-        try:
-            tunnel._init_tunnel_client()
-            channel = tunnel._open_channel_retries(self.proxy_host, self.port, 2150)
-            self.assertFalse(channel.eof())
-            listen_socket, listen_port = tunnel._init_tunnel_sock()
-            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client_socket.connect(('127.0.0.1', listen_port))
-            client_socket.send(b'blah\n')
-            client_socket.close()
-            gl1 = spawn(tunnel._read_channel, client_socket, channel)
-            gl2 = spawn(tunnel._read_forward_sock, client_socket, channel)
-            sleep(1)
-            gl1.kill()
-            gl2.kill()
-            tunnel._sockets.append(None)
-        finally:
-            tunnel.cleanup()
-            server.stop()
-
-    def test_tunnel_channel_failure(self):
+    def test_tunnel_server(self):
         remote_host = '127.0.0.8'
         remote_server = OpenSSHServer(listen_ip=remote_host, port=self.port)
         remote_server.start_server()
-        in_q, out_q = deque(), deque()
         try:
-            tunnel = Tunnel(self.proxy_host, in_q, out_q, port=self.port,
-                            pkey=self.user_key, num_retries=1)
-            tunnel.daemon = True
-            tunnel.start()
-            in_q.append((remote_host, self.port))
-            while not tunnel.tunnel_open.is_set():
-                sleep(.1)
-                if not tunnel.is_alive():
-                    raise ProxyError
-            self.assertTrue(tunnel.tunnel_open.is_set())
-            self.assertIsNotNone(tunnel.client)
-            while True:
-                try:
-                    _port = out_q.pop()
-                except IndexError:
-                    sleep(.5)
-                else:
-                    break
-            proxy_client = SSHClient(
-                '127.0.0.1', pkey=self.user_key, port=_port,
-                num_retries=1, _auth_thread_pool=False)
-            sleep(1)
-            cmd = spawn(proxy_client.execute, 'echo me')
-            proxy_client.disconnect()
-            joinall([cmd])
-            self.assertEqual(proxy_client.sock, None)
+            client = SSHClient(
+                remote_host, port=self.port, pkey=self.user_key,
+                num_retries=1,
+                proxy_host=self.proxy_host,
+                proxy_pkey=self.user_key,
+                proxy_port=self.proxy_port,
+            )
+            output = client.run_command(self.cmd)
+            _stdout = list(output.stdout)
+            self.assertListEqual(_stdout, [self.resp])
+            self.assertEqual(remote_host, client.host)
+            self.assertEqual(self.port, client.port)
         finally:
             remote_server.stop()
 
-    def test_tunnel_server_failure(self):
-        proxy_host = '127.0.0.9'
-        remote_host = '127.0.0.8'
-        server = OpenSSHServer(listen_ip=proxy_host, port=self.port)
-        remote_server = OpenSSHServer(listen_ip=remote_host, port=self.port)
-        for _server in (server, remote_server):
-            _server.start_server()
-        in_q, out_q = deque(), deque()
-        try:
-            tunnel = Tunnel(proxy_host, in_q, out_q, port=self.port,
-                            pkey=self.user_key, num_retries=1)
-            tunnel.daemon = True
-            tunnel.start()
-            in_q.append((remote_host, self.port))
-            while not tunnel.tunnel_open.is_set():
-                sleep(.1)
-                if not tunnel.is_alive():
-                    raise ProxyError
-            self.assertTrue(tunnel.tunnel_open.is_set())
-            self.assertIsNotNone(tunnel.client)
-            while True:
-                try:
-                    _port = out_q.pop()
-                except IndexError:
-                    sleep(.5)
-                else:
-                    break
-            proxy_client = spawn(SSHClient,
-                                 '127.0.0.1', pkey=self.user_key, port=_port,
-                                 num_retries=1, _auth_thread_pool=False)
-            stop_cmd = spawn(remote_server.stop)
-            joinall([proxy_client, stop_cmd])
-            sleep(1)
-        finally:
-            for _server in (server, remote_server):
-                _server.stop()
-
-    def test_tunnel(self):
-        remote_host = '127.0.0.8'
-        remote_server = OpenSSHServer(listen_ip=remote_host, port=self.port)
+    def test_tunnel_server_same_port(self):
+        remote_host = '127.0.0.7'
+        remote_server = OpenSSHServer(listen_ip=remote_host, port=self.proxy_port)
         remote_server.start_server()
         try:
-            client = ParallelSSHClient(
-                [remote_host], port=self.port, pkey=self.user_key,
-                proxy_host=self.proxy_host, proxy_port=self.port, num_retries=1,
-                proxy_pkey=self.user_key)
+            client = SSHClient(
+                remote_host, port=self.proxy_port, pkey=self.user_key,
+                num_retries=1,
+                proxy_host=self.proxy_host,
+            )
+            output = client.run_command(self.cmd)
+            _stdout = list(output.stdout)
+            self.assertListEqual(_stdout, [self.resp])
+            self.assertEqual(remote_host, client.host)
+            self.assertEqual(self.proxy_port, client.port)
+        finally:
+            remote_server.stop()
+
+    def test_tunnel_parallel_client(self):
+        hosts = ['127.0.0.1%s' % (d,) for d in range(10)]
+        servers = [OpenSSHServer(listen_ip=_host, port=self.port) for _host in hosts]
+        for server in servers:
+            server.start_server()
+        hosts_5 = [hosts[0], hosts[1], hosts[2], hosts[3], hosts[4]]
+        try:
+            client = ParallelSSHClient(hosts_5, port=self.port, pkey=self.user_key,
+                                       proxy_host=self.proxy_host,
+                                       proxy_pkey=self.user_key,
+                                       proxy_port=self.proxy_port,
+                                       num_retries=1,
+                                       )
+            start = datetime.now()
+            output = client.run_command(self.cmd)
+            end = datetime.now()
+            dt_5 = end - start
+            client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key,
+                                       proxy_host=self.proxy_host,
+                                       proxy_pkey=self.user_key,
+                                       proxy_port=self.proxy_port,
+                                       num_retries=1,
+                                       )
+            start = datetime.now()
+            output = client.run_command(self.cmd)
+            end = datetime.now()
+            dt_10 = end - start
+            dt = dt_10.total_seconds() / dt_5.total_seconds()
+            # self.assertTrue(dt < 2)
+            client.join(output)
+            self.assertEqual(len(hosts), len(output))
+            for i, host_out in enumerate(output):
+                _stdout = list(host_out.stdout)
+                self.assertListEqual(_stdout, [self.resp])
+                self.assertEqual(hosts[i], host_out.host)
+        finally:
+            for server in servers:
+                server.stop()
+
+    def test_tunnel_parallel_client_part_failure(self):
+        hosts = ['127.0.0.11', '127.0.0.12', '127.0.0.13', '127.0.0.14']
+        servers = [OpenSSHServer(listen_ip=_host, port=self.port) for _host in hosts]
+        servers[0].start_server()
+        servers[1].start_server()
+        try:
+            client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key,
+                                       proxy_host=self.proxy_host,
+                                       proxy_pkey=self.user_key,
+                                       proxy_port=self.proxy_port,
+                                       num_retries=1,
+                                       )
+            output = client.run_command(self.cmd, stop_on_errors=False)
+            client.join(output)
+            self.assertEqual(len(hosts), len(output))
+            self.assertTrue(output[2].exception is not None)
+            self.assertTrue(output[3].exception is not None)
+            self.assertListEqual(list(output[0].stdout), [self.resp])
+            self.assertListEqual(list(output[1].stdout), [self.resp])
+        finally:
+            for server in servers:
+                server.stop()
+
+    def test_tunnel_parallel_client_running_fail(self):
+        hosts = ['127.0.0.11', '127.0.0.12', '127.0.0.13', '127.0.0.14']
+        servers = [OpenSSHServer(listen_ip=_host, port=self.port) for _host in hosts]
+        for server in servers:
+            server.start_server()
+        try:
+            client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key,
+                                       proxy_host=self.proxy_host,
+                                       proxy_pkey=self.user_key,
+                                       proxy_port=self.proxy_port,
+                                       num_retries=1,
+                                       )
             output = client.run_command(self.cmd)
             client.join(output)
-            for host_out in output:
-                _stdout = list(host_out.stdout)
-                self.assertListEqual(_stdout, [self.resp])
-            self.assertEqual(remote_host, output[0].host)
-            del client
-            sleep(1)
+            for server in (servers[2], servers[3]):
+                server.stop()
+                server.server_proc.communicate()
+            client._host_clients[(2, hosts[2])].disconnect()
+            client._host_clients[(3, hosts[3])].disconnect()
+            output = client.run_command(self.cmd, stop_on_errors=False)
+            client.join(output)
+            self.assertEqual(len(hosts), len(output))
+            self.assertTrue(output[2].exception is not None)
+            self.assertTrue(output[3].exception is not None)
+            self.assertListEqual(list(output[0].stdout), [self.resp])
+            self.assertListEqual(list(output[1].stdout), [self.resp])
         finally:
-            remote_server.stop()
+            for server in servers:
+                server.stop()
 
-    def test_tunnel_init_failure(self):
-        proxy_host = '127.0.0.20'
-        client = ParallelSSHClient(
-            [self.host], port=self.port, pkey=self.user_key,
-            proxy_host=proxy_host, proxy_port=self.port, num_retries=1,
-            proxy_pkey=self.user_key)
+    def test_tunnel_host_config(self):
+        hosts = ['127.0.0.11', '127.0.0.12']
+        servers = [OpenSSHServer(listen_ip=_host, port=self.port) for _host in hosts]
+        for server in servers:
+            server.start_server()
+        host_config = [
+            HostConfig(proxy_host=self.proxy_host,
+                       proxy_port=self.proxy_port,
+                       proxy_pkey=self.user_key),
+            HostConfig(proxy_host='127.0.0.155',
+                       proxy_port=123),
+            ]
+        client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key,
+                                   host_config=host_config, num_retries=1)
         output = client.run_command(self.cmd, stop_on_errors=False)
         client.join(output)
-        exc = output[0].exception
-        self.assertIsInstance(exc, ProxyError)
-        self.assertIsInstance(exc.args[1], ConnectionErrorException)
-        del client
-        sleep(1)
+        self.assertIsInstance(output[1].exception, ProxyError)
+        stdout = list(output[0].stdout)
+        self.assertListEqual(stdout, [self.resp])
 
-    def test_tunnel_remote_host_timeout(self):
-        remote_host = '127.0.0.18'
-        proxy_host = '127.0.0.19'
-        server = OpenSSHServer(listen_ip=proxy_host, port=self.port)
-        server.start_server()
-        try:
-            client = ParallelSSHClient(
-                [remote_host], port=self.port, pkey=self.user_key,
-                proxy_host=proxy_host, proxy_port=self.port, num_retries=1,
-                proxy_pkey=self.user_key, timeout=2)
-            try:
-                client.run_command(self.cmd)
-            except (GTimeout, Exception):
-                pass
-            else:
-                raise Exception("Command neither failed nor timeout raised")
-            client._tunnel.cleanup()
-            server.stop()
-        finally:
-            server.stop()
+    def test_proxy_error(self):
+        client = ParallelSSHClient([self.proxy_host], self.port, pkey=self.user_key,
+                                   proxy_host='127.0.0.155',
+                                   proxy_port=123,
+                                   num_retries=1)
+        output = client.run_command(self.cmd, stop_on_errors=False)
+        client.join(output)
+        self.assertIsInstance(output[0].exception, ProxyError)
 
-    def test_single_tunnel_multi_hosts(self):
-        remote_host = '127.0.0.8'
-        remote_server = OpenSSHServer(
-            listen_ip=remote_host, port=self.port)
-        remote_server.start_server()
-        hosts = [remote_host, remote_host, remote_host]
-        try:
-            client = ParallelSSHClient(
-                hosts, port=self.port, pkey=self.user_key,
-                proxy_host=self.proxy_host, proxy_port=self.port, num_retries=1,
-                proxy_pkey=self.user_key)
-            output = client.run_command(self.cmd, stop_on_errors=False)
-            client.join(output)
-            for host_out in output:
-                _stdout = list(host_out.stdout)
-                self.assertListEqual(_stdout, [self.resp])
-            self.assertEqual(len(hosts), len(output))
-            del client
-            sleep(1)
-        finally:
-            remote_server.stop()
-
-    def test_single_tunnel_multi_hosts_timeout(self):
-        remote_host = '127.0.0.8'
-        remote_server = OpenSSHServer(
-            listen_ip=remote_host, port=self.port)
-        remote_server.start_server()
-        hosts = [remote_host, remote_host, remote_host]
-        try:
-            client = ParallelSSHClient(
-                hosts, port=self.port, pkey=self.user_key,
-                proxy_host=self.proxy_host, proxy_port=self.port, num_retries=1,
-                proxy_pkey=self.user_key,
-                timeout=.001,
-                tunnel_timeout=1)
-            output = client.run_command(self.cmd, stop_on_errors=False)
-            client.join(output)
-            for host_out in output:
-                self.assertIsInstance(host_out.exception, Timeout)
-            del client
-            sleep(1)
-        finally:
-            remote_server.stop()
+    # TODO:
+    # * channel/socket read/write failure tests

@@ -14,8 +14,8 @@ Native code based client with extremely high performance - based on ``libssh2`` 
 .. image:: https://img.shields.io/pypi/v/parallel-ssh.svg
   :target: https://pypi.python.org/pypi/parallel-ssh
   :alt: Latest Version
-.. image:: https://travis-ci.org/ParallelSSH/parallel-ssh.svg?branch=master
-  :target: https://travis-ci.org/ParallelSSH/parallel-ssh
+.. image:: https://circleci.com/gh/ParallelSSH/parallel-ssh/tree/master.svg?style=svg
+  :target: https://circleci.com/gh/ParallelSSH/parallel-ssh
 .. image:: https://ci.appveyor.com/api/projects/status/github/parallelssh/parallel-ssh?svg=true&branch=master
   :target: https://ci.appveyor.com/project/pkittenis/parallel-ssh-4nme1
 .. image:: https://codecov.io/gh/ParallelSSH/parallel-ssh/branch/master/graph/badge.svg
@@ -73,7 +73,7 @@ Starting from version ``1.2.0``, the default client in ``parallel-ssh`` has chan
 
 See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of different Python SSH libraries.
 
-An alternative client based on ``ssh-python`` (``libssh``) is also available. See `documentation <http://parallel-ssh.readthedocs.io/en/latest/clients.html>`_ for a feature comparison of the available clients in the library.
+An alternative client based on ``ssh-python`` (``libssh``) is also available. See `client documentation <http://parallel-ssh.readthedocs.io/en/latest/clients.html>`_ for a feature comparison of the available clients in the library.
 
 ``parallel-ssh`` makes use of clients and an event loop solely based on C libraries providing native code levels of performance and stability with an easy to use Python API.
 
