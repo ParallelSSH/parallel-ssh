@@ -115,8 +115,8 @@ class SSHClient(BaseSSHClient):
             _auth_thread_pool=_auth_thread_pool,
             timeout=timeout,
             identity_auth=identity_auth)
-        self._stdout_buffer = ConcurrentRWBuffer()
-        self._stderr_buffer = ConcurrentRWBuffer()
+        self._stdout_buffer = None
+        self._stderr_buffer = None
         self._stdout_reader = None
         self._stderr_reader = None
         self._stdout_read = False

@@ -26,6 +26,14 @@ from gevent.lock import RLock
 
 
 class ConcurrentRWBuffer(object):
+    """Concurrent reader/writer of bytes for use from multiple greenlets.
+
+    Iterate on buffer object to read data, blocking greenlet if no data exists
+    until self.eof has been set.
+
+    Writers should ``eof.set()`` when finished writing data via ``write``.
+    Readers can use ``read()`` to get any available data, or None.
+    """
 
     def __init__(self):
         self._buffer = BytesIO()
@@ -35,19 +43,21 @@ class ConcurrentRWBuffer(object):
         self._lock = RLock()
 
     def write(self, data):
+        """Write data to buffer"""
         with self._lock:
             if not self._buffer.tell() == self._write_pos:
                 self._buffer.seek(self._write_pos)
             self._write_pos += self._buffer.write(data)
 
     def read(self):
+        """Read available data, or return None"""
         with self._lock:
-            if not self._buffer.tell() == self._read_pos:
+            if self._write_pos == 0 or self._read_pos == self._write_pos:
+                return
+            elif not self._buffer.tell() == self._read_pos:
                 self._buffer.seek(self._read_pos)
-            data = None
-            if self._write_pos > 0 and self._read_pos != self._write_pos:
-                data = self._buffer.read()
-                self._read_pos += len(data)
+            data = self._buffer.read()
+            self._read_pos += len(data)
         return data
 
     def __iter__(self):
