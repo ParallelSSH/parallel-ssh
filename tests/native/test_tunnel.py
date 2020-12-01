@@ -37,8 +37,6 @@ from pssh.exceptions import UnknownHostException, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
     ProxyError
 from ssh2.exceptions import ChannelFailure, SocketSendError
-from ssh2.session import LIBSSH2_TRACE_SOCKET, LIBSSH2_TRACE_ERROR, \
-    LIBSSH2_TRACE_CONN
 
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
 from ..embedded_server.openssh import OpenSSHServer
