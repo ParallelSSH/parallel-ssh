@@ -128,22 +128,11 @@ class BaseParallelSSHClient(object):
 
     def get_last_output(self, cmds=None, timeout=None,
                         return_list=True):
-        """Get output for last commands executed by ``run_command``
+        """Get output for last commands executed by ``run_command``.
 
         :param cmds: Commands to get output for. Defaults to ``client.cmds``
         :type cmds: list(:py:class:`gevent.Greenlet`)
-        :param greenlet_timeout: (Optional) Greenlet timeout setting.
-          Defaults to no timeout. If set, this function will raise
-          :py:class:`gevent.Timeout` after ``greenlet_timeout`` seconds
-          if no result is available from greenlets.
-          In some cases, such as when using proxy hosts, connection timeout
-          is controlled by proxy server and getting result from greenlets may
-          hang indefinitely if remote server is unavailable. Use this setting
-          to avoid blocking in such circumstances.
-          Note that ``gevent.Timeout`` is a special class that inherits from
-          ``BaseException`` and thus **can not be caught** by
-          ``stop_on_errors=False``.
-        :type greenlet_timeout: float
+        :param timeout: No-op - to be removed.
         :param return_list: No-op - list of ``HostOutput`` always returned.
           Parameter kept for backwards compatibility - to be removed in future
           releases.
@@ -251,7 +240,7 @@ class BaseParallelSSHClient(object):
         for line in stderr:
             pass
 
-    def join(self, output, consume_output=False, timeout=None,
+    def join(self, output=None, consume_output=False, timeout=None,
              encoding='utf-8'):
         """Wait until all remote commands in output have finished.
         Does *not* block other commands from running in parallel.
@@ -264,9 +253,7 @@ class BaseParallelSSHClient(object):
           output on call to ``join`` when host logger has been enabled.
         :type consume_output: bool
         :param timeout: Timeout in seconds if **all** remote commands are not
-          yet finished. Note that use of timeout forces ``consume_output=True``
-          otherwise the channel output pending to be consumed always results
-          in the channel not being finished.
+          yet finished.
           This function's timeout is for all commands in total and will therefor
           be affected by pool size and total number of concurrent commands in
           self.pool.
@@ -281,7 +268,9 @@ class BaseParallelSSHClient(object):
           reached with commands still running.
 
         :rtype: ``None``"""
-        if not isinstance(output, list):
+        if output is None:
+            output = self.get_last_output()
+        elif not isinstance(output, list):
             raise ValueError("Unexpected output object type")
         cmds = [self.pool.spawn(self._join, host_out, timeout=timeout,
                                 consume_output=consume_output, encoding=encoding)
@@ -313,13 +302,19 @@ class BaseParallelSSHClient(object):
             self._consume_output(stdout, stderr)
         return host_out
 
-    def finished(self, output):
-        """Check if commands have finished without blocking
+    def finished(self, output=None):
+        """Check if commands have finished without blocking.
 
         :param output: As returned by
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
+          :py:func:`pssh.pssh_client.ParallelSSHClient.get_last_output`
+        :type output: list
+
         :rtype: bool
         """
+        if output is None:
+            output = self.get_last_output()
+            if output is None:
+                return True
         for host_out in output:
             chan = host_out.channel
             if host_out.client and not host_out.client.finished(chan):

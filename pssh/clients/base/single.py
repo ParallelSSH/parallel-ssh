@@ -213,22 +213,20 @@ class BaseSSHClient(object):
         raise NotImplementedError
 
     def read_stderr(self, channel=None, timeout=None):
-        """Read standard error buffer from channel.
+        """Read standard error buffer.
         Returns a generator of line by line output.
 
-        :param channel: Channel to read output from.
-        :type channel: :py:class:`ssh2.channel.Channel`
+        :param channel: Unused - to be removed.
         :rtype: generator
         """
         logger.debug("Reading from stderr buffer")
         return self._read_output_buffer(self._stderr_buffer, timeout=timeout)
 
     def read_output(self, channel=None, timeout=None):
-        """Read standard output buffer from channel.
+        """Read standard output buffer.
         Returns a generator of line by line output.
 
-        :param channel: Channel to read output from.
-        :type channel: :py:class:`ssh2.channel.Channel`
+        :param channel: Unused - to be removed.
         :rtype: generator
         """
         logger.debug("Reading from stdout buffer")

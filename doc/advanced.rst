@@ -188,7 +188,9 @@ See :py:mod:`HostConfig <pssh.config.HostConfig>` for all possible configuration
 Join and Output Timeouts
 **************************
 
-Clients have timeout functionality on reading output and ``client.join``. Join timeout is a timeout on all parallel commands in total and is separate from ``ParallelSSHClient(timeout=<..>)`` which is applied to SSH session operations individually.
+Clients have timeout functionality on reading output and ``client.join``.
+
+Join timeout is applied to all parallel commands in total and is separate from ``ParallelSSHClient(timeout=<..>)`` which is applied to SSH session operations individually.
 
 Timeout exceptions contain attributes for which commands have finished and which have not so client code can get output from any finished commands when handling timeouts.
 
@@ -207,18 +209,18 @@ The client will raise a ``Timeout`` exception if *all* remote commands have not 
 
 .. code-block:: python
 
-   output = client.run_command(.., timeout=5)
+   output = client.run_command(.., read_timeout=5)
    for host_out in output:
        try:
            for line in host_out.stdout:
-	       pass
+	       print(line)
            for line in host_out.stderr:
-	       pass
+	       print(line)
        except Timeout:
            pass
 
 
-In the case of reading from output such as in the example above, timeout value is per output stream - meaning separate timeouts for stdout and stderr as well as separate timeout per host remote command.
+In the case of reading from output such as in the example above, timeout value is per output stream - meaning separate timeouts for stdout and stderr as well as separate timeout per host output.
 
 *New in 1.5.0*
 
@@ -253,6 +255,7 @@ In the above example, output is printed only for those commands which have compl
 
 Client code may choose to then join again only on the unfinished output if some commands have failed in order to gather remaining output.
 
+.. _partial-output:
 
 Reading Partial Output of Commands That Do Not Terminate
 ==========================================================
@@ -262,16 +265,18 @@ In some cases, such as when the remote command never terminates unless interrupt
 .. code-block:: python
 
    output = client.run_command(
-       'tail -f /var/log/messages', use_pty=True, timeout=1)
+       'while true; do echo a line; sleep .1; done', use_pty=True, read_timeout=1)
 
-   # Read as many lines of output as server has sent before the timeout
+   # Read as many lines of output as hosts have sent before the timeout
    stdout = []
    for host_out in output:
        try:
            for line in host_out.stdout:
                stdout.append(line)
        except Timeout:
-           # This allows client code to continue to read output after timeout
+           pass
+       else:
+           # Only needed if reading output again without a call to join
            client.reset_output_generators(host_out, timeout=1)
 
    # Closing channel which has PTY has the effect of terminating
@@ -281,18 +286,26 @@ In some cases, such as when the remote command never terminates unless interrupt
    # Join is not strictly needed here as channel has already been closed and
    # command has finished, but is safe to use regardless.
    client.join(output)
+   # Can now read output up to when the channel was closed without blocking.
+   rest_of_stdout = list(output[0].stdout)
 
 Without a PTY, a ``join`` call with a timeout will complete with timeout exception raised but the remote process will be left running as per SSH protocol specifications.
 
-Furthermore, once reading output has timed out, it is necessary to restart the output generators as by Python design they only iterate once. This is done by ``client.reset_output_generators`` in the above example.
+Furthermore, once reading output has timed out, it is necessary to restart the output generators as by Python design they only iterate once.
 
-Generator reset is also performed automatically by calls to ``join`` and does not need to be done manually when ``join`` is used after output reading.
+This is done by ``client.reset_output_generators`` as shown above, or automatically by ``join``.
+
+Generator reset is also performed automatically by calls to ``join`` and does not need to be done manually when ``join`` is used prior to reading output.
 
 .. note::
 
-   ``join`` with a timeout forces output to be consumed as otherwise the pending output will keep the channel open and make it appear as if command has not yet finished.
+   Timeout set on call to ``join`` is automatically applied to stdout/stderr when reading from output after ``join``.
 
-   To capture output when using ``join`` with a timeout, gather output first before calling ``join``, making use of output timeout as well, and/or make use of :ref:`host logger` functionality.
+.. warning::
+
+   When output from commands that do not terminate is not needed, best use ``client.join(consume_output=True)`` so that output buffers are consumed automatically.
+
+   If output is not read or automatically consumed by ``join`` output buffers will continually grow, resulting in continuous memory consumption while the client is running.
 
 
 Per-Host Configuration
@@ -320,19 +333,7 @@ In the above example, the client is configured to connect to hostname ``localhos
 
 When using ``host_config``, the number of ``HostConfig`` entries must match the number of hosts in ``client.hosts``. An exception is raised on client initialisation if not.
 
-
-.. note::
-
-   Currently only ``port``, ``user``, ``password`` and ``private_key`` ``HostConfig`` values are used.
-
-
-.. note::
-
-   Proxy host configuration is currently per ``ParallelSSHClient`` and cannot yet be provided via per-host configuration.
-   Multiple clients can be used to make use of multiple proxy hosts.
-
-   This feature will be provided in future releases.
-
+As of ``2.2.0``, proxy configuration can also be provided in ``HostConfig``.
 
 .. _per-host-cmds:
 
@@ -586,7 +587,7 @@ For example, to copy the local files ``['local_file_1', 'local_file_2']`` as rem
 
 The client will copy ``local_file_1`` to ``host1`` as ``remote_file_1`` and ``local_file_2`` to ``host2`` as ``remote_file_2``.
 
-Each item in ``copy_args`` list should be a dictionary as shown above. Number of ``copy_args`` must match length of ``client.hosts`` if provided or exception will be raised.
+Each item in ``copy_args`` list should be a dictionary as shown above. Number of items in ``copy_args`` must match length of ``client.hosts`` if provided or exception will be raised.
 
 ``copy_remote_file``, ``scp_send`` and ``scp_recv`` may all be used in the same manner to configure remote and local file names per host.
 
@@ -605,6 +606,7 @@ If wanting to copy a file from a single remote host and retain the original file
 
    client = SSHClient('localhost')
    client.copy_remote_file('remote_filename', 'local_filename')
+   client.scp_recv('remote_filename', 'local_filename')
 
 .. seealso::
 
@@ -653,6 +655,7 @@ Hosts list can be modified in place. A call to ``run_command`` will create new c
 
    client.hosts = ['otherhost']
    print(client.run_command('exit 0'))
+       <..>
        host='otherhost'
        exit_code=None
        <..>

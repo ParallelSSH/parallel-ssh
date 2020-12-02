@@ -30,7 +30,7 @@ from hashlib import sha256
 from datetime import datetime
 from platform import python_version
 
-from gevent import joinall, spawn, socket, Greenlet, sleep
+from gevent import joinall, spawn, socket, Greenlet, sleep, Timeout as GTimeout
 from pssh.config import HostConfig
 from pssh.clients.native import ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
@@ -1222,9 +1222,11 @@ class ParallelSSHClientTest(unittest.TestCase):
         else:
             raise Exception("Expected timeout")
         self.assertFalse(output[0].channel.eof())
-        client.join(output, timeout=2, consume_output=True)
+        client.join(output, timeout=2, consume_output=False)
         self.assertTrue(output[0].channel.eof())
         self.assertTrue(client.finished(output))
+        stdout = list(output[0].stdout)
+        self.assertListEqual(stdout, [self.resp])
 
     def test_join_timeout_subset_read(self):
         hosts = [self.host, self.host]
@@ -1255,7 +1257,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         output = client.run_command('sleep 1')
         client.join(output, timeout=2)
         self.assertTrue(client.finished(output))
-        self.assertTrue(output[0].channel.eof())
 
     def test_read_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
@@ -1263,12 +1264,61 @@ class ParallelSSHClientTest(unittest.TestCase):
         output = client.run_command('sleep 2; echo me; echo me; echo me', timeout=1)
         for host_out in output:
             self.assertRaises(Timeout, list, host_out.stdout)
-        self.assertFalse(output[0].channel.eof())
+        self.assertFalse(client.finished(output))
         client.join(output)
         for host_out in output:
             stdout = list(output[0].stdout)
             self.assertEqual(len(stdout), 3)
-        self.assertTrue(output[0].channel.eof())
+        self.assertTrue(client.finished(output))
+
+    def test_partial_read_timeout_join_no_output(self):
+        self.assertTrue(self.client.finished())
+        self.client.run_command('while true; do echo a line; sleep .1; done')
+        try:
+            with GTimeout(seconds=1):
+                self.client.join()
+        except GTimeout:
+            pass
+        else:
+            raise Exception("Should have timed out")
+        output = self.client.get_last_output()
+        stdout = []
+        try:
+            with GTimeout(seconds=1):
+                for line in output[0].stdout:
+                    stdout.append(line)
+        except GTimeout:
+            pass
+        else:
+            raise Exception("Should have timed out")
+        self.assertTrue(len(stdout) > 0)
+        self.assertRaises(Timeout, self.client.join, timeout=1)
+        stdout = []
+        try:
+            for line in output[0].stdout:
+                stdout.append(line)
+        except Timeout:
+            pass
+        else:
+            raise Exception("Should have timed out")
+        self.assertTrue(len(stdout) > 0)
+        # Output generators
+        self.assertEqual(len(list(output[0].stdout)), 0)
+        self.client.reset_output_generators(output[0], timeout=1)
+        stdout = []
+        try:
+            for line in output[0].stdout:
+                stdout.append(line)
+        except Timeout:
+            pass
+        else:
+            raise Exception("Should have timed out")
+        self.assertTrue(len(stdout) > 0)
+        output[0].client.close_channel(output[0].channel)
+        self.client.join()
+        self.assertTrue(self.client.finished())
+        stdout = list(output[0].stdout)
+        self.assertTrue(len(stdout) > 0)
 
     def test_timeout_file_read(self):
         dir_name = os.path.dirname(__file__)
