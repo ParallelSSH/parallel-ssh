@@ -31,8 +31,6 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR, LIBSSH2_SFTP_S_IRGRP, \
     LIBSSH2_SFTP_S_IWUSR, LIBSSH2_SFTP_S_IXUSR, LIBSSH2_SFTP_S_IROTH, \
     LIBSSH2_SFTP_S_IXGRP, LIBSSH2_SFTP_S_IXOTH
-from ssh2.utils import find_eol
-
 
 from .tunnel import FORWARDER
 from ..base.single import BaseSSHClient
@@ -311,41 +309,6 @@ class SSHClient(BaseSSHClient):
                 _buffer.write(data)
         finally:
             _buffer.eof.set()
-
-    def _read_output(self, read_func, timeout=None):
-        remainder = b""
-        remainder_len = 0
-        size, data = read_func()
-        t = GTimeout(seconds=timeout, exception=Timeout)
-        t.start()
-        try:
-            while size == LIBSSH2_ERROR_EAGAIN or size > 0:
-                while size == LIBSSH2_ERROR_EAGAIN:
-                    self.poll(timeout=timeout)
-                    size, data = read_func()
-                while size > 0:
-                    pos = 0
-                    while pos < size:
-                        linesep, new_line_pos = find_eol(data, pos)
-                        if linesep == -1:
-                            remainder += data[pos:]
-                            remainder_len = len(remainder)
-                            break
-                        end_of_line = pos+linesep
-                        if remainder_len > 0:
-                            line = remainder + data[pos:end_of_line]
-                            remainder = b""
-                            remainder_len = 0
-                        else:
-                            line = data[pos:end_of_line]
-                        yield line
-                        pos += linesep + new_line_pos
-                    size, data = read_func()
-            if remainder_len > 0:
-                # Finished reading without finding ending linesep
-                yield remainder
-        finally:
-            t.close()
 
     def wait_finished(self, channel, timeout=None):
         """Wait for EOF from channel and close channel.

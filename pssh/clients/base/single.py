@@ -264,7 +264,7 @@ class BaseSSHClient(object):
         finally:
             timer.close()
 
-    def _select_timeout(self, func, timeout):
+    def _read_output_to_buffer(self, read_func, _buffer):
         raise NotImplementedError
 
     def wait_finished(self, channel, timeout=None):

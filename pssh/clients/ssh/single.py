@@ -24,7 +24,6 @@ from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
 from ssh.key import import_privkey_file, import_cert_file, copy_cert_to_privkey
 from ssh.exceptions import EOF
 from ssh.error_codes import SSH_AGAIN
-from ssh2.utils import find_eol
 
 from ..base.single import BaseSSHClient
 from ..common import _validate_pkey_path
@@ -238,43 +237,33 @@ class SSHClient(BaseSSHClient):
         channel = self.open_session() if not channel else channel
         if use_pty:
             self._eagain(channel.request_pty, timeout=self.timeout)
+        logger.debug("Executing command '%s'", cmd)
         self._eagain(channel.request_exec, cmd, timeout=self.timeout)
-        self._stderr_read = False
-        self._stdout_read = False
         self._stdout_buffer = ConcurrentRWBuffer()
         self._stderr_buffer = ConcurrentRWBuffer()
         self._stdout_reader = spawn(
-            self._read_output_to_buffer, channel)
+            self._read_output_to_buffer, channel, self._stdout_buffer)
         self._stderr_reader = spawn(
-            self._read_output_to_buffer, channel, is_stderr=True)
+            self._read_output_to_buffer, channel, self._stderr_buffer, is_stderr=True)
         self._stdout_reader.start()
         self._stderr_reader.start()
         return channel
 
-    def _read_output_to_buffer(self, channel, is_stderr=False):
-        _buffer_name = 'stderr' if is_stderr else 'stdout'
-        _buffer = self._stderr_buffer if is_stderr else self._stdout_buffer
-        logger.debug("Starting output generator on channel %s for %s",
-                     channel, _buffer_name)
+    def _read_output_to_buffer(self, channel, _buffer, is_stderr=False):
         while True:
             self.poll(timeout=self.timeout)
             try:
                 size, data = channel.read_nonblocking(is_stderr=is_stderr)
             except EOF:
-                logger.debug("Channel is at EOF trying to read %s - "
-                             "reader exiting", _buffer_name)
                 _buffer.eof.set()
                 sleep(.1)
                 return
             if size > 0:
-                logger.debug("Writing %s bytes to %s buffer",
-                             size, _buffer_name)
                 _buffer.write(data)
             else:
                 # Yield event loop to other greenlets if we have no data to
                 # send back, meaning the generator does not yield and can there
                 # for block other generators/greenlets from running.
-                logger.debug("No data for %s, waiting", _buffer_name)
                 sleep(.1)
 
     def wait_finished(self, channel, timeout=None):
