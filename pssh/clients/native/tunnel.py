@@ -156,7 +156,7 @@ class TunnelServer(StreamServer):
             data_len = len(data)
             # logger.debug("Read %s data from forward socket", data_len,)
             if data_len == 0:
-                sleep(1)
+                sleep(.01)
                 continue
             data_written = 0
             while data_written < data_len:
@@ -185,7 +185,7 @@ class TunnelServer(StreamServer):
                 self.poll()
                 continue
             elif size == 0:
-                sleep(1)
+                sleep(.01)
                 continue
             try:
                 forward_sock.sendall(data)
