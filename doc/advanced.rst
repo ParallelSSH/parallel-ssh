@@ -301,11 +301,11 @@ Generator reset is also performed automatically by calls to ``join`` and does no
 
    Timeout set on call to ``join`` is automatically applied to stdout/stderr when reading from output after ``join``.
 
-.. warning::
+.. note::
 
-   When output from commands that do not terminate is not needed, best use ``client.join(consume_output=True)`` so that output buffers are consumed automatically.
+   When output from commands is not needed, it is best to use ``client.join(consume_output=True)`` so that output buffers are consumed automatically.
 
-   If output is not read or automatically consumed by ``join`` output buffers will continually grow, resulting in continuous memory consumption while the client is running.
+   If output is not read or automatically consumed by ``join`` output buffers will continually grow, resulting in increasing memory consumption while the client is running, though memory use rises very slowly.
 
 
 Per-Host Configuration
@@ -333,7 +333,7 @@ In the above example, the client is configured to connect to hostname ``localhos
 
 When using ``host_config``, the number of ``HostConfig`` entries must match the number of hosts in ``client.hosts``. An exception is raised on client initialisation if not.
 
-As of ``2.2.0``, proxy configuration can also be provided in ``HostConfig``.
+As of `2.2.0`, proxy configuration can also be provided in ``HostConfig``.
 
 .. _per-host-cmds:
 
