@@ -18,7 +18,10 @@
 import logging
 
 from threading import Thread, Event
-from queue import Queue
+try:
+    from queue import Queue
+except ImportError:
+    from Queue import Queue
 
 from gevent import spawn, joinall, get_hub, sleep
 from gevent.server import StreamServer
