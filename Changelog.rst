@@ -34,11 +34,12 @@ As is this:
 
 .. code-block:: python
 
+   client.run_command(<..>, timeout=1)
    client.join(output, timeout=1)
    for line in output[0].stdout:
        print(line)
 
-Timeout used on join is also then applied to reading output.
+Output can be read after and has separate timeout from join.
 
 See `documentation for more examples on use of timeouts <https://parallel-ssh.readthedocs.io/en/latest/advanced.html#partial-output>`_.
 
