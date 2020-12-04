@@ -26,11 +26,11 @@ from . import logger
 class HostOutput(object):
     """Class to hold host output"""
 
-    __slots__ = ('host', 'channel', 'stdout', 'stderr', 'stdin',
-                 'client', 'exception')
+    __slots__ = ('host', 'channel', 'stdin',
+                 'client', 'exception', 'encoding', 'read_timeout')
 
-    def __init__(self, host, channel, stdout, stderr, stdin,
-                 client, exception=None):
+    def __init__(self, host, channel, stdin,
+                 client, exception=None, encoding='utf-8', read_timeout=None):
         """
         :param host: Host name output is for
         :type host: str
@@ -49,11 +49,30 @@ class HostOutput(object):
         """
         self.host = host
         self.channel = channel
-        self.stdout = stdout
-        self.stderr = stderr
         self.stdin = stdin
         self.client = client
         self.exception = exception
+        self.encoding = encoding
+        self.read_timeout = read_timeout
+
+    @property
+    def stdout(self):
+        if not self.client:
+            return
+        _stdout = self.client.read_output_buffer(
+            self.client.read_output(self.channel, timeout=self.read_timeout),
+            encoding=self.encoding)
+        return _stdout
+
+    @property
+    def stderr(self):
+        if not self.client:
+            return
+        _stderr = self.client.read_output_buffer(
+            self.client.read_stderr(self.channel, timeout=self.read_timeout),
+            encoding=self.encoding,
+            prefix='\t[err]')
+        return _stderr
 
     @property
     def exit_code(self):

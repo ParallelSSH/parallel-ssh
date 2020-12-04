@@ -21,6 +21,7 @@ import logging
 
 import gevent.pool
 
+from warnings import warn
 from gevent import joinall, spawn, Timeout as GTimeout
 from gevent.hub import Hub
 
@@ -123,8 +124,8 @@ class BaseParallelSSHClient(object):
                 ex = Timeout()
             if raise_error:
                 raise ex
-            return HostOutput(host, None, None, None, None,
-                              None, exception=ex)
+            return HostOutput(host, None, None, None,
+                              exception=ex)
 
     def get_last_output(self, cmds=None, timeout=None,
                         return_list=True):
@@ -150,32 +151,9 @@ class BaseParallelSSHClient(object):
     def reset_output_generators(self, host_out, timeout=None,
                                 client=None, channel=None,
                                 encoding='utf-8'):
-        """Reset output generators for host output.
-
-        :param host_out: Host output
-        :type host_out: :py:class:`pssh.output.HostOutput`
-        :param client: (Optional) SSH client
-        :type client: :py:class:`pssh.ssh2_client.SSHClient`
-        :param channel: (Optional) SSH channel
-        :type channel: :py:class:`ssh2.channel.Channel`
-        :param timeout: (Optional) Timeout setting
-        :type timeout: int
-        :param encoding: (Optional) Encoding to use for output. Must be valid
-          `Python codec <https://docs.python.org/library/codecs.html>`_
-        :type encoding: str
-
-        :rtype: tuple(stdout, stderr)
-        """
-        channel = host_out.channel if channel is None else channel
-        client = host_out.client if client is None else client
-        stdout = client.read_output_buffer(
-            client.read_output(channel, timeout=timeout), encoding=encoding)
-        stderr = client.read_output_buffer(
-            client.read_stderr(channel, timeout=timeout),
-            prefix='\t[err]', encoding=encoding)
-        host_out.stdout = stdout
-        host_out.stderr = stderr
-        return stdout, stderr
+        """No-op - to be removed."""
+        warn("This function is a no-op and deprecated. "
+             "It will be removed in future releases")
 
     def _get_host_config_values(self, host_i, host):
         if self.host_config is None:
@@ -294,12 +272,9 @@ class BaseParallelSSHClient(object):
         client = host_out.client
         if client is None:
             return
-        stdout, stderr = self.reset_output_generators(
-            host_out, channel=channel, timeout=timeout,
-            encoding=encoding)
         client.wait_finished(channel, timeout=timeout)
         if consume_output:
-            self._consume_output(stdout, stderr)
+            self._consume_output(host_out.stdout, host_out.stderr)
         return host_out
 
     def finished(self, output=None):

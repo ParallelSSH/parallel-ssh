@@ -1271,6 +1271,25 @@ class ParallelSSHClientTest(unittest.TestCase):
             self.assertEqual(len(stdout), 3)
         self.assertTrue(client.finished(output))
 
+    def test_partial_read_timeout_close_cmd(self):
+        self.assertTrue(self.client.finished())
+        output = self.client.run_command('while true; do echo a line; sleep .1; done',
+                                         use_pty=True, timeout=1)
+        stdout = []
+        try:
+            with GTimeout(seconds=2):
+                for line in output[0].stdout:
+                    stdout.append(line)
+        except Timeout:
+            pass
+        self.assertTrue(len(stdout) > 0)
+        output[0].client.close_channel(output[0].channel)
+        self.client.join(output)
+        # Should not timeout
+        with GTimeout(seconds=.5):
+            stdout = list(output[0].stdout)
+        self.assertTrue(len(stdout) > 0)
+
     def test_partial_read_timeout_join_no_output(self):
         self.assertTrue(self.client.finished())
         self.client.run_command('while true; do echo a line; sleep .1; done')
@@ -1295,16 +1314,18 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertRaises(Timeout, self.client.join, timeout=1)
         stdout = []
         try:
-            for line in output[0].stdout:
-                stdout.append(line)
-        except Timeout:
+            with GTimeout(seconds=1):
+                for line in output[0].stdout:
+                    stdout.append(line)
+        except GTimeout:
             pass
         else:
             raise Exception("Should have timed out")
         self.assertTrue(len(stdout) > 0)
-        # Output generators
-        self.assertEqual(len(list(output[0].stdout)), 0)
-        self.client.reset_output_generators(output[0], timeout=1)
+        # Should be no-op
+        self.client.reset_output_generators(output[0], timeout=None)
+        # Setting timeout
+        output[0].read_timeout = 1
         stdout = []
         try:
             for line in output[0].stdout:
@@ -1690,7 +1711,6 @@ class ParallelSSHClientTest(unittest.TestCase):
             for line in stream:
                 pass
         except Timeout:
-            self.client.reset_output_generators(host_out, timeout=read_timeout)
             timed_out = True
         finally:
             dt = datetime.now() - now

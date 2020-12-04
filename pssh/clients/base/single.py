@@ -219,7 +219,7 @@ class BaseSSHClient(object):
         :param channel: Unused - to be removed.
         :rtype: generator
         """
-        logger.debug("Reading from stderr buffer")
+        logger.debug("Reading from stderr buffer, timeout=%s", timeout)
         return self._read_output_buffer(self._stderr_buffer, timeout=timeout)
 
     def read_output(self, channel=None, timeout=None):
@@ -229,7 +229,7 @@ class BaseSSHClient(object):
         :param channel: Unused - to be removed.
         :rtype: generator
         """
-        logger.debug("Reading from stdout buffer")
+        logger.debug("Reading from stdout buffer, timeout=%s", timeout)
         return self._read_output_buffer(self._stdout_buffer, timeout=timeout)
 
     def _read_output_buffer(self, _buffer, timeout=None):
@@ -321,6 +321,7 @@ class BaseSSHClient(object):
         :type encoding: str
         :param read_timeout: (Optional) Timeout in seconds for reading output.
         :type read_timeout: float
+        :param timeout: Deprecated - use read_timeout.
 
         :rtype: :py:class:`pssh.output.HostOutput`
         """
@@ -337,14 +338,9 @@ class BaseSSHClient(object):
             _command += "%s '%s'" % (_shell, command,)
         _timeout = read_timeout if read_timeout else timeout
         channel = self.execute(_command, use_pty=use_pty)
-        stdout = self.read_output_buffer(
-            self.read_output(channel, timeout=_timeout),
-            encoding=encoding)
-        stderr = self.read_output_buffer(
-                self.read_stderr(channel, timeout=_timeout), encoding=encoding,
-                prefix='\t[err]')
         stdin = channel
-        host_out = HostOutput(self.host, channel, stdout, stderr, stdin, self)
+        host_out = HostOutput(self.host, channel, stdin, self,
+                              encoding=encoding, read_timeout=_timeout)
         return host_out
 
     def _eagain(self, func, *args, **kwargs):

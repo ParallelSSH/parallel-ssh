@@ -275,9 +275,6 @@ In some cases, such as when the remote command never terminates unless interrupt
                stdout.append(line)
        except Timeout:
            pass
-       else:
-           # Only needed if reading output again without a call to join
-           client.reset_output_generators(host_out, timeout=1)
 
    # Closing channel which has PTY has the effect of terminating
    # any running processes started on that channel.
@@ -291,15 +288,9 @@ In some cases, such as when the remote command never terminates unless interrupt
 
 Without a PTY, a ``join`` call with a timeout will complete with timeout exception raised but the remote process will be left running as per SSH protocol specifications.
 
-Furthermore, once reading output has timed out, it is necessary to restart the output generators as by Python design they only iterate once.
-
-This is done by ``client.reset_output_generators`` as shown above, or automatically by ``join``.
-
-Generator reset is also performed automatically by calls to ``join`` and does not need to be done manually when ``join`` is used prior to reading output.
-
 .. note::
 
-   Timeout set on call to ``join`` is automatically applied to stdout/stderr when reading from output after ``join``.
+   Read timeout may be changed after ``run_command`` has been called by changing ``HostOutput.read_timeout`` for that particular host output.
 
 .. note::
 
