@@ -1778,6 +1778,17 @@ class ParallelSSHClientTest(unittest.TestCase):
             self.assertFalse(timed_out)
             self.assertTrue(dt.total_seconds() < read_timeout)
 
+    def test_read_multi_same_hosts(self):
+        hosts = [self.host, self.host]
+        outputs = [
+            self.client.run_command(self.cmd),
+            self.client.run_command(self.cmd),
+        ]
+        for output in outputs:
+            for host_out in output:
+                stdout = list(host_out.stdout)
+                self.assertListEqual(stdout, [self.resp])
+
     # TODO:
     # * forward agent enabled
     # * password auth
