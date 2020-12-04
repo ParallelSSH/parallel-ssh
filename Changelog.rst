@@ -1,6 +1,49 @@
 Change Log
 ============
 
+2.3.0
++++++
+
+Changes
+-------
+
+* ``SSHClient`` now starts buffering output from remote host, both standard output and standard error, when a command is run.
+* ``SSHClient.read_output``, ``SSHClient.read_stderr`` and iterating on stdout/stderr from ``HostOutput`` now read from the internal buffer rather than the SSH channel directly.
+* ``ParallelSSHClient.join`` no longer requires ``consume_output`` to be set in order to get exit codes without first reading output.
+* ``ParallelSSHClient.join`` with timeout no longer consumes output by default. It is now possible to use ``join`` with a timeout and capture output after ``join`` completes.
+* ``ParallelSSHClient.reset_output_generators`` is now a no-op and no longer required to be called after timeouts.
+* ``HostOutput.stdout`` and ``stderr`` are now dynamic properties.
+* Added ``HostOutput.read_timeout`` attribute. Can be used to see what read timeout was when ``run_command`` was called and to change timeout when next reading from ``HostOutput.stdout`` and ``stderr``.
+* Added ``HostOutput.encoding`` attribute for encoding used when ``run_command`` was called. Encoding can now be changed for when next reading output.
+* ``ParallelSSHClient.join`` with timeout no longer affects ``stdout`` or ``stderr`` read timeout set when ``run_command`` was called.
+* LibSSH clients under ``pssh.clients.ssh`` now allow output to be read as it becomes available without waiting for remote command to finish first.
+* Reading from output behaviour is now consistent across all client types - parallel and single clients under both ``pssh.clients.native`` and ``pssh.clients.ssh``.
+* ``ParallelSSHClient.join`` can now be called without arguments and defaults to last ran commands.
+* ``ParallelSSHClient.finished`` can now be called without arguments and defaults to last ran commands.
+
+
+This is now possible:
+
+.. code-block:: python
+
+   output = client.run_command(<..>)
+   client.join(output)
+   assert output[0].exit_code is not None
+
+As is this:
+
+.. code-block:: python
+
+   client.run_command(<..>, timeout=1)
+   client.join(output, timeout=1)
+   for line in output[0].stdout:
+       print(line)
+
+Output can be read after and has separate timeout from join.
+
+See `documentation for more examples on use of timeouts <https://parallel-ssh.readthedocs.io/en/latest/advanced.html#partial-output>`_.
+
+
 2.2.0
 +++++
 

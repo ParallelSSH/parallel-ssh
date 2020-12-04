@@ -117,23 +117,16 @@ Standard output, aka ``stdout``, for a given :py:class:`HostOutput <pssh.output.
       <line by line output>
       <..>
 
-There is nothing special needed to ensure output is available.
-
-Please note that retrieving all of a command's standard output by definition requires that the command has completed.
-
-Iterating over ``stdout`` for any host *to completion* will therefor *only complete* when that host's command has completed unless interrupted.
+Iterating over ``stdout`` will only end when the remote command has finished unless interrupted.
 
 The ``timeout`` keyword argument to ``run_command`` may be used to cause output generators to timeout if no output is received after the given number of seconds - see `join and output timeouts <advanced.html#join-and-output-timeouts>`_.
 
-``stdout`` is a generator. Iterating over it will consume the remote standard output stream via the network as it becomes available. To retrieve all of stdout can wrap it with list, per below.
+``stdout`` is a generator. To retrieve all of stdout can wrap it with list, per below.
 
 .. code-block:: python
 
    stdout = list(host_out.stdout)
 
-.. warning::
-
-   This will store the entirety of stdout into memory.
 
 All hosts iteration
 -------------------

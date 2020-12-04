@@ -25,14 +25,15 @@ else:
     WIN_PLATFORM = False
 from socket import gaierror as sock_gaierror, error as sock_error
 
-from gevent import sleep, socket
+from gevent import sleep, socket, Timeout as GTimeout
 from gevent.hub import Hub
 from gevent.select import poll
+from ssh2.utils import find_eol
 
 from ..common import _validate_pkey_path
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import UnknownHostError, AuthenticationError, \
-    ConnectionError
+    ConnectionError, Timeout
 from ...output import HostOutput
 
 
@@ -81,6 +82,10 @@ class BaseSSHClient(object):
         self.pkey = _validate_pkey_path(pkey, self.host)
         self.identity_auth = identity_auth
         self._keepalive_greenlet = None
+        self._stdout_buffer = None
+        self._stderr_buffer = None
+        self._stdout_reader = None
+        self._stderr_reader = None
         self._init()
 
     def _init(self):
@@ -207,13 +212,57 @@ class BaseSSHClient(object):
     def execute(self, cmd, use_pty=False, channel=None):
         raise NotImplementedError
 
-    def read_stderr(self, channel, timeout=None):
-        raise NotImplementedError
+    def read_stderr(self, channel=None, timeout=None):
+        """Read standard error buffer.
+        Returns a generator of line by line output.
 
-    def read_output(self, channel, timeout=None):
-        raise NotImplementedError
+        :param channel: Unused - to be removed.
+        :rtype: generator
+        """
+        logger.debug("Reading from stderr buffer, timeout=%s", timeout)
+        return self._read_output_buffer(self._stderr_buffer, timeout=timeout)
 
-    def _select_timeout(self, func, timeout):
+    def read_output(self, channel=None, timeout=None):
+        """Read standard output buffer.
+        Returns a generator of line by line output.
+
+        :param channel: Unused - to be removed.
+        :rtype: generator
+        """
+        logger.debug("Reading from stdout buffer, timeout=%s", timeout)
+        return self._read_output_buffer(self._stdout_buffer, timeout=timeout)
+
+    def _read_output_buffer(self, _buffer, timeout=None):
+        timer = GTimeout(seconds=timeout, exception=Timeout)
+        remainder = b""
+        remainder_len = 0
+        timer.start()
+        try:
+            for data in _buffer:
+                pos = 0
+                size = len(data)
+                while pos < size:
+                    linesep, new_line_pos = find_eol(data, pos)
+                    if linesep == -1:
+                        remainder += data[pos:]
+                        remainder_len = len(remainder)
+                        break
+                    end_of_line = pos+linesep
+                    if remainder_len > 0:
+                        line = remainder + data[pos:end_of_line]
+                        remainder = b""
+                        remainder_len = 0
+                    else:
+                        line = data[pos:end_of_line]
+                    yield line
+                    pos += linesep + new_line_pos
+            if remainder_len > 0:
+                # Finished reading without finding ending linesep
+                yield remainder
+        finally:
+            timer.close()
+
+    def _read_output_to_buffer(self, read_func, _buffer):
         raise NotImplementedError
 
     def wait_finished(self, channel, timeout=None):
@@ -272,6 +321,7 @@ class BaseSSHClient(object):
         :type encoding: str
         :param read_timeout: (Optional) Timeout in seconds for reading output.
         :type read_timeout: float
+        :param timeout: Deprecated - use read_timeout.
 
         :rtype: :py:class:`pssh.output.HostOutput`
         """
@@ -288,14 +338,9 @@ class BaseSSHClient(object):
             _command += "%s '%s'" % (_shell, command,)
         _timeout = read_timeout if read_timeout else timeout
         channel = self.execute(_command, use_pty=use_pty)
-        stdout = self.read_output_buffer(
-            self.read_output(channel, timeout=_timeout),
-            encoding=encoding)
-        stderr = self.read_output_buffer(
-                self.read_stderr(channel, timeout=_timeout), encoding=encoding,
-                prefix='\t[err]')
         stdin = channel
-        host_out = HostOutput(self.host, channel, stdout, stderr, stdin, self)
+        host_out = HostOutput(self.host, channel, stdin, self,
+                              encoding=encoding, read_timeout=_timeout)
         return host_out
 
     def _eagain(self, func, *args, **kwargs):
@@ -422,5 +467,4 @@ class BaseSSHClient(object):
         timeout = timeout * 1000 if timeout is not None else 100
         poller = poll()
         poller.register(self.sock, eventmask=events)
-        logger.debug("Polling socket with timeout %s", timeout)
         poller.poll(timeout=timeout)

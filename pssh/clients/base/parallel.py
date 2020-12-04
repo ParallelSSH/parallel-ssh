@@ -21,6 +21,7 @@ import logging
 
 import gevent.pool
 
+from warnings import warn
 from gevent import joinall, spawn, Timeout as GTimeout
 from gevent.hub import Hub
 
@@ -123,27 +124,16 @@ class BaseParallelSSHClient(object):
                 ex = Timeout()
             if raise_error:
                 raise ex
-            return HostOutput(host, None, None, None, None,
-                              None, exception=ex)
+            return HostOutput(host, None, None, None,
+                              exception=ex)
 
     def get_last_output(self, cmds=None, timeout=None,
                         return_list=True):
-        """Get output for last commands executed by ``run_command``
+        """Get output for last commands executed by ``run_command``.
 
         :param cmds: Commands to get output for. Defaults to ``client.cmds``
         :type cmds: list(:py:class:`gevent.Greenlet`)
-        :param greenlet_timeout: (Optional) Greenlet timeout setting.
-          Defaults to no timeout. If set, this function will raise
-          :py:class:`gevent.Timeout` after ``greenlet_timeout`` seconds
-          if no result is available from greenlets.
-          In some cases, such as when using proxy hosts, connection timeout
-          is controlled by proxy server and getting result from greenlets may
-          hang indefinitely if remote server is unavailable. Use this setting
-          to avoid blocking in such circumstances.
-          Note that ``gevent.Timeout`` is a special class that inherits from
-          ``BaseException`` and thus **can not be caught** by
-          ``stop_on_errors=False``.
-        :type greenlet_timeout: float
+        :param timeout: No-op - to be removed.
         :param return_list: No-op - list of ``HostOutput`` always returned.
           Parameter kept for backwards compatibility - to be removed in future
           releases.
@@ -161,32 +151,9 @@ class BaseParallelSSHClient(object):
     def reset_output_generators(self, host_out, timeout=None,
                                 client=None, channel=None,
                                 encoding='utf-8'):
-        """Reset output generators for host output.
-
-        :param host_out: Host output
-        :type host_out: :py:class:`pssh.output.HostOutput`
-        :param client: (Optional) SSH client
-        :type client: :py:class:`pssh.ssh2_client.SSHClient`
-        :param channel: (Optional) SSH channel
-        :type channel: :py:class:`ssh2.channel.Channel`
-        :param timeout: (Optional) Timeout setting
-        :type timeout: int
-        :param encoding: (Optional) Encoding to use for output. Must be valid
-          `Python codec <https://docs.python.org/library/codecs.html>`_
-        :type encoding: str
-
-        :rtype: tuple(stdout, stderr)
-        """
-        channel = host_out.channel if channel is None else channel
-        client = host_out.client if client is None else client
-        stdout = client.read_output_buffer(
-            client.read_output(channel, timeout=timeout), encoding=encoding)
-        stderr = client.read_output_buffer(
-            client.read_stderr(channel, timeout=timeout),
-            prefix='\t[err]', encoding=encoding)
-        host_out.stdout = stdout
-        host_out.stderr = stderr
-        return stdout, stderr
+        """No-op - to be removed."""
+        warn("This function is a no-op and deprecated. "
+             "It will be removed in future releases")
 
     def _get_host_config_values(self, host_i, host):
         if self.host_config is None:
@@ -251,7 +218,7 @@ class BaseParallelSSHClient(object):
         for line in stderr:
             pass
 
-    def join(self, output, consume_output=False, timeout=None,
+    def join(self, output=None, consume_output=False, timeout=None,
              encoding='utf-8'):
         """Wait until all remote commands in output have finished.
         Does *not* block other commands from running in parallel.
@@ -264,9 +231,7 @@ class BaseParallelSSHClient(object):
           output on call to ``join`` when host logger has been enabled.
         :type consume_output: bool
         :param timeout: Timeout in seconds if **all** remote commands are not
-          yet finished. Note that use of timeout forces ``consume_output=True``
-          otherwise the channel output pending to be consumed always results
-          in the channel not being finished.
+          yet finished.
           This function's timeout is for all commands in total and will therefor
           be affected by pool size and total number of concurrent commands in
           self.pool.
@@ -281,7 +246,9 @@ class BaseParallelSSHClient(object):
           reached with commands still running.
 
         :rtype: ``None``"""
-        if not isinstance(output, list):
+        if output is None:
+            output = self.get_last_output()
+        elif not isinstance(output, list):
             raise ValueError("Unexpected output object type")
         cmds = [self.pool.spawn(self._join, host_out, timeout=timeout,
                                 consume_output=consume_output, encoding=encoding)
@@ -305,21 +272,24 @@ class BaseParallelSSHClient(object):
         client = host_out.client
         if client is None:
             return
-        stdout, stderr = self.reset_output_generators(
-            host_out, channel=channel, timeout=timeout,
-            encoding=encoding)
         client.wait_finished(channel, timeout=timeout)
         if consume_output:
-            self._consume_output(stdout, stderr)
+            self._consume_output(host_out.stdout, host_out.stderr)
         return host_out
 
-    def finished(self, output):
-        """Check if commands have finished without blocking
+    def finished(self, output=None):
+        """Check if commands have finished without blocking.
 
         :param output: As returned by
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
+          :py:func:`pssh.pssh_client.ParallelSSHClient.get_last_output`
+        :type output: list
+
         :rtype: bool
         """
+        if output is None:
+            output = self.get_last_output()
+            if output is None:
+                return True
         for host_out in output:
             chan = host_out.channel
             if host_out.client and not host_out.client.finished(chan):

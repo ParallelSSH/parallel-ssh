@@ -18,7 +18,10 @@
 import logging
 
 from threading import Thread, Event
-from queue import Queue
+try:
+    from queue import Queue
+except ImportError:
+    from Queue import Queue
 
 from gevent import spawn, joinall, get_hub, sleep
 from gevent.server import StreamServer
@@ -137,8 +140,6 @@ class TunnelServer(StreamServer):
     def _wait_send_receive_lets(self, source, dest, channel, forward_sock):
         try:
             joinall((source, dest), raise_error=True)
-        except Exception as ex:
-            logger.error(ex)
         finally:
             logger.debug("Closing channel and forward socket")
             while channel is not None and channel.close() == LIBSSH2_ERROR_EAGAIN:
@@ -158,7 +159,7 @@ class TunnelServer(StreamServer):
             data_len = len(data)
             # logger.debug("Read %s data from forward socket", data_len,)
             if data_len == 0:
-                sleep(1)
+                sleep(.01)
                 continue
             data_written = 0
             while data_written < data_len:
@@ -187,7 +188,7 @@ class TunnelServer(StreamServer):
                 self.poll()
                 continue
             elif size == 0:
-                sleep(1)
+                sleep(.01)
                 continue
             try:
                 forward_sock.sendall(data)

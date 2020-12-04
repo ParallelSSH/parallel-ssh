@@ -30,7 +30,7 @@ from hashlib import sha256
 from datetime import datetime
 from platform import python_version
 
-from gevent import joinall, spawn, socket, Greenlet, sleep
+from gevent import joinall, spawn, socket, Greenlet, sleep, Timeout as GTimeout
 from pssh.config import HostConfig
 from pssh.clients.native import ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
@@ -251,14 +251,25 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_pssh_client_long_running_command_exit_codes(self):
         expected_lines = 2
         output = self.client.run_command(self.long_cmd(expected_lines))
-        self.client.join(output)
-        self.assertIsNone(output[0].exit_code,
-                        msg="Got exit code %s for still running cmd.." % (
-                            output[0].exit_code,))
+        self.assertIsNone(output[0].exit_code)
         self.assertFalse(self.client.finished(output))
         self.client.join(output, consume_output=True)
         self.assertTrue(self.client.finished(output))
         self.assertEqual(output[0].exit_code, 0)
+        stdout = list(output[0].stdout)
+        self.assertEqual(len(stdout), 0)
+
+    def test_pssh_client_long_running_command_exit_codes_no_stdout(self):
+        expected_lines = 2
+        output = self.client.run_command(self.long_cmd(expected_lines))
+        self.assertEqual(len(output), len(self.client.hosts))
+        self.assertIsNone(output[0].exit_code)
+        self.assertFalse(self.client.finished(output))
+        self.client.join(output)
+        self.assertTrue(self.client.finished(output))
+        self.assertEqual(output[0].exit_code, 0)
+        stdout = list(output[0].stdout)
+        self.assertEqual(expected_lines, len(stdout))
 
     def test_pssh_client_retries(self):
         """Test connection error retries"""
@@ -1192,7 +1203,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         client.join(output)
         output[0].client.session.disconnect()
         self.assertRaises(SessionError, output[0].client.open_session)
-        self.assertEqual(output[0].exit_code, None)
+        self.assertEqual(output[0].exit_code, 0)
 
     def test_invalid_host_out(self):
         output = {'blah': None}
@@ -1211,9 +1222,11 @@ class ParallelSSHClientTest(unittest.TestCase):
         else:
             raise Exception("Expected timeout")
         self.assertFalse(output[0].channel.eof())
-        client.join(output, timeout=2, consume_output=True)
+        client.join(output, timeout=2, consume_output=False)
         self.assertTrue(output[0].channel.eof())
         self.assertTrue(client.finished(output))
+        stdout = list(output[0].stdout)
+        self.assertListEqual(stdout, [self.resp])
 
     def test_join_timeout_subset_read(self):
         hosts = [self.host, self.host]
@@ -1244,7 +1257,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         output = client.run_command('sleep 1')
         client.join(output, timeout=2)
         self.assertTrue(client.finished(output))
-        self.assertTrue(output[0].channel.eof())
 
     def test_read_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
@@ -1252,12 +1264,82 @@ class ParallelSSHClientTest(unittest.TestCase):
         output = client.run_command('sleep 2; echo me; echo me; echo me', timeout=1)
         for host_out in output:
             self.assertRaises(Timeout, list, host_out.stdout)
-        self.assertFalse(output[0].channel.eof())
+        self.assertFalse(client.finished(output))
         client.join(output)
         for host_out in output:
             stdout = list(output[0].stdout)
             self.assertEqual(len(stdout), 3)
-        self.assertTrue(output[0].channel.eof())
+        self.assertTrue(client.finished(output))
+
+    def test_partial_read_timeout_close_cmd(self):
+        self.assertTrue(self.client.finished())
+        output = self.client.run_command('while true; do echo a line; sleep .1; done',
+                                         use_pty=True, timeout=1)
+        stdout = []
+        try:
+            with GTimeout(seconds=2):
+                for line in output[0].stdout:
+                    stdout.append(line)
+        except Timeout:
+            pass
+        self.assertTrue(len(stdout) > 0)
+        output[0].client.close_channel(output[0].channel)
+        self.client.join(output)
+        # Should not timeout
+        with GTimeout(seconds=.5):
+            stdout = list(output[0].stdout)
+        self.assertTrue(len(stdout) > 0)
+
+    def test_partial_read_timeout_join_no_output(self):
+        self.assertTrue(self.client.finished())
+        self.client.run_command('while true; do echo a line; sleep .1; done')
+        try:
+            with GTimeout(seconds=1):
+                self.client.join()
+        except GTimeout:
+            pass
+        else:
+            raise Exception("Should have timed out")
+        output = self.client.get_last_output()
+        stdout = []
+        try:
+            with GTimeout(seconds=1):
+                for line in output[0].stdout:
+                    stdout.append(line)
+        except GTimeout:
+            pass
+        else:
+            raise Exception("Should have timed out")
+        self.assertTrue(len(stdout) > 0)
+        self.assertRaises(Timeout, self.client.join, timeout=1)
+        stdout = []
+        try:
+            with GTimeout(seconds=1):
+                for line in output[0].stdout:
+                    stdout.append(line)
+        except GTimeout:
+            pass
+        else:
+            raise Exception("Should have timed out")
+        self.assertTrue(len(stdout) > 0)
+        # Should be no-op
+        self.client.reset_output_generators(output[0], timeout=None)
+        # Setting timeout
+        output[0].read_timeout = 1
+        stdout = []
+        try:
+            for line in output[0].stdout:
+                stdout.append(line)
+        except Timeout:
+            pass
+        else:
+            raise Exception("Should have timed out")
+        self.assertTrue(len(stdout) > 0)
+        output[0].client.close_channel(output[0].channel)
+        self.client.join()
+        self.assertTrue(self.client.finished())
+        stdout = list(output[0].stdout)
+        self.assertTrue(len(stdout) > 0)
 
     def test_timeout_file_read(self):
         dir_name = os.path.dirname(__file__)
@@ -1548,22 +1630,24 @@ class ParallelSSHClientTest(unittest.TestCase):
             client = ParallelSSHClient(hosts, port=self.port,
                                        pkey=self.user_key,
                                        num_retries=1)
+            self.assertTrue(client.cmds is None)
+            self.assertTrue(client.get_last_output() is None)
             client.run_command(self.cmd)
-            expected_exit_code = 0
             expected_stdout = [self.resp]
             expected_stderr = []
-            last_out = client.get_last_output(return_list=True)
-            self.assertIsInstance(last_out, list)
-            self.assertEqual(len(last_out), len(hosts))
-            self.assertIsInstance(last_out[0], HostOutput)
-            for host_i, host_output in enumerate(last_out):
-                self.assertEqual(host_output.host, client.hosts[host_i])
-                self.assertEqual(host_output.exit_code, None)
-                _stdout = list(host_output.stdout)
-                _stderr = list(host_output.stderr)
+            output = client.get_last_output()
+            self.assertIsInstance(output, list)
+            self.assertEqual(len(output), len(hosts))
+            self.assertIsInstance(output[0], HostOutput)
+            client.join(output)
+            for i, host in enumerate(hosts):
+                self.assertEqual(output[i].host, host)
+                exit_code = output[i].exit_code
+                _stdout = list(output[i].stdout)
+                _stderr = list(output[i].stderr)
+                self.assertEqual(exit_code, 0)
                 self.assertListEqual(expected_stdout, _stdout)
                 self.assertListEqual(expected_stderr, _stderr)
-                self.assertEqual(host_output.exit_code, expected_exit_code)
         finally:
             for server in servers:
                 server.stop()
@@ -1627,7 +1711,6 @@ class ParallelSSHClientTest(unittest.TestCase):
             for line in stream:
                 pass
         except Timeout:
-            self.client.reset_output_generators(host_out, timeout=read_timeout)
             timed_out = True
         finally:
             dt = datetime.now() - now

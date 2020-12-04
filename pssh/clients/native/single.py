@@ -31,11 +31,10 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR, LIBSSH2_SFTP_S_IRGRP, \
     LIBSSH2_SFTP_S_IWUSR, LIBSSH2_SFTP_S_IXUSR, LIBSSH2_SFTP_S_IROTH, \
     LIBSSH2_SFTP_S_IXGRP, LIBSSH2_SFTP_S_IXOTH
-from ssh2.utils import find_eol
-
 
 from .tunnel import FORWARDER
 from ..base.single import BaseSSHClient
+from ..reader import ConcurrentRWBuffer
 from ...exceptions import AuthenticationException, SessionError, SFTPError, \
     SFTPIOError, Timeout, SCPError, ProxyError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
@@ -288,62 +287,28 @@ class SSHClient(BaseSSHClient):
             self._eagain(channel.pty)
         logger.debug("Executing command '%s'", cmd)
         self._eagain(channel.execute, cmd)
+        self._stdout_buffer = ConcurrentRWBuffer()
+        self._stderr_buffer = ConcurrentRWBuffer()
+        self._stdout_reader = spawn(
+            self._read_output_to_buffer, channel.read, self._stdout_buffer)
+        self._stderr_reader = spawn(
+            self._read_output_to_buffer, channel.read_stderr, self._stderr_buffer)
+        self._stdout_reader.start()
+        self._stderr_reader.start()
         return channel
 
-    def _read_output(self, read_func, timeout=None):
-        remainder = b""
-        remainder_len = 0
-        size, data = read_func()
-        t = GTimeout(seconds=timeout, exception=Timeout)
-        t.start()
+    def _read_output_to_buffer(self, read_func, _buffer):
         try:
-            while size == LIBSSH2_ERROR_EAGAIN or size > 0:
+            while True:
+                size, data = read_func()
                 while size == LIBSSH2_ERROR_EAGAIN:
-                    self.poll(timeout=timeout)
+                    self.poll()
                     size, data = read_func()
-                while size > 0:
-                    pos = 0
-                    while pos < size:
-                        linesep, new_line_pos = find_eol(data, pos)
-                        if linesep == -1:
-                            remainder += data[pos:]
-                            remainder_len = len(remainder)
-                            break
-                        end_of_line = pos+linesep
-                        if remainder_len > 0:
-                            line = remainder + data[pos:end_of_line]
-                            remainder = b""
-                            remainder_len = 0
-                        else:
-                            line = data[pos:end_of_line]
-                        yield line
-                        pos += linesep + new_line_pos
-                    size, data = read_func()
-            if remainder_len > 0:
-                # Finished reading without finding ending linesep
-                yield remainder
+                if size <= 0:
+                    break
+                _buffer.write(data)
         finally:
-            t.close()
-
-    def read_stderr(self, channel, timeout=None):
-        """Read standard error buffer from channel.
-        Returns a generator of line by line output.
-
-        :param channel: Channel to read output from.
-        :type channel: :py:class:`ssh2.channel.Channel`
-        :rtype: generator
-        """
-        return self._read_output(channel.read_stderr, timeout=timeout)
-
-    def read_output(self, channel, timeout=None):
-        """Read standard output buffer from channel.
-        Returns a generator of line by line output.
-
-        :param channel: Channel to read output from.
-        :type channel: :py:class:`ssh2.channel.Channel`
-        :rtype: generator
-        """
-        return self._read_output(channel.read, timeout=timeout)
+            _buffer.eof.set()
 
     def wait_finished(self, channel, timeout=None):
         """Wait for EOF from channel and close channel.

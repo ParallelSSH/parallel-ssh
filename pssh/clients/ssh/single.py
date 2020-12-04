@@ -16,10 +16,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import logging
-try:
-    from io import BytesIO
-except ImportError:
-    from cStringIO import StringIO as BytesIO
 
 from gevent import sleep, spawn, Timeout as GTimeout, joinall
 from gevent.select import POLLIN, POLLOUT
@@ -30,9 +26,10 @@ from ssh.exceptions import EOF
 from ssh.error_codes import SSH_AGAIN
 
 from ..base.single import BaseSSHClient
+from ..common import _validate_pkey_path
+from ..reader import ConcurrentRWBuffer
 from ...exceptions import AuthenticationError, SessionError, Timeout
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-from ..common import _validate_pkey_path
 
 
 logger = logging.getLogger(__name__)
@@ -117,12 +114,6 @@ class SSHClient(BaseSSHClient):
             _auth_thread_pool=_auth_thread_pool,
             timeout=timeout,
             identity_auth=identity_auth)
-        self._stdout_buffer = BytesIO()
-        self._stderr_buffer = BytesIO()
-        self._stdout_reader = None
-        self._stderr_reader = None
-        self._stdout_read = False
-        self._stderr_read = False
 
     def disconnect(self):
         """Close socket if needed."""
@@ -246,96 +237,33 @@ class SSHClient(BaseSSHClient):
         channel = self.open_session() if not channel else channel
         if use_pty:
             self._eagain(channel.request_pty, timeout=self.timeout)
+        logger.debug("Executing command '%s'", cmd)
         self._eagain(channel.request_exec, cmd, timeout=self.timeout)
-        self._stderr_read = False
-        self._stdout_read = False
-        self._stdout_buffer = BytesIO()
-        self._stderr_buffer = BytesIO()
+        self._stdout_buffer = ConcurrentRWBuffer()
+        self._stderr_buffer = ConcurrentRWBuffer()
         self._stdout_reader = spawn(
-            self._read_output_to_buffer, channel)
+            self._read_output_to_buffer, channel, self._stdout_buffer)
         self._stderr_reader = spawn(
-            self._read_output_to_buffer, channel, is_stderr=True)
+            self._read_output_to_buffer, channel, self._stderr_buffer, is_stderr=True)
         self._stdout_reader.start()
         self._stderr_reader.start()
         return channel
 
-    def read_stderr(self, channel, timeout=None):
-        """Read standard error buffer from channel.
-        Returns a generator of line by line output.
-
-        :param channel: Channel to read output from.
-        :type channel: :py:class:`ssh2.channel.Channel`
-        :rtype: generator
-        """
-        _buffer_name = 'stderr'
-        _buffer = self._stderr_buffer
-        _flag = self._stderr_read
-        _reader = self._stderr_reader
-        return self._read_output(
-            _buffer, _buffer_name, _flag, _reader, channel, timeout=timeout,
-            is_stderr=True)
-
-    def read_output(self, channel, timeout=None, is_stderr=False):
-        """Read standard output buffer from channel.
-        Returns a generator of line by line output.
-
-        :param channel: Channel to read output from.
-        :type channel: :py:class:`ssh2.channel.Channel`
-        :rtype: generator
-        """
-        _buffer_name = 'stdout'
-        _buffer = self._stdout_buffer
-        _flag = self._stdout_read
-        _reader = self._stdout_reader
-        return self._read_output(
-            _buffer, _buffer_name, _flag, _reader, channel, timeout=timeout)
-
-    def _read_output(self, _buffer, _buffer_name, _flag, _reader, channel,
-                     timeout=None, is_stderr=False):
-        if _flag is True:
-            logger.debug("Output for %s has already been read", _buffer_name)
-            raise StopIteration
-        logger.debug("Waiting for %s reader", _buffer_name)
-        timeout = timeout if timeout else self.timeout
-        try:
-            _reader.get(timeout=timeout)
-        except GTimeout as ex:
-            raise Timeout(ex)
-        if _buffer.getvalue() == '':
-            logger.debug("Reader finished and output empty for %s",
-                         _buffer_name)
-            raise StopIteration
-        logger.debug("Reading from %s buffer", _buffer_name)
-        for line in _buffer.getvalue().splitlines():
-            yield line
-        if is_stderr:
-            self._stderr_read = True
-        else:
-            self._stdout_read = True
-
-    def _read_output_to_buffer(self, channel, is_stderr=False):
-        _buffer_name = 'stderr' if is_stderr else 'stdout'
-        _buffer = self._stderr_buffer if is_stderr else self._stdout_buffer
-        logger.debug("Starting output generator on channel %s for %s",
-                     channel, _buffer_name)
+    def _read_output_to_buffer(self, channel, _buffer, is_stderr=False):
         while True:
             self.poll(timeout=self.timeout)
             try:
                 size, data = channel.read_nonblocking(is_stderr=is_stderr)
             except EOF:
-                logger.debug("Channel is at EOF trying to read %s - "
-                             "reader exiting", _buffer_name)
+                _buffer.eof.set()
                 sleep(.1)
                 return
             if size > 0:
-                logger.debug("Writing %s bytes to %s buffer",
-                             size, _buffer_name)
                 _buffer.write(data)
             else:
                 # Yield event loop to other greenlets if we have no data to
                 # send back, meaning the generator does not yield and can there
                 # for block other generators/greenlets from running.
-                logger.debug("No data for %s, waiting", _buffer_name)
                 sleep(.1)
 
     def wait_finished(self, channel, timeout=None):
