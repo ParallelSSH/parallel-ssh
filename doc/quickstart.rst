@@ -127,9 +127,6 @@ The ``timeout`` keyword argument to ``run_command`` may be used to cause output 
 
    stdout = list(host_out.stdout)
 
-.. warning::
-
-   This will store the entirety of stdout into memory.
 
 All hosts iteration
 -------------------
