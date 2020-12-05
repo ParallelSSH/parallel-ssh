@@ -18,7 +18,7 @@ SFTP copy to/from hosts           Yes                   No
 OpenSSH config parsing            Not yet implemented   Not yet implemented
 ECDSA keys support                Yes                   Yes
 ED25519 keys support              Yes                   Yes
-Certificate authentication        Not supported         Not yet implemented
+Certificate authentication        Not supported         Yes
 SCP functionality                 Yes                   No
 Keep-alive functionality          Yes                   No
 ===============================  ====================== ======================

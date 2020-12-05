@@ -32,9 +32,10 @@ from ssh2.utils import find_eol
 
 from ..common import _validate_pkey_path
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
+from ..reader import ConcurrentRWBuffer
 from ...exceptions import UnknownHostError, AuthenticationError, \
     ConnectionError, Timeout
-from ...output import HostOutput
+from ...output import HostOutput, HostOutputBuffers, BufferData
 
 
 Hub.NOT_ERROR = (Exception,)
@@ -209,28 +210,33 @@ class BaseSSHClient(object):
     def open_session(self):
         raise NotImplementedError
 
+    def _make_output_readers(self, channel, stdout_buffer, stderr_buffer):
+        raise NotImplementedError
+
     def execute(self, cmd, use_pty=False, channel=None):
         raise NotImplementedError
 
-    def read_stderr(self, channel=None, timeout=None):
+    def read_stderr(self, stderr_buffer, timeout=None):
         """Read standard error buffer.
         Returns a generator of line by line output.
 
-        :param channel: Unused - to be removed.
+        :param stdout_buffer: Buffer to read from.
+        :type stdout_buffer: :py:class:`pssh.clients.reader.ConcurrentRWBuffer`
         :rtype: generator
         """
         logger.debug("Reading from stderr buffer, timeout=%s", timeout)
-        return self._read_output_buffer(self._stderr_buffer, timeout=timeout)
+        return self._read_output_buffer(stderr_buffer, timeout=timeout)
 
-    def read_output(self, channel=None, timeout=None):
+    def read_output(self, stdout_buffer, timeout=None):
         """Read standard output buffer.
         Returns a generator of line by line output.
 
-        :param channel: Unused - to be removed.
+        :param stdout_buffer: Buffer to read from.
+        :type stdout_buffer: :py:class:`pssh.clients.reader.ConcurrentRWBuffer`
         :rtype: generator
         """
         logger.debug("Reading from stdout buffer, timeout=%s", timeout)
-        return self._read_output_buffer(self._stdout_buffer, timeout=timeout)
+        return self._read_output_buffer(stdout_buffer, timeout=timeout)
 
     def _read_output_buffer(self, _buffer, timeout=None):
         timer = GTimeout(seconds=timeout, exception=Timeout)
@@ -317,7 +323,7 @@ class BaseSSHClient(object):
           syntax, eg `shell='bash -c'` or `shell='zsh -c'`.
         :type shell: str
         :param encoding: Encoding to use for output. Must be valid
-          `Python codec <https://docs.python.org/2.7/library/codecs.html>`_
+          `Python codec <https://docs.python.org/library/codecs.html>`_
         :type encoding: str
         :param read_timeout: (Optional) Timeout in seconds for reading output.
         :type read_timeout: float
@@ -338,9 +344,21 @@ class BaseSSHClient(object):
             _command += "%s '%s'" % (_shell, command,)
         _timeout = read_timeout if read_timeout else timeout
         channel = self.execute(_command, use_pty=use_pty)
+        _stdout_buffer = ConcurrentRWBuffer()
+        _stderr_buffer = ConcurrentRWBuffer()
+        _stdout_reader, _stderr_reader = self._make_output_readers(
+            channel, _stdout_buffer, _stderr_buffer)
+        _stdout_reader.start()
+        _stderr_reader.start()
+        _buffers = HostOutputBuffers(
+            stdout=BufferData(rw_buffer=_stdout_buffer, reader=_stdout_reader),
+            stderr=BufferData(rw_buffer=_stderr_buffer, reader=_stderr_reader))
         stdin = channel
-        host_out = HostOutput(self.host, channel, stdin, self,
-                              encoding=encoding, read_timeout=_timeout)
+        host_out = HostOutput(
+            host=self.host, channel=channel, stdin=stdin,
+            client=self, encoding=encoding, read_timeout=_timeout,
+            buffers=_buffers,
+        )
         return host_out
 
     def _eagain(self, func, *args, **kwargs):
