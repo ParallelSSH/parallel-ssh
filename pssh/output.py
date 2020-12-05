@@ -24,8 +24,25 @@ from os import linesep
 from . import logger
 
 
-HostOutputBuffers = namedtuple('Buffers', ['stdout', 'stderr'])
+HostOutputBuffers = namedtuple('HostOutputBuffers', ['stdout', 'stderr'], )
+HostOutputBuffers.__doc__ = """
+:param stdout: Stdout data
+:type stdout: :py:class:`BufferData`
+:param stderr: Stderr data
+:type stderr: :py:class:`BufferData`
+"""
+HostOutputBuffers.stdout.__doc__ = "Stdout :py:class:`BufferData`"
+HostOutputBuffers.stderr.__doc__ = "Stderr :py:class:`BufferData`"
+
 BufferData = namedtuple('BufferData', ['reader', 'rw_buffer'])
+BufferData.__doc__ = """
+:param reader: Reader
+:type reader: :py:class:`gevent.Greenlet`
+:param rw_bufffer: Read/write buffer
+:type rw_buffer: :py:class:`pssh.clients.reader.ConcurrentRWBuffer`
+"""
+BufferData.rw_buffer.__doc__ = "Read/write buffer"
+BufferData.reader.__doc__ = "Greenlet reading data from channel and writing to rw_buffer"
 
 
 class HostOutput(object):
@@ -54,6 +71,10 @@ class HostOutput(object):
         :type client: :py:class:`pssh.clients.base_ssh_client.SSHClient`
         :param exception: Exception from host if any
         :type exception: :py:class:`Exception` or ``None``
+        :param read_timeout: Timeout in seconds for reading from buffers.
+        :type read_timeout: float
+        :param buffers: Host buffer data.
+        :type buffers: :py:class:`HostOutputBuffers`
         """
         self.host = host
         self.channel = channel

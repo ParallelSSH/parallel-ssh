@@ -109,7 +109,7 @@ Native Code Client Features
 Exit codes
 ***********
 
-Once *either* standard output is iterated on *to completion*, or ``client.join(output, consume_output=True)`` is called, exit codes become available in host output.
+Once *either* standard output is iterated on *to completion*, or ``client.join()`` is called, exit codes become available in host output.
 
 Iteration ends *only when remote command has completed*, though it may be interrupted and resumed at any point.
 
@@ -143,23 +143,22 @@ After ``join`` returns, commands have finished and all output can be read withou
 
 .. code-block:: python
 
-  client.join(output)
+  client.join()
 
   for host_out in output:
       for line in host_output.stdout:
           print(line)
       print(host_out.exit_code)
 
-Similarly, exit codes are available after ``client.join(output, consume_output=True)``.
+Similarly, exit codes are available after ``client.join()`` without reading output.
 
-``consume_output`` flag must be set to get exit codes when not reading from ``stdout``. Future releases aim to remove the need for `consume_output` to be set.
 
 .. code-block:: python
 
   output = client.run_command('uname')
 
   # Wait for commands to complete and consume output so can get exit codes
-  client.join(output, consume_output=True)
+  client.join()
 
   for host_output in output:
       print(host_out.exit_code)
