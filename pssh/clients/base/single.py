@@ -343,7 +343,8 @@ class BaseSSHClient(object):
             _shell = shell if shell else '$SHELL -c'
             _command += "%s '%s'" % (_shell, command,)
         _timeout = read_timeout if read_timeout else timeout
-        channel = self.execute(_command, use_pty=use_pty)
+        with GTimeout(seconds=self.timeout):
+            channel = self.execute(_command, use_pty=use_pty)
         _stdout_buffer = ConcurrentRWBuffer()
         _stderr_buffer = ConcurrentRWBuffer()
         _stdout_reader, _stderr_reader = self._make_output_readers(

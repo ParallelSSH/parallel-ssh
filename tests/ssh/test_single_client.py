@@ -20,6 +20,7 @@ import logging
 
 from datetime import datetime
 
+from gevent import sleep, Timeout as GTimeout
 from ssh.session import Session
 # from ssh.exceptions import SocketDisconnectError
 from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
@@ -40,6 +41,16 @@ class SSHClientTest(SSHTestCase):
                        pkey=self.user_key,
                        num_retries=1) as client:
             self.assertIsInstance(client, SSHClient)
+
+    def test_open_session_timeout(self):
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1,
+                           timeout=1)
+        def _session(timeout=2):
+            sleep(2)
+        client.open_session = _session
+        self.assertRaises(GTimeout, client.run_command, self.cmd)
 
     def test_execute(self):
         host_out = self.client.run_command(self.cmd)

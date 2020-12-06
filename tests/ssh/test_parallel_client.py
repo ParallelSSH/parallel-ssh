@@ -21,7 +21,7 @@ import subprocess
 from datetime import datetime
 from sys import version_info
 
-from gevent import joinall, spawn, socket, Greenlet
+from gevent import joinall, spawn, socket, Greenlet, sleep
 from pssh import logger as pssh_logger
 from pssh.output import HostOutput
 from pssh.exceptions import UnknownHostException, \
@@ -78,6 +78,19 @@ class LibSSHParallelTest(unittest.TestCase):
         listen_port = sock.getsockname()[1]
         sock.close()
         return listen_port
+
+    def test_timeout_on_open_session(self):
+        timeout = 1
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.user_key,
+                                   timeout=timeout,
+                                   num_retries=1)
+        def _session(timeout=1):
+            sleep(timeout+1)
+        joinall(client.connect_auth())
+        sleep(.01)
+        client._host_clients[(0, self.host)].open_session = _session
+        self.assertRaises(Timeout, client.run_command, self.cmd)
 
     def test_join_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,

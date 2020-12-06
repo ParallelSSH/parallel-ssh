@@ -23,7 +23,7 @@ import shutil
 from hashlib import sha256
 from datetime import datetime
 
-from gevent import socket, sleep, spawn
+from gevent import socket, sleep, spawn, Timeout as GTimeout
 
 from pssh.clients.native import SSHClient
 from ssh2.session import Session
@@ -72,11 +72,14 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertEqual(expected, output)
 
     def test_open_session_timeout(self):
-        def _session(timeout=1):
-            sleep(timeout)
-            raise Timeout
-        self.client.open_session = _session
-        self.assertRaises(Timeout, self.client.execute, self.cmd)
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1,
+                           timeout=1)
+        def _session(timeout=2):
+            sleep(2)
+        client.open_session = _session
+        self.assertRaises(GTimeout, client.run_command, self.cmd)
 
     def test_finished_error(self):
         self.assertRaises(ValueError, self.client.wait_finished, None)
