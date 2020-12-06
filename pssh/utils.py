@@ -41,6 +41,10 @@ def enable_logger(_logger, level=logging.INFO):
 def enable_host_logger():
     """Enable host logger for logging stdout from remote commands
     as it becomes available.
-
     """
     enable_logger(host_logger)
+
+
+def enable_debug_logger():
+    """Enable debug logging for the library to sdout."""
+    return enable_logger(logger, level=logging.DEBUG)
