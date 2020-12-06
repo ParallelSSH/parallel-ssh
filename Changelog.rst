@@ -1,6 +1,13 @@
 Change Log
 ============
 
+2.4.0
++++++
+
+* Added ``pssh.utils.enable_debug_logger`` function.
+* ``ParallelSSHClient`` timeout parameter is now also applied to starting remote commands.
+
+
 2.3.2
 +++++
 
