@@ -71,6 +71,13 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertEqual(host_out.exit_code, 0)
         self.assertEqual(expected, output)
 
+    def test_open_session_timeout(self):
+        def _session(timeout=1):
+            sleep(timeout)
+            raise Timeout
+        self.client.open_session = _session
+        self.assertRaises(Timeout, self.client.execute, self.cmd)
+
     def test_finished_error(self):
         self.assertRaises(ValueError, self.client.wait_finished, None)
         self.assertIsNone(self.client.finished(None))
