@@ -18,19 +18,44 @@
 
 """Output module of ParallelSSH"""
 
+from collections import namedtuple
 from os import linesep
 
 from . import logger
 
 
+HostOutputBuffers = namedtuple('HostOutputBuffers', ['stdout', 'stderr'], )
+HostOutputBuffers.__doc__ = """
+:param stdout: Stdout data
+:type stdout: :py:class:`BufferData`
+:param stderr: Stderr data
+:type stderr: :py:class:`BufferData`
+"""
+HostOutputBuffers.stdout.__doc__ = "Stdout :py:class:`BufferData`"
+HostOutputBuffers.stderr.__doc__ = "Stderr :py:class:`BufferData`"
+
+BufferData = namedtuple('BufferData', ['reader', 'rw_buffer'])
+BufferData.__doc__ = """
+:param reader: Reader
+:type reader: :py:class:`gevent.Greenlet`
+:param rw_bufffer: Read/write buffer
+:type rw_buffer: :py:class:`pssh.clients.reader.ConcurrentRWBuffer`
+"""
+BufferData.rw_buffer.__doc__ = "Read/write buffer"
+BufferData.reader.__doc__ = "Greenlet reading data from channel and writing to rw_buffer"
+
+
 class HostOutput(object):
-    """Class to hold host output"""
+    """Host output"""
 
     __slots__ = ('host', 'channel', 'stdin',
-                 'client', 'exception', 'encoding', 'read_timeout')
+                 'client', 'exception', 'encoding', 'read_timeout',
+                 'buffers',
+                 )
 
     def __init__(self, host, channel, stdin,
-                 client, exception=None, encoding='utf-8', read_timeout=None):
+                 client, exception=None, encoding='utf-8', read_timeout=None,
+                 buffers=None):
         """
         :param host: Host name output is for
         :type host: str
@@ -46,6 +71,10 @@ class HostOutput(object):
         :type client: :py:class:`pssh.clients.base_ssh_client.SSHClient`
         :param exception: Exception from host if any
         :type exception: :py:class:`Exception` or ``None``
+        :param read_timeout: Timeout in seconds for reading from buffers.
+        :type read_timeout: float
+        :param buffers: Host buffer data.
+        :type buffers: :py:class:`HostOutputBuffers`
         """
         self.host = host
         self.channel = channel
@@ -54,13 +83,14 @@ class HostOutput(object):
         self.exception = exception
         self.encoding = encoding
         self.read_timeout = read_timeout
+        self.buffers = buffers
 
     @property
     def stdout(self):
         if not self.client:
             return
         _stdout = self.client.read_output_buffer(
-            self.client.read_output(self.channel, timeout=self.read_timeout),
+            self.client.read_output(self.buffers.stdout.rw_buffer, timeout=self.read_timeout),
             encoding=self.encoding)
         return _stdout
 
@@ -69,7 +99,7 @@ class HostOutput(object):
         if not self.client:
             return
         _stderr = self.client.read_output_buffer(
-            self.client.read_stderr(self.channel, timeout=self.read_timeout),
+            self.client.read_stderr(self.buffers.stderr.rw_buffer, timeout=self.read_timeout),
             encoding=self.encoding,
             prefix='\t[err]')
         return _stderr
@@ -84,16 +114,19 @@ class HostOutput(object):
             logger.error("Error getting exit status - %s", ex)
 
     def __repr__(self):
-        return "{linesep}\thost={host}{linesep}" \
+        return "\thost={host}{linesep}" \
             "\texit_code={exit_code}{linesep}" \
-            "\t{linesep}\tchannel={channel}{linesep}" \
+            "\tchannel={channel}{linesep}" \
             "\tstdout={stdout}{linesep}\tstderr={stderr}{linesep}" \
             "\tstdin={stdin}{linesep}" \
-            "\texception={exception}{linesep}".format(
+            "\texception={exception}{linesep}" \
+            "\tencoding={encoding}{linesep}" \
+            "\tread_timeout={read_timeout}".format(
                 host=self.host, channel=self.channel,
                 stdout=self.stdout, stdin=self.stdin, stderr=self.stderr,
                 exception=self.exception, linesep=linesep,
-                exit_code=self.exit_code)
+                exit_code=self.exit_code, encoding=self.encoding, read_timeout=self.read_timeout,
+            )
 
     def __str__(self):
         return self.__repr__()

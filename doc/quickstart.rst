@@ -17,7 +17,7 @@ Examples all assume a valid key is available on a running SSH agent. See `Progra
 Complete Example
 -----------------
 
-Host list can contain identical hosts. Commands are executed concurrently on every host given to the client regardless.
+Host list can contain identical hosts. Commands are executed concurrently on every host given to the client regardless, up to pool size.
 
 .. code-block:: python
 
@@ -45,7 +45,7 @@ Output:
 Single Host Client
 ====================
 
-``parallel-ssh`` has a fully featured, non-blocking single host client that it uses for all its parallel commands.
+``parallel-ssh`` has a fully featured, asynchronous single host client that it uses for all its parallel commands.
 
 Users that do not need the parallel capabilities can use the single host client for a simpler way to run asynchronous non-blocking commands on a remote host.
 
@@ -150,7 +150,7 @@ Complete Example
 
   client = ParallelSSHClient(['localhost', 'localhost'])
   output = client.run_command('whoami')
-  client.join(output)
+  client.join()
 
   for host_output in output:
       hostname = host_output.host

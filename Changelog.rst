@@ -1,6 +1,21 @@
 Change Log
 ============
 
+2.3.1
++++++
+
+Changes
+-------
+
+* ``SSHClient.read_output`` and ``read_stderr`` now take buffer to read from as argument instead of channel.
+* ``SSHClient.wait_finished`` now takes ``HostOutput`` argument instead of channel.
+
+Fixes
+-----
+
+* Output for multiple commands on one host run at the same time would be lost.
+
+
 2.3.0
 +++++
 
@@ -34,7 +49,7 @@ As is this:
 
 .. code-block:: python
 
-   client.run_command(<..>, timeout=1)
+   client.run_command(<..>, read_timeout=1)
    client.join(output, timeout=1)
    for line in output[0].stdout:
        print(line)

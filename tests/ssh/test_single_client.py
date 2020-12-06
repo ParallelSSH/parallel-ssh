@@ -51,12 +51,12 @@ class SSHClientTest(SSHTestCase):
         self.assertEqual(exit_code, 0)
 
     def test_finished_error(self):
-        self.assertIsNone(self.client.wait_finished(None))
+        self.assertRaises(ValueError, self.client.wait_finished, None)
         self.assertIsNone(self.client.finished(None))
 
     def test_stderr(self):
         host_out = self.client.run_command('echo "me" >&2')
-        self.client.wait_finished(host_out.channel)
+        self.client.wait_finished(host_out)
         output = list(host_out.stdout)
         stderr = list(host_out.stderr)
         expected = ['me']
@@ -65,20 +65,21 @@ class SSHClientTest(SSHTestCase):
 
     def test_long_running_cmd(self):
         host_out = self.client.run_command('sleep 2; exit 2')
-        self.client.wait_finished(host_out.channel)
+        self.assertRaises(ValueError, self.client.wait_finished, host_out.channel)
+        self.client.wait_finished(host_out)
         exit_code = host_out.exit_code
         self.assertEqual(exit_code, 2)
 
     def test_wait_finished_timeout(self):
-        channel = self.client.execute('sleep 2')
+        host_out = self.client.run_command('sleep 2')
         timeout = 1
-        self.assertFalse(self.client.finished(channel))
+        self.assertFalse(self.client.finished(host_out.channel))
         start = datetime.now()
-        self.assertRaises(Timeout, self.client.wait_finished, channel, timeout=timeout)
+        self.assertRaises(Timeout, self.client.wait_finished, host_out, timeout=timeout)
         dt = datetime.now() - start
         self.assertTrue(timeout*1.05 > dt.total_seconds() > timeout)
-        self.client.wait_finished(channel)
-        self.assertTrue(self.client.finished(channel))
+        self.client.wait_finished(host_out)
+        self.assertTrue(self.client.finished(host_out.channel))
 
     def test_client_disconnect_on_del(self):
         client = SSHClient(self.host, port=self.port,
@@ -97,7 +98,7 @@ class SSHClientTest(SSHTestCase):
 
     def test_multiple_clients_exec_terminates_channels(self):
         # See #200 - Multiple clients should not interfere with
-        # each other. session.disconnect can leave state in libssh2
+        # each other. session.disconnect can leave state in library
         # and break subsequent sessions even on different socket and
         # session
         def scope_killer():
@@ -106,9 +107,9 @@ class SSHClientTest(SSHTestCase):
                                    pkey=self.user_key,
                                    num_retries=1,
                                    allow_agent=False)
-                channel = client.execute(self.cmd)
-                output = list(client.read_output(channel))
-                self.assertListEqual(output, [b'me'])
+                host_out = client.run_command(self.cmd)
+                output = list(host_out.stdout)
+                self.assertListEqual(output, [self.resp])
         scope_killer()
 
     # TODO:

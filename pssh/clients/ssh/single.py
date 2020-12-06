@@ -27,7 +27,7 @@ from ssh.error_codes import SSH_AGAIN
 
 from ..base.single import BaseSSHClient
 from ..common import _validate_pkey_path
-from ..reader import ConcurrentRWBuffer
+from ...output import HostOutput
 from ...exceptions import AuthenticationError, SessionError, Timeout
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
@@ -224,6 +224,13 @@ class SSHClient(BaseSSHClient):
             raise SessionError(ex)
         return channel
 
+    def _make_output_readers(self, channel, stdout_buffer, stderr_buffer):
+        _stdout_reader = spawn(
+            self._read_output_to_buffer, channel, stdout_buffer)
+        _stderr_reader = spawn(
+            self._read_output_to_buffer, channel, stderr_buffer, is_stderr=True)
+        return _stdout_reader, _stderr_reader
+
     def execute(self, cmd, use_pty=False, channel=None):
         """Execute command on remote host.
 
@@ -239,14 +246,6 @@ class SSHClient(BaseSSHClient):
             self._eagain(channel.request_pty, timeout=self.timeout)
         logger.debug("Executing command '%s'", cmd)
         self._eagain(channel.request_exec, cmd, timeout=self.timeout)
-        self._stdout_buffer = ConcurrentRWBuffer()
-        self._stderr_buffer = ConcurrentRWBuffer()
-        self._stdout_reader = spawn(
-            self._read_output_to_buffer, channel, self._stdout_buffer)
-        self._stderr_reader = spawn(
-            self._read_output_to_buffer, channel, self._stderr_buffer, is_stderr=True)
-        self._stdout_reader.start()
-        self._stderr_reader.start()
         return channel
 
     def _read_output_to_buffer(self, channel, _buffer, is_stderr=False):
@@ -266,27 +265,30 @@ class SSHClient(BaseSSHClient):
                 # for block other generators/greenlets from running.
                 sleep(.1)
 
-    def wait_finished(self, channel, timeout=None):
+    def wait_finished(self, host_output, timeout=None):
         """Wait for EOF from channel and close channel.
 
         Used to wait for remote command completion and be able to gather
         exit code.
 
-        :param channel: The channel to use.
-        :type channel: :py:class:`ssh.channel.Channel`
+        :param host_output: Host output of command to wait for.
+        :type host_output: :py:class:`pssh.output.HostOutput`
         :param timeout: Timeout value in seconds - defaults to no timeout.
         :type timeout: float
 
         :raises: :py:class:`pssh.exceptions.Timeout` after <timeout> seconds if
-          timeout given.
+          timeout set.
         """
+        if not isinstance(host_output, HostOutput):
+            raise ValueError("%s is not a HostOutput object" % (host_output,))
+        channel = host_output.channel
         if channel is None:
             return
         logger.debug("Sending EOF on channel %s", channel)
         self._eagain(channel.send_eof, timeout=self.timeout)
         logger.debug("Waiting for readers, timeout %s", timeout)
         with GTimeout(seconds=timeout, exception=Timeout):
-            joinall((self._stdout_reader, self._stderr_reader))
+            joinall((host_output.buffers.stdout.reader, host_output.buffers.stderr.reader))
         logger.debug("Readers finished, closing channel")
         # Close channel
         self.close_channel(channel)

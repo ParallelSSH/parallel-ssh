@@ -72,12 +72,12 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertEqual(expected, output)
 
     def test_finished_error(self):
-        self.assertIsNone(self.client.wait_finished(None))
+        self.assertRaises(ValueError, self.client.wait_finished, None)
         self.assertIsNone(self.client.finished(None))
 
     def test_stderr(self):
         host_out = self.client.run_command('echo "me" >&2')
-        self.client.wait_finished(host_out.channel)
+        self.client.wait_finished(host_out)
         output = list(host_out.stdout)
         stderr = list(host_out.stderr)
         expected = ['me']
@@ -86,7 +86,8 @@ class SSH2ClientTest(SSH2TestCase):
 
     def test_long_running_cmd(self):
         host_out = self.client.run_command('sleep 2; exit 2')
-        self.client.wait_finished(host_out.channel)
+        self.assertRaises(ValueError, self.client.wait_finished, host_out.channel)
+        self.client.wait_finished(host_out)
         exit_code = host_out.exit_code
         self.assertEqual(exit_code, 2)
 
@@ -195,15 +196,17 @@ class SSH2ClientTest(SSH2TestCase):
         # each other. session.disconnect can leave state in libssh2
         # and break subsequent sessions even on different socket and
         # session
-        for _ in range(5):
-            client = SSHClient(self.host, port=self.port,
-                               pkey=self.user_key,
-                               num_retries=1,
-                               allow_agent=False)
-            channel = client.execute(self.cmd)
-            output = list(client.read_output(channel))
-            self.assertListEqual(output, [b'me'])
-            client.disconnect()
+        def scope_killer():
+            for _ in range(5):
+                client = SSHClient(self.host, port=self.port,
+                                   pkey=self.user_key,
+                                   num_retries=1,
+                                   allow_agent=False)
+                host_out = client.run_command(self.cmd)
+                output = list(host_out.stdout)
+                self.assertListEqual(output, [self.resp])
+                client.disconnect()
+        scope_killer()
 
     def test_agent_auth_exceptions(self):
         """Test SSH agent authentication failure with custom client that
@@ -235,23 +238,25 @@ class SSH2ClientTest(SSH2TestCase):
 
     def test_finished(self):
         self.assertFalse(self.client.finished(None))
-        channel = self.client.execute('echo me')
+        host_out = self.client.run_command('echo me')
+        channel = host_out.channel
         self.assertFalse(self.client.finished(channel))
-        self.client.wait_finished(channel)
-        stdout = list(self.client.read_output(channel))
+        self.assertRaises(ValueError, self.client.wait_finished, host_out.channel)
+        self.client.wait_finished(host_out)
+        stdout = list(host_out.stdout)
         self.assertTrue(self.client.finished(channel))
-        self.assertListEqual(stdout, [b'me'])
+        self.assertListEqual(stdout, [self.resp])
 
     def test_wait_finished_timeout(self):
-        channel = self.client.execute('sleep 2')
+        host_out = self.client.run_command('sleep 2')
         timeout = 1
-        self.assertFalse(self.client.finished(channel))
+        self.assertFalse(self.client.finished(host_out.channel))
         start = datetime.now()
-        self.assertRaises(Timeout, self.client.wait_finished, channel, timeout=timeout)
+        self.assertRaises(Timeout, self.client.wait_finished, host_out, timeout=timeout)
         dt = datetime.now() - start
         self.assertTrue(timeout*1.05 > dt.total_seconds() > timeout)
-        self.client.wait_finished(channel)
-        self.assertTrue(self.client.finished(channel))
+        self.client.wait_finished(host_out)
+        self.assertTrue(self.client.finished(host_out.channel))
 
     def test_scp_abspath_recursion(self):
         cur_dir = os.path.dirname(__file__)

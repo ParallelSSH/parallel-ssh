@@ -468,6 +468,17 @@ class LibSSHParallelTest(unittest.TestCase):
         resp = list(output[0].stdout)
         self.assertListEqual(resp, [self.resp])
 
+    def test_read_multi_same_hosts(self):
+        hosts = [self.host, self.host]
+        outputs = [
+            self.client.run_command(self.cmd),
+            self.client.run_command(self.cmd),
+        ]
+        for output in outputs:
+            for host_out in output:
+                stdout = list(host_out.stdout)
+                self.assertListEqual(stdout, [self.resp])
+
     # def test_multiple_run_command_timeout(self):
     #     client = ParallelSSHClient([self.host], port=self.port,
     #                                pkey=self.user_key)

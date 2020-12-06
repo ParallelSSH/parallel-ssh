@@ -268,11 +268,10 @@ class BaseParallelSSHClient(object):
               encoding="utf-8"):
         if host_out is None:
             return
-        channel = host_out.channel
         client = host_out.client
         if client is None:
             return
-        client.wait_finished(channel, timeout=timeout)
+        client.wait_finished(host_out, timeout=timeout)
         if consume_output:
             self._consume_output(host_out.stdout, host_out.stderr)
         return host_out

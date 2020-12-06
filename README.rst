@@ -8,7 +8,7 @@ Run SSH commands over many - hundreds/hundreds of thousands - number of servers 
 
 Native code based client with extremely high performance - based on ``libssh2`` C library.
 
-.. image:: https://img.shields.io/badge/License-LGPL%20v2-blue.svg
+.. image:: https://img.shields.io/badge/License-LGPL%20v2.1-blue.svg
   :target: https://pypi.python.org/pypi/parallel-ssh
   :alt: License
 .. image:: https://img.shields.io/pypi/v/parallel-ssh.svg
@@ -16,8 +16,6 @@ Native code based client with extremely high performance - based on ``libssh2`` 
   :alt: Latest Version
 .. image:: https://circleci.com/gh/ParallelSSH/parallel-ssh/tree/master.svg?style=svg
   :target: https://circleci.com/gh/ParallelSSH/parallel-ssh
-.. image:: https://ci.appveyor.com/api/projects/status/github/parallelssh/parallel-ssh?svg=true&branch=master
-  :target: https://ci.appveyor.com/project/pkittenis/parallel-ssh-4nme1
 .. image:: https://codecov.io/gh/ParallelSSH/parallel-ssh/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/ParallelSSH/parallel-ssh
 .. image:: https://img.shields.io/pypi/wheel/parallel-ssh.svg
@@ -44,7 +42,7 @@ Usage Example
 
 See documentation on `read the docs`_ for more complete examples.
 
-Run ``uname`` on two remote hosts in parallel.
+Run ``uname`` on two hosts in parallel.
 
 .. code-block:: python
 
@@ -53,7 +51,7 @@ Run ``uname`` on two remote hosts in parallel.
   hosts = ['localhost', 'localhost']
   client = ParallelSSHClient(hosts)
 
-  output = client.run_command('uname', return_list=True)
+  output = client.run_command('uname')
   for host_output in output:
       for line in host_output.stdout:
           print(line)
@@ -65,15 +63,34 @@ Run ``uname`` on two remote hosts in parallel.
       Linux
       Linux
 
+
+Single Host Client
+*******************
+
+Single host client with similar API for users that do not need parallel functionality.
+
+.. code-block:: python
+
+   from pssh.clients import SSHClient
+
+   host = 'localhost'
+   cmd = 'uname'
+   client = SSHClient(host)
+
+   host_out = client.run_command(cmd)
+   for line in host_out.stdout:
+       print(line)
+
+
 **************
 Native clients
 **************
 
-Starting from version ``1.2.0``, the default client in ``parallel-ssh`` has changed to a native client based on ``ssh2-python`` - ``libssh2`` C library - which offers much greater performance and reduced overhead compared to other Python SSH libraries.
+The default client in ``parallel-ssh`` is a native client based on ``ssh2-python`` - ``libssh2`` C library - which offers much greater performance and reduced overhead compared to other Python SSH libraries.
 
 See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of different Python SSH libraries.
 
-An alternative client based on ``ssh-python`` (``libssh``) is also available. See `client documentation <http://parallel-ssh.readthedocs.io/en/latest/clients.html>`_ for a feature comparison of the available clients in the library.
+Alternative clients based on ``ssh-python`` (``libssh``) are also available under ``pssh.clients.ssh``. See `client documentation <http://parallel-ssh.readthedocs.io/en/latest/clients.html>`_ for a feature comparison of the available clients in the library.
 
 ``parallel-ssh`` makes use of clients and an event loop solely based on C libraries providing native code levels of performance and stability with an easy to use Python API.
 
@@ -84,7 +101,7 @@ Native Code Client Features
 
 * Highest performance and least overhead of any Python SSH library
 * Thread safe - makes use of native threads for CPU bound calls like authentication
-* Natively non-blocking utilising ``libssh2`` via ``ssh2-python``
+* Natively asynchronous utilising ``libssh2`` via ``ssh2-python``
 * Significantly reduced overhead in CPU and memory usage
 
 
@@ -92,7 +109,7 @@ Native Code Client Features
 Exit codes
 ***********
 
-Once *either* standard output is iterated on *to completion*, or ``client.join(output, consume_output=True)`` is called, exit codes become available in host output.
+Once *either* standard output is iterated on *to completion*, or ``client.join()`` is called, exit codes become available in host output.
 
 Iteration ends *only when remote command has completed*, though it may be interrupted and resumed at any point.
 
@@ -126,23 +143,22 @@ After ``join`` returns, commands have finished and all output can be read withou
 
 .. code-block:: python
 
-  client.join(output)
+  client.join()
 
   for host_out in output:
       for line in host_output.stdout:
           print(line)
       print(host_out.exit_code)
 
-Similarly, exit codes are available after ``client.join(output, consume_output=True)``.
+Similarly, exit codes are available after ``client.join()`` without reading output.
 
-``consume_output`` flag must be set to get exit codes when not reading from ``stdout``. Future releases aim to remove the need for `consume_output` to be set.
 
 .. code-block:: python
 
   output = client.run_command('uname')
 
   # Wait for commands to complete and consume output so can get exit codes
-  client.join(output, consume_output=True)
+  client.join()
 
   for host_output in output:
       print(host_out.exit_code)

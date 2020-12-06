@@ -34,7 +34,7 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
 
 from .tunnel import FORWARDER
 from ..base.single import BaseSSHClient
-from ..reader import ConcurrentRWBuffer
+from ...output import HostOutput
 from ...exceptions import AuthenticationException, SessionError, SFTPError, \
     SFTPIOError, Timeout, SCPError, ProxyError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
@@ -271,6 +271,13 @@ class SSHClient(BaseSSHClient):
             self._forward_requested = True
         return chan
 
+    def _make_output_readers(self, channel, stdout_buffer, stderr_buffer):
+        _stdout_reader = spawn(
+            self._read_output_to_buffer, channel.read, stdout_buffer)
+        _stderr_reader = spawn(
+            self._read_output_to_buffer, channel.read_stderr, stderr_buffer)
+        return _stdout_reader, _stderr_reader
+
     def execute(self, cmd, use_pty=False, channel=None):
         """Execute command on remote server.
 
@@ -287,14 +294,6 @@ class SSHClient(BaseSSHClient):
             self._eagain(channel.pty)
         logger.debug("Executing command '%s'", cmd)
         self._eagain(channel.execute, cmd)
-        self._stdout_buffer = ConcurrentRWBuffer()
-        self._stderr_buffer = ConcurrentRWBuffer()
-        self._stdout_reader = spawn(
-            self._read_output_to_buffer, channel.read, self._stdout_buffer)
-        self._stderr_reader = spawn(
-            self._read_output_to_buffer, channel.read_stderr, self._stderr_buffer)
-        self._stdout_reader.start()
-        self._stderr_reader.start()
         return channel
 
     def _read_output_to_buffer(self, read_func, _buffer):
@@ -310,20 +309,23 @@ class SSHClient(BaseSSHClient):
         finally:
             _buffer.eof.set()
 
-    def wait_finished(self, channel, timeout=None):
+    def wait_finished(self, host_output, timeout=None):
         """Wait for EOF from channel and close channel.
 
         Used to wait for remote command completion and be able to gather
         exit code.
 
-        :param channel: The channel to use.
-        :type channel: :py:class:`ssh2.channel.Channel`
+        :param host_output: Host output of command to wait for.
+        :type host_output: :py:class:`pssh.output.HostOutput`
         :param timeout: Timeout value in seconds - defaults to no timeout.
         :type timeout: float
 
         :raises: :py:class:`pssh.exceptions.Timeout` after <timeout> seconds if
           timeout given.
         """
+        if not isinstance(host_output, HostOutput):
+            raise ValueError("%s is not a HostOutput object" % (host_output,))
+        channel = host_output.channel
         if channel is None:
             return
         self._eagain(channel.wait_eof, timeout=timeout)
