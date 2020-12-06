@@ -157,7 +157,6 @@ Similarly, exit codes are available after ``client.join()`` without reading outp
 
   output = client.run_command('uname')
 
-  # Wait for commands to complete and consume output so can get exit codes
   client.join()
 
   for host_output in output:
