@@ -342,9 +342,9 @@ class BaseSSHClient(object):
                 _command = 'sudo -u %s -S ' % (user,)
             _shell = shell if shell else '$SHELL -c'
             _command += "%s '%s'" % (_shell, command,)
-        _timeout = read_timeout if read_timeout else timeout
         with GTimeout(seconds=self.timeout):
             channel = self.execute(_command, use_pty=use_pty)
+        _timeout = read_timeout if read_timeout else timeout
         _stdout_buffer = ConcurrentRWBuffer()
         _stderr_buffer = ConcurrentRWBuffer()
         _stdout_reader, _stderr_reader = self._make_output_readers(
