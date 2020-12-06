@@ -26,8 +26,6 @@ Native code based client with extremely high performance - based on ``libssh2`` 
 
 .. _`read the docs`: http://parallel-ssh.readthedocs.org/en/latest/
 
-.. contents::
-
 ************
 Installation
 ************
@@ -80,6 +78,9 @@ Single host client with similar API for users that do not need parallel function
    host_out = client.run_command(cmd)
    for line in host_out.stdout:
        print(line)
+
+
+.. contents::
 
 
 **************
