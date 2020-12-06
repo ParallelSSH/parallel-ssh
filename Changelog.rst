@@ -8,6 +8,7 @@ Changes
 -------
 
 * ``SSHClient.read_output`` and ``read_stderr`` now take buffer to read from as argument instead of channel.
+* ``SSHClient.wait_finished`` now takes ``HostOutput`` argument instead of channel.
 
 Fixes
 -----
