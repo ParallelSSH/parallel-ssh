@@ -1,6 +1,15 @@
 Change Log
 ============
 
+2.3.2
++++++
+
+Fixes
+-----
+
+* Client output implementation Python 2 support.
+
+
 2.3.1
 +++++
 
