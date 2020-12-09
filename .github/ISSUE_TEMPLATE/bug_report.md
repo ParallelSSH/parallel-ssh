@@ -1,11 +1,11 @@
-_For general questions please use the [mail group](https://groups.google.com/forum/#!forum/parallel-ssh)._
-
 ---
 name: Bug report
 about: Create a report to help us improve
 title: ''
 labels: ''
 ---
+
+_For general questions please use the [mail group](https://groups.google.com/forum/#!forum/parallel-ssh)._
 
 **Describe the bug**
 A clear and concise description of what the bug is.
