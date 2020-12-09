@@ -18,31 +18,37 @@
 
 """Output module of ParallelSSH"""
 
-from collections import namedtuple
 from os import linesep
 
 from . import logger
 
 
-HostOutputBuffers = namedtuple('HostOutputBuffers', ['stdout', 'stderr'], )
-HostOutputBuffers.__doc__ = """
-:param stdout: Stdout data
-:type stdout: :py:class:`BufferData`
-:param stderr: Stderr data
-:type stderr: :py:class:`BufferData`
-"""
-HostOutputBuffers.stdout.__doc__ = "Stdout :py:class:`BufferData`"
-HostOutputBuffers.stderr.__doc__ = "Stderr :py:class:`BufferData`"
+class HostOutputBuffers(object):
+    __slots__ = ('stdout', 'stderr')
 
-BufferData = namedtuple('BufferData', ['reader', 'rw_buffer'])
-BufferData.__doc__ = """
-:param reader: Reader
-:type reader: :py:class:`gevent.Greenlet`
-:param rw_bufffer: Read/write buffer
-:type rw_buffer: :py:class:`pssh.clients.reader.ConcurrentRWBuffer`
-"""
-BufferData.rw_buffer.__doc__ = "Read/write buffer"
-BufferData.reader.__doc__ = "Greenlet reading data from channel and writing to rw_buffer"
+    def __init__(self, stdout, stderr):
+        """
+        :param stdout: Stdout data
+        :type stdout: :py:class:`BufferData`
+        :param stderr: Stderr data
+        :type stderr: :py:class:`BufferData`
+        """
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+class BufferData(object):
+    __slots__ = ('reader', 'rw_buffer')
+
+    def __init__(self, reader, rw_buffer):
+        """
+        :param reader: Greenlet reading data from channel and writing to rw_buffer
+        :type reader: :py:class:`gevent.Greenlet`
+        :param rw_bufffer: Read/write buffer
+        :type rw_buffer: :py:class:`pssh.clients.reader.ConcurrentRWBuffer`
+        """
+        self.reader = reader
+        self.rw_buffer = rw_buffer
 
 
 class HostOutput(object):
