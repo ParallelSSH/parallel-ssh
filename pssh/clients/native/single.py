@@ -109,7 +109,7 @@ class SSHClient(BaseSSHClient):
         self._keepalive_greenlet = None
         self._proxy_client = None
         self.host = host
-        self.port = port
+        self.port = port if port is not None else 22
         if proxy_host is not None:
             _port = port if proxy_port is None else proxy_port
             _pkey = pkey if proxy_pkey is None else proxy_pkey
@@ -140,6 +140,7 @@ class SSHClient(BaseSSHClient):
                        forward_ssh_agent=False,
                        keepalive_seconds=60,
                        identity_auth=True):
+        assert isinstance(self.port, int)
         try:
             self._proxy_client = SSHClient(
                 proxy_host, port=proxy_port, pkey=proxy_pkey,
