@@ -2,16 +2,14 @@
 Parallel-SSH Documentation
 ===========================
 
-.. image:: https://img.shields.io/badge/License-LGPL%20v2-blue.svg
+.. image:: https://img.shields.io/badge/License-LGPL%20v2.1-blue.svg
   :target: https://pypi.python.org/pypi/parallel-ssh
   :alt: License
 .. image:: https://img.shields.io/pypi/v/parallel-ssh.svg
   :target: https://pypi.python.org/pypi/parallel-ssh
   :alt: Latest Version
-.. image:: https://travis-ci.org/ParallelSSH/parallel-ssh.svg?branch=master
-  :target: https://travis-ci.org/ParallelSSH/parallel-ssh
-.. image:: https://ci.appveyor.com/api/projects/status/github/parallelssh/ssh2-python?svg=true&branch=master
-  :target: https://ci.appveyor.com/project/pkittenis/ssh2-python
+.. image:: https://circleci.com/gh/ParallelSSH/parallel-ssh/tree/master.svg?style=svg
+  :target: https://circleci.com/gh/ParallelSSH/parallel-ssh
 .. image:: https://codecov.io/gh/ParallelSSH/parallel-ssh/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/ParallelSSH/parallel-ssh
 .. image:: https://img.shields.io/pypi/wheel/parallel-ssh.svg
