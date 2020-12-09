@@ -1,16 +1,17 @@
+_For general questions please use the [mail group](https://groups.google.com/forum/#!forum/parallel-ssh)._
+
 ---
 name: Bug report
 about: Create a report to help us improve
 title: ''
 labels: ''
-assignees: ''
-
 ---
 
 **Describe the bug**
 A clear and concise description of what the bug is.
 
 **To Reproduce**
+
 Steps to reproduce the behavior:
 1. Example code that produces error.
 2. Stack trace or error messages.
