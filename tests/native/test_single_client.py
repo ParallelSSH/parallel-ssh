@@ -556,14 +556,21 @@ class SSH2ClientTest(SSH2TestCase):
 
     def test_interactive_shell(self):
         with self.client.make_shell() as shell:
-            # import ipdb; ipdb.set_trace()
             shell.run_command(self.cmd)
             shell.run_command(self.cmd)
-            pass
         stdout = list(shell.output.stdout)
         self.assertListEqual(stdout, [self.resp, self.resp])
         self.assertEqual(shell.output.exit_code, 0)
-        # shell.output.buffers.stdout.rw_buffer.read()
+
+    def test_interactive_shell_exit_code(self):
+        with self.client.make_shell() as shell:
+            shell.run_command(self.cmd)
+            shell.run_command('sleep 1')
+            shell.run_command(self.cmd)
+            shell.run_command('exit 1')
+        stdout = list(shell.output.stdout)
+        self.assertListEqual(stdout, [self.resp, self.resp])
+        self.assertEqual(shell.output.exit_code, 1)
 
 
     # TODO
