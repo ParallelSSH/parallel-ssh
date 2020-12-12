@@ -44,34 +44,6 @@ logger = logging.getLogger(__name__)
 THREAD_POOL = get_hub().threadpool
 
 
-class InteractiveShell(object):
-    __slots__ = ('_chan', '_client', 'output', 'encoding', 'read_timeout')
-
-    def __init__(self, channel, client, encoding='utf-8', read_timeout=None):
-        self._chan = channel
-        self._client = client
-        self.output = None
-        self.encoding = encoding
-        self.read_timeout = read_timeout
-
-    def __enter__(self):
-        self._client._eagain(self._chan.shell)
-        self.output = self._client._make_host_output(
-            self._chan, encoding=self.encoding, read_timeout=self.read_timeout)
-        return self
-
-    def __exit__(self, *args):
-        if self._chan is None:
-            return
-        self._client._eagain(self._chan.send_eof)
-        self._client._eagain(self._chan.wait_eof)
-        self._client.close_channel(self._chan)
-
-    def run_command(self, cmd, encoding='utf-8', read_timeout=None):
-        cmd += '\n'
-        self._client.eagain_write(self._chan.write, cmd)
-
-
 class SSHClient(BaseSSHClient):
     """ssh2-python (libssh2) based non-blocking SSH client."""
 
@@ -160,10 +132,8 @@ class SSHClient(BaseSSHClient):
             proxy_host=proxy_host, proxy_port=proxy_port,
             identity_auth=identity_auth)
 
-    def make_shell(self, encoding='utf-8', read_timeout=None):
-        chan = self.open_session()
-        shell = InteractiveShell(chan, self, encoding=encoding, read_timeout=read_timeout)
-        return shell
+    def _shell(self, channel):
+        return self._eagain(channel.shell)
 
     def _connect_proxy(self, proxy_host, proxy_port, proxy_pkey,
                        user=None, password=None,
@@ -795,3 +765,6 @@ class SSHClient(BaseSSHClient):
             total_written += bytes_written
             if rc == LIBSSH2_ERROR_EAGAIN:
                 self.poll(timeout=timeout)
+
+    def _eagain_write(self, write_func, data, timeout=None):
+        return self.eagain_write(write_func, data, timeout=timeout)

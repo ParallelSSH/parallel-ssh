@@ -207,6 +207,9 @@ class SSHClient(BaseSSHClient):
         copy_cert_to_privkey(cert_key, pkey)
         logger.debug("Imported certificate file %s for pkey %s", self.cert_file, self.pkey)
 
+    def _shell(self, channel):
+        return self._eagain(channel.request_shell)
+
     def open_session(self):
         """Open new channel from session."""
         logger.debug("Opening new channel on %s", self.host)
@@ -342,3 +345,12 @@ class SSHClient(BaseSSHClient):
                 self.poll(timeout=timeout)
                 ret = func(*args, **kwargs)
             return ret
+
+    def _eagain_write(self, write_func, data, timeout=None):
+        data_len = len(data)
+        total_written = 0
+        while total_written < data_len:
+            rc, bytes_written = write_func(data[total_written:])
+            total_written += bytes_written
+            if rc == SSH_AGAIN:
+                self.poll(timeout=timeout)

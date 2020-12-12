@@ -555,19 +555,19 @@ class SSH2ClientTest(SSH2TestCase):
                     pass
 
     def test_interactive_shell(self):
-        with self.client.make_shell() as shell:
-            shell.run_command(self.cmd)
-            shell.run_command(self.cmd)
+        with self.client.open_shell() as shell:
+            shell.run(self.cmd)
+            shell.run(self.cmd)
         stdout = list(shell.output.stdout)
         self.assertListEqual(stdout, [self.resp, self.resp])
         self.assertEqual(shell.output.exit_code, 0)
 
     def test_interactive_shell_exit_code(self):
-        with self.client.make_shell() as shell:
-            shell.run_command(self.cmd)
-            shell.run_command('sleep 1')
-            shell.run_command(self.cmd)
-            shell.run_command('exit 1')
+        with self.client.open_shell() as shell:
+            shell.run(self.cmd)
+            shell.run('sleep 1')
+            shell.run(self.cmd)
+            shell.run('exit 1')
         stdout = list(shell.output.stdout)
         self.assertListEqual(stdout, [self.resp, self.resp])
         self.assertEqual(shell.output.exit_code, 1)

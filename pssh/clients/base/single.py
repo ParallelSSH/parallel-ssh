@@ -43,6 +43,34 @@ host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
 
 
+class InteractiveShell(object):
+    __slots__ = ('_chan', '_client', 'output', 'encoding', 'read_timeout')
+    _EOL = '\n'
+
+    def __init__(self, channel, client, encoding='utf-8', read_timeout=None):
+        self._chan = channel
+        self._client = client
+        self.output = None
+        self.encoding = encoding
+        self.read_timeout = read_timeout
+        self._client._shell(self._chan)
+
+    def __enter__(self):
+        self.output = self._client._make_host_output(
+            self._chan, encoding=self.encoding, read_timeout=self.read_timeout)
+        return self
+
+    def __exit__(self, *args):
+        if self._chan is None:
+            return
+        self._client._eagain(self._chan.send_eof)
+        self._client.wait_finished(self.output)
+
+    def run(self, cmd):
+        cmd += self._EOL
+        self._client._eagain_write(self._chan.write, cmd)
+
+
 class BaseSSHClient(object):
 
     IDENTITIES = (
@@ -122,6 +150,14 @@ class BaseSSHClient(object):
 
     def __exit__(self, *args):
         self.disconnect()
+
+    def open_shell(self, encoding='utf-8', read_timeout=None):
+        chan = self.open_session()
+        shell = InteractiveShell(chan, self, encoding=encoding, read_timeout=read_timeout)
+        return shell
+
+    def _shell(self, channel):
+        raise NotImplementedError
 
     def _connect_init_session_retry(self, retries):
         try:
@@ -289,7 +325,7 @@ class BaseSSHClient(object):
     def _read_output_to_buffer(self, read_func, _buffer):
         raise NotImplementedError
 
-    def wait_finished(self, channel, timeout=None):
+    def wait_finished(self, host_output, timeout=None):
         raise NotImplementedError
 
     def close_channel(self, channel):
@@ -364,6 +400,9 @@ class BaseSSHClient(object):
         channel = self.execute(_command, use_pty=use_pty)
         host_out = self._make_host_output(channel, encoding, _timeout)
         return host_out
+
+    def _eagain_write(self, write_func, data, timeout=None):
+        raise NotImplementedError
 
     def _eagain(self, func, *args, **kwargs):
         raise NotImplementedError
