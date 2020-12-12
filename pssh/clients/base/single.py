@@ -210,6 +210,24 @@ class BaseSSHClient(object):
     def open_session(self):
         raise NotImplementedError
 
+    def _make_host_output(self, channel, encoding, read_timeout):
+        _stdout_buffer = ConcurrentRWBuffer()
+        _stderr_buffer = ConcurrentRWBuffer()
+        _stdout_reader, _stderr_reader = self._make_output_readers(
+            channel, _stdout_buffer, _stderr_buffer)
+        _stdout_reader.start()
+        _stderr_reader.start()
+        _buffers = HostOutputBuffers(
+            stdout=BufferData(rw_buffer=_stdout_buffer, reader=_stdout_reader),
+            stderr=BufferData(rw_buffer=_stderr_buffer, reader=_stderr_reader))
+        stdin = channel
+        host_out = HostOutput(
+            host=self.host, channel=channel, stdin=stdin,
+            client=self, encoding=encoding, read_timeout=read_timeout,
+            buffers=_buffers,
+        )
+        return host_out
+
     def _make_output_readers(self, channel, stdout_buffer, stderr_buffer):
         raise NotImplementedError
 
@@ -344,21 +362,7 @@ class BaseSSHClient(object):
             _command += "%s '%s'" % (_shell, command,)
         _timeout = read_timeout if read_timeout else timeout
         channel = self.execute(_command, use_pty=use_pty)
-        _stdout_buffer = ConcurrentRWBuffer()
-        _stderr_buffer = ConcurrentRWBuffer()
-        _stdout_reader, _stderr_reader = self._make_output_readers(
-            channel, _stdout_buffer, _stderr_buffer)
-        _stdout_reader.start()
-        _stderr_reader.start()
-        _buffers = HostOutputBuffers(
-            stdout=BufferData(rw_buffer=_stdout_buffer, reader=_stdout_reader),
-            stderr=BufferData(rw_buffer=_stderr_buffer, reader=_stderr_reader))
-        stdin = channel
-        host_out = HostOutput(
-            host=self.host, channel=channel, stdin=stdin,
-            client=self, encoding=encoding, read_timeout=_timeout,
-            buffers=_buffers,
-        )
+        host_out = self._make_host_output(channel, encoding, _timeout)
         return host_out
 
     def _eagain(self, func, *args, **kwargs):

@@ -123,13 +123,10 @@ class HostOutput(object):
         return "\thost={host}{linesep}" \
             "\texit_code={exit_code}{linesep}" \
             "\tchannel={channel}{linesep}" \
-            "\tstdout={stdout}{linesep}\tstderr={stderr}{linesep}" \
-            "\tstdin={stdin}{linesep}" \
             "\texception={exception}{linesep}" \
             "\tencoding={encoding}{linesep}" \
             "\tread_timeout={read_timeout}".format(
                 host=self.host, channel=self.channel,
-                stdout=self.stdout, stdin=self.stdin, stderr=self.stderr,
                 exception=self.exception, linesep=linesep,
                 exit_code=self.exit_code, encoding=self.encoding, read_timeout=self.read_timeout,
             )

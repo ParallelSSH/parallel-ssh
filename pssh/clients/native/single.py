@@ -44,6 +44,32 @@ logger = logging.getLogger(__name__)
 THREAD_POOL = get_hub().threadpool
 
 
+class InteractiveShell(object):
+    # __slots__ = ('_chan', '_client', 'output')
+
+    def __init__(self, channel, client, encoding='utf-8', read_timeout=None):
+        self._chan = channel
+        self._client = client
+        self.output = None
+        self.encoding = encoding
+        self.read_timeout = read_timeout
+
+    def __enter__(self):
+        self._client._eagain(self._chan.shell)
+        self.output = self._client._make_host_output(
+            self._chan, encoding=self.encoding, read_timeout=self.read_timeout)
+        return self
+
+    def __exit__(self, *args):
+        if self._chan is None:
+            return
+        self._client.close_channel(self._chan)
+
+    def run_command(self, cmd, encoding='utf-8', read_timeout=None):
+        cmd += '\n'
+        self._client.eagain_write(self._chan.write, cmd)
+
+
 class SSHClient(BaseSSHClient):
     """ssh2-python (libssh2) based non-blocking SSH client."""
 
@@ -131,6 +157,11 @@ class SSHClient(BaseSSHClient):
             timeout=timeout,
             proxy_host=proxy_host, proxy_port=proxy_port,
             identity_auth=identity_auth)
+
+    def make_shell(self):
+        chan = self.open_session()
+        shell = InteractiveShell(chan, self)
+        return shell
 
     def _connect_proxy(self, proxy_host, proxy_port, proxy_pkey,
                        user=None, password=None,
@@ -736,6 +767,19 @@ class SSHClient(BaseSSHClient):
         if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:
             events |= POLLOUT
         self._poll_socket(events, timeout=timeout)
+
+    def eagain_write_dec(self, write_func, data, timeout=None):
+
+        def _wrapper():
+            data_len = len(data)
+            total_written = 0
+            while total_written < data_len:
+                rc, bytes_written = write_func(data[total_written:])
+                total_written += bytes_written
+                if rc == LIBSSH2_ERROR_EAGAIN:
+                    self.poll(timeout=timeout)
+
+        return _wrapper
 
     def eagain_write(self, write_func, data, timeout=None):
         """Write data with given write_func for an ssh2-python session while
