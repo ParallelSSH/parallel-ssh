@@ -44,29 +44,51 @@ logger = logging.getLogger(__name__)
 
 
 class InteractiveShell(object):
-    __slots__ = ('_chan', '_client', 'output', 'encoding', 'read_timeout')
+    """
+    Run commands on an interactive shell.
+
+    Use as context manager to wait for commands to finish on exit.
+
+    Read from .output.stdout and stderr once context manager has exited.
+
+    ``InteractiveShell.output`` is a :py:mod:`pssh.output.HostOutput` object.
+    """
+    __slots__ = ('_chan', '_client', 'output')
     _EOL = '\n'
 
     def __init__(self, channel, client, encoding='utf-8', read_timeout=None):
+        """
+        :param channel: The channel to open shell on.
+        :type channel: ``ssh2.channel.Channel`` or similar.
+        :param client: The SSHClient that opened the channel.
+        :type client: ``BaseSSHClient``
+        """
         self._chan = channel
         self._client = client
-        self.output = None
-        self.encoding = encoding
-        self.read_timeout = read_timeout
         self._client._shell(self._chan)
+        self.output = self._client._make_host_output(
+            self._chan, encoding=encoding, read_timeout=read_timeout)
 
     def __enter__(self):
-        self.output = self._client._make_host_output(
-            self._chan, encoding=self.encoding, read_timeout=self.read_timeout)
         return self
 
     def __exit__(self, *args):
         if self._chan is None:
             return
+        self.close()
+
+    def close(self):
+        """Wait for shell to finish executing and close channel."""
         self._client._eagain(self._chan.send_eof)
         self._client.wait_finished(self.output)
 
     def run(self, cmd):
+        """Run command on interactive shell.
+
+        :param cmd: The command string to run.
+          Note that ``\\n`` is appended to every string.
+        :type cmd: str
+        """
         cmd += self._EOL
         self._client._eagain_write(self._chan.write, cmd)
 
@@ -152,6 +174,14 @@ class BaseSSHClient(object):
         self.disconnect()
 
     def open_shell(self, encoding='utf-8', read_timeout=None):
+        """Open interactive shell on new channel.
+        Should be used as context manager - ``with open_shell() as shell``.
+
+        :param encoding: Encoding to use for output from shell.
+        :type encoding: str
+        :param read_timeout: Timeout in seconds for reading from output.
+        :type read_timeout: float
+        """
         chan = self.open_session()
         shell = InteractiveShell(chan, self, encoding=encoding, read_timeout=read_timeout)
         return shell

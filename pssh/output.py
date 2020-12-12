@@ -74,7 +74,7 @@ class HostOutput(object):
         :param stdin: Standard input buffer
         :type stdin: :py:func:`file`-like object
         :param client: `SSHClient` output is coming from.
-        :type client: :py:class:`pssh.clients.base_ssh_client.SSHClient`
+        :type client: :py:class:`pssh.clients.base.single.BaseSSHClient`
         :param exception: Exception from host if any
         :type exception: :py:class:`Exception` or ``None``
         :param read_timeout: Timeout in seconds for reading from buffers.
