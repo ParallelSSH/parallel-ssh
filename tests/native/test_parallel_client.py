@@ -88,6 +88,34 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient([self.host], pkey=self.user_key, port=self.port, num_retries=1)
         joinall(client.connect_auth(), raise_error=True)
 
+    def test_client_shells(self):
+        shells = self.client.open_shell()
+        self.client.run_shell_commands(shells, self.cmd)
+        self.client.run_shell_commands(shells, [self.cmd, 'exit 1'])
+        self.client.join_shells(shells)
+        for shell in shells:
+            stdout = list(shell.output.stdout)
+            self.assertListEqual(stdout, [self.resp, self.resp])
+            expected_exit_code = 1
+            self.assertEqual(shell.output.exit_code, expected_exit_code)
+
+    def test_client_shells_read_timeout(self):
+        shells = self.client.open_shell(read_timeout=1)
+        self.client.run_shell_commands(shells, self.cmd)
+        self.client.run_shell_commands(shells, [self.cmd, 'sleep 2', 'exit 1'])
+        stdout = []
+        for shell in shells:
+            try:
+                for line in shell.output.stdout:
+                    stdout.append(line)
+            except Timeout:
+                pass
+            self.assertListEqual(stdout, [self.resp, self.resp])
+            self.assertEqual(shell.output.exit_code, None)
+            expected_exit_code = 1
+            self.client.join_shells(shells)
+            self.assertEqual(shell.output.exit_code, expected_exit_code)
+
     def test_client_join_consume_output(self):
         output = self.client.run_command(self.cmd)
         expected_exit_code = 0
