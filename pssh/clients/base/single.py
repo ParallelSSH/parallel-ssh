@@ -51,7 +51,7 @@ class InteractiveShell(object):
 
     Read from .output.stdout and stderr once context manager has exited.
 
-    ``InteractiveShell.output`` is a :py:mod:`pssh.output.HostOutput` object.
+    ``InteractiveShell.output`` is a :py:class:`pssh.output.HostOutput` object.
     """
     __slots__ = ('_chan', '_client', 'output')
     _EOL = '\n'
@@ -61,7 +61,7 @@ class InteractiveShell(object):
         :param channel: The channel to open shell on.
         :type channel: ``ssh2.channel.Channel`` or similar.
         :param client: The SSHClient that opened the channel.
-        :type client: ``BaseSSHClient``
+        :type client: :py:class:`BaseSSHClient`
         """
         self._chan = channel
         self._client = client

@@ -79,6 +79,26 @@ class BaseParallelSSHClient(object):
                 "Got %s host config entries from %s hosts" % (
                     len(self.host_config), host_len))
 
+    def _open_shell(self, host_i, host, command,
+                    encoding=encoding, read_timeout=read_timeout):
+        try:
+            _client = self._make_ssh_client(host_i, host)
+            shell = _client.open_shell(
+                    command, encoding=encoding, read_timeout=read_timeout)
+            return shell
+        except (GTimeout, Exception) as ex:
+            host = ex.host if hasattr(ex, 'host') else None
+            logger.error("Failed to run on host %s - %s", host, ex)
+            raise ex
+
+    def open_shell(self, encoding='utf-8', read_timeout=None):
+        cmds = [self.pool.spawn(self._open_shell, command, encoding=encoding,
+                                read_timeout=read_timeout)]
+        return joinall(cmds, timeout=self.timeout)
+
+    def run_shell_commands(self, shells, commands):
+        raise NotImplementedError
+
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
                     encoding='utf-8', return_list=True,
