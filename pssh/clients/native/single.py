@@ -252,15 +252,9 @@ class SSHClient(BaseSSHClient):
     def open_session(self):
         """Open new channel from session"""
         try:
-            chan = self.session.open_session()
+            chan = self._eagain(self.session.open_session)
         except Exception as ex:
             raise SessionError(ex)
-        while chan == LIBSSH2_ERROR_EAGAIN:
-            self.poll()
-            try:
-                chan = self.session.open_session()
-            except Exception as ex:
-                raise SessionError(ex)
         # Multiple forward requests result in ChannelRequestDenied
         # errors, flag is used to avoid this.
         if self.forward_ssh_agent and not self._forward_requested:
@@ -727,6 +721,7 @@ class SSHClient(BaseSSHClient):
         Blocks current greenlet only if socket has pending read or write operations
         in the appropriate direction.
         """
+        timeout = self.timeout if timeout is None else timeout
         directions = self.session.block_directions()
         if directions == 0:
             return

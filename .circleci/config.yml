@@ -45,12 +45,14 @@ jobs:
           name: Integration tests
       - run:
           command: |
-            cd doc; make html; cd ..
+            cd doc; make html
+            cd ..
           name: make docs
       - run:
           command: |
             python setup.py sdist
-            cd dist; pip install *; cd ..
+            cd dist; pip install *
+            cd ..
           name: Source dist install
       - run:
           command: codecov
