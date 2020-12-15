@@ -397,6 +397,9 @@ class SSHClient(BaseSSHClient):
         :type remote_file: str
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
+        :param sftp: SFTP channel to use instead of creating a
+          new one.
+        :type sftp: :py:class:`ssh2.sftp.SFTP`
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           ``local_file`` and ``recurse`` is not set
@@ -484,6 +487,9 @@ class SSHClient(BaseSSHClient):
         :type recurse: bool
         :param encoding: Encoding to use for file paths.
         :type encoding: str
+        :param sftp: SFTP channel to use instead of creating a
+          new one.
+        :type sftp: :py:class:`ssh2.sftp.SFTP`
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           ``local_file`` and ``recurse`` is not set
@@ -739,19 +745,6 @@ class SSHClient(BaseSSHClient):
         if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:
             events |= POLLOUT
         self._poll_socket(events, timeout=timeout)
-
-    def eagain_write_dec(self, write_func, data, timeout=None):
-
-        def _wrapper():
-            data_len = len(data)
-            total_written = 0
-            while total_written < data_len:
-                rc, bytes_written = write_func(data[total_written:])
-                total_written += bytes_written
-                if rc == LIBSSH2_ERROR_EAGAIN:
-                    self.poll(timeout=timeout)
-
-        return _wrapper
 
     def eagain_write(self, write_func, data, timeout=None):
         """Write data with given write_func for an ssh2-python session while

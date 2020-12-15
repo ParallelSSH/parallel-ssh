@@ -156,7 +156,7 @@ class SSHClient(BaseSSHClient):
         if self.pkey is not None:
             logger.debug(
                 "Proceeding with private key file authentication")
-            return self._pkey_auth(self.pkey, self.password)
+            return self._pkey_auth(self.password)
         if self.allow_agent:
             try:
                 self.session.userauth_agent(self.user)
@@ -194,8 +194,8 @@ class SSHClient(BaseSSHClient):
         except Exception as ex:
             raise AuthenticationError("Password authentication failed - %s", ex)
 
-    def _pkey_auth(self, pkey, password=None):
-        pkey = import_privkey_file(pkey, passphrase=password if password is not None else '')
+    def _pkey_auth(self, password=None):
+        pkey = import_privkey_file(self.pkey, passphrase=password if password is not None else '')
         if self.cert_file is not None:
             logger.debug("Certificate file set - trying certificate authentication")
             self._import_cert_file(pkey)

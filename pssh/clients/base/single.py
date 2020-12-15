@@ -270,7 +270,7 @@ class BaseSSHClient(object):
     def _password_auth(self):
         raise NotImplementedError
 
-    def _pkey_auth(self, pkey, password=None):
+    def _pkey_auth(self, password=None):
         raise NotImplementedError
 
     def open_session(self):
@@ -444,7 +444,7 @@ class BaseSSHClient(object):
         raise NotImplementedError
 
     def copy_file(self, local_file, remote_file, recurse=False,
-                  sftp=None, _dir=None):
+                  sftp=None):
         raise NotImplementedError
 
     def _sftp_put(self, remote_fh, local_file):
@@ -455,7 +455,7 @@ class BaseSSHClient(object):
     def sftp_put(self, sftp, local_file, remote_file):
         raise NotImplementedError
 
-    def mkdir(self, sftp, directory, _parent_path=None):
+    def mkdir(self, sftp, directory):
         raise NotImplementedError
 
     def _copy_dir(self, local_dir, remote_dir, sftp):
@@ -547,7 +547,7 @@ class BaseSSHClient(object):
         if _sep > 0:
             return file_path[:_sep]
 
-    def poll(timeout=None):
+    def poll(self, timeout=None):
         raise NotImplementedError
 
     def _poll_socket(self, events, timeout=None):
