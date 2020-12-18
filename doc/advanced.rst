@@ -610,11 +610,12 @@ Interactive Shells
 
 Interactive shells can be used to run commands, as an alternative to ``run_command``.
 
-This is best used in cases where wanting to run multiple commands per host in the same channel.
+This is best used in cases where wanting to run multiple commands per host on the same channel.
 
 .. code-block:: python
 
    shells = client.open_shell()
+   
    # Multi line commands
    cmd = """
    echo me
@@ -622,16 +623,24 @@ This is best used in cases where wanting to run multiple commands per host in th
    exit 1
    """
    client.run_shell_commands(shells, cmd)
+   
    # Single command
    cmd = 'echo me three'
    client.run_shell_commands(shells, cmd)
+   
    # List of commands
    cmd = ['echo me also', 'and as well me']
+   client.run_shell_commands(shells, cmd)
+   
    # Wait for completion, close shells
    client.join_shells(shells)
+   
+   # Output for each includes all commands
+   # Exit code is for the *last executed command only*.
    for shell in shells:
        stdout = list(shell.output.stdout)
        exit_code = shell.output.exit_code
+   
    # Shells cannot be reused after `join_shells`.
    # This would raise `pssh.exceptions.ShellError`.
    # client.run_shell_commands(shells, cmd)
@@ -643,14 +652,18 @@ Each shell has a ``shell.output`` which is a :py:class:`pssh.output.HostOutput` 
 
 To wait for pending commands to complete on shells, ``join_shells`` can be used as above.
 
-Reading output will *block indefinitely* prior to join being called. Use ``read_timeout`` if wanting to read partial output.
+Joined on shells are closed and may not run any further commands.
+
+Reading output will *block indefinitely* prior to join being called. Use ``read_timeout`` in order to read partial output.
 
 .. code-block:: python
 
    shells = client.open_shell(read_timeout=1)
    client.run_shell_commands(shells, ['echo me'])
-
-Joined on shells are closed and may not run any further commands.
+   
+   # Times out after one second
+   for line in shells[0].output.stdout:
+       print(line)
 
 
 .. seealso::
