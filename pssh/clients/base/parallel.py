@@ -335,9 +335,9 @@ class BaseParallelSSHClient(object):
     def finished(self, output=None):
         """Check if commands have finished without blocking.
 
-        :param output: As returned by
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_last_output`
-        :type output: list
+        :param output: (Optional) Output to check if finished. Defaults to
+          :py:func:`get_last_output <pssh.clients.base.parallel..ParallelSSHClient.get_last_output>`
+        :type output: list(:py:mod:`HostOutput <pssh.output.HostOutput>`)
 
         :rtype: bool
         """
