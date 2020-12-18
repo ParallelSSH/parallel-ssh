@@ -50,7 +50,7 @@ class BaseParallelSSHClient(object):
         self.allow_agent = allow_agent
         self.pool_size = pool_size
         self.pool = gevent.pool.Pool(size=self.pool_size)
-        self.hosts = hosts
+        self._hosts = hosts
         self.user = user
         self.password = password
         self.port = port
@@ -63,6 +63,19 @@ class BaseParallelSSHClient(object):
         self.cmds = None
         self.identity_auth = identity_auth
         self._check_host_config()
+
+    @property
+    def hosts(self):
+        return self._hosts
+
+    @hosts.setter
+    def hosts(self, _hosts):
+        cur_vals = set(self._hosts.keys())
+        new_vals = {i, host for i, host in enumerate(_hosts)}
+        to_remove = cur_vals.difference(new_vals)
+        for i, host in to_remove:
+            self._host_clients.pop((i, host), None)
+        self._hosts = _hosts
 
     def _check_host_config(self):
         if self.host_config is None:
