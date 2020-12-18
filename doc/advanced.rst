@@ -458,6 +458,7 @@ Contents of ``stdout`` are `UTF-16` encoded.
 
    Encoding must be valid `Python codec <https://docs.python.org/3/library/codecs.html>`_
 
+
 Enabling use of pseudo terminal emulation
 ===========================================
 
@@ -602,6 +603,60 @@ If wanting to copy a file from a single remote host and retain the original file
 .. seealso::
 
    :py:func:`SSHClient.copy_remote_file <pssh.clients.native.single.SSHClient.copy_remote_file>`  API documentation and exceptions raised.
+
+
+Interactive Shells
+******************
+
+Interactive shells can be used to run commands, as an alternative to ``run_command``.
+
+This is best used in cases where wanting to run multiple commands per host in the same channel.
+
+.. code-block:: python
+
+   shells = client.open_shell()
+   # Multi line commands
+   cmd = """
+   echo me
+   echo me too
+   exit 1
+   """
+   client.run_shell_commands(shells, cmd)
+   # Single command
+   cmd = 'echo me three'
+   client.run_shell_commands(shells, cmd)
+   # List of commands
+   cmd = ['echo me also', 'and as well me']
+   # Wait for completion, close shells
+   client.join_shells(shells)
+   for shell in shells:
+       stdout = list(shell.output.stdout)
+       exit_code = shell.output.exit_code
+   # Shells cannot be reused after `join_shells`.
+   # This would raise `pssh.exceptions.ShellError`.
+   # client.run_shell_commands(shells, cmd)
+
+
+Command to run can be a multi-line command as above which is executed as-is, a single string, or a list of strings which are executed one after the other on every shell.
+
+Each shell has a ``shell.output`` which is a :py:class:`pssh.output.HostOutput` object.
+
+To wait for pending commands to complete on shells, ``join_shells`` can be used as above.
+
+Reading output will *block indefinitely* prior to join being called. Use ``read_timeout`` if wanting to read partial output.
+
+.. code-block:: python
+
+   shells = client.open_shell(read_timeout=1)
+   client.run_shell_commands(shells, ['echo me'])
+
+Joined on shells are closed and may not run any further commands.
+
+
+.. seealso::
+
+   :py:class:`pssh.clients.base.single.InteractiveShell` for more documentation on interactive shell.
+
 
 
 Hosts filtering and overriding

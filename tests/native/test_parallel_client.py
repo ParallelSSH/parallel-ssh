@@ -36,7 +36,7 @@ from pssh.clients.native import ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
-    PKeyFileError
+    PKeyFileError, ShellError
 from pssh.output import HostOutput
 
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
@@ -91,11 +91,17 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_client_shells(self):
         shells = self.client.open_shell()
         self.client.run_shell_commands(shells, self.cmd)
-        self.client.run_shell_commands(shells, [self.cmd, 'exit 1'])
+        self.client.run_shell_commands(shells, [self.cmd, self.cmd])
+        self.client.run_shell_commands(
+            shells, """
+            %s
+            exit 1
+            """ % (self.cmd,))
         self.client.join_shells(shells)
+        self.assertRaises(ShellError, self.client.run_shell_commands, shells, self.cmd)
         for shell in shells:
             stdout = list(shell.output.stdout)
-            self.assertListEqual(stdout, [self.resp, self.resp])
+            self.assertListEqual(stdout, [self.resp, self.resp, self.resp, self.resp])
             expected_exit_code = 1
             self.assertEqual(shell.output.exit_code, expected_exit_code)
 

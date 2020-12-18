@@ -26,7 +26,7 @@ from gevent import joinall, spawn, Timeout as GTimeout
 from gevent.hub import Hub
 
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-from ...exceptions import HostArgumentError, Timeout
+from ...exceptions import HostArgumentError, Timeout, ShellError
 from ...output import HostOutput
 
 
@@ -105,7 +105,11 @@ class BaseParallelSSHClient(object):
         cmds = [self.pool.spawn(shell.run, cmd)
                 for shell in shells
                 for cmd in commands]
-        return joinall(cmds, timeout=self.timeout)
+        try:
+            finished = joinall(cmds, raise_error=True, timeout=self.timeout)
+        except Exception as ex:
+            raise ShellError(ex)
+        return finished
 
     def join_shells(self, shells):
         cmds = [self.pool.spawn(shell.close) for shell in shells]
