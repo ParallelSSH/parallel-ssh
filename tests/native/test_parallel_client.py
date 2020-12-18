@@ -1189,6 +1189,28 @@ class ParallelSSHClientTest(unittest.TestCase):
         client.hosts = [host]
         self.assertRaises(UnknownHostException, client.run_command, self.cmd)
 
+    def test_setting_hosts(self):
+        client = ParallelSSHClient(
+            [self.host], port=self.port,
+            num_retries=1, retry_delay=1,
+            pkey=self.user_key,
+        )
+        joinall(client.connect_auth())
+        _client = list(client._host_clients.values())[0]
+        client.hosts = [self.host]
+        joinall(client.connect_auth())
+        self.assertEqual(len(client._host_clients), 1)
+        _client_after = list(client._host_clients.values())[0]
+        self.assertEqual(id(_client), id(_client_after))
+        client.hosts = ['127.0.0.2', self.host, self.host]
+        self.assertEqual(len(client._host_clients), 0)
+        joinall(client.connect_auth())
+        self.assertEqual(len(client._host_clients), 2)
+        client.hosts = ['127.0.0.2', self.host, self.host]
+        self.assertEqual(len(client._host_clients), 2)
+        self.assertListEqual([(1, self.host), (2, self.host)],
+                             list(client._host_clients.keys()))
+
     def test_unknown_host_failure(self):
         """Test connection error failure case - ConnectionErrorException"""
         host = ''.join([random.choice(string.ascii_letters) for n in range(8)])

@@ -70,8 +70,8 @@ class BaseParallelSSHClient(object):
 
     @hosts.setter
     def hosts(self, _hosts):
-        cur_vals = set(self._hosts.keys())
-        new_vals = {i, host for i, host in enumerate(_hosts)}
+        cur_vals = set(enumerate(self._hosts))
+        new_vals = {(i, host) for i, host in enumerate(_hosts)}
         to_remove = cur_vals.difference(new_vals)
         for i, host in to_remove:
             self._host_clients.pop((i, host), None)
