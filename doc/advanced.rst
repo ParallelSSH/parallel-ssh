@@ -610,50 +610,85 @@ Interactive Shells
 
 Interactive shells can be used to run commands, as an alternative to ``run_command``.
 
-This is best used in cases where wanting to run multiple commands per host on the same channel.
+This is best used in cases where wanting to run multiple commands per host on the same channel with combined output.
+
+Running Commands On Shells
+==========================
+
+Command to run can be multi-line, a single or list of commands.
+
+Multi-line Commands
+-------------------
+
+Multi-line commands or command string is executed as-is.
 
 .. code-block:: python
 
+   client = ParallelSSHClient(<..>)
+
    shells = client.open_shell()
-   
+
    # Multi line commands
    cmd = """
    echo me
    echo me too
-   exit 1
    """
    client.run_shell_commands(shells, cmd)
-   
+
+
+Single And List Of Commands
+---------------------------
+
+.. code-block:: python
+
    # Single command
    cmd = 'echo me three'
    client.run_shell_commands(shells, cmd)
-   
+
    # List of commands
-   cmd = ['echo me also', 'and as well me']
+   cmd = ['echo me also', 'echo and as well me', 'exit 1']
    client.run_shell_commands(shells, cmd)
-   
-   # Wait for completion, close shells
+
+
+Waiting For Completion
+======================
+
+Joining shells waits for running commands to complete and closes shells.
+
+This allows output to be read up to the last command executed without blocking.
+
+Exit code is for the *last executed command only* and can be retrieved when ``run_shell_commands`` has been used at least once.
+
+.. code-block:: python
+
    client.join_shells(shells)
-   
-   # Output for each includes all commands
-   # Exit code is for the *last executed command only* and can be retrieved when
-   # `run_shell_commands` has been used at least once.
-   for shell in shells:
-       stdout = list(shell.output.stdout)
-       exit_code = shell.output.exit_code
-   
-   # Shells cannot be reused after `join_shells`.
-   # This would raise `pssh.exceptions.ShellError`.
+
+Joined on shells are closed and may not run any further commands.
+
+The below would raise :py:class:`pssh.exceptions.ShellError` after ``join_shells``.
+
+.. code-block:: python
+
    # client.run_shell_commands(shells, cmd)
 
 
-Command to run can be a multi-line command as above which is executed as-is, a single string, or a list of strings which are executed one after the other on every shell.
+Reading Output
+==============
 
-Each shell has a ``shell.output`` which is a :py:class:`pssh.output.HostOutput` object.
+Output for each shell includes all commands executed.
 
-To wait for running commands to complete on shells, ``join_shells`` can be used as above.
+.. code-block:: python
 
-Joined on shells are closed and may not run any further commands.
+   for shell in shells:
+       stdout = list(shell.output.stdout)
+       exit_code = shell.output.exit_code
+
+
+Each shell has a ``shell.output`` which is a :py:class:`HostOutput <pssh.output.HostOutput>` object.
+
+
+Reading Partial Shell Output
+----------------------------
 
 Reading output will *block indefinitely* prior to join being called. Use ``read_timeout`` in order to read partial output.
 
@@ -661,15 +696,44 @@ Reading output will *block indefinitely* prior to join being called. Use ``read_
 
    shells = client.open_shell(read_timeout=1)
    client.run_shell_commands(shells, ['echo me'])
-   
+
    # Times out after one second
    for line in shells[0].output.stdout:
        print(line)
 
 
+Single Clients
+==============
+
+On single clients shells can be used as a context manager to join and close the shell on exit.
+
+.. code-block:: python
+
+   client = SSHClient(<..>)
+
+   cmd = 'echo me'
+   with client.open_shell() as shell:
+       shell.run(cmd)
+   print(shell.output.exit_code)
+
+
+Or explicitly:
+
+.. code-block:: python
+
+   cmd = 'echo me'
+   shell = client.open_shell()
+   shell.run(cmd)
+   shell.close()
+
+
 .. seealso::
 
    :py:class:`pssh.clients.base.single.InteractiveShell` for more documentation on interactive shell.
+
+   * :py:func:`open_shell() <pssh.clients.base.parallel.BaseParallelSSHClient.open_shell>`
+   * :py:func:`run_shell_commands() <pssh.clients.base.parallel.BaseParallelSSHClient.run_shell_commands>`
+   * :py:func:`join_shells() <pssh.clients.base.parallel.BaseParallelSSHClient.join_shells>`
 
 
 
