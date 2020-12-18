@@ -636,7 +636,8 @@ This is best used in cases where wanting to run multiple commands per host on th
    client.join_shells(shells)
    
    # Output for each includes all commands
-   # Exit code is for the *last executed command only*.
+   # Exit code is for the *last executed command only* and can be retrieved when
+   # `run_shell_commands` has been used at least once.
    for shell in shells:
        stdout = list(shell.output.stdout)
        exit_code = shell.output.exit_code
@@ -650,7 +651,7 @@ Command to run can be a multi-line command as above which is executed as-is, a s
 
 Each shell has a ``shell.output`` which is a :py:class:`pssh.output.HostOutput` object.
 
-To wait for pending commands to complete on shells, ``join_shells`` can be used as above.
+To wait for running commands to complete on shells, ``join_shells`` can be used as above.
 
 Joined on shells are closed and may not run any further commands.
 

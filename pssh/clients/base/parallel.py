@@ -92,6 +92,16 @@ class BaseParallelSSHClient(object):
             raise ex
 
     def open_shell(self, encoding='utf-8', read_timeout=None):
+        """Open interactive shells on all hosts.
+
+        :param encoding: Encoding to use for shell output.
+        :type encoding: str
+        :param read_timeout: Seconds before reading from output times out.
+        :type read_timeout: float
+
+        :returns: Opened shells for each of self.hosts, in order.
+        :rtype: list(:py:class:`pssh.clients.native.base.single.InteractiveShell`)
+        """
         cmds = [self.pool.spawn(
             self._open_shell, host_i, host, encoding=encoding, read_timeout=read_timeout)
                 for host_i, host in enumerate(self.hosts)
@@ -100,6 +110,11 @@ class BaseParallelSSHClient(object):
         return [cmd.get() for cmd in finished]
 
     def run_shell_commands(self, shells, commands):
+        """Run command(s) on shells.
+
+        :param shells: Shells to run on.
+        :type shells: list(:py:class:`pssh.clients.native.base.single.InteractiveShell`)
+        """
         if not isinstance(commands, list):
             commands = [commands]
         cmds = [self.pool.spawn(shell.run, cmd)
@@ -112,6 +127,11 @@ class BaseParallelSSHClient(object):
         return finished
 
     def join_shells(self, shells):
+        """Wait for running commands to complete and close shells.
+
+        :param shells: Shells to join on.
+        :type shells: list(:py:class:`pssh.clients.native.base.single.InteractiveShell`)
+        """
         cmds = [self.pool.spawn(shell.close) for shell in shells]
         return joinall(cmds, timeout=self.timeout)
 
