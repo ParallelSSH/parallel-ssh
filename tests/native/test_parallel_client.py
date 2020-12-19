@@ -1209,7 +1209,19 @@ class ParallelSSHClientTest(unittest.TestCase):
         client.hosts = ['127.0.0.2', self.host, self.host]
         self.assertEqual(len(client._host_clients), 2)
         self.assertListEqual([(1, self.host), (2, self.host)],
-                             list(client._host_clients.keys()))
+                             sorted(list(client._host_clients.keys())))
+        try:
+            client.hosts = None
+        except ValueError:
+            pass
+        else:
+            raise AssertionError
+        try:
+            client.hosts = ''
+        except TypeError:
+            pass
+        else:
+            raise AssertionError
 
     def test_unknown_host_failure(self):
         """Test connection error failure case - ConnectionErrorException"""

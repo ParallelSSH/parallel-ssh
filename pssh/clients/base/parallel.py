@@ -70,6 +70,12 @@ class BaseParallelSSHClient(object):
 
     @hosts.setter
     def hosts(self, _hosts):
+        if _hosts is None:
+            raise ValueError
+        elif isinstance(_hosts, str) or isinstance(_hosts, bytes):
+            raise TypeError(
+                "Hosts must be list or other iterable, not string. "
+                "For example: ['localhost'] not 'localhost'.")
         cur_vals = set(enumerate(self._hosts))
         new_vals = {(i, host) for i, host in enumerate(_hosts)}
         to_remove = cur_vals.difference(new_vals)
