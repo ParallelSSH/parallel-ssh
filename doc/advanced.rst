@@ -626,12 +626,12 @@ Multi-line commands or command string is executed as-is.
 
    client = ParallelSSHClient(<..>)
 
-   shells = client.open_shell()
-
    cmd = """
    echo me
    echo me too
    """
+
+   shells = client.open_shell()
    client.run_shell_commands(shells, cmd)
 
 
@@ -671,8 +671,8 @@ Trying to use the same shells after ``join_shells`` will raise :py:class:`pssh.e
    client.run_shell_commands(shells, cmd)
 
 
-Reading Output
-==============
+Reading Shell Output
+====================
 
 Output for each shell includes all commands executed.
 
@@ -713,6 +713,7 @@ On single clients shells can be used as a context manager to join and close the 
    cmd = 'echo me'
    with client.open_shell() as shell:
        shell.run(cmd)
+   print(list(shell.output.stdout))
    print(shell.output.exit_code)
 
 
