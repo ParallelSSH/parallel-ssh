@@ -615,7 +615,7 @@ This is best used in cases where wanting to run multiple commands per host on th
 Running Commands On Shells
 ==========================
 
-Command to run can be multi-line, a single or list of commands.
+Command to run can be multi-line, a single command or a list of commands.
 
 Multi-line Commands
 -------------------
@@ -628,7 +628,6 @@ Multi-line commands or command string is executed as-is.
 
    shells = client.open_shell()
 
-   # Multi line commands
    cmd = """
    echo me
    echo me too
@@ -639,13 +638,13 @@ Multi-line commands or command string is executed as-is.
 Single And List Of Commands
 ---------------------------
 
+A single command can be used, as well as a list of commands to run on each shell.
+
 .. code-block:: python
 
-   # Single command
    cmd = 'echo me three'
    client.run_shell_commands(shells, cmd)
 
-   # List of commands
    cmd = ['echo me also', 'echo and as well me', 'exit 1']
    client.run_shell_commands(shells, cmd)
 
@@ -665,11 +664,11 @@ Exit code is for the *last executed command only* and can be retrieved when ``ru
 
 Joined on shells are closed and may not run any further commands.
 
-The below would raise :py:class:`pssh.exceptions.ShellError` after ``join_shells``.
+Trying to use the same shells after ``join_shells`` will raise :py:class:`pssh.exceptions.ShellError`.
 
 .. code-block:: python
 
-   # client.run_shell_commands(shells, cmd)
+   client.run_shell_commands(shells, cmd)
 
 
 Reading Output
@@ -726,6 +725,7 @@ Or explicitly:
    shell.run(cmd)
    shell.close()
 
+Closing a shell also waits for commands to complete.
 
 .. seealso::
 
