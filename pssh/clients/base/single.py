@@ -71,18 +71,22 @@ class InteractiveShell(object):
 
     @property
     def stdout(self):
+        """``self.output.stdout``"""
         return self.output.stdout
 
     @property
     def stderr(self):
+        """``self.output.stderr``"""
         return self.output.stderr
 
     @property
     def stdin(self):
+        """``self.output.stdin``"""
         return self.output.stdin
 
     @property
     def exit_code(self):
+        """``self.output.exit_code``"""
         return self.output.exit_code
 
     def __enter__(self):

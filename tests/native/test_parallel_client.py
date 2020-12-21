@@ -104,6 +104,8 @@ class ParallelSSHClientTest(unittest.TestCase):
             self.assertListEqual(stdout, [self.resp, self.resp, self.resp, self.resp])
             expected_exit_code = 1
             self.assertEqual(shell.exit_code, expected_exit_code)
+            self.assertListEqual(list(shell.stderr), [])
+            self.assertTrue(shell.stdin is not None)
 
     def test_client_shells_read_timeout(self):
         shells = self.client.open_shell(read_timeout=1)

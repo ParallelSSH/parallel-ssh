@@ -730,7 +730,7 @@ Closing a shell also waits for commands to complete.
 
 .. seealso::
 
-   :py:class:`pssh.clients.base.single.InteractiveShell` for more documentation on interactive shell.
+   :py:class:`pssh.clients.base.single.InteractiveShell` for more documentation.
 
    * :py:func:`open_shell() <pssh.clients.base.parallel.BaseParallelSSHClient.open_shell>`
    * :py:func:`run_shell_commands() <pssh.clients.base.parallel.BaseParallelSSHClient.run_shell_commands>`
