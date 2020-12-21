@@ -49,7 +49,7 @@ class InteractiveShell(object):
 
     Use as context manager to wait for commands to finish on exit.
 
-    Read from .output.stdout and stderr once context manager has exited.
+    Read from .stdout and stderr once context manager has exited.
 
     ``InteractiveShell.output`` is a :py:class:`pssh.output.HostOutput` object.
     """
@@ -93,12 +93,12 @@ class InteractiveShell(object):
         return self
 
     def __exit__(self, *args):
-        if self._chan is None:
-            return
         self.close()
 
     def close(self):
         """Wait for shell to finish executing and close channel."""
+        if self._chan is None:
+            return
         self._client._eagain(self._chan.send_eof)
         self._client.wait_finished(self.output)
 
