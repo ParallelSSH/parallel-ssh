@@ -195,7 +195,8 @@ class BaseSSHClient(object):
 
     def open_shell(self, encoding='utf-8', read_timeout=None):
         """Open interactive shell on new channel.
-        Should be used as context manager - ``with open_shell() as shell``.
+
+        Can be used as context manager - ``with open_shell() as shell``.
 
         :param encoding: Encoding to use for output from shell.
         :type encoding: str

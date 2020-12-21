@@ -32,7 +32,8 @@ class ConcurrentRWBuffer(object):
     until self.eof has been set.
 
     Writers should ``eof.set()`` when finished writing data via ``write``.
-    Readers can use ``read()`` to get any available data, or None.
+
+    Readers can use ``read()`` to get any available data or ``None``.
     """
     __slots__ = ('_buffer', '_read_pos', '_write_pos', 'eof', '_lock')
 
