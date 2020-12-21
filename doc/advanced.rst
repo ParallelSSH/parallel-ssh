@@ -613,18 +613,21 @@ Iterators and filtering
 Any type of iterator may be used as hosts list, including generator and list comprehension expressions.
 
 :List comprehension:
+
    .. code-block:: python
 
       hosts = ['dc1.myhost1', 'dc2.myhost2']
       client = ParallelSSHClient([h for h in hosts if h.find('dc1')])
 
 :Generator:
+
    .. code-block:: python
 
       hosts = ['dc1.myhost1', 'dc2.myhost2']
       client = ParallelSSHClient((h for h in hosts if h.find('dc1')))
 
 :Filter:
+
    .. code-block:: python
 
       hosts = ['dc1.myhost1', 'dc2.myhost2']
@@ -633,7 +636,9 @@ Any type of iterator may be used as hosts list, including generator and list com
 
 .. note ::
 
-    Since generators by design only iterate over a sequence once then stop, ``client.hosts`` should be re-assigned after each call to ``run_command`` when using generators as target of ``client.hosts``.
+    Assigning a generator to host list is possible, and the generator is consumed into a list on assignment.
+
+    Multiple calls to ``run_command`` will use the same hosts read from a generator.
 
 Overriding hosts list
 =======================
