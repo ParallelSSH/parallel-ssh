@@ -1,6 +1,20 @@
 Change Log
 ============
 
+2.4.0
++++++
+
+Changes
+-------
+
+* Added functionality to run commands in interactive shell.
+
+Fixes
+-----
+
+* ``SSHClient`` with proxy could not be used without specifying port.
+
+
 2.3.2
 +++++
 
