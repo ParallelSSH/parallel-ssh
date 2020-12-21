@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import unittest
-from logging import NullHandler
+from logging import NullHandler, DEBUG
 
 from pssh import utils
 
@@ -39,4 +39,6 @@ class ParallelSSHUtilsTest(unittest.TestCase):
         utils.enable_logger(utils.logger)
         self.assertTrue(len([h for h in utils.logger.handlers
                              if not isinstance(h, NullHandler)]) == 1)
+        utils.enable_debug_logger()
+        self.assertEqual(utils.logger.level, DEBUG)
         utils.logger.handlers = [NullHandler()]
