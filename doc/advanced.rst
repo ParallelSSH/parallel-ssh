@@ -30,14 +30,14 @@ Native Clients
 ssh2-python (libssh2)
 =====================
 
-Starting from version ``1.2.0``, the default client in ``parallel-ssh`` is based on `ssh2-python` (`libssh2`). It is a native client, offering C level performance with an easy to use Python API.
+The default client in ``parallel-ssh`` is based on `ssh2-python` (`libssh2`). It is a native client, offering C level performance with an easy to use Python API.
 
 See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of the available clients in the `1.x.x` series.
 
 
 .. code-block:: python
 
-   from pssh.clients import ParallelSSHClient
+   from pssh.clients import ParallelSSHClient, SSHClient
 
    hosts = ['my_host', 'my_other_host']
    client = ParallelSSHClient(hosts)
@@ -55,18 +55,20 @@ See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a perf
    API documentation for `parallel <native_parallel.html>`_ and `single <native_single.html>`_ native clients.
 
 
+*New in 1.2.0*
+
 ssh-python (libssh) Client
 ============================
 
-From version `1.12.0` another client based on `libssh <https://libssh.org>`_ via `ssh-python` is provided for testing purposes.
+A set of alternative clients based on `libssh <https://libssh.org>`_ via `ssh-python <https://github.com/ParallelSSH/ssh-python>`_ are also provided.
 
-The API is similar to the default client, while ``ssh-python`` offers more supported authentication methods compared to the default client.
+The API is similar to the default client, while ``ssh-python`` offers more supported authentication methods compared to the default client, such as certificate and GSS API authentication.
 
-On the other hand, this client lacks SCP, SFTP and proxy functionality.
+On the other hand, these clients lack SCP, SFTP and proxy functionality.
 
 .. code-block:: python
 
-   from pssh.clients.ssh import ParallelSSHClient
+   from pssh.clients.ssh import ParallelSSHClient, SSHClient
 
    hosts = ['localhost', 'localhost']
    client = ParallelSSHClient(hosts)
@@ -77,6 +79,12 @@ On the other hand, this client lacks SCP, SFTP and proxy functionality.
        for line in host_out.stdout:
            print(line)
 
+.. seealso::
+
+   API documentation for :py:class:`parallel <pssh.clients.ssh.parallel.ParallelSSHClient>` and :py:class:`single <pssh.clients.ssh.single.SSHClient>` ssh-python clients.
+
+
+*New in 1.12.0*
 
 GSS-API Authentication - aka Kerberos
 --------------------------------------
@@ -108,14 +116,15 @@ In the ``pssh.clients.ssh`` clients, certificate authentication is supported.
 
    from pssh.clients.ssh import ParallelSSHClient
 
-   client = ParallelSSHClient(hosts, pkey='id_rsa', cert_file='id_rsa-cert.pub')
+   client = ParallelSSHClient(
+       hosts, pkey='id_rsa', cert_file='id_rsa-cert.pub')
 
 
 Where ``id_rsa-cert.pub`` is an RSA signed certificate file for the ``id_rsa`` private key.
 
 Both private key and corresponding signed public certificate file must be provided.
 
-``ssh-python`` :py:mod:`ParallelSSHClient <pssh.clients.ssh>` clients only.
+``ssh-python`` :py:mod:`ParallelSSHClient <pssh.clients.ssh.parallel.ParallelSSHClient>` only.
 
 
 Proxy Hosts and Tunneling
