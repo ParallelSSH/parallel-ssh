@@ -219,7 +219,7 @@ class SSHClient(BaseSSHClient):
             while channel.open_session() == SSH_AGAIN:
                 logger.debug(
                     "Channel open session blocked, waiting on socket..")
-                self.poll(timeout=self.timeout)
+                self.poll()
                 # Select on open session can dead lock without
                 # yielding event loop
                 sleep(.1)
@@ -326,6 +326,7 @@ class SSHClient(BaseSSHClient):
 
     def poll(self, timeout=None):
         """ssh-python based co-operative gevent select on session socket."""
+        timeout = self.timeout if timeout is None else timeout
         directions = self.session.get_poll_flags()
         if directions == 0:
             return

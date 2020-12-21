@@ -8,11 +8,13 @@ Changes
 -------
 
 * Added functionality to run commands in interactive shell.
+* Added ``pssh.utils.enable_debug_logger`` function.
+* ``ParallelSSHClient`` timeout parameter is now also applied to starting remote commands.
 
 Fixes
 -----
 
-* ``SSHClient`` with proxy could not be used without specifying port.
+* ``SSHClient`` with proxy enabled could not be used without setting port - #
 
 
 2.3.2

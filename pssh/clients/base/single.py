@@ -442,6 +442,8 @@ class BaseSSHClient(object):
                 _command = 'sudo -u %s -S ' % (user,)
             _shell = shell if shell else '$SHELL -c'
             _command += "%s '%s'" % (_shell, command,)
+        with GTimeout(seconds=self.timeout):
+            channel = self.execute(_command, use_pty=use_pty)
         _timeout = read_timeout if read_timeout else timeout
         channel = self.execute(_command, use_pty=use_pty)
         host_out = self._make_host_output(channel, encoding, _timeout)

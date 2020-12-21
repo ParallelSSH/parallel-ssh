@@ -26,6 +26,7 @@ logger = logging.getLogger('pssh')
 
 def enable_logger(_logger, level=logging.INFO):
     """Enables logging to stdout for given logger"""
+    _logger.setLevel(level)
     stream_handlers = [h for h in _logger.handlers
                        if isinstance(h, logging.StreamHandler)]
     if stream_handlers:
@@ -35,12 +36,15 @@ def enable_logger(_logger, level=logging.INFO):
     host_log_format = logging.Formatter('%(message)s')
     handler.setFormatter(host_log_format)
     _logger.addHandler(handler)
-    _logger.setLevel(level)
 
 
 def enable_host_logger():
     """Enable host logger for logging stdout from remote commands
     as it becomes available.
-
     """
     enable_logger(host_logger)
+
+
+def enable_debug_logger():
+    """Enable debug logging for the library to sdout."""
+    return enable_logger(logger, level=logging.DEBUG)
