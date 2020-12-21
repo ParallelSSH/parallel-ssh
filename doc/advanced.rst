@@ -679,11 +679,11 @@ Output for each shell includes all commands executed.
 .. code-block:: python
 
    for shell in shells:
-       stdout = list(shell.output.stdout)
-       exit_code = shell.output.exit_code
+       stdout = list(shell.stdout)
+       exit_code = shell.exit_code
 
 
-Each shell has a ``shell.output`` which is a :py:class:`HostOutput <pssh.output.HostOutput>` object.
+Each shell also has a ``shell.output`` which is a :py:class:`HostOutput <pssh.output.HostOutput>` object. ``shell.stdout`` et al are the same as ``shell.output.stdout``.
 
 
 Reading Partial Shell Output
@@ -697,7 +697,7 @@ Reading output will *block indefinitely* prior to join being called. Use ``read_
    client.run_shell_commands(shells, ['echo me'])
 
    # Times out after one second
-   for line in shells[0].output.stdout:
+   for line in shells[0].stdout:
        print(line)
 
 
@@ -713,8 +713,8 @@ On single clients shells can be used as a context manager to join and close the 
    cmd = 'echo me'
    with client.open_shell() as shell:
        shell.run(cmd)
-   print(list(shell.output.stdout))
-   print(shell.output.exit_code)
+   print(list(shell.stdout))
+   print(shell.exit_code)
 
 
 Or explicitly:

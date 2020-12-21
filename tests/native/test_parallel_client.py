@@ -100,10 +100,10 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.client.join_shells(shells)
         self.assertRaises(ShellError, self.client.run_shell_commands, shells, self.cmd)
         for shell in shells:
-            stdout = list(shell.output.stdout)
+            stdout = list(shell.stdout)
             self.assertListEqual(stdout, [self.resp, self.resp, self.resp, self.resp])
             expected_exit_code = 1
-            self.assertEqual(shell.output.exit_code, expected_exit_code)
+            self.assertEqual(shell.exit_code, expected_exit_code)
 
     def test_client_shells_read_timeout(self):
         shells = self.client.open_shell(read_timeout=1)
@@ -121,6 +121,11 @@ class ParallelSSHClientTest(unittest.TestCase):
             expected_exit_code = 1
             self.client.join_shells(shells)
             self.assertEqual(shell.output.exit_code, expected_exit_code)
+
+    def test_client_shells_timeout(self):
+        client = ParallelSSHClient([self.host], pkey=self.user_key, port=self.port,
+                                   timeout=0.01, num_retries=1)
+        self.assertRaises(Timeout, client.open_shell)
 
     def test_client_join_consume_output(self):
         output = self.client.run_command(self.cmd)

@@ -106,7 +106,7 @@ class BaseParallelSSHClient(object):
             self._open_shell, host_i, host, encoding=encoding, read_timeout=read_timeout)
                 for host_i, host in enumerate(self.hosts)
                 ]
-        finished = joinall(cmds, timeout=self.timeout)
+        finished = joinall(cmds, raise_error=True)
         return [cmd.get() for cmd in finished]
 
     def run_shell_commands(self, shells, commands):

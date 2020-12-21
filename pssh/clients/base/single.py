@@ -69,6 +69,22 @@ class InteractiveShell(object):
         self.output = self._client._make_host_output(
             self._chan, encoding=encoding, read_timeout=read_timeout)
 
+    @property
+    def stdout(self):
+        return self.output.stdout
+
+    @property
+    def stderr(self):
+        return self.output.stderr
+
+    @property
+    def stdin(self):
+        return self.output.stdin
+
+    @property
+    def exit_code(self):
+        return self.output.exit_code
+
     def __enter__(self):
         return self
 
