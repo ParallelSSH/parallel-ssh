@@ -67,10 +67,6 @@ class HostOutput(object):
         :type host: str
         :param channel: SSH channel used for command execution
         :type channel: :py:class:`socket.socket` compatible object
-        :param stdout: Standard output buffer
-        :type stdout: generator
-        :param stderr: Standard error buffer
-        :type stderr: generator
         :param stdin: Standard input buffer
         :type stdin: :py:func:`file`-like object
         :param client: `SSHClient` output is coming from.

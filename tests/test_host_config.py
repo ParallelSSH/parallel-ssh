@@ -59,4 +59,8 @@ class TestHostConfig(unittest.TestCase):
         self.assertRaises(ValueError, HostConfig, timeout='')
         self.assertRaises(ValueError, HostConfig, identity_auth='')
         self.assertRaises(ValueError, HostConfig, proxy_host=1)
+        self.assertRaises(ValueError, HostConfig, proxy_port='')
+        self.assertRaises(ValueError, HostConfig, proxy_user=1)
+        self.assertRaises(ValueError, HostConfig, proxy_password=1)
+        self.assertRaises(ValueError, HostConfig, proxy_pkey=1)
         self.assertRaises(ValueError, HostConfig, keepalive_seconds='')

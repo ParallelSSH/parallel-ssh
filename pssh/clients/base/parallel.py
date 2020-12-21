@@ -113,7 +113,7 @@ class BaseParallelSSHClient(object):
         """Run command(s) on shells.
 
         :param shells: Shells to run on.
-        :type shells: list(:py:class:`pssh.clients.native.base.single.InteractiveShell`)
+        :type shells: list(:py:class:`pssh.clients.base.single.InteractiveShell`)
         """
         if not isinstance(commands, list):
             commands = [commands]
@@ -130,7 +130,7 @@ class BaseParallelSSHClient(object):
         """Wait for running commands to complete and close shells.
 
         :param shells: Shells to join on.
-        :type shells: list(:py:class:`pssh.clients.native.base.single.InteractiveShell`)
+        :type shells: list(:py:class:`pssh.clients.base.single.InteractiveShell`)
         """
         cmds = [self.pool.spawn(shell.close) for shell in shells]
         return joinall(cmds, timeout=self.timeout)

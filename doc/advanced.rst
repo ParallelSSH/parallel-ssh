@@ -125,7 +125,7 @@ This is used in cases where the client does not have direct access to the target
 
 Commonly used for additional security as only the proxy host needs to have access to the target host.
 
-Client       ------>        Proxy host         -------->         Target host
+Client       -------->        Proxy host         -------->         Target host
 
 Proxy host can be configured as follows in the simplest case:
 
@@ -179,7 +179,7 @@ See :py:mod:`HostConfig <pssh.config.HostConfig>` for all possible configuration
 
 .. note::
 
-   New tunneling implementation from `2.2.0` for highest performance.
+   New tunneling implementation from `2.2.0` for best performance.
 
    Connecting to dozens or more hosts via a single proxy host will impact performance considerably.
 
@@ -192,7 +192,7 @@ Clients have timeout functionality on reading output and ``client.join``.
 
 Join timeout is applied to all parallel commands in total and is separate from ``ParallelSSHClient(timeout=<..>)`` which is applied to SSH session operations individually.
 
-Timeout exceptions contain attributes for which commands have finished and which have not so client code can get output from any finished commands when handling timeouts.
+Timeout exceptions from ``join`` contain attributes for which commands have finished and which have not so client code can get output from any finished commands when handling timeouts.
 
 .. code-block:: python
 
@@ -410,10 +410,9 @@ While not best practice and password-less ``sudo`` is best configured for a limi
    client = <..>
    
    output = client.run_command(<..>, sudo=True)
-   for host in output:
-       stdin = output[host].stdin
-       stdin.write('my_password\n')
-       stdin.flush()
+   for host_out in output:
+       host_out.stdin.write('my_password\n')
+       host_out.stdin.flush()
    client.join(output)
    
 .. note::
@@ -612,10 +611,32 @@ Interactive shells can be used to run commands, as an alternative to ``run_comma
 
 This is best used in cases where wanting to run multiple commands per host on the same channel with combined output.
 
+.. code-block:: python
+
+   client = ParallelSSHClient(<..>)
+
+   cmd = """
+   echo me
+   echo me too
+   """
+
+   shells = client.open_shell()
+   client.run_shell_commands(shells, cmd)
+   client.join_shells(shells)
+
+   for shell in shells:
+       for line in shell.stdout:
+           print(line)
+       print(shell.exit_code)
+
+
 Running Commands On Shells
 ==========================
 
 Command to run can be multi-line, a single command or a list of commands.
+
+Shells provided are used for all commands, reusing the channel opened by ``open_shell``.
+
 
 Multi-line Commands
 -------------------
@@ -656,8 +677,6 @@ Joining shells waits for running commands to complete and closes shells.
 
 This allows output to be read up to the last command executed without blocking.
 
-Exit code is for the *last executed command only* and can be retrieved when ``run_shell_commands`` has been used at least once.
-
 .. code-block:: python
 
    client.join_shells(shells)
@@ -665,10 +684,6 @@ Exit code is for the *last executed command only* and can be retrieved when ``ru
 Joined on shells are closed and may not run any further commands.
 
 Trying to use the same shells after ``join_shells`` will raise :py:class:`pssh.exceptions.ShellError`.
-
-.. code-block:: python
-
-   client.run_shell_commands(shells, cmd)
 
 
 Reading Shell Output
@@ -683,13 +698,15 @@ Output for each shell includes all commands executed.
        exit_code = shell.exit_code
 
 
+Exit code is for the *last executed command only* and can be retrieved when ``run_shell_commands`` has been used at least once.
+
 Each shell also has a ``shell.output`` which is a :py:class:`HostOutput <pssh.output.HostOutput>` object. ``shell.stdout`` et al are the same as ``shell.output.stdout``.
 
 
 Reading Partial Shell Output
 ----------------------------
 
-Reading output will *block indefinitely* prior to join being called. Use ``read_timeout`` in order to read partial output.
+Reading output will **block indefinitely** prior to join being called. Use ``read_timeout`` in order to read partial output.
 
 .. code-block:: python
 

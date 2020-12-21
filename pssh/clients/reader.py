@@ -28,6 +28,8 @@ from gevent.lock import RLock
 class ConcurrentRWBuffer(object):
     """Concurrent reader/writer of bytes for use from multiple greenlets.
 
+    Supports both concurrent reading and writing.
+
     Iterate on buffer object to read data, yielding greenlet if no data exists
     until self.eof has been set.
 
@@ -45,7 +47,7 @@ class ConcurrentRWBuffer(object):
         self._lock = RLock()
 
     def write(self, data):
-        """Write data to buffer
+        """Write data to buffer.
 
         :param data: Data to write
         :type data: bytes
