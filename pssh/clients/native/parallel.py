@@ -205,7 +205,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           dict for cmd string format
         :raises: :py:class:`pssh.exceptions.ProxyError` on errors connecting
           to proxy if a proxy host has been set.
-        :raises: :py:class:`gevent.Timeout` on timeout starting command.
+        :raises: :py:class:`pssh.exceptions.Timeout` on timeout starting command.
         :raises: Exceptions from :py:mod:`ssh2.exceptions` for all other
           specific errors such as
           :py:class:`ssh2.exceptions.SocketDisconnectError` et al.

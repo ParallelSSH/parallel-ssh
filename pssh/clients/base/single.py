@@ -101,6 +101,7 @@ class InteractiveShell(object):
             return
         self._client._eagain(self._chan.send_eof)
         self._client.wait_finished(self.output)
+        return self
 
     def run(self, cmd):
         """Run command on interactive shell.
