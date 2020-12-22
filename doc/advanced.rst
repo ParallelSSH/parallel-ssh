@@ -727,6 +727,20 @@ Reading output will **block indefinitely** prior to join being called. Use ``rea
        print(line)
 
 
+Join Timeouts
+=============
+
+Timeouts on ``join_shells`` can be done similarly to ``join``.
+
+.. code-block:: python
+
+   cmds = ["echo me", "sleep 1.2"]
+
+   shells = client.open_shell()
+   client.run_shell_commands(shells, cmds)
+   client.join_shells(shells, timeout=1)
+
+
 Single Clients
 ==============
 
@@ -753,6 +767,7 @@ Or explicitly:
    shell.close()
 
 Closing a shell also waits for commands to complete.
+
 
 .. seealso::
 
