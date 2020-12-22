@@ -189,10 +189,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
           Parameter kept for backwards compatibility - to be removed in future
           releases.
         :type return_list: bool
-        :rtype: Dictionary with host as key and
-          :py:class:`pssh.output.HostOutput` as value
-          *or* list(:py:class:`pssh.output.HostOutput`) when
-          ``return_list=True``
+        :rtype: list(:py:class:`pssh.output.HostOutput`)
+
         :raises: :py:class:`pssh.exceptions.AuthenticationError` on
           authentication error
         :raises: :py:class:`pssh.exceptions.UnknownHostError` on DNS
@@ -207,8 +205,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           dict for cmd string format
         :raises: :py:class:`pssh.exceptions.ProxyError` on errors connecting
           to proxy if a proxy host has been set.
-        :raises: :py:class:`gevent.Timeout` on greenlet timeout. Gevent timeout
-          can not be caught by ``stop_on_errors=False``.
+        :raises: :py:class:`gevent.Timeout` on timeout starting command.
         :raises: Exceptions from :py:mod:`ssh2.exceptions` for all other
           specific errors such as
           :py:class:`ssh2.exceptions.SocketDisconnectError` et al.

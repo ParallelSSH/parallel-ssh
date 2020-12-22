@@ -114,6 +114,8 @@ class BaseParallelSSHClient(object):
 
         :param shells: Shells to run on.
         :type shells: list(:py:class:`pssh.clients.base.single.InteractiveShell`)
+        :param commands: Commands to run.
+        :type commands: list or str
         """
         if not isinstance(commands, list):
             commands = [commands]

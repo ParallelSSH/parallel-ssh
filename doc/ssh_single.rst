@@ -1,5 +1,5 @@
-ssh-python based Single Host Client
-====================================
+ssh-python Single Host Client
+==============================
 
 Single host non-blocking client based on ``ssh-python`` (``libssh``). Suitable for running asynchronous commands on a single host.
 
