@@ -147,7 +147,7 @@ class BaseParallelSSHClient(object):
             return
         finished_shells = [g.get() for g in finished]
         unfinished_shells = list(set(shells).difference(set(finished_shells)))
-        if unfinished_shells:
+        if len(unfinished_shells) > 0:
             raise Timeout("Timeout of %s sec(s) reached with commands "
                           "still running", timeout, finished_shells, unfinished_shells)
 

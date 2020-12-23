@@ -133,11 +133,17 @@ class ParallelSSHClientTest(unittest.TestCase):
         shells = self.client.open_shell()
         cmd = """
         echo me
-        sleep 1.1
+        sleep 2
         echo me
         """
         self.client.run_shell_commands(shells, cmd)
         self.assertRaises(Timeout, self.client.join_shells, shells, timeout=1)
+        try:
+            self.client.join_shells(shells, timeout=.5)
+        except Timeout:
+            pass
+        else:
+            raise AssertionError
         self.client.join_shells(shells, timeout=2)
         stdout = list(shells[0].stdout)
         self.assertListEqual(stdout, [self.resp, self.resp])
