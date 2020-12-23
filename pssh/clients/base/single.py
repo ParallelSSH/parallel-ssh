@@ -384,9 +384,7 @@ class BaseSSHClient(object):
         raise NotImplementedError
 
     def get_exit_status(self, channel):
-        if not channel.eof():
-            return
-        return channel.get_exit_status()
+        raise NotImplementedError
 
     def read_output_buffer(self, output_buffer, prefix=None,
                            callback=None,
