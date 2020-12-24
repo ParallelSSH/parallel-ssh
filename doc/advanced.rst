@@ -636,14 +636,20 @@ Any type of iterator may be used as hosts list, including generator and list com
 
 .. note ::
 
-    Assigning a generator to host list is possible, and the generator is consumed into a list on assignment.
+    Assigning a generator to host list is possible as shown above, and the generator is consumed into a list on assignment.
 
-    Multiple calls to ``run_command`` will use the same hosts read from a generator.
+    Multiple calls to ``run_command`` will use the same hosts read from the provided generator.
+
 
 Overriding hosts list
 =======================
 
-Hosts list can be modified in place. A call to ``run_command`` will create new connections as necessary and output will only contain output for the hosts ``run_command`` executed on.
+Hosts list can be modified in place.
+
+A call to ``run_command`` will create new connections as necessary and output will only be returned for the hosts ``run_command`` executed on.
+
+Clients for hosts that are no longer on the host list are removed on host list assignment. Reading output from hosts removed from host list is feasible, as long as their output objects or interactive shells are in scope.
+
 
 .. code-block:: python
 
@@ -655,3 +661,31 @@ Hosts list can be modified in place. A call to ``run_command`` will create new c
        host='otherhost'
        exit_code=None
        <..>
+
+
+When wanting to reassign host list frequently, it is best to sort or otherwise ensure order is maintained to avoid reconnections on hosts that are still in the host list but in a different order.
+
+For example, the following will cause reconnections on both hosts, though both are still in the list.
+
+.. code-block:: python
+
+   client.hosts = ['host1', 'host2']
+   client.hosts = ['host2', 'host1']
+
+
+In such cases it would be best to maintain order to avoid reconnections. This is also true when adding or removing hosts in host list.
+
+No change in clients occurs in the following case.
+
+.. code-block:: python
+
+   client.hosts = sorted(['host1', 'host2'])
+   client.hosts = sorted(['host2', 'host1'])
+
+
+Clients for hosts that would be removed by a reassignment can be calculated with:
+
+.. code-block:: python
+
+   set(enumerate(client.hosts)).difference(
+       set(enumerate(new_hosts)))

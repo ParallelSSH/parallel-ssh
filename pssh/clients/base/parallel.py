@@ -43,14 +43,10 @@ class BaseParallelSSHClient(object):
                  timeout=120, pool_size=10,
                  host_config=None, retry_delay=RETRY_DELAY,
                  identity_auth=True):
-        if isinstance(hosts, str) or isinstance(hosts, bytes):
-            raise TypeError(
-                "Hosts must be list or other iterable, not string. "
-                "For example: ['localhost'] not 'localhost'.")
         self.allow_agent = allow_agent
         self.pool_size = pool_size
         self.pool = gevent.pool.Pool(size=self.pool_size)
-        self._hosts = hosts
+        self._hosts = self._validate_hosts(hosts)
         self.user = user
         self.password = password
         self.port = port
@@ -64,20 +60,26 @@ class BaseParallelSSHClient(object):
         self.identity_auth = identity_auth
         self._check_host_config()
 
-    @property
-    def hosts(self):
-        return self._hosts
-
-    @hosts.setter
-    def hosts(self, _hosts):
+    def _validate_hosts(self, _hosts):
         if _hosts is None:
             raise ValueError
         elif isinstance(_hosts, str) or isinstance(_hosts, bytes):
             raise TypeError(
                 "Hosts must be list or other iterable, not string. "
                 "For example: ['localhost'] not 'localhost'.")
+        elif hasattr(_hosts, '__next__') or hasattr(_hosts, 'next'):
+            _hosts = list(_hosts)
+        return _hosts
+
+    @property
+    def hosts(self):
+        return self._hosts
+
+    @hosts.setter
+    def hosts(self, _hosts):
+        _hosts = self._validate_hosts(_hosts)
         cur_vals = set(enumerate(self._hosts))
-        new_vals = {(i, host) for i, host in enumerate(_hosts)}
+        new_vals = set(enumerate(_hosts))
         to_remove = cur_vals.difference(new_vals)
         for i, host in to_remove:
             self._host_clients.pop((i, host), None)
