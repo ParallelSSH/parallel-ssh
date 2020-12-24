@@ -42,9 +42,9 @@ class HostConfig(object):
         :type user: str
         :param port: Port number.
         :type port: int
-        :password: Password to login with.
+        :param password: Password to login with.
         :type password: str
-        :private key: Private key file to use for authentication.
+        :param private_key: Private key file to use for authentication.
         :type private_key: str
         :param allow_agent: Enable/disable SSH agent authentication.
         :type allow_agent: bool

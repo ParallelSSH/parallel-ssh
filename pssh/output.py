@@ -67,14 +67,10 @@ class HostOutput(object):
         :type host: str
         :param channel: SSH channel used for command execution
         :type channel: :py:class:`socket.socket` compatible object
-        :param stdout: Standard output buffer
-        :type stdout: generator
-        :param stderr: Standard error buffer
-        :type stderr: generator
         :param stdin: Standard input buffer
         :type stdin: :py:func:`file`-like object
         :param client: `SSHClient` output is coming from.
-        :type client: :py:class:`pssh.clients.base_ssh_client.SSHClient`
+        :type client: :py:class:`pssh.clients.base.single.BaseSSHClient`
         :param exception: Exception from host if any
         :type exception: :py:class:`Exception` or ``None``
         :param read_timeout: Timeout in seconds for reading from buffers.
@@ -123,13 +119,10 @@ class HostOutput(object):
         return "\thost={host}{linesep}" \
             "\texit_code={exit_code}{linesep}" \
             "\tchannel={channel}{linesep}" \
-            "\tstdout={stdout}{linesep}\tstderr={stderr}{linesep}" \
-            "\tstdin={stdin}{linesep}" \
             "\texception={exception}{linesep}" \
             "\tencoding={encoding}{linesep}" \
             "\tread_timeout={read_timeout}".format(
                 host=self.host, channel=self.channel,
-                stdout=self.stdout, stdin=self.stdin, stderr=self.stderr,
                 exception=self.exception, linesep=linesep,
                 exit_code=self.exit_code, encoding=self.encoding, read_timeout=self.read_timeout,
             )

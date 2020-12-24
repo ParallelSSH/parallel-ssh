@@ -88,3 +88,7 @@ class SCPError(Exception):
 
 class PKeyFileError(Exception):
     """Raised on errors finding private key file"""
+
+
+class ShellError(Exception):
+    """Raised on errors running command on interactive shell"""
