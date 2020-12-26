@@ -331,8 +331,8 @@ class BaseParallelSSHClient(object):
           Since self.timeout is passed onto each individual SSH session it is
           **not** used for any parallel functions like `run_command` or `join`.
         :type timeout: int
-        :param encoding: Encoding to use for output. Must be valid
-          `Python codec <https://docs.python.org/library/codecs.html>`_
+        :param encoding: Unused - encoding from each ``HostOutput`` is used instead.
+          To be removed in future releases.
         :type encoding: str
 
         :raises: :py:class:`pssh.exceptions.Timeout` on timeout requested and
