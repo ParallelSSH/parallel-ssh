@@ -26,7 +26,7 @@ from gevent import joinall, spawn, Timeout as GTimeout
 from gevent.hub import Hub
 
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-from ...exceptions import HostArgumentError, Timeout
+from ...exceptions import HostArgumentError, Timeout, ShellError
 from ...output import HostOutput
 
 
@@ -99,6 +99,78 @@ class BaseParallelSSHClient(object):
                 "Host config entries must match number of hosts if provided. "
                 "Got %s host config entries from %s hosts" % (
                     len(self.host_config), host_len))
+
+    def _open_shell(self, host_i, host,
+                    encoding='utf-8', read_timeout=None):
+        try:
+            _client = self._make_ssh_client(host_i, host)
+            shell = _client.open_shell(
+                encoding=encoding, read_timeout=read_timeout)
+            return shell
+        except (GTimeout, Exception) as ex:
+            host = ex.host if hasattr(ex, 'host') else None
+            logger.error("Failed to run on host %s - %s", host, ex)
+            raise ex
+
+    def open_shell(self, encoding='utf-8', read_timeout=None):
+        """Open interactive shells on all hosts.
+
+        :param encoding: Encoding to use for shell output.
+        :type encoding: str
+        :param read_timeout: Seconds before reading from output times out.
+        :type read_timeout: float
+
+        :returns: Opened shells for each of self.hosts, in order.
+        :rtype: list(:py:class:`pssh.clients.native.base.single.InteractiveShell`)
+        """
+        cmds = [self.pool.spawn(
+            self._open_shell, host_i, host, encoding=encoding, read_timeout=read_timeout)
+                for host_i, host in enumerate(self.hosts)
+                ]
+        finished = joinall(cmds, raise_error=True)
+        return [cmd.get() for cmd in finished]
+
+    def run_shell_commands(self, shells, commands):
+        """Run command(s) on shells.
+
+        :param shells: Shells to run on.
+        :type shells: list(:py:class:`pssh.clients.base.single.InteractiveShell`)
+        :param commands: Commands to run.
+        :type commands: list or str
+        """
+        if not isinstance(commands, list):
+            commands = [commands]
+        cmds = [self.pool.spawn(shell.run, cmd)
+                for shell in shells
+                for cmd in commands]
+        try:
+            finished = joinall(cmds, raise_error=True, timeout=self.timeout)
+        except Exception as ex:
+            raise ShellError(ex)
+        return finished
+
+    def join_shells(self, shells, timeout=None):
+        """Wait for running commands to complete and close shells.
+
+        :param shells: Shells to join on.
+        :type shells: list(:py:class:`pssh.clients.base.single.InteractiveShell`)
+        :param timeout: Seconds before waiting for shell commands to finish times out.
+          Defaults to self.timeout if not provided.
+        :type timeout: float
+
+        :raises: :py:class:`pssh.exceptions.Timeout` on timeout requested and
+          reached with commands still running.
+        """
+        _timeout = self.timeout if timeout is None else timeout
+        cmds = [self.pool.spawn(shell.close) for shell in shells]
+        finished = joinall(cmds, timeout=_timeout)
+        if _timeout is None:
+            return
+        finished_shells = [g.get() for g in finished]
+        unfinished_shells = list(set(shells).difference(set(finished_shells)))
+        if len(unfinished_shells) > 0:
+            raise Timeout("Timeout of %s sec(s) reached with commands "
+                          "still running", timeout, finished_shells, unfinished_shells)
 
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
@@ -300,9 +372,9 @@ class BaseParallelSSHClient(object):
     def finished(self, output=None):
         """Check if commands have finished without blocking.
 
-        :param output: As returned by
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_last_output`
-        :type output: list
+        :param output: (Optional) Output to check if finished. Defaults to
+          :py:func:`get_last_output <pssh.clients.base.parallel..ParallelSSHClient.get_last_output>`
+        :type output: list(:py:mod:`HostOutput <pssh.output.HostOutput>`)
 
         :rtype: bool
         """

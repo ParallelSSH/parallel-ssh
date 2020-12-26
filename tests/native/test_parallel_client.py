@@ -36,7 +36,7 @@ from pssh.clients.native import ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
-    PKeyFileError
+    PKeyFileError, ShellError
 from pssh.output import HostOutput
 
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
@@ -87,6 +87,66 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_connect_auth(self):
         client = ParallelSSHClient([self.host], pkey=self.user_key, port=self.port, num_retries=1)
         joinall(client.connect_auth(), raise_error=True)
+
+    def test_client_shells(self):
+        shells = self.client.open_shell()
+        self.client.run_shell_commands(shells, self.cmd)
+        self.client.run_shell_commands(shells, [self.cmd, self.cmd])
+        self.client.run_shell_commands(
+            shells, """
+            %s
+            exit 1
+            """ % (self.cmd,))
+        self.client.join_shells(shells)
+        self.assertRaises(ShellError, self.client.run_shell_commands, shells, self.cmd)
+        for shell in shells:
+            stdout = list(shell.stdout)
+            self.assertListEqual(stdout, [self.resp, self.resp, self.resp, self.resp])
+            expected_exit_code = 1
+            self.assertEqual(shell.exit_code, expected_exit_code)
+            self.assertListEqual(list(shell.stderr), [])
+            self.assertTrue(shell.stdin is not None)
+
+    def test_client_shells_read_timeout(self):
+        shells = self.client.open_shell(read_timeout=1)
+        self.client.run_shell_commands(shells, self.cmd)
+        self.client.run_shell_commands(shells, [self.cmd, 'sleep 2', 'exit 1'])
+        stdout = []
+        for shell in shells:
+            try:
+                for line in shell.output.stdout:
+                    stdout.append(line)
+            except Timeout:
+                pass
+            self.assertListEqual(stdout, [self.resp, self.resp])
+            self.assertEqual(shell.output.exit_code, None)
+            expected_exit_code = 1
+            self.client.join_shells(shells)
+            self.assertEqual(shell.output.exit_code, expected_exit_code)
+
+    def test_client_shells_timeout(self):
+        client = ParallelSSHClient([self.host], pkey=self.user_key, port=self.port,
+                                   timeout=0.01, num_retries=1)
+        self.assertRaises(Timeout, client.open_shell)
+
+    def test_client_shells_join_timeout(self):
+        shells = self.client.open_shell()
+        cmd = """
+        echo me
+        sleep 2
+        echo me
+        """
+        self.client.run_shell_commands(shells, cmd)
+        self.assertRaises(Timeout, self.client.join_shells, shells, timeout=1)
+        try:
+            self.client.join_shells(shells, timeout=.5)
+        except Timeout:
+            pass
+        else:
+            raise AssertionError
+        self.client.join_shells(shells, timeout=2)
+        stdout = list(shells[0].stdout)
+        self.assertListEqual(stdout, [self.resp, self.resp])
 
     def test_client_join_consume_output(self):
         output = self.client.run_command(self.cmd)

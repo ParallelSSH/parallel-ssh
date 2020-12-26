@@ -123,6 +123,25 @@ class SSHClientTest(SSHTestCase):
                 self.assertListEqual(output, [self.resp])
         scope_killer()
 
+    def test_interactive_shell(self):
+        with self.client.open_shell() as shell:
+            shell.run(self.cmd)
+            shell.run(self.cmd)
+        stdout = list(shell.output.stdout)
+        self.assertListEqual(stdout, [self.resp, self.resp])
+        self.assertEqual(shell.output.exit_code, 0)
+
+    def test_interactive_shell_exit_code(self):
+        with self.client.open_shell() as shell:
+            shell.run(self.cmd)
+            shell.run('sleep 1')
+            shell.run(self.cmd)
+            shell.run('exit 1')
+        stdout = list(shell.output.stdout)
+        self.assertListEqual(stdout, [self.resp, self.resp])
+        self.assertEqual(shell.output.exit_code, 1)
+
+
     # TODO:
     # * read timeouts
     # * session connect retry

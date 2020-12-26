@@ -30,14 +30,14 @@ Native Clients
 ssh2-python (libssh2)
 =====================
 
-Starting from version ``1.2.0``, the default client in ``parallel-ssh`` is based on `ssh2-python` (`libssh2`). It is a native client, offering C level performance with an easy to use Python API.
+The default client in ``parallel-ssh`` is based on `ssh2-python` (`libssh2`). It is a native client, offering C level performance with an easy to use Python API.
 
 See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of the available clients in the `1.x.x` series.
 
 
 .. code-block:: python
 
-   from pssh.clients import ParallelSSHClient
+   from pssh.clients import ParallelSSHClient, SSHClient
 
    hosts = ['my_host', 'my_other_host']
    client = ParallelSSHClient(hosts)
@@ -55,18 +55,20 @@ See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a perf
    API documentation for `parallel <native_parallel.html>`_ and `single <native_single.html>`_ native clients.
 
 
+*New in 1.2.0*
+
 ssh-python (libssh) Client
 ============================
 
-From version `1.12.0` another client based on `libssh <https://libssh.org>`_ via `ssh-python` is provided for testing purposes.
+A set of alternative clients based on `libssh <https://libssh.org>`_ via `ssh-python <https://github.com/ParallelSSH/ssh-python>`_ are also provided.
 
-The API is similar to the default client, while ``ssh-python`` offers more supported authentication methods compared to the default client.
+The API is similar to the default client, while ``ssh-python`` offers more supported authentication methods compared to the default client, such as certificate and GSS API authentication.
 
-On the other hand, this client lacks SCP, SFTP and proxy functionality.
+On the other hand, these clients lack SCP, SFTP and proxy functionality.
 
 .. code-block:: python
 
-   from pssh.clients.ssh import ParallelSSHClient
+   from pssh.clients.ssh import ParallelSSHClient, SSHClient
 
    hosts = ['localhost', 'localhost']
    client = ParallelSSHClient(hosts)
@@ -77,6 +79,12 @@ On the other hand, this client lacks SCP, SFTP and proxy functionality.
        for line in host_out.stdout:
            print(line)
 
+.. seealso::
+
+   API documentation for :py:class:`parallel <pssh.clients.ssh.parallel.ParallelSSHClient>` and :py:class:`single <pssh.clients.ssh.single.SSHClient>` ssh-python clients.
+
+
+*New in 1.12.0*
 
 GSS-API Authentication - aka Kerberos
 --------------------------------------
@@ -108,14 +116,15 @@ In the ``pssh.clients.ssh`` clients, certificate authentication is supported.
 
    from pssh.clients.ssh import ParallelSSHClient
 
-   client = ParallelSSHClient(hosts, pkey='id_rsa', cert_file='id_rsa-cert.pub')
+   client = ParallelSSHClient(
+       hosts, pkey='id_rsa', cert_file='id_rsa-cert.pub')
 
 
 Where ``id_rsa-cert.pub`` is an RSA signed certificate file for the ``id_rsa`` private key.
 
 Both private key and corresponding signed public certificate file must be provided.
 
-``ssh-python`` :py:mod:`ParallelSSHClient <pssh.clients.ssh>` clients only.
+``ssh-python`` :py:mod:`ParallelSSHClient <pssh.clients.ssh.parallel.ParallelSSHClient>` only.
 
 
 Proxy Hosts and Tunneling
@@ -125,7 +134,7 @@ This is used in cases where the client does not have direct access to the target
 
 Commonly used for additional security as only the proxy host needs to have access to the target host.
 
-Client       ------>        Proxy host         -------->         Target host
+Client       -------->        Proxy host         -------->         Target host
 
 Proxy host can be configured as follows in the simplest case:
 
@@ -179,7 +188,7 @@ See :py:mod:`HostConfig <pssh.config.HostConfig>` for all possible configuration
 
 .. note::
 
-   New tunneling implementation from `2.2.0` for highest performance.
+   New tunneling implementation from `2.2.0` for best performance.
 
    Connecting to dozens or more hosts via a single proxy host will impact performance considerably.
 
@@ -192,7 +201,7 @@ Clients have timeout functionality on reading output and ``client.join``.
 
 Join timeout is applied to all parallel commands in total and is separate from ``ParallelSSHClient(timeout=<..>)`` which is applied to SSH session operations individually.
 
-Timeout exceptions contain attributes for which commands have finished and which have not so client code can get output from any finished commands when handling timeouts.
+Timeout exceptions from ``join`` contain attributes for which commands have finished and which have not so client code can get output from any finished commands when handling timeouts.
 
 .. code-block:: python
 
@@ -410,10 +419,9 @@ While not best practice and password-less ``sudo`` is best configured for a limi
    client = <..>
    
    output = client.run_command(<..>, sudo=True)
-   for host in output:
-       stdin = output[host].stdin
-       stdin.write('my_password\n')
-       stdin.flush()
+   for host_out in output:
+       host_out.stdin.write('my_password\n')
+       host_out.stdin.flush()
    client.join(output)
    
 .. note::
@@ -457,6 +465,7 @@ Contents of ``stdout`` are `UTF-16` encoded.
 .. note::
 
    Encoding must be valid `Python codec <https://docs.python.org/3/library/codecs.html>`_
+
 
 Enabling use of pseudo terminal emulation
 ===========================================
@@ -602,6 +611,172 @@ If wanting to copy a file from a single remote host and retain the original file
 .. seealso::
 
    :py:func:`SSHClient.copy_remote_file <pssh.clients.native.single.SSHClient.copy_remote_file>`  API documentation and exceptions raised.
+
+
+Interactive Shells
+******************
+
+Interactive shells can be used to run commands, as an alternative to ``run_command``.
+
+This is best used in cases where wanting to run multiple commands per host on the same channel with combined output.
+
+.. code-block:: python
+
+   client = ParallelSSHClient(<..>)
+
+   cmd = """
+   echo me
+   echo me too
+   """
+
+   shells = client.open_shell()
+   client.run_shell_commands(shells, cmd)
+   client.join_shells(shells)
+
+   for shell in shells:
+       for line in shell.stdout:
+           print(line)
+       print(shell.exit_code)
+
+
+Running Commands On Shells
+==========================
+
+Command to run can be multi-line, a single command or a list of commands.
+
+Shells provided are used for all commands, reusing the channel opened by ``open_shell``.
+
+
+Multi-line Commands
+-------------------
+
+Multi-line commands or command string is executed as-is.
+
+.. code-block:: python
+
+   client = ParallelSSHClient(<..>)
+
+   cmd = """
+   echo me
+   echo me too
+   """
+
+   shells = client.open_shell()
+   client.run_shell_commands(shells, cmd)
+
+
+Single And List Of Commands
+---------------------------
+
+A single command can be used, as well as a list of commands to run on each shell.
+
+.. code-block:: python
+
+   cmd = 'echo me three'
+   client.run_shell_commands(shells, cmd)
+
+   cmd = ['echo me also', 'echo and as well me', 'exit 1']
+   client.run_shell_commands(shells, cmd)
+
+
+Waiting For Completion
+======================
+
+Joining shells waits for running commands to complete and closes shells.
+
+This allows output to be read up to the last command executed without blocking.
+
+.. code-block:: python
+
+   client.join_shells(shells)
+
+Joined on shells are closed and may not run any further commands.
+
+Trying to use the same shells after ``join_shells`` will raise :py:class:`pssh.exceptions.ShellError`.
+
+
+Reading Shell Output
+====================
+
+Output for each shell includes all commands executed.
+
+.. code-block:: python
+
+   for shell in shells:
+       stdout = list(shell.stdout)
+       exit_code = shell.exit_code
+
+
+Exit code is for the *last executed command only* and can be retrieved when ``run_shell_commands`` has been used at least once.
+
+Each shell also has a ``shell.output`` which is a :py:class:`HostOutput <pssh.output.HostOutput>` object. ``shell.stdout`` et al are the same as ``shell.output.stdout``.
+
+
+Reading Partial Shell Output
+----------------------------
+
+Reading output will **block indefinitely** prior to join being called. Use ``read_timeout`` in order to read partial output.
+
+.. code-block:: python
+
+   shells = client.open_shell(read_timeout=1)
+   client.run_shell_commands(shells, ['echo me'])
+
+   # Times out after one second
+   for line in shells[0].stdout:
+       print(line)
+
+
+Join Timeouts
+=============
+
+Timeouts on ``join_shells`` can be done similarly to ``join``.
+
+.. code-block:: python
+
+   cmds = ["echo me", "sleep 1.2"]
+
+   shells = client.open_shell()
+   client.run_shell_commands(shells, cmds)
+   client.join_shells(shells, timeout=1)
+
+
+Single Clients
+==============
+
+On single clients shells can be used as a context manager to join and close the shell on exit.
+
+.. code-block:: python
+
+   client = SSHClient(<..>)
+
+   cmd = 'echo me'
+   with client.open_shell() as shell:
+       shell.run(cmd)
+   print(list(shell.stdout))
+   print(shell.exit_code)
+
+
+Or explicitly:
+
+.. code-block:: python
+
+   cmd = 'echo me'
+   shell = client.open_shell()
+   shell.run(cmd)
+   shell.close()
+
+Closing a shell also waits for commands to complete.
+
+
+.. seealso::
+
+   :py:class:`pssh.clients.base.single.InteractiveShell` for more documentation.
+
+   * :py:func:`open_shell() <pssh.clients.base.parallel.BaseParallelSSHClient.open_shell>`
+   * :py:func:`run_shell_commands() <pssh.clients.base.parallel.BaseParallelSSHClient.run_shell_commands>`
+   * :py:func:`join_shells() <pssh.clients.base.parallel.BaseParallelSSHClient.join_shells>`
+
 
 
 Hosts filtering and overriding

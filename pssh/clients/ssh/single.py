@@ -156,7 +156,7 @@ class SSHClient(BaseSSHClient):
         if self.pkey is not None:
             logger.debug(
                 "Proceeding with private key file authentication")
-            return self._pkey_auth(self.pkey, self.password)
+            return self._pkey_auth(self.password)
         if self.allow_agent:
             try:
                 self.session.userauth_agent(self.user)
@@ -194,8 +194,8 @@ class SSHClient(BaseSSHClient):
         except Exception as ex:
             raise AuthenticationError("Password authentication failed - %s", ex)
 
-    def _pkey_auth(self, pkey, password=None):
-        pkey = import_privkey_file(pkey, passphrase=password if password is not None else '')
+    def _pkey_auth(self, password=None):
+        pkey = import_privkey_file(self.pkey, passphrase=password if password is not None else '')
         if self.cert_file is not None:
             logger.debug("Certificate file set - trying certificate authentication")
             self._import_cert_file(pkey)
@@ -206,6 +206,9 @@ class SSHClient(BaseSSHClient):
         self.session.userauth_try_publickey(cert_key)
         copy_cert_to_privkey(cert_key, pkey)
         logger.debug("Imported certificate file %s for pkey %s", self.cert_file, self.pkey)
+
+    def _shell(self, channel):
+        return self._eagain(channel.request_shell)
 
     def open_session(self):
         """Open new channel from session."""
@@ -343,3 +346,12 @@ class SSHClient(BaseSSHClient):
                 self.poll(timeout=timeout)
                 ret = func(*args, **kwargs)
             return ret
+
+    def _eagain_write(self, write_func, data, timeout=None):
+        data_len = len(data)
+        total_written = 0
+        while total_written < data_len:
+            rc, bytes_written = write_func(data[total_written:])
+            total_written += bytes_written
+            if rc == SSH_AGAIN:
+                self.poll(timeout=timeout)
