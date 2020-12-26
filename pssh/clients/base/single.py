@@ -43,6 +43,32 @@ host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
 
 
+class Stdin(object):
+    """Stdin stream for a channel.
+
+    Handles EAGAIN.
+
+    Provides ``write`` and ``flush`` only.
+    """
+    __slots__ = ('_channel', '_client')
+
+    def __init__(self, channel, client):
+        """
+        :param channel: The channel the stdin stream is from.
+        :type channel: IO object
+        :param client: The SSH client the channel is from.
+        :type client: ``BaseSSHClient``
+        """
+        self._channel = channel
+        self._client = client
+
+    def write(self, data):
+        return self._client._eagain(self._channel.write, data)
+
+    def flush(self):
+        return self._client._eagain(self._channel.flush)
+
+
 class BaseSSHClient(object):
 
     IDENTITIES = (
@@ -354,9 +380,8 @@ class BaseSSHClient(object):
         _buffers = HostOutputBuffers(
             stdout=BufferData(rw_buffer=_stdout_buffer, reader=_stdout_reader),
             stderr=BufferData(rw_buffer=_stderr_buffer, reader=_stderr_reader))
-        stdin = channel
         host_out = HostOutput(
-            host=self.host, channel=channel, stdin=stdin,
+            host=self.host, channel=channel, stdin=Stdin(channel, self),
             client=self, encoding=encoding, read_timeout=_timeout,
             buffers=_buffers,
         )
