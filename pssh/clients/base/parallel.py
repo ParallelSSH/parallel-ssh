@@ -115,7 +115,7 @@ class BaseParallelSSHClient(object):
     def open_shell(self, encoding='utf-8', read_timeout=None):
         """Open interactive shells on all hosts.
 
-        :param encoding: Encoding to use for shell output.
+        :param encoding: Encoding to use for command string and shell output.
         :type encoding: str
         :param read_timeout: Seconds before reading from output times out.
         :type read_timeout: float
@@ -331,8 +331,8 @@ class BaseParallelSSHClient(object):
           Since self.timeout is passed onto each individual SSH session it is
           **not** used for any parallel functions like `run_command` or `join`.
         :type timeout: int
-        :param encoding: Encoding to use for output. Must be valid
-          `Python codec <https://docs.python.org/library/codecs.html>`_
+        :param encoding: Unused - encoding from each ``HostOutput`` is used instead.
+          To be removed in future releases.
         :type encoding: str
 
         :raises: :py:class:`pssh.exceptions.Timeout` on timeout requested and

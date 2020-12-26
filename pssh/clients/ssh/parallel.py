@@ -185,7 +185,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           host list - :py:class:`pssh.exceptions.HostArgumentError` is
           raised otherwise
         :type host_args: tuple or list
-        :param encoding: Encoding to use for output. Must be valid
+        :param encoding: Encoding to use for command string and output. Must be valid
           `Python codec <https://docs.python.org/library/codecs.html>`_
         :type encoding: str
         :param read_timeout: (Optional) Timeout in seconds for reading from stdout
