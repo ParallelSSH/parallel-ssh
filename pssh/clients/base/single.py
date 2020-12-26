@@ -186,10 +186,6 @@ class BaseSSHClient(object):
         self.pkey = _validate_pkey_path(pkey, self.host)
         self.identity_auth = identity_auth
         self._keepalive_greenlet = None
-        self._stdout_buffer = None
-        self._stderr_buffer = None
-        self._stdout_reader = None
-        self._stderr_reader = None
         self._init()
 
     def _init(self):

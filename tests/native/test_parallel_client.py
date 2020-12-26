@@ -836,10 +836,10 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(len(hosts), len(output),
                          msg="Did not get output from all hosts. Got output for " \
                          "%s/%s hosts" % (len(output), len(hosts),))
-        # Run again without re-assigning host list, should do nothing
+        # Run again without re-assigning host list, should run the same
         output = client.run_command(self.cmd)
-        self.assertEqual(len(output), 0)
-        # Re-assigning host list with new hosts should work
+        self.assertEqual(len(output), len(hosts))
+        # Re-assigning host list with new hosts should also work
         hosts = ['127.0.0.2', '127.0.0.3']
         client.hosts = iter(hosts)
         output = client.run_command(self.cmd)
@@ -1044,8 +1044,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         hosts = ['localhost', 'localhost']
         host_config = [HostConfig()]
         self.assertRaises(ValueError, ParallelSSHClient, hosts, host_config=host_config)
-        # Can't sanity check generators
-        ParallelSSHClient(iter(hosts), host_config=host_config)
+        self.assertRaises(ValueError, ParallelSSHClient, iter(hosts), host_config=host_config)
 
     def test_pssh_client_override_allow_agent_authentication(self):
         """Test running command with allow_agent set to False"""
@@ -1261,6 +1260,67 @@ class ParallelSSHClientTest(unittest.TestCase):
         host = ''.join([random.choice(string.ascii_letters) for n in range(8)])
         client.hosts = [host]
         self.assertRaises(UnknownHostException, client.run_command, self.cmd)
+
+    def test_setting_hosts(self):
+        host2 = '127.0.0.3'
+        server2 = OpenSSHServer(host2, port=self.port)
+        server2.start_server()
+        client = ParallelSSHClient(
+            [self.host], port=self.port,
+            num_retries=1, retry_delay=1,
+            pkey=self.user_key,
+        )
+        joinall(client.connect_auth())
+        _client = list(client._host_clients.values())[0]
+        client.hosts = [self.host]
+        joinall(client.connect_auth())
+        try:
+            self.assertEqual(len(client._host_clients), 1)
+            _client_after = list(client._host_clients.values())[0]
+            self.assertEqual(id(_client), id(_client_after))
+            client.hosts = ['127.0.0.2', self.host, self.host]
+            self.assertEqual(len(client._host_clients), 0)
+            joinall(client.connect_auth())
+            self.assertEqual(len(client._host_clients), 2)
+            client.hosts = ['127.0.0.2', self.host, self.host]
+            self.assertListEqual([(1, self.host), (2, self.host)],
+                                 sorted(list(client._host_clients.keys())))
+            self.assertEqual(len(client._host_clients), 2)
+            hosts = [self.host, self.host, host2]
+            client.hosts = hosts
+            joinall(client.connect_auth())
+            self.assertListEqual([(0, self.host), (1, self.host), (2, host2)],
+                                 sorted(list(client._host_clients.keys())))
+            self.assertEqual(len(client._host_clients), 3)
+            hosts = [host2, self.host, self.host]
+            client.hosts = hosts
+            joinall(client.connect_auth())
+            self.assertListEqual([(0, host2), (1, self.host), (2, self.host)],
+                                 sorted(list(client._host_clients.keys())))
+            self.assertEqual(len(client._host_clients), 3)
+            client.hosts = [self.host]
+            self.assertEqual(len(client._host_clients), 0)
+            joinall(client.connect_auth())
+            self.assertEqual(len(client._host_clients), 1)
+            client.hosts = [self.host, host2]
+            joinall(client.connect_auth())
+            self.assertListEqual([(0, self.host), (1, host2)],
+                                 sorted(list(client._host_clients.keys())))
+            self.assertEqual(len(client._host_clients), 2)
+            try:
+                client.hosts = None
+            except ValueError:
+                pass
+            else:
+                raise AssertionError
+            try:
+                client.hosts = ''
+            except TypeError:
+                pass
+            else:
+                raise AssertionError
+        finally:
+            server2.stop()
 
     def test_unknown_host_failure(self):
         """Test connection error failure case - ConnectionErrorException"""
