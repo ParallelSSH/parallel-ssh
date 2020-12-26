@@ -1151,27 +1151,31 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertRaises(
             KeyError, self.client.run_command, cmd, host_args=host_args)
 
-    def test_ssh_client_utf_encoding(self):
-        """Test that unicode output works"""
-        expected = [u'é']
-        _utf16 = u'é'.encode('utf-8').decode('utf-16')
-        cmd = u"echo 'é'"
-        output = self.client.run_command(cmd)
+    def test_run_command_encoding(self):
+        """Test that unicode command works"""
+        exp = b"\xbc"
+        _cmd = b"echo " + exp
+        cmd = _cmd.decode('latin-1')
+        expected = [exp.decode('latin-1')]
+        output = self.client.run_command(cmd, encoding='latin-1')
         stdout = list(output[0].stdout)
-        self.assertEqual(expected, stdout,
-                         msg="Got unexpected unicode output %s - expected %s" % (
-                             stdout, expected,))
-        output = self.client.run_command(cmd, encoding='utf-16')
-        _stdout = list(output[0].stdout)
-        self.assertEqual([_utf16], _stdout)
+        self.assertEqual(expected, stdout)
+        # With join
+        output = self.client.run_command(cmd, encoding='latin-1')
+        self.client.join(output)
+        stdout = list(output[0].stdout)
+        self.assertEqual(expected, stdout)
 
-    def test_ssh_client_utf_encoding_join(self):
-        _utf16 = u'é'.encode('utf-8').decode('utf-16')
-        cmd = u"echo 'é'"
-        output = self.client.run_command(cmd, encoding='utf-16')
-        self.client.join(output, encoding='utf-16')
-        stdout = list(output[0].stdout)
-        self.assertEqual([_utf16], stdout)
+    def test_shell_encoding(self):
+        exp = b"\xbc"
+        _cmd = b"echo " + exp
+        cmd = _cmd.decode('latin-1')
+        expected = [exp.decode('latin-1')]
+        shells = self.client.open_shell(encoding='latin-1')
+        self.client.run_shell_commands(shells, cmd)
+        self.client.join_shells(shells)
+        stdout = list(shells[0].stdout)
+        self.assertEqual(expected, stdout)
 
     def test_pty(self):
         cmd = "echo 'asdf' >&2"

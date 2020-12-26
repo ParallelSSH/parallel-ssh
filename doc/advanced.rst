@@ -448,19 +448,23 @@ Shell to use is configurable:
 Commands will be run under the ``zsh`` shell in the above example. The command string syntax of the shell must be used, typically ``<shell> -c``.
 
 
-Output encoding
-===============
+Output And Command Encoding
+===========================
 
-By default, output is encoded as ``UTF-8``. This can be configured with the ``encoding`` keyword argument.
+By default, command string and output are encoded as ``UTF-8``. This can be configured with the ``encoding`` keyword argument to ``run_command`` and ``open_shell``.
 
 .. code-block:: python
 
    client = <..>
 
-   client.run_command(<..>, encoding='utf-16')
+   cmd = b"echo \xbc".decode('latin-1')
+   client.run_command(<..>, encoding='latin-1')
    stdout = list(output[0].stdout)
 
-Contents of ``stdout`` are `UTF-16` encoded.
+
+Contents of ``stdout`` are `latin-1` decoded.
+``cmd`` string is also `latin-1` encoded when running command or writing to interactive shell.
+
 
 .. note::
 

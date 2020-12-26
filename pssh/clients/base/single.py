@@ -85,8 +85,8 @@ class InteractiveShell(object):
 
     ``InteractiveShell.output`` is a :py:class:`pssh.output.HostOutput` object.
     """
-    __slots__ = ('_chan', '_client', 'output')
-    _EOL = '\n'
+    __slots__ = ('_chan', '_client', 'output', '_encoding')
+    _EOL = b'\n'
 
     def __init__(self, channel, client, encoding='utf-8', read_timeout=None):
         """
@@ -98,6 +98,7 @@ class InteractiveShell(object):
         self._chan = channel
         self._client = client
         self._client._shell(self._chan)
+        self._encoding = encoding
         self.output = self._client._make_host_output(
             self._chan, encoding=encoding, read_timeout=read_timeout)
 
@@ -142,7 +143,7 @@ class InteractiveShell(object):
           Note that ``\\n`` is appended to every string.
         :type cmd: str
         """
-        cmd += self._EOL
+        cmd = cmd.encode(self._encoding) + self._EOL
         self._client._eagain_write(self._chan.write, cmd)
 
 
@@ -473,10 +474,10 @@ class BaseSSHClient(object):
                 _command = 'sudo -u %s -S ' % (user,)
             _shell = shell if shell else '$SHELL -c'
             _command += "%s '%s'" % (_shell, command,)
+        _command = _command.encode(encoding)
         with GTimeout(seconds=self.timeout):
             channel = self.execute(_command, use_pty=use_pty)
         _timeout = read_timeout if read_timeout else timeout
-        channel = self.execute(_command, use_pty=use_pty)
         host_out = self._make_host_output(channel, encoding, _timeout)
         return host_out
 

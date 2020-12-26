@@ -17,6 +17,7 @@ Fixes
 -----
 
 * ``SSHClient`` with proxy enabled could not be used without setting port - #248
+* Encoding would not be applied to command string on ``run_command`` and interactive shells, `utf-8` used instead - #174.
 
 
 2.3.2
