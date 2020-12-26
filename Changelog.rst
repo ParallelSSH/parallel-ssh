@@ -10,6 +10,7 @@ Changes
 * Added interactive shell support to single and parallel clients - see `documentation <https://parallel-ssh.readthedocs.io/en/latest/advanced.html#interactive-shells>`_.
 * Added ``pssh.utils.enable_debug_logger`` function.
 * ``ParallelSSHClient`` timeout parameter is now also applied to *starting* remote commands via ``run_command``.
+* ``HostOutput.stdin`` now handles EAGAIN automatically when writing.
 
 Fixes
 -----
