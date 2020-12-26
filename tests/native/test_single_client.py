@@ -94,6 +94,14 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertListEqual(expected, stderr)
         self.assertTrue(len(output) == 0)
 
+    def test_stdin(self):
+        host_out = self.client.run_command('read line; echo $line')
+        host_out.stdin.write('a line\n')
+        host_out.stdin.flush()
+        self.client.wait_finished(host_out)
+        stdout = list(host_out.stdout)
+        self.assertListEqual(stdout, ['a line'])
+
     def test_long_running_cmd(self):
         host_out = self.client.run_command('sleep 2; exit 2')
         self.assertRaises(ValueError, self.client.wait_finished, host_out.channel)
