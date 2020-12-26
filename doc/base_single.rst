@@ -1,5 +1,5 @@
-BaseSSHClient
-===============
+Base Single Client
+==================
 
 API documentation for common single host client functionality.
 

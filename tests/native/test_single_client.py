@@ -572,6 +572,25 @@ class SSH2ClientTest(SSH2TestCase):
                 except OSError:
                     pass
 
+    def test_interactive_shell(self):
+        with self.client.open_shell() as shell:
+            shell.run(self.cmd)
+            shell.run(self.cmd)
+        stdout = list(shell.stdout)
+        self.assertListEqual(stdout, [self.resp, self.resp])
+        self.assertEqual(shell.exit_code, 0)
+
+    def test_interactive_shell_exit_code(self):
+        with self.client.open_shell() as shell:
+            shell.run(self.cmd)
+            shell.run('sleep 1')
+            shell.run(self.cmd)
+            shell.run('exit 1')
+        stdout = list(shell.stdout)
+        self.assertListEqual(stdout, [self.resp, self.resp])
+        self.assertEqual(shell.exit_code, 1)
+
+
     # TODO
     # * scp send recursive
     # * scp recv recursive local dir permission denied

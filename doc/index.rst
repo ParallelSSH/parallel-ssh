@@ -73,9 +73,9 @@ Single host client is also available with similar API.
    introduction
    installation
    quickstart
-   clients
    advanced
    api
+   clients
    Changelog
    api_upgrade_2_0
 

@@ -7,13 +7,14 @@ Change Log
 Changes
 -------
 
+* Added interactive shell support to single and parallel clients - see `documentation <https://parallel-ssh.readthedocs.io/en/latest/advanced.html#interactive-shells>`_.
 * Added ``pssh.utils.enable_debug_logger`` function.
-* ``ParallelSSHClient`` timeout parameter is now also applied to starting remote commands.
+* ``ParallelSSHClient`` timeout parameter is now also applied to *starting* remote commands via ``run_command``.
 
 Fixes
 -----
 
-* ``SSHClient`` with proxy enabled could not be used without setting port - #
+* ``SSHClient`` with proxy enabled could not be used without setting port - #248
 
 
 2.3.2

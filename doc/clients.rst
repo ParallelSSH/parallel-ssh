@@ -14,11 +14,11 @@ Kerberos (GSS) authentication     Not supported         Yes
 Private key file authentication   Yes                   Yes
 Agent authentication              Yes                   Yes
 Password authentication           Yes                   Yes
-SFTP copy to/from hosts           Yes                   No
 OpenSSH config parsing            Not yet implemented   Not yet implemented
 ECDSA keys support                Yes                   Yes
 ED25519 keys support              Yes                   Yes
 Certificate authentication        Not supported         Yes
+SFTP copy to/from hosts           Yes                   No
 SCP functionality                 Yes                   No
 Keep-alive functionality          Yes                   No
 ===============================  ====================== ======================

@@ -69,6 +69,77 @@ class Stdin(object):
         return self._client._eagain(self._channel.flush)
 
 
+class InteractiveShell(object):
+    """
+    Run commands on an interactive shell.
+
+    Use as context manager to wait for commands to finish on exit.
+
+    Read from .stdout and stderr once context manager has exited.
+
+    ``InteractiveShell.output`` is a :py:class:`pssh.output.HostOutput` object.
+    """
+    __slots__ = ('_chan', '_client', 'output')
+    _EOL = '\n'
+
+    def __init__(self, channel, client, encoding='utf-8', read_timeout=None):
+        """
+        :param channel: The channel to open shell on.
+        :type channel: ``ssh2.channel.Channel`` or similar.
+        :param client: The SSHClient that opened the channel.
+        :type client: :py:class:`BaseSSHClient`
+        """
+        self._chan = channel
+        self._client = client
+        self._client._shell(self._chan)
+        self.output = self._client._make_host_output(
+            self._chan, encoding=encoding, read_timeout=read_timeout)
+
+    @property
+    def stdout(self):
+        """``self.output.stdout``"""
+        return self.output.stdout
+
+    @property
+    def stderr(self):
+        """``self.output.stderr``"""
+        return self.output.stderr
+
+    @property
+    def stdin(self):
+        """``self.output.stdin``"""
+        return self.output.stdin
+
+    @property
+    def exit_code(self):
+        """``self.output.exit_code``"""
+        return self.output.exit_code
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def close(self):
+        """Wait for shell to finish executing and close channel."""
+        if self._chan is None:
+            return
+        self._client._eagain(self._chan.send_eof)
+        self._client.wait_finished(self.output)
+        return self
+
+    def run(self, cmd):
+        """Run command on interactive shell.
+
+        :param cmd: The command string to run.
+          Note that ``\\n`` is appended to every string.
+        :type cmd: str
+        """
+        cmd += self._EOL
+        self._client._eagain_write(self._chan.write, cmd)
+
+
 class BaseSSHClient(object):
 
     IDENTITIES = (
@@ -148,6 +219,23 @@ class BaseSSHClient(object):
 
     def __exit__(self, *args):
         self.disconnect()
+
+    def open_shell(self, encoding='utf-8', read_timeout=None):
+        """Open interactive shell on new channel.
+
+        Can be used as context manager - ``with open_shell() as shell``.
+
+        :param encoding: Encoding to use for output from shell.
+        :type encoding: str
+        :param read_timeout: Timeout in seconds for reading from output.
+        :type read_timeout: float
+        """
+        chan = self.open_session()
+        shell = InteractiveShell(chan, self, encoding=encoding, read_timeout=read_timeout)
+        return shell
+
+    def _shell(self, channel):
+        raise NotImplementedError
 
     def _connect_init_session_retry(self, retries):
         try:
@@ -230,11 +318,28 @@ class BaseSSHClient(object):
     def _password_auth(self):
         raise NotImplementedError
 
-    def _pkey_auth(self, pkey, password=None):
+    def _pkey_auth(self, password=None):
         raise NotImplementedError
 
     def open_session(self):
         raise NotImplementedError
+
+    def _make_host_output(self, channel, encoding, read_timeout):
+        _stdout_buffer = ConcurrentRWBuffer()
+        _stderr_buffer = ConcurrentRWBuffer()
+        _stdout_reader, _stderr_reader = self._make_output_readers(
+            channel, _stdout_buffer, _stderr_buffer)
+        _stdout_reader.start()
+        _stderr_reader.start()
+        _buffers = HostOutputBuffers(
+            stdout=BufferData(rw_buffer=_stdout_buffer, reader=_stdout_reader),
+            stderr=BufferData(rw_buffer=_stderr_buffer, reader=_stderr_reader))
+        host_out = HostOutput(
+            host=self.host, channel=channel, stdin=Stdin(channel, self),
+            client=self, encoding=encoding, read_timeout=read_timeout,
+            buffers=_buffers,
+        )
+        return host_out
 
     def _make_output_readers(self, channel, stdout_buffer, stderr_buffer):
         raise NotImplementedError
@@ -297,16 +402,14 @@ class BaseSSHClient(object):
     def _read_output_to_buffer(self, read_func, _buffer):
         raise NotImplementedError
 
-    def wait_finished(self, channel, timeout=None):
+    def wait_finished(self, host_output, timeout=None):
         raise NotImplementedError
 
     def close_channel(self, channel):
         raise NotImplementedError
 
     def get_exit_status(self, channel):
-        if not channel.eof():
-            return
-        return channel.get_exit_status()
+        raise NotImplementedError
 
     def read_output_buffer(self, output_buffer, prefix=None,
                            callback=None,
@@ -371,21 +474,12 @@ class BaseSSHClient(object):
         with GTimeout(seconds=self.timeout):
             channel = self.execute(_command, use_pty=use_pty)
         _timeout = read_timeout if read_timeout else timeout
-        _stdout_buffer = ConcurrentRWBuffer()
-        _stderr_buffer = ConcurrentRWBuffer()
-        _stdout_reader, _stderr_reader = self._make_output_readers(
-            channel, _stdout_buffer, _stderr_buffer)
-        _stdout_reader.start()
-        _stderr_reader.start()
-        _buffers = HostOutputBuffers(
-            stdout=BufferData(rw_buffer=_stdout_buffer, reader=_stdout_reader),
-            stderr=BufferData(rw_buffer=_stderr_buffer, reader=_stderr_reader))
-        host_out = HostOutput(
-            host=self.host, channel=channel, stdin=Stdin(channel, self),
-            client=self, encoding=encoding, read_timeout=_timeout,
-            buffers=_buffers,
-        )
+        channel = self.execute(_command, use_pty=use_pty)
+        host_out = self._make_host_output(channel, encoding, _timeout)
         return host_out
+
+    def _eagain_write(self, write_func, data, timeout=None):
+        raise NotImplementedError
 
     def _eagain(self, func, *args, **kwargs):
         raise NotImplementedError
@@ -397,7 +491,7 @@ class BaseSSHClient(object):
         raise NotImplementedError
 
     def copy_file(self, local_file, remote_file, recurse=False,
-                  sftp=None, _dir=None):
+                  sftp=None):
         raise NotImplementedError
 
     def _sftp_put(self, remote_fh, local_file):
@@ -408,7 +502,7 @@ class BaseSSHClient(object):
     def sftp_put(self, sftp, local_file, remote_file):
         raise NotImplementedError
 
-    def mkdir(self, sftp, directory, _parent_path=None):
+    def mkdir(self, sftp, directory):
         raise NotImplementedError
 
     def _copy_dir(self, local_dir, remote_dir, sftp):
@@ -500,7 +594,7 @@ class BaseSSHClient(object):
         if _sep > 0:
             return file_path[:_sep]
 
-    def poll(timeout=None):
+    def poll(self, timeout=None):
         raise NotImplementedError
 
     def _poll_socket(self, events, timeout=None):

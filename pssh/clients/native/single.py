@@ -132,6 +132,9 @@ class SSHClient(BaseSSHClient):
             proxy_host=proxy_host, proxy_port=proxy_port,
             identity_auth=identity_auth)
 
+    def _shell(self, channel):
+        return self._eagain(channel.shell)
+
     def _connect_proxy(self, proxy_host, proxy_port, proxy_pkey,
                        user=None, password=None,
                        num_retries=DEFAULT_RETRIES,
@@ -388,6 +391,9 @@ class SSHClient(BaseSSHClient):
         :type remote_file: str
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
+        :param sftp: SFTP channel to use instead of creating a
+          new one.
+        :type sftp: :py:class:`ssh2.sftp.SFTP`
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           ``local_file`` and ``recurse`` is not set
@@ -475,6 +481,9 @@ class SSHClient(BaseSSHClient):
         :type recurse: bool
         :param encoding: Encoding to use for file paths.
         :type encoding: str
+        :param sftp: SFTP channel to use instead of creating a
+          new one.
+        :type sftp: :py:class:`ssh2.sftp.SFTP`
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           ``local_file`` and ``recurse`` is not set
@@ -744,3 +753,6 @@ class SSHClient(BaseSSHClient):
             total_written += bytes_written
             if rc == LIBSSH2_ERROR_EAGAIN:
                 self.poll(timeout=timeout)
+
+    def _eagain_write(self, write_func, data, timeout=None):
+        return self.eagain_write(write_func, data, timeout=timeout)

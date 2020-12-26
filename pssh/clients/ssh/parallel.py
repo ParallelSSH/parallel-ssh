@@ -56,7 +56,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param cert_file: Public key signed certificate file to use for
           authentication. The corresponding private key must also be provided
           via ``pkey`` parameter.
-          For example ``pkey='id_rsa',cert_file='id_rsa-cert.pub'`` for RSA
+          For example ``pkey='id_rsa', cert_file='id_rsa-cert.pub'`` for RSA
           signed certificate.
           Path must be absolute or relative to user home directory.
         :type cert_file: str
@@ -197,24 +197,11 @@ class ParallelSSHClient(BaseParallelSSHClient):
           read_timeout and kept for backwards compatibility - to be removed
           in future release.
         :type timeout: float
-        :param greenlet_timeout: (Optional) Greenlet timeout setting.
-          Defaults to no timeout. If set, this function will raise
-          :py:class:`gevent.Timeout` after ``greenlet_timeout`` seconds
-          if no result is available from greenlets.
-
-          In some cases, such as when using proxy hosts, connection timeout
-          is controlled by proxy server and getting result from greenlets may
-          hang indefinitely if remote server is unavailable.
-
-          Use this setting
-          to avoid blocking in such circumstances.
-          Note that ``gevent.Timeout`` is a special class that inherits from
-          ``BaseException`` and thus **can not be caught** by
-          ``stop_on_errors=False``.
-        :type greenlet_timeout: float
-        :rtype: Dictionary with host as key and
-          :py:class:`pssh.output.HostOutput` as value as per
-          :py:func:`pssh.pssh_client.ParallelSSHClient.get_output`
+        :param return_list: No-op - list of ``HostOutput`` always returned.
+          Parameter kept for backwards compatibility - to be removed in future
+          releases.
+        :type return_list: bool
+        :rtype: list(:py:class:`pssh.output.HostOutput`)
 
         :raises: :py:class:`pssh.exceptions.AuthenticationError` on
           authentication error
@@ -230,8 +217,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           dict for cmd string format
         :raises: :py:class:`pssh.exceptions.ProxyError` on errors connecting
           to proxy if a proxy host has been set.
-        :raises: :py:class:`gevent.Timeout` on greenlet timeout. Gevent timeout
-          can not be caught by ``stop_on_errors=False``.
+        :raises: :py:class:`pssh.exceptions.Timeout` on timeout starting command.
         :raises: Exceptions from :py:mod:`ssh.exceptions` for all other
           specific errors.
         """

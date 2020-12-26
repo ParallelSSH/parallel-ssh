@@ -13,6 +13,7 @@ API Documentation
    output
    config
    tunnel
+   reader
    utils
    exceptions
    constants

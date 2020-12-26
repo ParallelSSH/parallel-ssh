@@ -77,3 +77,10 @@ class TestReaderBuffer(unittest.TestCase):
         self.assertEqual(data, _data)
         writer.kill()
         writer.get()
+
+    def test_non_cur_write(self):
+        data = b"asdf"
+        self.buffer.write(data)
+        self.buffer._buffer.seek(0)
+        self.buffer.write(data)
+        self.assertEqual(self.buffer.read(), data + data)

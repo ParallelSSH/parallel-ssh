@@ -1,5 +1,5 @@
-BaseParallelSSHClient
-======================
+Base Parallel Client
+====================
 
 API documentation for common parallel client functionality.
 
