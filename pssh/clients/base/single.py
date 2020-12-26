@@ -94,6 +94,8 @@ class InteractiveShell(object):
         :type channel: ``ssh2.channel.Channel`` or similar.
         :param client: The SSHClient that opened the channel.
         :type client: :py:class:`BaseSSHClient`
+        :param encoding: Encoding to use for command string when calling ``run`` and shell output.
+        :type encoding: str
         """
         self._chan = channel
         self._client = client
@@ -228,7 +230,7 @@ class BaseSSHClient(object):
 
         Can be used as context manager - ``with open_shell() as shell``.
 
-        :param encoding: Encoding to use for output from shell.
+        :param encoding: Encoding to use for command string and shell output.
         :type encoding: str
         :param read_timeout: Timeout in seconds for reading from output.
         :type read_timeout: float

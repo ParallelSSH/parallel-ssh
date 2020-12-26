@@ -115,7 +115,7 @@ class BaseParallelSSHClient(object):
     def open_shell(self, encoding='utf-8', read_timeout=None):
         """Open interactive shells on all hosts.
 
-        :param encoding: Encoding to use for shell output.
+        :param encoding: Encoding to use for command string and shell output.
         :type encoding: str
         :param read_timeout: Seconds before reading from output times out.
         :type read_timeout: float
