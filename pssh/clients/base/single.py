@@ -63,9 +63,15 @@ class Stdin(object):
         self._client = client
 
     def write(self, data):
+        """Write to stdin.
+
+        :param data: Data to write.
+        :type data: str
+        """
         return self._client._eagain(self._channel.write, data)
 
     def flush(self):
+        """Flush pending data written to stdin."""
         return self._client._eagain(self._channel.flush)
 
 
