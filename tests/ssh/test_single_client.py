@@ -20,11 +20,11 @@ import logging
 
 from datetime import datetime
 
-from gevent import sleep, Timeout as GTimeout
+from gevent import sleep, Timeout as GTimeout, spawn
 from ssh.session import Session
-# from ssh.exceptions import SocketDisconnectError
 from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
-    SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout
+    SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout, \
+    AuthenticationError
 from pssh.clients.ssh.single import SSHClient, logger as ssh_logger
 
 from .base_ssh_case import SSHTestCase
@@ -60,6 +60,20 @@ class SSHClientTest(SSHTestCase):
         self.assertEqual(expected, output)
         exit_code = host_out.channel.get_exit_status()
         self.assertEqual(exit_code, 0)
+
+    def test_finished(self):
+        self.assertFalse(self.client.finished(None))
+        host_out = self.client.run_command(self.cmd)
+        channel = host_out.channel
+        self.assertFalse(self.client.finished(channel))
+        self.assertRaises(ValueError, self.client.wait_finished, host_out.channel)
+        self.client.wait_finished(host_out)
+        stdout = list(host_out.stdout)
+        self.assertTrue(self.client.finished(channel))
+        self.assertListEqual(stdout, [self.resp])
+        self.assertRaises(ValueError, self.client.wait_finished, None)
+        host_out.channel = None
+        self.assertIsNone(self.client.wait_finished(host_out))
 
     def test_finished_error(self):
         self.assertRaises(ValueError, self.client.wait_finished, None)
@@ -141,11 +155,37 @@ class SSHClientTest(SSHTestCase):
         self.assertListEqual(stdout, [self.resp, self.resp])
         self.assertEqual(shell.output.exit_code, 1)
 
+    def test_password_auth_failure(self):
+        self.assertRaises(AuthenticationError,
+                          SSHClient, self.host, port=self.port, num_retries=1,
+                          allow_agent=False,
+                          password='blah blah blah')
+
+    def test_open_session_timeout(self):
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=2,
+                           timeout=1)
+        def _session(timeout=2):
+            sleep(2)
+        client.open_session = _session
+        self.assertRaises(GTimeout, client.run_command, self.cmd)
+
+    def test_connection_timeout(self):
+        cmd = spawn(SSHClient, 'fakehost.com', port=12345,
+                    retry_delay=1,
+                    num_retries=2, timeout=1, _auth_thread_pool=False)
+        # Should fail within greenlet timeout, otherwise greenlet will
+        # raise timeout which will fail the test
+        self.assertRaises(ConnectionErrorException, cmd.get, timeout=4)
+
+    def test_client_read_timeout(self):
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1)
+        host_out = client.run_command('sleep 2; echo me', timeout=0.2)
+        self.assertRaises(Timeout, list, host_out.stdout)
+
 
     # TODO:
-    # * read timeouts
-    # * session connect retry
-    # * agent auth success
-    # * password auth failure
-    # * open session error
     # * disconnect exc
