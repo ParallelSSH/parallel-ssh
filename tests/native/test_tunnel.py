@@ -28,6 +28,7 @@ from datetime import datetime
 from socket import timeout as socket_timeout
 from sys import version_info
 from collections import deque
+from gevent import sleep
 
 from pssh.config import HostConfig
 from pssh.clients.native import SSHClient, ParallelSSHClient
@@ -36,7 +37,7 @@ from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
     ProxyError
-from ssh2.exceptions import ChannelFailure, SocketSendError
+from ssh2.exceptions import ChannelFailure, SocketSendError, SocketRecvError
 
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
 from ..embedded_server.openssh import OpenSSHServer
@@ -70,7 +71,7 @@ class TunnelTest(unittest.TestCase):
         forwarder.started.wait()
         client = SSHClient(
             self.proxy_host, port=self.proxy_port, pkey=self.user_key)
-        forwarder.in_q.put((client, self.proxy_host, self.port))
+        forwarder.enqueue(client, self.proxy_host, self.port)
         forwarder.out_q.get()
         self.assertTrue(len(forwarder._servers) > 0)
         forwarder.shutdown()
@@ -233,6 +234,34 @@ class TunnelTest(unittest.TestCase):
         output = client.run_command(self.cmd, stop_on_errors=False)
         client.join(output)
         self.assertIsInstance(output[0].exception, ProxyError)
+
+    def test_proxy_bad_target(self):
+        self.assertRaises(
+            SocketRecvError, SSHClient,
+            '127.0.0.155', port=self.proxy_port, pkey=self.user_key,
+            proxy_host=self.proxy_host, proxy_port=self.proxy_port,
+            num_retries=1,
+        )
+
+    def test_forwarder_exit(self):
+        def _start_server():
+            raise Exception
+
+        forwarder = LocalForwarder()
+        forwarder.daemon = True
+        forwarder.start()
+        forwarder.started.wait()
+        client = SSHClient(
+            self.proxy_host, port=self.proxy_port, pkey=self.user_key)
+        forwarder.enqueue(client, self.proxy_host, self.port)
+        forwarder.out_q.get()
+        self.assertTrue(len(forwarder._servers) > 0)
+        list(forwarder._servers.keys())[0].sock.close()
+        forwarder._cleanup_servers()
+        self.assertEqual(len(forwarder._servers), 0)
+        forwarder._start_server = _start_server
+        forwarder.enqueue(client, self.proxy_host, self.port)
+        sleep(.5)
 
     # TODO:
     # * channel/socket read/write failure tests

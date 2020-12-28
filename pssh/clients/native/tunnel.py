@@ -82,13 +82,17 @@ class LocalForwarder(Thread):
         for client, server in self._servers.items():
             server.stop()
 
-    def _cleanup_servers(self):
+    def _cleanup_servers_let(self):
         while True:
-            for client, server in self._servers.items():
-                if client.sock.closed:
-                    server.stop()
-                    del self._servers[client]
+            self._cleanup_servers()
             sleep(60)
+
+    def _cleanup_servers(self):
+        for client in list(self._servers.keys()):
+            server = self._servers[client]
+            if client.sock.closed:
+                server.stop()
+                del self._servers[client]
 
     def run(self):
         """Thread runner ensures a non main hub has been created for all subsequent
@@ -100,7 +104,7 @@ class LocalForwarder(Thread):
         self._hub = get_hub()
         assert self._hub.main_hub is False
         self.started.set()
-        self._cleanup_let = spawn(self._cleanup_servers)
+        self._cleanup_let = spawn(self._cleanup_servers_let)
         logger.debug("Hub in server runner is main hub: %s", self._hub.main_hub)
         try:
             while True:
@@ -121,15 +125,15 @@ class TunnelServer(StreamServer):
     to/from remote SSH host for each connection.
     """
 
-    def __init__(self, client, host, port, bind_address='127.0.0.1', timeout=0.1):
+    def __init__(self, client, host, port, bind_address='127.0.0.1',
+                 num_retries=DEFAULT_RETRIES):
         StreamServer.__init__(self, (bind_address, 0), self._read_rw)
         self.client = client
         self.host = host
         self.port = port
         self.session = client.session
         self._client = client
-        self._retries = DEFAULT_RETRIES
-        self.timeout = timeout
+        self._retries = num_retries
         self.bind_address = bind_address
 
     @property
@@ -180,16 +184,11 @@ class TunnelServer(StreamServer):
             if data_len == 0:
                 sleep(.01)
                 continue
-            data_written = 0
-            while data_written < data_len:
-                try:
-                    rc, bytes_written = channel.write(data[data_written:])
-                except Exception as ex:
-                    logger.error("Channel write error: %s", ex)
-                    raise
-                data_written += bytes_written
-                if rc == LIBSSH2_ERROR_EAGAIN:
-                    self._client.poll()
+            try:
+                self._client._eagain_write(channel.write, data)
+            except Exception as ex:
+                logger.error("Error writing data to channel - %s", ex)
+                raise
             logger.debug("Wrote all data to channel")
 
     def _read_channel(self, forward_sock, channel):
