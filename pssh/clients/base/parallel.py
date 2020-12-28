@@ -164,8 +164,10 @@ class BaseParallelSSHClient(object):
         finished_shells = [g.get() for g in finished]
         unfinished_shells = list(set(shells).difference(set(finished_shells)))
         if len(unfinished_shells) > 0:
-            raise Timeout("Timeout of %s sec(s) reached with commands "
-                          "still running", timeout, finished_shells, unfinished_shells)
+            raise Timeout(
+                "Timeout of %s sec(s) reached with commands still running",
+                timeout, finished_shells, unfinished_shells,
+            )
 
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
@@ -349,8 +351,10 @@ class BaseParallelSSHClient(object):
         if unfinished_cmds:
             finished_output = self.get_last_output(cmds=finished_cmds)
             unfinished_output = list(set.difference(set(output), set(finished_output)))
-            raise Timeout("Timeout of %s sec(s) reached with commands "
-                          "still running", timeout, finished_output, unfinished_output)
+            raise Timeout(
+                "Timeout of %s sec(s) reached with commands still running",
+                timeout, finished_output, unfinished_output,
+            )
 
     def _join(self, host_out, consume_output=False, timeout=None,
               encoding="utf-8"):
