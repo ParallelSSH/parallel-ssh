@@ -276,6 +276,8 @@ class TunnelTest(unittest.TestCase):
         class Channel(object):
             def read(self):
                 return 5, b"asdfa"
+            def write(self, data):
+                pass
             def eof(self):
                 return False
         class Socket(object):
@@ -286,13 +288,20 @@ class TunnelTest(unittest.TestCase):
                 raise SocketError
             def recv(self, num):
                 raise SocketError
+        class SocketEmpty(object):
+            def recv(self, num):
+                return b""
         client = SSHClient(
             self.proxy_host, port=self.proxy_port, pkey=self.user_key)
         server = TunnelServer(client, self.proxy_host, self.port)
+        let = spawn(server._read_forward_sock, SocketEmpty(), Channel())
+        let.start()
+        sleep(.01)
         self.assertRaises(SocketSendError, server._read_forward_sock, Socket(), ChannelFailure())
         self.assertRaises(SocketError, server._read_forward_sock, SocketFailure(), Channel())
         self.assertRaises(SocketError, server._read_channel, SocketFailure(), Channel())
         self.assertRaises(SocketRecvError, server._read_channel, Socket(), ChannelFailure())
+        let.kill()
 
     def test_server_start(self):
         _port = 1234
@@ -304,9 +313,9 @@ class TunnelTest(unittest.TestCase):
         forwarder = LocalForwarder()
         let = spawn(forwarder._get_server_listen_port, None, server)
         let.start()
-        sleep(.1)
+        sleep(.01)
         server.started = True
-        sleep(.1)
+        sleep(.01)
         with GTimeout(seconds=1):
             port = forwarder.out_q.get()
         self.assertEqual(port, _port)
