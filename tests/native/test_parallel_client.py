@@ -366,7 +366,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         # Port with no server listening on it on separate ip
         port = self.make_random_port(host=self.host)
         client = ParallelSSHClient([self.host], port=port, num_retries=1)
-        cmds = client.copy_file("test", "test")
+        _local = "fake_local"
+        _remote = "fake_remote"
+        cmds = client.copy_file(_local, _remote)
         client.pool.join()
         for cmd in cmds:
             try:
@@ -376,6 +378,8 @@ class ParallelSSHClientTest(unittest.TestCase):
                 self.assertIsInstance(ex, ConnectionErrorException)
             else:
                 raise Exception("Expected ConnectionErrorException, got none")
+        self.assertFalse(os.path.isfile(_local))
+        self.assertFalse(os.path.isfile(_remote))
 
     def test_pssh_copy_file(self):
         """Test parallel copy file"""
@@ -1627,13 +1631,15 @@ class ParallelSSHClientTest(unittest.TestCase):
 
     def test_scp_bad_copy_args(self):
         client = ParallelSSHClient([self.host, self.host])
-        copy_args = [{'local_file': 'test', 'remote_file': 'test'}]
+        copy_args = [{'local_file': 'fake_file', 'remote_file': 'fake_remote_file'}]
         self.assertRaises(HostArgumentException,
                           client.scp_send, '%(local_file)s', '%(remote_file)s',
                           copy_args=copy_args)
         self.assertRaises(HostArgumentError,
                           client.scp_recv, '%(local_file)s', '%(remote_file)s',
                           copy_args=copy_args)
+        self.assertFalse(os.path.isfile('fake_file'))
+        self.assertFalse(os.path.isfile('fake_remote_file'))
 
     def test_scp_send_exc(self):
         client = ParallelSSHClient([self.host], pkey=self.user_key, num_retries=1)

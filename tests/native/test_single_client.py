@@ -740,14 +740,7 @@ class SSH2ClientTest(SSH2TestCase):
 
     # TODO
     # * scp recv recursive local dir permission denied
-    # * scp_recv remote file not exists exception
-    # * scp send open local file exception
     # * read output callback
-    # * identity auth success
-    # * connect init retries
-    # * handshake retries
-    # * password auth
     # * disconnect exception
     # * SFTP init exception
-    # * sftp openfh exception
     # * copy file local_file dir no recurse exception
