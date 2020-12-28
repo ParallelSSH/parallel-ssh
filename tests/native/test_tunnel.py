@@ -28,7 +28,7 @@ from datetime import datetime
 from socket import timeout as socket_timeout
 from sys import version_info
 from collections import deque
-from gevent import sleep
+from gevent import sleep, spawn, Timeout as GTimeout
 
 from pssh.config import HostConfig
 from pssh.clients.native import SSHClient, ParallelSSHClient
@@ -293,3 +293,20 @@ class TunnelTest(unittest.TestCase):
         self.assertRaises(SocketError, server._read_forward_sock, SocketFailure(), Channel())
         self.assertRaises(SocketError, server._read_channel, SocketFailure(), Channel())
         self.assertRaises(SocketRecvError, server._read_channel, Socket(), ChannelFailure())
+
+    def test_server_start(self):
+        _port = 1234
+        class Server(object):
+            def __init__(self):
+                self.started = False
+                self.listen_port = _port
+        server = Server()
+        forwarder = LocalForwarder()
+        let = spawn(forwarder._get_server_listen_port, None, server)
+        let.start()
+        sleep(.1)
+        server.started = True
+        sleep(.1)
+        with GTimeout(seconds=1):
+            port = forwarder.out_q.get()
+        self.assertEqual(port, _port)

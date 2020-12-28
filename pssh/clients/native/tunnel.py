@@ -59,6 +59,9 @@ class LocalForwarder(Thread):
         client, host, port = self.in_q.get()
         server = TunnelServer(client, host, port)
         server.start()
+        self._get_server_listen_port(client, server)
+
+    def _get_server_listen_port(self, client, server):
         while not server.started:
             sleep(0.01)
         self._servers[client] = server
