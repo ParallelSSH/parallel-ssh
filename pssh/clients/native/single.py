@@ -87,7 +87,7 @@ class SSHClient(BaseSSHClient):
         :type allow_agent: bool
         :param identity_auth: (Optional) set to False to disable attempting to
           authenticate with default identity files from
-          `pssh.clients.base_ssh_client.BaseSSHClient.IDENTITIES`
+          `pssh.clients.base.single.BaseSSHClient.IDENTITIES`
         :type identity_auth: bool
         :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
           equivalent to `ssh -A` from the `ssh` command line utility.
@@ -161,7 +161,7 @@ class SSHClient(BaseSSHClient):
         if not FORWARDER.started.is_set():
             FORWARDER.start()
             FORWARDER.started.wait()
-        FORWARDER.in_q.put((self._proxy_client, self.host, self.port))
+        FORWARDER.enqueue(self._proxy_client, self.host, self.port)
         proxy_local_port = FORWARDER.out_q.get()
         return proxy_local_port
 
