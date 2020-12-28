@@ -215,6 +215,9 @@ class SSHClient(BaseSSHClient):
             self.configure_keepalive()
             self._keepalive_greenlet = self.spawn_send_keepalive()
 
+    def _agent_auth(self):
+        self.session.agent_auth(self.user)
+
     def auth(self):
         if self.pkey is not None:
             logger.debug(
@@ -222,7 +225,7 @@ class SSHClient(BaseSSHClient):
             return self._pkey_auth(password=self.password)
         if self.allow_agent:
             try:
-                self.session.agent_auth(self.user)
+                self._agent_auth()
             except (AgentAuthenticationError, AgentConnectionError, AgentGetIdentityError,
                     AgentListIdentitiesError) as ex:
                 logger.debug("Agent auth failed with %s"
@@ -435,8 +438,6 @@ class SSHClient(BaseSSHClient):
                 sftp.open, remote_file, f_flags, mode) as remote_fh:
             try:
                 self._sftp_put(remote_fh, local_file)
-                # THREAD_POOL.apply(
-                #     sftp_put, args=(self.session, remote_fh, local_file))
             except SFTPProtocolError as ex:
                 msg = "Error writing to remote file %s - %s"
                 logger.error(msg, remote_file, ex)
@@ -699,11 +700,6 @@ class SSHClient(BaseSSHClient):
                 LIBSSH2_FXF_READ, LIBSSH2_SFTP_S_IRUSR) as remote_fh:
             try:
                 self._sftp_get(remote_fh, local_file)
-                # Running SFTP in a thread requires a new session
-                # as session handles or any handles created by a session
-                # cannot be used simultaneously in multiple threads.
-                # THREAD_POOL.apply(
-                #     sftp_get, args=(self.session, remote_fh, local_file))
             except SFTPProtocolError as ex:
                 msg = "Error reading from remote file %s - %s"
                 logger.error(msg, remote_file, ex)

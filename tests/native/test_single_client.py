@@ -20,6 +20,7 @@ import os
 import time
 import subprocess
 import shutil
+import tempfile
 from hashlib import sha256
 from datetime import datetime
 
@@ -30,9 +31,10 @@ from ssh2.session import Session
 from ssh2.channel import Channel
 from ssh2.exceptions import SocketDisconnectError, BannerRecvError, SocketRecvError, \
     AgentConnectionError, AgentListIdentitiesError, \
-    AgentAuthenticationError, AgentGetIdentityError
+    AgentAuthenticationError, AgentGetIdentityError, SFTPProtocolError
 from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
-    SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout
+    SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout, \
+    AuthenticationError
 
 from .base_ssh2_case import SSH2TestCase
 from ..embedded_server.openssh import OpenSSHServer
@@ -50,6 +52,37 @@ class SSH2ClientTest(SSH2TestCase):
         sftp = self.client._make_sftp()
         self.assertRaises(SFTPIOError, self.client._mkdir, sftp, '/blah')
         self.assertRaises(SFTPError, self.client.sftp_put, sftp, 'a file', '/blah')
+
+    def test_sftp_exc(self):
+        def _sftp_exc(local_file, remote_file):
+            raise SFTPProtocolError
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1)
+        client._sftp_put = _sftp_exc
+        local_file = 'local_file'
+        try:
+            with open(local_file, 'wb') as fh:
+                fh.write(b'asdf')
+                fh.flush()
+            self.assertRaises(SFTPIOError, client.copy_file, local_file, 'remote_file')
+        finally:
+            try:
+                os.unlink(local_file)
+            except Exception:
+                pass
+        client._sftp_get = _sftp_exc
+        remote_file = os.path.expanduser('~/remote_file')
+        try:
+            with open(remote_file, 'wb') as fh:
+                fh.write(b'asdf')
+                fh.flush()
+            self.assertRaises(SFTPIOError, client.copy_remote_file, remote_file, 'local_file')
+        finally:
+            try:
+                os.unlink(remote_file)
+            except Exception:
+                pass
 
     def test_scp_fail(self):
         self.assertRaises(SCPError, self.client.scp_recv, 'fakey', 'fake')
@@ -117,7 +150,6 @@ class SSH2ClientTest(SSH2TestCase):
         client.session.disconnect()
         del client.session
         del client.sock
-        client.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client._connect(self.host, self.port)
         client._init_session()
         # Identity auth
@@ -125,11 +157,38 @@ class SSH2ClientTest(SSH2TestCase):
         client.session.disconnect()
         del client.session
         del client.sock
-        client.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client._connect(self.host, self.port)
         client.session = Session()
         client.session.handshake(client.sock)
         self.assertRaises(AuthenticationException, client.auth)
+
+    def test_agent_auth_failure(self):
+        class UnknownError(Exception):
+            pass
+        def _agent_auth_unk():
+            raise UnknownError
+        def _agent_auth_agent_err():
+            raise AgentConnectionError
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1,
+                           allow_agent=True)
+        client.session.disconnect()
+        client.pkey = None
+        client._connect(self.host, self.port)
+        client._agent_auth = _agent_auth_unk
+        self.assertRaises(AuthenticationError, client.auth)
+        client._agent_auth = _agent_auth_agent_err
+        self.assertRaises(AuthenticationError, client.auth)
+
+    def test_agent_fwd(self):
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1,
+                           allow_agent=True,
+                           forward_ssh_agent=True)
+        out = client.run_command(self.cmd)
+        client.wait_finished(out)
 
     def test_failed_auth(self):
         self.assertRaises(PKeyFileError, SSHClient, self.host, port=self.port,
@@ -168,13 +227,6 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertRaises(AuthenticationException,
                           SSHClient, self.host, port=self.port, num_retries=1,
                           allow_agent=False)
-
-    @unittest.skipUnless(bool(os.getenv('TRAVIS')),
-                         "Not on Travis-CI - skipping agent auth failure test")
-    def test_agent_auth_failure(self):
-        self.assertRaises(AuthenticationException,
-                          SSHClient, self.host, port=self.port, num_retries=1,
-                          allow_agent=True)
 
     def test_password_auth_failure(self):
         self.assertRaises(AuthenticationException,
@@ -264,6 +316,9 @@ class SSH2ClientTest(SSH2TestCase):
         stdout = list(host_out.stdout)
         self.assertTrue(self.client.finished(channel))
         self.assertListEqual(stdout, [self.resp])
+        self.assertRaises(ValueError, self.client.wait_finished, None)
+        host_out.channel = None
+        self.assertIsNone(self.client.wait_finished(host_out))
 
     def test_wait_finished_timeout(self):
         host_out = self.client.run_command('sleep 2')
@@ -496,22 +551,39 @@ class SSH2ClientTest(SSH2TestCase):
         file_path_from = os.path.sep.join([cur_dir, file_name])
         file_copy_to_dirpath = os.path.expanduser('~/')
         file_copy_to_abs = file_copy_to_dirpath + file_name
+        dir_copy_from = os.path.sep.join([cur_dir, 'copy_from'])
+        dir_copy_file_from = os.path.sep.join([dir_copy_from, file_name])
+        os.makedirs(dir_copy_from)
+        dir_copy_to = tempfile.mkdtemp()
+        # Should be created by client
+        shutil.rmtree(dir_copy_to)
         for _path in (file_path_from, file_copy_to_abs):
             try:
                 os.unlink(_path)
             except OSError:
                 pass
         try:
-            with open(file_path_from, 'wb') as fh:
+            with open(file_path_from, 'wb') as fh, \
+                 open(dir_copy_file_from, 'wb') as fh2:
                 fh.write(b"adsfasldkfjabafj")
+                fh2.write(b"adsfasldkfjabafj")
             self.client.scp_send(file_path_from, file_copy_to_dirpath)
             self.assertTrue(os.path.isfile(file_copy_to_abs))
+            self.assertRaises(ValueError, self.client.scp_send, dir_copy_from, dir_copy_to)
+            self.assertFalse(os.path.isdir(dir_copy_to))
+            self.client.scp_send(dir_copy_from, dir_copy_to, recurse=True)
+            self.assertTrue(os.path.isdir(dir_copy_to))
+            self.assertTrue(os.path.isfile(os.path.sep.join([dir_copy_to, file_name])))
         finally:
-            for _path in (file_path_from, file_copy_to_abs):
-                try:
+            try:
+                for _path in (file_path_from, file_copy_to_abs):
                     os.unlink(_path)
-                except OSError:
-                    pass
+            except OSError:
+                pass
+            try:
+                shutil.rmtree(dir_copy_from)
+            except Exception:
+                pass
         # Relative path
         file_copy_to_dirpath = './'
         for _path in (file_path_from, file_copy_to_abs):
@@ -592,7 +664,6 @@ class SSH2ClientTest(SSH2TestCase):
 
 
     # TODO
-    # * scp send recursive
     # * scp recv recursive local dir permission denied
     # * scp_recv remote file not exists exception
     # * scp send open local file exception
@@ -600,10 +671,8 @@ class SSH2ClientTest(SSH2TestCase):
     # * identity auth success
     # * connect init retries
     # * handshake retries
-    # * agent forwarding
     # * password auth
     # * disconnect exception
     # * SFTP init exception
     # * sftp openfh exception
-    # * sftp get exception
     # * copy file local_file dir no recurse exception
