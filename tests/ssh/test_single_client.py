@@ -114,6 +114,14 @@ class SSHClientTest(SSHTestCase):
         del client
         self.assertTrue(client_sock.closed)
 
+    def test_client_bad_sock(self):
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1)
+        client.disconnect()
+        client.sock = None
+        self.assertIsNone(client.poll())
+
     def test_client_read_timeout(self):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,

@@ -166,6 +166,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue(len(stdout) == 0)
         self.assertTrue(len(stderr) == 0)
         self.assertEqual(expected_exit_code, exit_code)
+        self.assertIsNone(self.client._join(None))
+        self.assertIsNone(self.client.join([None]))
 
     def test_client_join_stdout(self):
         output = self.client.run_command(self.cmd)

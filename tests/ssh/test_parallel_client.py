@@ -500,6 +500,8 @@ class LibSSHParallelTest(unittest.TestCase):
     def test_join_bad_host_out(self):
         out = HostOutput(None, None, None, None)
         self.assertIsNone(self.client._join(out))
+        self.assertIsNone(self.client._join(None))
+        self.assertIsNone(self.client.join([None]))
 
     # def test_multiple_run_command_timeout(self):
     #     client = ParallelSSHClient([self.host], port=self.port,
