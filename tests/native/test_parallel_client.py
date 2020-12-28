@@ -295,7 +295,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         def _session(timeout=1):
             sleep(timeout+1)
         joinall(client.connect_auth())
-        sleep(.01)
+        sleep(.1)
         client._host_clients[(0, self.host)].open_session = _session
         self.assertRaises(Timeout, client.run_command, self.cmd)
 

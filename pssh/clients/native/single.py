@@ -349,15 +349,9 @@ class SSHClient(BaseSSHClient):
     def _make_sftp(self):
         """Make SFTP client from open transport"""
         try:
-            sftp = self.session.sftp_init()
+            sftp = self._eagain(self.session.sftp_init)
         except Exception as ex:
             raise SFTPError(ex)
-        while sftp == LIBSSH2_ERROR_EAGAIN:
-            self.poll()
-            try:
-                sftp = self.session.sftp_init()
-            except Exception as ex:
-                raise SFTPError(ex)
         return sftp
 
     def _mkdir(self, sftp, directory):
@@ -675,15 +669,9 @@ class SSHClient(BaseSSHClient):
 
     def _sftp_openfh(self, open_func, remote_file, *args):
         try:
-            fh = open_func(remote_file, *args)
+            fh = self._eagain(open_func, remote_file, *args)
         except Exception as ex:
             raise SFTPError(ex)
-        while fh == LIBSSH2_ERROR_EAGAIN:
-            self.poll(timeout=0.1)
-            try:
-                fh = open_func(remote_file, *args)
-            except Exception as ex:
-                raise SFTPError(ex)
         return fh
 
     def _sftp_get(self, remote_fh, local_file):
@@ -706,6 +694,11 @@ class SSHClient(BaseSSHClient):
                 raise SFTPIOError(msg, remote_file, ex)
 
     def get_exit_status(self, channel):
+        """Get exit status code for channel or ``None`` if not ready.
+
+        :param channel: The channel to get status from.
+        :type channel: :py:mod:`ssh2.channel.Channel`
+        """
         if not channel.eof():
             return
         return channel.get_exit_status()

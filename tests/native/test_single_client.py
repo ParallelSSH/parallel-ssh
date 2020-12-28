@@ -83,6 +83,8 @@ class SSH2ClientTest(SSH2TestCase):
                 os.unlink(remote_file)
             except Exception:
                 pass
+        self.assertRaises(
+            SFTPIOError, client.copy_remote_file, 'fake_remote_file_not_exists', 'local')
 
     def test_scp_fail(self):
         self.assertRaises(SCPError, self.client.scp_recv, 'fakey', 'fake')
@@ -359,8 +361,11 @@ class SSH2ClientTest(SSH2TestCase):
             for _file in files:
                 local_file_path = os.path.sep.join([copy_to_path, _file])
                 self.assertTrue(os.path.isfile(local_file_path))
+            shutil.rmtree(to_copy_dir_path)
+            self.assertRaises(
+                SCPError, self.client.scp_recv, to_copy_dir_path, copy_to_path, recurse=True)
         finally:
-            for _path in (to_copy_dir_path, copy_to_path):
+            for _path in (copy_to_path,):
                 try:
                     shutil.rmtree(_path)
                 except Exception:
@@ -504,6 +509,38 @@ class SSH2ClientTest(SSH2TestCase):
                 except Exception:
                     pass
 
+    def test_scp_send_write_exc(self):
+        class WriteError(Exception):
+            pass
+        def write_exc(func, data):
+            raise WriteError
+        cur_dir = os.path.dirname(__file__)
+        file_name = 'file1'
+        file_copy_to = 'file_copied'
+        file_path_from = os.path.sep.join([cur_dir, file_name])
+        file_copy_to_dirpath = os.path.expanduser('~/') + file_copy_to
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1)
+        for _path in (file_path_from, file_copy_to_dirpath):
+            try:
+                os.unlink(_path)
+            except OSError:
+                pass
+        try:
+            with open(file_path_from, 'wb') as fh:
+                fh.write(b"adsfasldkfjabafj")
+            client.eagain_write = write_exc
+            self.assertRaises(SCPError, client.scp_send, file_path_from, file_copy_to_dirpath)
+            # File created on SCP channel open
+            self.assertTrue(os.path.isfile(file_copy_to_dirpath))
+        finally:
+            for _path in (file_path_from, file_copy_to_dirpath):
+                try:
+                    os.unlink(_path)
+                except Exception:
+                    pass
+
     def test_scp_send_large_file(self):
         cur_dir = os.path.dirname(__file__)
         file_name = 'file1'
@@ -596,6 +633,31 @@ class SSH2ClientTest(SSH2TestCase):
                 fh.write(b"adsfasldkfjabafj")
             self.client.scp_send(file_path_from, file_copy_to_dirpath)
             self.assertTrue(os.path.isfile(file_copy_to_abs))
+        finally:
+            for _path in (file_path_from, file_copy_to_abs):
+                try:
+                    os.unlink(_path)
+                except OSError:
+                    pass
+
+    def test_sftp_openfh_exc(self):
+        cur_dir = os.path.dirname(__file__)
+        file_name = 'file1'
+        file_path_from = os.path.sep.join([cur_dir, file_name])
+        file_copy_to_dirpath = os.path.expanduser('~/')
+        file_copy_to_abs = file_copy_to_dirpath + file_name
+        for _path in (file_path_from, file_copy_to_abs):
+            try:
+                os.unlink(_path)
+            except OSError:
+                pass
+        try:
+            with open(file_path_from, 'wb') as fh:
+                fh.write(b"adsfasldkfjabafj")
+            os.chmod(file_path_from, 0o200)
+            self.assertRaises(
+                SFTPError, self.client.copy_remote_file, file_path_from, file_copy_to_dirpath)
+            self.assertFalse(os.path.isfile(file_copy_to_abs))
         finally:
             for _path in (file_path_from, file_copy_to_abs):
                 try:
