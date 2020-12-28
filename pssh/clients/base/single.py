@@ -326,6 +326,9 @@ class BaseSSHClient(object):
     def _pkey_auth(self, password=None):
         raise NotImplementedError
 
+    def _open_session(self):
+        raise NotImplementedError
+
     def open_session(self):
         raise NotImplementedError
 
@@ -500,9 +503,7 @@ class BaseSSHClient(object):
         raise NotImplementedError
 
     def _sftp_put(self, remote_fh, local_file):
-        with open(local_file, 'rb') as local_fh:
-            for data in local_fh:
-                self._eagain(remote_fh.write, data)
+        raise NotImplementedError
 
     def sftp_put(self, sftp, local_file, remote_file):
         raise NotImplementedError

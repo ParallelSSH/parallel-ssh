@@ -116,6 +116,17 @@ class SSH2ClientTest(SSH2TestCase):
         client.open_session = _session
         self.assertRaises(GTimeout, client.run_command, self.cmd)
 
+    def test_open_session_exc(self):
+        class Error(Exception):
+            pass
+        def _session():
+            raise Error
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1)
+        client._open_session = _session
+        self.assertRaises(SessionError, client.open_session)
+
     def test_finished_error(self):
         self.assertRaises(ValueError, self.client.wait_finished, None)
         self.assertIsNone(self.client.finished(None))
@@ -713,6 +724,8 @@ class SSH2ClientTest(SSH2TestCase):
         stdout = list(shell.stdout)
         self.assertListEqual(stdout, [self.resp, self.resp])
         self.assertEqual(shell.exit_code, 0)
+        shell._chan = None
+        self.assertIsNone(shell.close())
 
     def test_interactive_shell_exit_code(self):
         with self.client.open_shell() as shell:

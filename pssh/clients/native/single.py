@@ -89,9 +89,7 @@ class SSHClient(BaseSSHClient):
           authenticate with default identity files from
           `pssh.clients.base.single.BaseSSHClient.IDENTITIES`
         :type identity_auth: bool
-        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
-          equivalent to `ssh -A` from the `ssh` command line utility.
-          Defaults to True if not set.
+        :param forward_ssh_agent: Unused - agent forwarding not implemented.
         :type forward_ssh_agent: bool
         :param proxy_host: Connect to target host via given proxy host.
         :type proxy_host: str
@@ -255,21 +253,23 @@ class SSHClient(BaseSSHClient):
         except Exception:
             raise AuthenticationException("Password authentication failed")
 
+    def _open_session(self):
+        chan = self._eagain(self.session.open_session)
+        return chan
+
     def open_session(self):
         """Open new channel from session"""
         try:
-            chan = self._eagain(self.session.open_session)
+            chan = self._open_session()
         except Exception as ex:
             raise SessionError(ex)
-        # Multiple forward requests result in ChannelRequestDenied
-        # errors, flag is used to avoid this.
         if self.forward_ssh_agent and not self._forward_requested:
             if not hasattr(chan, 'request_auth_agent'):
                 warn("Requested SSH Agent forwarding but libssh2 version used "
                      "does not support it - ignoring")
                 return chan
-            self._eagain(chan.request_auth_agent)
-            self._forward_requested = True
+            # self._eagain(chan.request_auth_agent)
+            # self._forward_requested = True
         return chan
 
     def _make_output_readers(self, channel, stdout_buffer, stderr_buffer):

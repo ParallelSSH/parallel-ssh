@@ -186,6 +186,19 @@ class SSHClientTest(SSHTestCase):
         host_out = client.run_command('sleep 2; echo me', timeout=0.2)
         self.assertRaises(Timeout, list, host_out.stdout)
 
+    def test_open_session_exc(self):
+        class Error(Exception):
+            pass
+        def _session():
+            raise Error
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1)
+        client._open_session = _session
+        self.assertRaises(SessionError, client.open_session)
+
+    def test_invalid_mkdir(self):
+        self.assertRaises(OSError, self.client._make_local_dir, '/my_new_dir')
 
     # TODO:
     # * disconnect exc

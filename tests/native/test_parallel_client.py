@@ -36,7 +36,7 @@ from pssh.clients.native import ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
-    PKeyFileError, ShellError
+    PKeyFileError, ShellError, HostArgumentError
 from pssh.output import HostOutput
 
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
@@ -1625,11 +1625,14 @@ class ParallelSSHClientTest(unittest.TestCase):
             except OSError:
                 pass
 
-    def test_scp_send_bad_copy_args(self):
+    def test_scp_bad_copy_args(self):
         client = ParallelSSHClient([self.host, self.host])
         copy_args = [{'local_file': 'test', 'remote_file': 'test'}]
         self.assertRaises(HostArgumentException,
                           client.scp_send, '%(local_file)s', '%(remote_file)s',
+                          copy_args=copy_args)
+        self.assertRaises(HostArgumentError,
+                          client.scp_recv, '%(local_file)s', '%(remote_file)s',
                           copy_args=copy_args)
 
     def test_scp_send_exc(self):
