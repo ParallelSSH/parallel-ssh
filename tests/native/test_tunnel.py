@@ -32,7 +32,7 @@ from gevent import sleep
 
 from pssh.config import HostConfig
 from pssh.clients.native import SSHClient, ParallelSSHClient
-from pssh.clients.native.tunnel import LocalForwarder
+from pssh.clients.native.tunnel import LocalForwarder, TunnelServer
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
@@ -263,5 +263,33 @@ class TunnelTest(unittest.TestCase):
         forwarder.enqueue(client, self.proxy_host, self.port)
         sleep(.5)
 
-    # TODO:
-    # * channel/socket read/write failure tests
+    def test_socket_channel_error(self):
+        class SocketError(Exception):
+            pass
+        class ChannelFailure(object):
+            def read(self):
+                raise SocketRecvError
+            def write(self, data):
+                raise SocketSendError
+            def eof(self):
+                return False
+        class Channel(object):
+            def read(self):
+                return 5, b"asdfa"
+            def eof(self):
+                return False
+        class Socket(object):
+            def recv(self, num):
+                return b"asdfaf"
+        class SocketFailure(object):
+            def sendall(self, data):
+                raise SocketError
+            def recv(self, num):
+                raise SocketError
+        client = SSHClient(
+            self.proxy_host, port=self.proxy_port, pkey=self.user_key)
+        server = TunnelServer(client, self.proxy_host, self.port)
+        self.assertRaises(SocketSendError, server._read_forward_sock, Socket(), ChannelFailure())
+        self.assertRaises(SocketError, server._read_forward_sock, SocketFailure(), Channel())
+        self.assertRaises(SocketError, server._read_channel, SocketFailure(), Channel())
+        self.assertRaises(SocketRecvError, server._read_channel, Socket(), ChannelFailure())
