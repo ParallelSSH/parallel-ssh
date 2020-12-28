@@ -256,12 +256,13 @@ class TunnelTest(unittest.TestCase):
         forwarder.enqueue(client, self.proxy_host, self.port)
         forwarder.out_q.get()
         self.assertTrue(len(forwarder._servers) > 0)
-        list(forwarder._servers.keys())[0].sock.close()
+        client.sock.close()
+        client.disconnect()
         forwarder._cleanup_servers()
         self.assertEqual(len(forwarder._servers), 0)
         forwarder._start_server = _start_server
         forwarder.enqueue(client, self.proxy_host, self.port)
-        sleep(.5)
+        sleep(.1)
 
     def test_socket_channel_error(self):
         class SocketError(Exception):

@@ -1,6 +1,15 @@
 Change Log
 ============
 
+2.4.1
++++++
+
+Fixes
+-----
+
+* Closed clients with proxy host enabled would not shutdown their proxy servers.
+
+
 2.4.0
 +++++
 
