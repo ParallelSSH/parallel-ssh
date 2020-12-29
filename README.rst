@@ -87,7 +87,7 @@ Single host client with similar API for users that do not need parallel function
 Questions And Discussion
 ************************
 
-`Github discussions <https://github.com/ParallelSSH/parallel-ssh/discussions>`_ can be used to discuss and ask questions regarding the use of parallel-ssh.
+`Github discussions <https://github.com/ParallelSSH/parallel-ssh/discussions>`_ can be used to discuss, ask questions and share ideas regarding the use of parallel-ssh.
 
 
 **************

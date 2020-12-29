@@ -376,11 +376,10 @@ class SSH2ClientTest(SSH2TestCase):
             self.assertRaises(
                 SCPError, self.client.scp_recv, to_copy_dir_path, copy_to_path, recurse=True)
         finally:
-            for _path in (copy_to_path,):
-                try:
-                    shutil.rmtree(_path)
-                except Exception:
-                    pass
+            try:
+                shutil.rmtree(copy_to_path)
+            except Exception:
+                pass
 
     def test_copy_file_abspath_recurse(self):
         cur_dir = os.path.dirname(__file__)

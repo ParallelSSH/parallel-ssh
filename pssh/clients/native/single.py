@@ -698,6 +698,7 @@ class SSHClient(BaseSSHClient):
 
         :param channel: The channel to get status from.
         :type channel: :py:mod:`ssh2.channel.Channel`
+        :rtype: int or ``None``
         """
         if not channel.eof():
             return
