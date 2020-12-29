@@ -83,6 +83,13 @@ Single host client with similar API for users that do not need parallel function
 .. contents::
 
 
+************************
+Questions And Discussion
+************************
+
+`Github discussions <https://github.com/ParallelSSH/parallel-ssh/discussions>`_ can be used to discuss and ask questions regarding the use of parallel-ssh.
+
+
 **************
 Native clients
 **************
@@ -138,7 +145,7 @@ Once all output has been gathered exit codes become available even without calli
 Waiting for Completion
 **********************
 
-The client's ``join`` function can be used to wait for all commands in output object to finish.
+The client's ``join`` function can be used to wait for all commands in output to finish.
 
 After ``join`` returns, commands have finished and all output can be read without blocking.
 
@@ -183,8 +190,8 @@ To log output without having to iterate over output generators, the ``consume_ou
   from pssh.utils import enable_host_logger
 
   enable_host_logger()
-  output = client.run_command('uname')
-  client.join(output, consume_output=True)
+  client.run_command('uname')
+  client.join(consume_output=True)
 
 :Output:
    .. code-block:: shell
@@ -356,11 +363,6 @@ On the other end of the spectrum, long lived remote commands that generate *no* 
 
 Output *generation* is done remotely and has no effect on the event loop until output is gathered - output buffers are iterated on. Only at that point does the event loop need to be held.
 
-*************
-User's group
-*************
-
-There is a public `ParallelSSH Google group <https://groups.google.com/forum/#!forum/parallelssh>`_ setup for this purpose - both posting and viewing are open to the public.
 
 .. image:: https://ga-beacon.appspot.com/UA-9132694-7/parallel-ssh/README.rst?pixel
   :target: https://github.com/igrigorik/ga-beacon

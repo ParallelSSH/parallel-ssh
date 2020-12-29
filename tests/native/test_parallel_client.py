@@ -1805,9 +1805,8 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    port=self.port,
                                    pkey=self.user_key,
                                    num_retries=1)
-        output = client.run_command(self.cmd,
-                                    return_list=True)
-        client.join(output, consume_output=True)
+        client.run_command(self.cmd)
+        client.join(consume_output=True)
         single_client = list(client._host_clients.values())[0]
         del client
         self.assertEqual(single_client.session, None)
