@@ -13,6 +13,7 @@ Fixes
 -----
 
 * Closed clients with proxy host enabled would not shutdown their proxy servers.
+* Clients with proxy host enabled would not disconnect the proxy client on ``.disconnect`` being called.
 
 
 2.4.0
