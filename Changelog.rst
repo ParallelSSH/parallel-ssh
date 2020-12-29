@@ -1,8 +1,13 @@
 Change Log
 ============
 
-2.4.1
+2.5.0
 +++++
+
+Changes
+-------
+
+* Updated class arguments, refactor for ``pssh.clients.native.tunnel``.
 
 Fixes
 -----

@@ -185,7 +185,7 @@ class SSHClientTest(SSHTestCase):
                     num_retries=2, timeout=1, _auth_thread_pool=False)
         # Should fail within greenlet timeout, otherwise greenlet will
         # raise timeout which will fail the test
-        self.assertRaises(ConnectionErrorException, cmd.get, timeout=4)
+        self.assertRaises(ConnectionErrorException, cmd.get, timeout=5)
 
     def test_client_read_timeout(self):
         client = SSHClient(self.host, port=self.port,
