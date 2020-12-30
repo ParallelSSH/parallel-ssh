@@ -299,8 +299,10 @@ class BaseSSHClient(object):
                 "Trying to authenticate with identity file %s",
                 identity_file)
             try:
-                self._pkey_auth(identity_file, password=self.password)
-            except Exception:
+                self.pkey = identity_file
+                self._pkey_auth(password=self.password)
+            except Exception as exc:
+                logger.debug(str(exc))
                 logger.debug("Authentication with identity file %s failed, "
                              "continuing with other identities",
                              identity_file)
