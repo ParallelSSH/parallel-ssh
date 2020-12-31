@@ -173,7 +173,7 @@ class SSHClient(BaseSSHClient):
                 pass
             self.session = None
         self.sock = None
-        if self._proxy_client is not None:
+        if isinstance(self._proxy_client, SSHClient):
             self._proxy_client.disconnect()
 
     def spawn_send_keepalive(self):
