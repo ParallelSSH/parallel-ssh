@@ -7,6 +7,7 @@ Change Log
 Changes
 -------
 
+* Python 2 no longer supported.
 * Updated class arguments, refactor for ``pssh.clients.native.tunnel``.
 
 Fixes
