@@ -76,6 +76,7 @@ Single host client is also available with similar API.
    advanced
    api
    clients
+   scaling
    Changelog
    api_upgrade_2_0
 

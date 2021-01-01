@@ -6,7 +6,7 @@ Asynchronous parallel SSH client library.
 
 Run SSH commands over many - hundreds/hundreds of thousands - number of servers asynchronously and with minimal system load on the client host.
 
-Native code based client with extremely high performance - based on ``libssh2`` C library.
+Native code based clients with extremely high performance, making use of C libraries.
 
 .. image:: https://img.shields.io/badge/License-LGPL%20v2.1-blue.svg
   :target: https://pypi.python.org/pypi/parallel-ssh
@@ -34,6 +34,15 @@ Installation
 
    pip install parallel-ssh
 
+
+An update to `pip` may be needed to be able to install binary wheels.
+
+.. code-block:: shell
+
+   pip install -U pip
+   pip install parallel-ssh
+
+
 *************
 Usage Example
 *************
@@ -53,6 +62,7 @@ Run ``uname`` on two hosts in parallel.
   for host_output in output:
       for line in host_output.stdout:
           print(line)
+      exit_code = host_out.exit_code
 
 :Output:
 
@@ -65,7 +75,7 @@ Run ``uname`` on two hosts in parallel.
 Single Host Client
 *******************
 
-Single host client with similar API for users that do not need parallel functionality.
+Single host client with similar API can be used if parallel functionality is not needed.
 
 .. code-block:: python
 
@@ -78,6 +88,7 @@ Single host client with similar API for users that do not need parallel function
    host_out = client.run_command(cmd)
    for line in host_out.stdout:
        print(line)
+   exit_code = host_out.exit_code
 
 
 .. contents::
@@ -109,13 +120,17 @@ Native Code Client Features
 
 * Highest performance and least overhead of any Python SSH library
 * Thread safe - makes use of native threads for CPU bound calls like authentication
-* Natively asynchronous utilising ``libssh2`` via ``ssh2-python``
+* Natively asynchronous utilising C libraries implementing the SSH protocol
 * Significantly reduced overhead in CPU and memory usage
 
 
-***********
-Exit codes
-***********
+*************************************
+Waiting for Completion and Exit Codes
+*************************************
+
+The client's ``join`` function can be used to wait for all commands in output to finish.
+
+After ``join`` returns, commands have finished and all output can be read without blocking.
 
 Once *either* standard output is iterated on *to completion*, or ``client.join()`` is called, exit codes become available in host output.
 
@@ -127,7 +142,10 @@ Once all output has been gathered exit codes become available even without calli
 
 .. code-block:: python
 
-  output = client.run_command('uname', return_list=True)
+  output = client.run_command('uname')
+
+  client.join()
+
   for host_out in output:
       for line in host_out.stdout:
           print(line)
@@ -141,22 +159,6 @@ Once all output has been gathered exit codes become available even without calli
       Linux
       0
 
-**********************
-Waiting for Completion
-**********************
-
-The client's ``join`` function can be used to wait for all commands in output to finish.
-
-After ``join`` returns, commands have finished and all output can be read without blocking.
-
-.. code-block:: python
-
-  client.join()
-
-  for host_out in output:
-      for line in host_output.stdout:
-          print(line)
-      print(host_out.exit_code)
 
 Similarly, exit codes are available after ``client.join()`` without reading output.
 
@@ -336,32 +338,6 @@ Bindings for ``libssh`` C library. A client option in ``parallel-ssh``, same aut
 For non-blocking use, only certain functions are supported. SCP/SFTP in particular cannot be used in non-blocking mode, nor can tunnels.
 
 Supports more authentication options compared to ``ssh2-python`` like GSS-API (Kerberos) and certificate authentication.
-
-
-********
-Scaling
-********
-
-Some guide lines on scaling ``parallel-ssh`` and pool size numbers.
-
-In general, long lived commands with little or no output *gathering* will scale better. Pool sizes in the multiple thousands have been used successfully with little CPU overhead in the single thread running them in these use cases.
-
-Conversely, many short lived commands with output gathering will not scale as well. In this use case, smaller pool sizes in the hundreds are likely to perform better with regards to CPU overhead in the event loop.
-
-Multiple Python native threads, each of which can get its own event loop, may be used to scale this use case further as number of CPU cores allows. Note that ``parallel-ssh`` imports *must* be done within the target function of the newly started thread for it to receive its own event loop. ``gevent.get_hub()`` may be used to confirm that the worker thread event loop differs from the main thread.
-
-Gathering is highlighted here as output generation does not affect scaling. Only when output is gathered either over multiple still running commands, or while more commands are being triggered, is overhead increased.
-
-Technical Details
-******************
-
-To understand why this is, consider that in co-operative multi tasking, which is being used in this project via the ``gevent`` library, a co-routine (greenlet) needs to ``yield`` the event loop to allow others to execute - *co-operation*. When one co-routine is constantly grabbing the event loop in order to gather output, or when co-routines are constantly trying to start new short-lived commands, it causes contention with other co-routines that also want to use the event loop.
-
-This manifests itself as increased CPU usage in the process running the event loop and reduced performance with regards to scaling improvements from increasing pool size.
-
-On the other end of the spectrum, long lived remote commands that generate *no* output only need the event loop at the start, when they are establishing connections, and at the end, when they are finished and need to gather exit codes, which results in practically zero CPU overhead at any time other than start or end of command execution.
-
-Output *generation* is done remotely and has no effect on the event loop until output is gathered - output buffers are iterated on. Only at that point does the event loop need to be held.
 
 
 .. image:: https://ga-beacon.appspot.com/UA-9132694-7/parallel-ssh/README.rst?pixel
