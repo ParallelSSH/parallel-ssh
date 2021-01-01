@@ -114,7 +114,6 @@ Alternative clients based on ``ssh-python`` (``libssh``) are also available unde
 ``parallel-ssh`` makes use of clients and an event loop solely based on C libraries providing native code levels of performance and stability with an easy to use Python API.
 
 
-****************************
 Native Code Client Features
 ****************************
 
@@ -122,6 +121,25 @@ Native Code Client Features
 * Thread safe - makes use of native threads for CPU bound calls like authentication
 * Natively asynchronous utilising C libraries implementing the SSH protocol
 * Significantly reduced overhead in CPU and memory usage
+
+
+****************
+Why This Library
+****************
+
+Because other options are either immature, unstable, lacking in performance or all of the above.
+
+Historically, paramiko has been the de-facto standard for Python SSH libraries.
+
+However, it leaves a lot to be desired of from a performance and stability point of view, as well as suffering from a lack of maintenance. The number of Github open issues going back *years* is in the `multiple hundreds <https://github.com/paramiko/paramiko/issues>`_ and growing. The number of `open unresolved PRs <https://github.com/paramiko/paramiko/pulls>`_ is also in the hundreds. There are design flaws that manifest themselves as race conditions causing infinite blocking in multiple parts of the library, as well as multiple unresolved open issues for these flaws.
+
+The SSH libraries ``parallel-ssh`` uses are, on the other hand, mature C libraries in `libssh2 <https://libssh2.org>`_ and `libssh <https://libssh.org>`_ that have been in production use for decades and are used in some of the most widely distributed software out there - `Git` itself, `OpenSSH`, `Curl`, `KDE`, `Gnome` and many others.
+
+These low level libraries are far better placed to provide the maturity, stability and performance needed from an SSH client for production use.
+
+``parallel-ssh`` provides easy to use SSH clients that hide the complexity, while offering native code levels of performance and stability as well as the ability to scale to hundreds or more concurrent hosts.
+
+See `alternatives <http://parallel-ssh.readthedocs.io/en/latest/alternatives.html>`_ for a more complete comparison of alternative SSH libraries.
 
 
 *************************************
@@ -180,7 +198,7 @@ Similarly, exit codes are available after ``client.join()`` without reading outp
 
 
 ***************************
-Build in Host Output Logger
+Built in Host Output Logger
 ***************************
 
 There is also a built in host logger that can be enabled to log output from remote hosts for both stdout and stderr. The helper function ``pssh.utils.enable_host_logger`` will enable host logging to stdout.
@@ -201,6 +219,7 @@ To log output without having to iterate over output generators, the ``consume_ou
       [localhost]	Linux
 
 
+****
 SCP
 ****
 
@@ -225,6 +244,7 @@ To copy a local file to remote hosts in parallel with SCP:
 See `SFTP and SCP documentation <http://parallel-ssh.readthedocs.io/en/latest/advanced.html#sftp-scp>`_ for more examples.
 
 
+*****
 SFTP
 *****
 
@@ -242,7 +262,8 @@ To copy a local file to remote hosts in parallel:
   hosts = ['myhost1', 'myhost2']
   client = ParallelSSHClient(hosts)
   cmds = client.copy_file('../test', 'test_dir/test')
-  joinall(cmds, raise_error=True)
+
+                joinall(cmds, raise_error=True)
 
 :Output:
    .. code-block:: python
@@ -266,78 +287,6 @@ Design And Goals
 ``parallel-ssh``'s design goals and motivation are to provide a *library* for running *non-blocking* asynchronous SSH commands in parallel and on single hosts with little to no load induced on the system by doing so with the intended usage being completely programmatic and non-interactive.
 
 To meet these goals, API driven solutions are preferred first and foremost. This frees up developers to drive the library via any method desired, be that environment variables, CI driven tasks, command line tools, existing OpenSSH or new configuration files, from within an application et al.
-
-
-Comparison With Alternatives
-*****************************
-
-There are not many alternatives for SSH libraries in Python. Of the few that do exist, here is how they compare with ``parallel-ssh``.
-
-As always, it is best to use a tool that is suited to the task at hand. ``parallel-ssh`` is a library for programmatic and non-interactive use - see `Design And Goals`_. If requirements do not match what it provides then it best not be used. Same applies for the tools described below.
-
-Paramiko
-________
-
-The default SSH client library in ``parallel-ssh`` <=``1.6.x`` series.
-
-Pure Python code, while having native extensions as dependencies, with poor performance and numerous bugs compared to both OpenSSH binaries and the ``libssh2`` based native clients in ``parallel-ssh`` ``1.2.x`` and above. Recent versions have regressed in performance and have `blocker issues <https://github.com/ParallelSSH/parallel-ssh/issues/83>`_.
-
-It does not support non-blocking mode, so to make it non-blocking monkey patching must be used which affects all other uses of the Python standard library.
-
-asyncssh
-________
-
-Pure Python ``asyncio`` framework using client library. License (`EPL`) is not compatible with GPL, BSD or other open source licenses and `combined works cannot be distributed <https://www.eclipse.org/legal/eplfaq.php#USEINANOTHER>`_.
-
-Therefore unsuitable for use in many projects, including ``parallel-ssh``.
-
-Fabric
-______
-
-Port of Capistrano from Ruby to Python. Intended for command line use and is heavily systems administration oriented rather than non-interactive library. Same maintainer as Paramiko.
-
-Uses Paramiko and suffers from the same limitations. More over, uses threads for parallelisation, while `not being thread safe <https://github.com/fabric/fabric/issues/1433>`_, and exhibits very poor performance and extremely high CPU usage even for limited number of hosts - 1 to 10 - with scaling limited to one core.
-
-Library API is non-standard, poorly documented and with numerous issues as API use is not intended.
-
-Ansible
-_______
-
-A configuration management and automation tool that makes use of SSH remote commands. Uses, in parts, both Paramiko and OpenSSH binaries.
-
-Similarly to Fabric, uses threads for parallelisation and suffers from the poor scaling that this model offers.
-
-See `The State of Python SSH Libraries <https://parallel-ssh.org/post/ssh2-python/>`_ for what to expect from scaling SSH with threads, as compared `to non-blocking I/O <https://parallel-ssh.org/post/parallel-ssh-libssh2/>`_ with ``parallel-ssh``.
-
-Again similar to Fabric, its intended and documented use is interactive via command line rather than library API based. It may, however, be an option if Ansible is already being used for automation purposes with existing playbooks, the number of hosts is small, and when the use case is interactive via command line.
-
-``parallel-ssh`` is, on the other hand, a suitable option for Ansible as an SSH client that would improve its parallel SSH performance significantly.
-
-ssh2-python
-___________
-
-Bindings for ``libssh2`` C library. Used by ``parallel-ssh`` as of ``1.2.0`` and is by same author.
-
-Does not do parallelisation out of the box but can be made parallel via Python's ``threading`` library relatively easily and as it is a wrapper to a native library that releases Python's GIL, can scale to multiple cores.
-
-``parallel-ssh`` uses ``ssh2-python`` in its native non-blocking mode with event loop and co-operative sockets provided by ``gevent`` for an extremely high performance library without the side-effects of monkey patching - see `benchmarks <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_.
-
-In addition, ``parallel-ssh`` uses native threads to offload CPU blocked tasks like authentication in order to scale to multiple cores while still remaining non-blocking for network I/O.
-
-``pssh.clients.native.SSHClient`` is a single host natively non-blocking client for users that do not need parallel capabilities but still want a non-blocking client with native code performance.
-
-Out of all the available Python SSH libraries, ``libssh2`` and ``ssh2-python`` have been shown, see benchmarks above, to perform the best with the least resource utilisation and ironically for a native code extension the least amount of dependencies. Only ``libssh2`` C library and its dependencies which are included in binary wheels.
-
-However, it lacks support for some SSH features present elsewhere like GSS-API and certificate authentication.
-
-ssh-python
-----------
-
-Bindings for ``libssh`` C library. A client option in ``parallel-ssh``, same author. Similar performance to ssh2-python above.
-
-For non-blocking use, only certain functions are supported. SCP/SFTP in particular cannot be used in non-blocking mode, nor can tunnels.
-
-Supports more authentication options compared to ``ssh2-python`` like GSS-API (Kerberos) and certificate authentication.
 
 
 .. image:: https://ga-beacon.appspot.com/UA-9132694-7/parallel-ssh/README.rst?pixel
