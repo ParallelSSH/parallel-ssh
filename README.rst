@@ -276,3 +276,7 @@ In addition, per-host configurable file name functionality is provided for both 
 Directory recursion is supported in both cases via the ``recurse`` parameter - defaults to off.
 
 See `SFTP and SCP documentation <https://parallel-ssh.readthedocs.io/en/latest/advanced.html#sftp-scp>`_ for more examples.
+
+
+.. image:: https://ga-beacon.appspot.com/UA-9132694-7/parallel-ssh/README.rst?pixel
+  :target: https://github.com/igrigorik/ga-beacon
