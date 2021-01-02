@@ -35,8 +35,8 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
 from .tunnel import FORWARDER
 from ..base.single import BaseSSHClient
 from ...output import HostOutput
-from ...exceptions import AuthenticationException, SessionError, SFTPError, \
-    SFTPIOError, Timeout, SCPError, ProxyError
+from ...exceptions import SessionError, SFTPError, \
+    SFTPIOError, Timeout, SCPError, ProxyError, AuthenticationError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 
@@ -253,8 +253,8 @@ class SSHClient(BaseSSHClient):
     def _password_auth(self):
         try:
             self.session.userauth_password(self.user, self.password)
-        except Exception:
-            raise AuthenticationException("Password authentication failed")
+        except Exception as ex:
+            raise AuthenticationError("Password authentication failed - %s", ex)
 
     def _open_session(self):
         chan = self._eagain(self.session.open_session)
