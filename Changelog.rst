@@ -15,6 +15,8 @@ Fixes
 
 * Closed clients with proxy host enabled would not shutdown their proxy servers.
 * Clients with proxy host enabled would not disconnect the proxy client on ``.disconnect`` being called.
+* Default identity files would not be used when private key was not specified - #222.
+* ``ParallelSSHClient(<..>, identity_auth=False`` would not be honoured.
 
 
 2.4.0

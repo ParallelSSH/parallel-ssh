@@ -222,7 +222,7 @@ class SSHClient(BaseSSHClient):
         if self.pkey is not None:
             logger.debug(
                 "Proceeding with private key file authentication")
-            return self._pkey_auth(password=self.password)
+            return self._pkey_auth(self.pkey, password=self.password)
         if self.allow_agent:
             try:
                 self._agent_auth()
@@ -235,18 +235,19 @@ class SSHClient(BaseSSHClient):
             else:
                 logger.debug("Authentication with SSH Agent succeeded")
                 return
-        try:
-            self._identity_auth()
-        except AuthenticationException:
-            if self.password is None:
-                raise
-            logger.debug("Private key auth failed, trying password")
-            self._password_auth()
+        if self.identity_auth:
+            try:
+                self._identity_auth()
+            except AuthenticationError:
+                if self.password is None:
+                    raise
+        logger.debug("Private key auth failed, trying password")
+        self._password_auth()
 
-    def _pkey_auth(self, password=None):
+    def _pkey_auth(self, pkey_file, password=None):
         self.session.userauth_publickey_fromfile(
             self.user,
-            self.pkey,
+            pkey_file,
             passphrase=password if password is not None else '')
 
     def _password_auth(self):

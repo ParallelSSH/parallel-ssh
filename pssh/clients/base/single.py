@@ -323,7 +323,7 @@ class BaseSSHClient(object):
     def _password_auth(self):
         raise NotImplementedError
 
-    def _pkey_auth(self, password=None):
+    def _pkey_auth(self, pkey_file, password=None):
         raise NotImplementedError
 
     def _open_session(self):

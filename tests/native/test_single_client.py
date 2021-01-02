@@ -175,6 +175,20 @@ class SSH2ClientTest(SSH2TestCase):
         client.session.handshake(client.sock)
         self.assertRaises(AuthenticationException, client.auth)
 
+    def test_default_identities_auth(self):
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1,
+                           allow_agent=False)
+        client.session.disconnect()
+        client.pkey = None
+        del client.session
+        del client.sock
+        client._connect(self.host, self.port)
+        client._init_session()
+        # Default identities auth
+        self.assertRaises(AuthenticationException, client._identity_auth)
+
     def test_agent_auth_failure(self):
         class UnknownError(Exception):
             pass
