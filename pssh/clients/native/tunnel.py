@@ -25,8 +25,6 @@ except ImportError:
 
 from gevent import spawn, joinall, get_hub, sleep
 from gevent.server import StreamServer
-from gevent.select import poll, POLLIN, POLLOUT
-from ssh2.session import LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 
 from ...constants import DEFAULT_RETRIES
