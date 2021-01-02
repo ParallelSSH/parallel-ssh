@@ -68,7 +68,7 @@ Output::
 
 
 Step by Step
--------------
+============
 
 Make a list or other iterable of the hosts to run on:
 
@@ -119,7 +119,7 @@ Standard output, aka ``stdout``, for a given :py:class:`HostOutput <pssh.output.
 
 Iterating over ``stdout`` will only end when the remote command has finished unless interrupted.
 
-The ``timeout`` keyword argument to ``run_command`` may be used to cause output generators to timeout if no output is received after the given number of seconds - see `join and output timeouts <advanced.html#join-and-output-timeouts>`_.
+The ``read_timeout`` keyword argument to ``run_command`` may be used to cause reading to timeout if no output is received after the given number of seconds - see `join and output timeouts <advanced.html#join-and-output-timeouts>`_.
 
 ``stdout`` is a generator. To retrieve all of stdout can wrap it with list, per below.
 
@@ -176,8 +176,8 @@ First, ensure that all commands have finished by either joining on the output ob
 .. code-block:: python
 
   client.join(output)
-  for host, host_output in output:
-      print("Host %s exit code: %s" % (host, host_output.exit_code))
+  for host_output in output:
+      print("Host %s exit code: %s" % (host_output.host, host_output.exit_code))
 
 As of ``1.11.0``, ``client.join`` is not required as long as output has been gathered.
 
@@ -235,8 +235,6 @@ To use files under a user's ``.ssh`` directory:
 
 .. code-block:: python
 
-   import os
-
    client = ParallelSSHClient(hosts, pkey='~/.ssh/my_pkey')
 
 
@@ -271,8 +269,8 @@ The helper function :py:func:`pssh.utils.enable_host_logger` will enable host lo
   from pssh.utils import enable_host_logger
   enable_host_logger()
 
-  output = client.run_command('uname')
-  client.join(output, consume_output=True)
+  client.run_command('uname')
+  client.join(consume_output=True)
 
 :Output:
    .. code-block:: python
@@ -288,10 +286,10 @@ The ``stdin`` attribute on :py:class:`HostOutput <pssh.output.HostOutput>` is a 
 
 .. code-block:: python
 
-  output = client.run_command('read')
+  output = client.run_command('read line; echo $line')
   host_output = output[0]
   stdin = host_output.stdin
-  stdin.write("writing to stdin\\n")
+  stdin.write("writing to stdin\n")
   stdin.flush()
   for line in host_output.stdout:
       print(line)
@@ -325,8 +323,8 @@ With this flag, the ``exception`` output attribute will contain the exception on
 :Output:
    .. code-block:: python
 
-      host1: 0, None
-      host2: None, AuthenticationError <..>
+      Host host1: exit code 0, exception None
+      Host host2: exit code None, exception AuthenticationError <..>
 
 .. seealso::
 

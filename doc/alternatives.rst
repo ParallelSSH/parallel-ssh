@@ -8,15 +8,15 @@ As always, it is best to use a tool that is suited to the task at hand. ``parall
 Paramiko
 ________
 
-The default SSH client library in ``parallel-ssh`` <=``1.6.x`` series.
+The default SSH client library in ``parallel-ssh<=1.6.x`` series.
 
 Pure Python code, while having native extensions as dependencies, with poor performance and numerous bugs compared to both OpenSSH binaries and the ``libssh2`` based native clients in ``parallel-ssh`` ``1.2.x`` and above. Recent versions have regressed in performance and have `blocker issues <https://github.com/ParallelSSH/parallel-ssh/issues/83>`_.
 
 It does not support non-blocking mode, so to make it non-blocking monkey patching must be used which affects all other uses of the Python standard library.
 
-Based on its use in historical ``parallel-ssh`` releases, paramiko is very far from being mature enough to be widely used.
+Based on its use in historical ``parallel-ssh`` releases as well as `performance testing <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_, paramiko is very far from being mature enough to be used.
 
-This is why ``parallel-ssh`` has moved away from paramiko entirely since ``2.0.0``, where it was dropped as a dependency.
+This is why ``parallel-ssh`` has moved away from paramiko entirely since ``2.0.0`` where it was dropped as a dependency.
 
 asyncssh
 ________
@@ -65,7 +65,7 @@ Out of all the available Python SSH libraries, ``libssh2`` and ``ssh2-python`` h
 However, it lacks support for some SSH features present elsewhere like GSS-API and certificate authentication.
 
 ssh-python
-----------
+__________
 
 Bindings for ``libssh`` C library. A client option in ``parallel-ssh``, same author. Similar performance to ssh2-python above.
 

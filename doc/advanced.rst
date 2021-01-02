@@ -513,7 +513,7 @@ Stderr is empty:
 
 .. code-block:: python
    
-   for line in output[client.hosts[0]].stderr:
+   for line in output[0].stderr:
        print(line)
 
 No output from ``stderr``.
@@ -523,9 +523,9 @@ No output from ``stderr``.
 SFTP and SCP
 *************
 
-SFTP and SCP are both supported by ``parallel-ssh`` and functions are provided by the client for copying files with SFTP to and from remote servers - default native client only.
+SFTP and SCP are both supported by ``parallel-ssh`` and functions are provided by the client for copying files to and from remote servers - default native clients only.
 
-Neither SFTP nor SCP have a shell interface and no output is provided for any SFTP/SCP commands.
+Neither SFTP nor SCP have a shell interface and no output is sent for any SFTP/SCP commands.
 
 As such, SFTP functions in ``ParallelSSHClient`` return greenlets that will need to be joined to raise any exceptions from them. :py:func:`gevent.joinall` may be used for that.
 
@@ -542,15 +542,15 @@ To copy the local file with relative path ``../test`` to the remote relative pat
    
    client = ParallelSSHClient(hosts)
    
-   greenlets = client.copy_file('../test', 'test_dir/test')
-   joinall(greenlets, raise_error=True)
+   cmds = client.copy_file('../test', 'test_dir/test')
+   joinall(cmds, raise_error=True)
 
 To recursively copy directory structures, enable the ``recurse`` flag:
 
 .. code-block:: python
 
-   greenlets = client.copy_file('my_dir', 'my_dir', recurse=True)
-   joinall(greenlets, raise_error=True)
+   cmds = client.copy_file('my_dir', 'my_dir', recurse=True)
+   joinall(cmds, raise_error=True)
 
 .. seealso::
 
@@ -570,8 +570,8 @@ Copying remote files in parallel requires that file names are de-duplicated othe
    
    client = ParallelSSHClient(hosts)
    
-   greenlets = client.copy_remote_file('remote.file', 'local.file')
-   joinall(greenlets, raise_error=True)
+   cmds = client.copy_remote_file('remote.file', 'local.file')
+   joinall(cmds, raise_error=True)
 
 The above will create files ``local.file_host1`` where ``host1`` is the host name the file was copied from.
 
@@ -855,7 +855,7 @@ Clients for hosts that are no longer on the host list are removed on host list a
        <..>
 
 
-When wanting to reassign host list frequently, it is best to sort or otherwise ensure order is maintained to avoid reconnections on hosts that are still in the host list but in a different order.
+When reassigning host list frequently, it is best to sort or otherwise ensure order is maintained to avoid reconnections on hosts that are still in the host list but in a different position.
 
 For example, the following will cause reconnections on both hosts, though both are still in the list.
 

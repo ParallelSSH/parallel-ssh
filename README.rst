@@ -21,10 +21,10 @@ Native code based clients with extremely high performance, making use of C libra
 .. image:: https://img.shields.io/pypi/wheel/parallel-ssh.svg
   :target: https://pypi.python.org/pypi/parallel-ssh
 .. image:: https://readthedocs.org/projects/parallel-ssh/badge/?version=latest
-  :target: http://parallel-ssh.readthedocs.org/en/latest/
+  :target: https://parallel-ssh.readthedocs.org/en/latest/
   :alt: Latest documentation
 
-.. _`read the docs`: http://parallel-ssh.readthedocs.org/en/latest/
+.. _`read the docs`: https://parallel-ssh.readthedocs.org/en/latest/
 
 ************
 Installation
@@ -109,7 +109,7 @@ The default client in ``parallel-ssh`` is a native client based on ``ssh2-python
 
 See `this post <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ for a performance comparison of different Python SSH libraries.
 
-Alternative clients based on ``ssh-python`` (``libssh``) are also available under ``pssh.clients.ssh``. See `client documentation <http://parallel-ssh.readthedocs.io/en/latest/clients.html>`_ for a feature comparison of the available clients in the library.
+Alternative clients based on ``ssh-python`` (``libssh``) are also available under ``pssh.clients.ssh``. See `client documentation <https://parallel-ssh.readthedocs.io/en/latest/clients.html>`_ for a feature comparison of the available clients in the library.
 
 ``parallel-ssh`` makes use of clients and an event loop solely based on C libraries providing native code levels of performance and stability with an easy to use Python API.
 
@@ -127,19 +127,17 @@ Native Code Client Features
 Why This Library
 ****************
 
-Because other options are either immature, unstable, lacking in performance or all of the above.
+Because other options are either immature, unstable, lacking in performance or all of the aforementioned.
 
-Historically, paramiko has been the de-facto standard for Python SSH libraries.
+Certain other self-proclaimed *leading* Python SSH libraries leave a lot to be desired from a performance and stability point of view, as well as suffering from a lack of maintenance with hundreds of open issues, unresolved pull requests and inherent design flaws.
 
-However, it leaves a lot to be desired of from a performance and stability point of view, as well as suffering from a lack of maintenance. The number of Github open issues going back *years* is in the `multiple hundreds <https://github.com/paramiko/paramiko/issues>`_ and growing. The number of `open unresolved PRs <https://github.com/paramiko/paramiko/pulls>`_ is also in the hundreds. There are design flaws that manifest themselves as race conditions causing infinite blocking in multiple parts of the library, as well as multiple unresolved open issues for these flaws.
-
-The SSH libraries ``parallel-ssh`` uses are, on the other hand, mature C libraries in `libssh2 <https://libssh2.org>`_ and `libssh <https://libssh.org>`_ that have been in production use for decades and are used in some of the most widely distributed software out there - `Git` itself, `OpenSSH`, `Curl`, `KDE`, `Gnome` and many others.
+The SSH libraries ``parallel-ssh`` uses are, on the other hand, long standing mature C libraries in `libssh2 <https://libssh2.org>`_ and `libssh <https://libssh.org>`_ that have been in production use for decades and are part of some of the most widely distributed software available today - `Git` itself, `OpenSSH`, `Curl` and many others.
 
 These low level libraries are far better placed to provide the maturity, stability and performance needed from an SSH client for production use.
 
-``parallel-ssh`` provides easy to use SSH clients that hide the complexity, while offering native code levels of performance and stability as well as the ability to scale to hundreds or more concurrent hosts.
+``parallel-ssh`` provides easy to use SSH clients that hide the complexity, while offering stability and native code levels of performance and as well as the ability to scale to hundreds or more concurrent hosts.
 
-See `alternatives <http://parallel-ssh.readthedocs.io/en/latest/alternatives.html>`_ for a more complete comparison of alternative SSH libraries.
+See `alternatives <https://parallel-ssh.readthedocs.io/en/latest/alternatives.html>`_ for a more complete comparison of alternative SSH libraries, as well as `performance comparisons <https://parallel-ssh.org/post/parallel-ssh-libssh2>`_ mentioned previously.
 
 
 *************************************
@@ -152,11 +150,11 @@ After ``join`` returns, commands have finished and all output can be read withou
 
 Once *either* standard output is iterated on *to completion*, or ``client.join()`` is called, exit codes become available in host output.
 
-Iteration ends *only when remote command has completed*, though it may be interrupted and resumed at any point.
+Iteration ends *only when remote command has completed*, though it may be interrupted and resumed at any point - see `join and output timeouts <https://parallel-ssh.readthedocs.io/en/latest/advanced.html#join-and-output-timeouts>`_ documentation.
 
-``HostOutput.exit_code`` is a dynamic property and will return ``None`` when exit code is not ready, meaning command has not finished, or channel is unavailable due to error.
+``HostOutput.exit_code`` is a dynamic property and will return ``None`` when exit code is not ready, meaning command has not finished, or unavailable due to error.
 
-Once all output has been gathered exit codes become available even without calling ``join``.
+Once all output has been gathered exit codes become available even without calling ``join`` as per previous examples.
 
 .. code-block:: python
 
@@ -241,7 +239,7 @@ To copy a local file to remote hosts in parallel with SCP:
   cmds = client.scp_send('../test', 'test_dir/test')
   joinall(cmds, raise_error=True)
 
-See `SFTP and SCP documentation <http://parallel-ssh.readthedocs.io/en/latest/advanced.html#sftp-scp>`_ for more examples.
+See `SFTP and SCP documentation <https://parallel-ssh.readthedocs.io/en/latest/advanced.html#sftp-scp>`_ for more examples.
 
 
 *****
@@ -262,8 +260,8 @@ To copy a local file to remote hosts in parallel:
   hosts = ['myhost1', 'myhost2']
   client = ParallelSSHClient(hosts)
   cmds = client.copy_file('../test', 'test_dir/test')
+  joinall(cmds, raise_error=True)
 
-                joinall(cmds, raise_error=True)
 
 :Output:
    .. code-block:: python
@@ -271,13 +269,13 @@ To copy a local file to remote hosts in parallel:
       Copied local file ../test to remote destination myhost1:test_dir/test
       Copied local file ../test to remote destination myhost2:test_dir/test
 
-There is similar capability to copy remote files to local ones suffixed with the host's name with the ``copy_remote_file`` function.
+There is similar capability to copy remote files to local ones with configurable file names via the `copy_remote_file <https://parallel-ssh.readthedocs.io/en/latest/base_parallel.html#pssh.clients.base.parallel.BaseParallelSSHClient.copy_remote_file>`_ function.
 
-In addition, per-host configurable file name functionality is provided for both SFTP and SCP  - see `documentation <http://parallel-ssh.readthedocs.io/en/latest/advanced.html#copy-args>`_.
+In addition, per-host configurable file name functionality is provided for both SFTP and SCP  - see `documentation <https://parallel-ssh.readthedocs.io/en/latest/advanced.html#copy-args>`_.
 
 Directory recursion is supported in both cases via the ``recurse`` parameter - defaults to off.
 
-See `SFTP and SCP documentation <http://parallel-ssh.readthedocs.io/en/latest/advanced.html#sftp-scp>`_ for more examples.
+See `SFTP and SCP documentation <https://parallel-ssh.readthedocs.io/en/latest/advanced.html#sftp-scp>`_ for more examples.
 
 
 *****************
