@@ -18,3 +18,5 @@ Taking a cue from `PEP 20 <https://www.python.org/dev/peps/pep-0020/>`_, heavy e
 * Beautiful is better than ugly
 
 Contributions are asked to keep these in mind.
+
+In addition, a heavy emphasis is also given to test driven development. The library is continuously integration tested with a real SSH server (OpenSSH) and has very high code test coverage.

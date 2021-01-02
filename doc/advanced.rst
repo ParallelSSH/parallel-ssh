@@ -181,7 +181,7 @@ Proxy host can be configured in Per-Host Configuration:
        HostConfig(proxy_host='127.0.0.3'),
        HostConfig(proxy_host='127.0.0.4'),
        ]
-   clieent = ParallelSSHClient(hosts, host_config=host_config)
+   client = ParallelSSHClient(hosts, host_config=host_config)
    output = client.run_command('echo me')
 
 See :py:mod:`HostConfig <pssh.config.HostConfig>` for all possible configuration.
@@ -274,7 +274,8 @@ In some cases, such as when the remote command never terminates unless interrupt
 .. code-block:: python
 
    output = client.run_command(
-       'while true; do echo a line; sleep .1; done', use_pty=True, read_timeout=1)
+       'while true; do echo a line; sleep .1; done',
+       use_pty=True, read_timeout=1)
 
    # Read as many lines of output as hosts have sent before the timeout
    stdout = []

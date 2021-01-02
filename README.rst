@@ -276,16 +276,3 @@ In addition, per-host configurable file name functionality is provided for both 
 Directory recursion is supported in both cases via the ``recurse`` parameter - defaults to off.
 
 See `SFTP and SCP documentation <https://parallel-ssh.readthedocs.io/en/latest/advanced.html#sftp-scp>`_ for more examples.
-
-
-*****************
-Design And Goals
-*****************
-
-``parallel-ssh``'s design goals and motivation are to provide a *library* for running *non-blocking* asynchronous SSH commands in parallel and on single hosts with little to no load induced on the system by doing so with the intended usage being completely programmatic and non-interactive.
-
-To meet these goals, API driven solutions are preferred first and foremost. This frees up developers to drive the library via any method desired, be that environment variables, CI driven tasks, command line tools, existing OpenSSH or new configuration files, from within an application et al.
-
-
-.. image:: https://ga-beacon.appspot.com/UA-9132694-7/parallel-ssh/README.rst?pixel
-  :target: https://github.com/igrigorik/ga-beacon
