@@ -25,8 +25,6 @@ except ImportError:
 
 from gevent import spawn, joinall, get_hub, sleep
 from gevent.server import StreamServer
-from gevent.select import poll, POLLIN, POLLOUT
-from ssh2.session import LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 
 from ...constants import DEFAULT_RETRIES
@@ -42,7 +40,7 @@ class LocalForwarder(Thread):
 
         Starts servers in their own gevent hub via thread run target.
 
-        Input ``(SSHClient, target_host, target_port)`` tuples to ``in_q`` to create new servers
+        Use ``enqueue`` to create new servers
         and get port to connect to via ``out_q`` once a target has been put into the input queue.
 
         ``SSHClient`` is the client for the SSH host that will be proxying.
@@ -59,23 +57,43 @@ class LocalForwarder(Thread):
         client, host, port = self.in_q.get()
         server = TunnelServer(client, host, port)
         server.start()
+        self._get_server_listen_port(client, server)
+
+    def _get_server_listen_port(self, client, server):
         while not server.started:
             sleep(0.01)
         self._servers[client] = server
-        local_port = server.socket.getsockname()[1]
+        local_port = server.listen_port
         self.out_q.put(local_port)
 
+    def enqueue(self, client, host, port):
+        """Add target host:port to tunnel via client to queue.
+
+        :param client: The client to connect via.
+        :type client: :py:mod:`pssh.clients.native.single.SSHClient`
+        :param host: Target host to open connection to.
+        :type host: str
+        :param port: Target port to connect on.
+        :type port: int
+        """
+        self.in_q.put((client, host, port))
+
     def shutdown(self):
+        """Stop all tunnel servers."""
         for client, server in self._servers.items():
             server.stop()
 
-    def _cleanup_servers(self):
+    def _cleanup_servers_let(self):
         while True:
-            for client, server in self._servers.items():
-                if client.sock.closed:
-                    server.stop()
-                    del self._servers[client]
+            self._cleanup_servers()
             sleep(60)
+
+    def _cleanup_servers(self):
+        for client in list(self._servers.keys()):
+            server = self._servers[client]
+            if client.sock is None or client.sock.closed:
+                server.stop()
+                del self._servers[client]
 
     def run(self):
         """Thread runner ensures a non main hub has been created for all subsequent
@@ -87,7 +105,7 @@ class LocalForwarder(Thread):
         self._hub = get_hub()
         assert self._hub.main_hub is False
         self.started.set()
-        self._cleanup_let = spawn(self._cleanup_servers)
+        self._cleanup_let = spawn(self._cleanup_servers_let)
         logger.debug("Hub in server runner is main hub: %s", self._hub.main_hub)
         try:
             while True:
@@ -108,14 +126,20 @@ class TunnelServer(StreamServer):
     to/from remote SSH host for each connection.
     """
 
-    def __init__(self, client, host, port, bind_address='127.0.0.1', timeout=0.1):
+    def __init__(self, client, host, port, bind_address='127.0.0.1',
+                 num_retries=DEFAULT_RETRIES):
         StreamServer.__init__(self, (bind_address, 0), self._read_rw)
         self.client = client
         self.host = host
         self.port = port
         self.session = client.session
-        self._retries = DEFAULT_RETRIES
-        self.timeout = timeout
+        self._client = client
+        self._retries = num_retries
+        self.bind_address = bind_address
+
+    @property
+    def listen_port(self):
+        return self.socket.getsockname()[1] if self.socket is not None else None
 
     def _read_rw(self, socket, address):
         local_addr, local_port = address
@@ -142,8 +166,7 @@ class TunnelServer(StreamServer):
             joinall((source, dest), raise_error=True)
         finally:
             logger.debug("Closing channel and forward socket")
-            while channel is not None and channel.close() == LIBSSH2_ERROR_EAGAIN:
-                self.poll(timeout=.5)
+            self._client.close_channel(channel)
             forward_sock.close()
 
     def _read_forward_sock(self, forward_sock, channel):
@@ -161,16 +184,11 @@ class TunnelServer(StreamServer):
             if data_len == 0:
                 sleep(.01)
                 continue
-            data_written = 0
-            while data_written < data_len:
-                try:
-                    rc, bytes_written = channel.write(data[data_written:])
-                except Exception as ex:
-                    logger.error("Channel write error: %s", ex)
-                    raise
-                data_written += bytes_written
-                if rc == LIBSSH2_ERROR_EAGAIN:
-                    self.poll()
+            try:
+                self._client._eagain_write(channel.write, data)
+            except Exception as ex:
+                logger.error("Error writing data to channel - %s", ex)
+                raise
             logger.debug("Wrote all data to channel")
 
     def _read_channel(self, forward_sock, channel):
@@ -185,7 +203,7 @@ class TunnelServer(StreamServer):
                 raise
             # logger.debug("Read %s data from channel" % (size,))
             if size == LIBSSH2_ERROR_EAGAIN:
-                self.poll()
+                self._client.poll()
                 continue
             elif size == 0:
                 sleep(.01)
@@ -200,12 +218,12 @@ class TunnelServer(StreamServer):
 
     def _open_channel(self, fw_host, fw_port, local_port):
         channel = self.session.direct_tcpip_ex(
-            fw_host, fw_port, '127.0.0.1',
+            fw_host, fw_port, self.bind_address,
             local_port)
         while channel == LIBSSH2_ERROR_EAGAIN:
-            self.poll()
+            self._client.poll()
             channel = self.session.direct_tcpip_ex(
-                fw_host, fw_port, '127.0.0.1',
+                fw_host, fw_port, self.bind_address,
                 local_port)
         return channel
 
@@ -225,30 +243,6 @@ class TunnelServer(StreamServer):
                 wait_time *= 5
                 continue
             return channel
-
-    def poll(self, timeout=None):
-        """Perform co-operative gevent poll on ssh2 session socket.
-
-        Blocks current greenlet only if socket has pending read or write operations
-        in the appropriate direction.
-        """
-        directions = self.session.block_directions()
-        if directions == 0:
-            return
-        events = 0
-        if directions & LIBSSH2_SESSION_BLOCK_INBOUND:
-            events = POLLIN
-        if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:
-            events |= POLLOUT
-        self._poll_socket(self.session.sock, events, timeout=timeout)
-
-    def _poll_socket(self, sock, events, timeout=None):
-        # gevent.select.poll converts seconds to miliseconds to match python socket
-        # implementation
-        timeout = timeout * 1000 if timeout is not None else 100
-        poller = poll()
-        poller.register(sock, eventmask=events)
-        return poller.poll(timeout=timeout)
 
 
 FORWARDER = LocalForwarder()

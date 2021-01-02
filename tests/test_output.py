@@ -21,13 +21,19 @@
 
 import unittest
 
-from pssh.output import HostOutput
+from pssh.output import HostOutput, BufferData, HostOutputBuffers
 
 
 class TestHostOutput(unittest.TestCase):
 
     def setUp(self):
-        self.output = HostOutput(None, None, None, None, None, None, True)
+        self.output = HostOutput(
+            None, None, None, None,
+            buffers=HostOutputBuffers(
+                BufferData(None, None),
+                BufferData(None, None),
+            )
+        )
 
     def test_print(self):
         self.assertTrue(str(self.output))
@@ -36,11 +42,21 @@ class TestHostOutput(unittest.TestCase):
         self.assertIsNone(self.output.exit_code)
 
     def test_excepting_client_exit_code(self):
+        class ChannelError(Exception):
+            pass
         class ExcSSHClient(object):
             def get_exit_status(self, channel):
-                raise Exception
+                raise ChannelError
         exc_client = ExcSSHClient()
         host_out = HostOutput(
-            'host', None, None, None, None, exc_client)
+            'host', None, None, client=exc_client)
+        exit_code = host_out.exit_code
+        self.assertIsNone(exit_code)
+
+    def test_none_output_client(self):
+        host_out = HostOutput(
+            'host', None, None, client=None)
         exit_code = host_out.exit_code
         self.assertEqual(exit_code, None)
+        self.assertIsNone(host_out.stdout)
+        self.assertIsNone(host_out.stderr)

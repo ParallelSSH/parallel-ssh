@@ -35,8 +35,8 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
 from .tunnel import FORWARDER
 from ..base.single import BaseSSHClient
 from ...output import HostOutput
-from ...exceptions import AuthenticationException, SessionError, SFTPError, \
-    SFTPIOError, Timeout, SCPError, ProxyError
+from ...exceptions import SessionError, SFTPError, \
+    SFTPIOError, Timeout, SCPError, ProxyError, AuthenticationError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 
@@ -87,11 +87,9 @@ class SSHClient(BaseSSHClient):
         :type allow_agent: bool
         :param identity_auth: (Optional) set to False to disable attempting to
           authenticate with default identity files from
-          `pssh.clients.base_ssh_client.BaseSSHClient.IDENTITIES`
+          `pssh.clients.base.single.BaseSSHClient.IDENTITIES`
         :type identity_auth: bool
-        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
-          equivalent to `ssh -A` from the `ssh` command line utility.
-          Defaults to True if not set.
+        :param forward_ssh_agent: Unused - agent forwarding not implemented.
         :type forward_ssh_agent: bool
         :param proxy_host: Connect to target host via given proxy host.
         :type proxy_host: str
@@ -161,7 +159,7 @@ class SSHClient(BaseSSHClient):
         if not FORWARDER.started.is_set():
             FORWARDER.start()
             FORWARDER.started.wait()
-        FORWARDER.in_q.put((self._proxy_client, self.host, self.port))
+        FORWARDER.enqueue(self._proxy_client, self.host, self.port)
         proxy_local_port = FORWARDER.out_q.get()
         return proxy_local_port
 
@@ -175,6 +173,8 @@ class SSHClient(BaseSSHClient):
                 pass
             self.session = None
         self.sock = None
+        if isinstance(self._proxy_client, SSHClient):
+            self._proxy_client.disconnect()
 
     def spawn_send_keepalive(self):
         """Spawns a new greenlet that sends keep alive messages every
@@ -215,14 +215,17 @@ class SSHClient(BaseSSHClient):
             self.configure_keepalive()
             self._keepalive_greenlet = self.spawn_send_keepalive()
 
+    def _agent_auth(self):
+        self.session.agent_auth(self.user)
+
     def auth(self):
         if self.pkey is not None:
             logger.debug(
                 "Proceeding with private key file authentication")
-            return self._pkey_auth(password=self.password)
+            return self._pkey_auth(self.pkey, password=self.password)
         if self.allow_agent:
             try:
-                self.session.agent_auth(self.user)
+                self._agent_auth()
             except (AgentAuthenticationError, AgentConnectionError, AgentGetIdentityError,
                     AgentListIdentitiesError) as ex:
                 logger.debug("Agent auth failed with %s"
@@ -232,41 +235,44 @@ class SSHClient(BaseSSHClient):
             else:
                 logger.debug("Authentication with SSH Agent succeeded")
                 return
-        try:
-            self._identity_auth()
-        except AuthenticationException:
-            if self.password is None:
-                raise
-            logger.debug("Private key auth failed, trying password")
-            self._password_auth()
+        if self.identity_auth:
+            try:
+                self._identity_auth()
+            except AuthenticationError:
+                if self.password is None:
+                    raise
+        logger.debug("Private key auth failed, trying password")
+        self._password_auth()
 
-    def _pkey_auth(self, password=None):
+    def _pkey_auth(self, pkey_file, password=None):
         self.session.userauth_publickey_fromfile(
             self.user,
-            self.pkey,
+            pkey_file,
             passphrase=password if password is not None else '')
 
     def _password_auth(self):
         try:
             self.session.userauth_password(self.user, self.password)
-        except Exception:
-            raise AuthenticationException("Password authentication failed")
+        except Exception as ex:
+            raise AuthenticationError("Password authentication failed - %s", ex)
+
+    def _open_session(self):
+        chan = self._eagain(self.session.open_session)
+        return chan
 
     def open_session(self):
         """Open new channel from session"""
         try:
-            chan = self._eagain(self.session.open_session)
+            chan = self._open_session()
         except Exception as ex:
             raise SessionError(ex)
-        # Multiple forward requests result in ChannelRequestDenied
-        # errors, flag is used to avoid this.
         if self.forward_ssh_agent and not self._forward_requested:
             if not hasattr(chan, 'request_auth_agent'):
                 warn("Requested SSH Agent forwarding but libssh2 version used "
                      "does not support it - ignoring")
                 return chan
-            self._eagain(chan.request_auth_agent)
-            self._forward_requested = True
+            # self._eagain(chan.request_auth_agent)
+            # self._forward_requested = True
         return chan
 
     def _make_output_readers(self, channel, stdout_buffer, stderr_buffer):
@@ -346,15 +352,9 @@ class SSHClient(BaseSSHClient):
     def _make_sftp(self):
         """Make SFTP client from open transport"""
         try:
-            sftp = self.session.sftp_init()
+            sftp = self._eagain(self.session.sftp_init)
         except Exception as ex:
             raise SFTPError(ex)
-        while sftp == LIBSSH2_ERROR_EAGAIN:
-            self.poll()
-            try:
-                sftp = self.session.sftp_init()
-            except Exception as ex:
-                raise SFTPError(ex)
         return sftp
 
     def _mkdir(self, sftp, directory):
@@ -435,8 +435,6 @@ class SSHClient(BaseSSHClient):
                 sftp.open, remote_file, f_flags, mode) as remote_fh:
             try:
                 self._sftp_put(remote_fh, local_file)
-                # THREAD_POOL.apply(
-                #     sftp_put, args=(self.session, remote_fh, local_file))
             except SFTPProtocolError as ex:
                 msg = "Error writing to remote file %s - %s"
                 logger.error(msg, remote_file, ex)
@@ -674,15 +672,9 @@ class SSHClient(BaseSSHClient):
 
     def _sftp_openfh(self, open_func, remote_file, *args):
         try:
-            fh = open_func(remote_file, *args)
+            fh = self._eagain(open_func, remote_file, *args)
         except Exception as ex:
             raise SFTPError(ex)
-        while fh == LIBSSH2_ERROR_EAGAIN:
-            self.poll(timeout=0.1)
-            try:
-                fh = open_func(remote_file, *args)
-            except Exception as ex:
-                raise SFTPError(ex)
         return fh
 
     def _sftp_get(self, remote_fh, local_file):
@@ -699,17 +691,18 @@ class SSHClient(BaseSSHClient):
                 LIBSSH2_FXF_READ, LIBSSH2_SFTP_S_IRUSR) as remote_fh:
             try:
                 self._sftp_get(remote_fh, local_file)
-                # Running SFTP in a thread requires a new session
-                # as session handles or any handles created by a session
-                # cannot be used simultaneously in multiple threads.
-                # THREAD_POOL.apply(
-                #     sftp_get, args=(self.session, remote_fh, local_file))
             except SFTPProtocolError as ex:
                 msg = "Error reading from remote file %s - %s"
                 logger.error(msg, remote_file, ex)
                 raise SFTPIOError(msg, remote_file, ex)
 
     def get_exit_status(self, channel):
+        """Get exit status code for channel or ``None`` if not ready.
+
+        :param channel: The channel to get status from.
+        :type channel: :py:mod:`ssh2.channel.Channel`
+        :rtype: int or ``None``
+        """
         if not channel.eof():
             return
         return channel.get_exit_status()

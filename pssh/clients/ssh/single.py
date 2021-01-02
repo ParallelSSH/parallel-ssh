@@ -156,7 +156,7 @@ class SSHClient(BaseSSHClient):
         if self.pkey is not None:
             logger.debug(
                 "Proceeding with private key file authentication")
-            return self._pkey_auth(self.password)
+            return self._pkey_auth(self.pkey, password=self.password)
         if self.allow_agent:
             try:
                 self.session.userauth_agent(self.user)
@@ -194,8 +194,8 @@ class SSHClient(BaseSSHClient):
         except Exception as ex:
             raise AuthenticationError("Password authentication failed - %s", ex)
 
-    def _pkey_auth(self, password=None):
-        pkey = import_privkey_file(self.pkey, passphrase=password if password is not None else '')
+    def _pkey_auth(self, pkey_file, password=None):
+        pkey = import_privkey_file(pkey_file, passphrase=password if password is not None else '')
         if self.cert_file is not None:
             logger.debug("Certificate file set - trying certificate authentication")
             self._import_cert_file(pkey)
@@ -210,19 +210,17 @@ class SSHClient(BaseSSHClient):
     def _shell(self, channel):
         return self._eagain(channel.request_shell)
 
+    def _open_session(self):
+        channel = self.session.channel_new()
+        channel.set_blocking(0)
+        self._eagain(channel.open_session)
+        return channel
+
     def open_session(self):
         """Open new channel from session."""
         logger.debug("Opening new channel on %s", self.host)
         try:
-            channel = self.session.channel_new()
-            channel.set_blocking(0)
-            while channel.open_session() == SSH_AGAIN:
-                logger.debug(
-                    "Channel open session blocked, waiting on socket..")
-                self.poll()
-                # Select on open session can dead lock without
-                # yielding event loop
-                sleep(.1)
+            channel = self._open_session()
         except Exception as ex:
             raise SessionError(ex)
         return channel
@@ -307,9 +305,11 @@ class SSHClient(BaseSSHClient):
         return channel.is_eof()
 
     def get_exit_status(self, channel):
-        """Get exit status from channel if ready else return `None`.
+        """Get exit status code for channel or ``None`` if not ready.
 
-        :rtype: int or `None`
+        :param channel: The channel to get status from.
+        :type channel: :py:mod:`ssh.channel.Channel`
+        :rtype: int or ``None``
         """
         if not channel.is_eof():
             return

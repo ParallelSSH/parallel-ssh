@@ -56,3 +56,14 @@ Or for developing changes:
 
   pip install -r requirements_dev.txt
 
+
+Python 2
+--------
+
+As of January 2021, Python 2 is no longer supported by the Python Software Foundation nor ``parallel-ssh`` - see `Sunset Python 2 <https://www.python.org/doc/sunset-python-2/>`_.
+
+Versions of ``parallel-ssh<=2.4.0`` will still work.
+
+Future releases are not guaranteed to be compatible or work at all with Python 2.
+
+If your company requires Python 2 support contact the author directly at the email address on Github commits to discuss rates.

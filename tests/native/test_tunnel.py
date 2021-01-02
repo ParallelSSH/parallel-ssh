@@ -28,15 +28,16 @@ from datetime import datetime
 from socket import timeout as socket_timeout
 from sys import version_info
 from collections import deque
+from gevent import sleep, spawn, Timeout as GTimeout
 
 from pssh.config import HostConfig
 from pssh.clients.native import SSHClient, ParallelSSHClient
-from pssh.clients.native.tunnel import LocalForwarder
+from pssh.clients.native.tunnel import LocalForwarder, TunnelServer
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
     ProxyError
-from ssh2.exceptions import ChannelFailure, SocketSendError
+from ssh2.exceptions import ChannelFailure, SocketSendError, SocketRecvError
 
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
 from ..embedded_server.openssh import OpenSSHServer
@@ -70,7 +71,7 @@ class TunnelTest(unittest.TestCase):
         forwarder.started.wait()
         client = SSHClient(
             self.proxy_host, port=self.proxy_port, pkey=self.user_key)
-        forwarder.in_q.put((client, self.proxy_host, self.port))
+        forwarder.enqueue(client, self.proxy_host, self.port)
         forwarder.out_q.get()
         self.assertTrue(len(forwarder._servers) > 0)
         forwarder.shutdown()
@@ -234,5 +235,106 @@ class TunnelTest(unittest.TestCase):
         client.join(output)
         self.assertIsInstance(output[0].exception, ProxyError)
 
-    # TODO:
-    # * channel/socket read/write failure tests
+    def test_proxy_bad_target(self):
+        self.assertRaises(
+            SocketRecvError, SSHClient,
+            '127.0.0.155', port=self.proxy_port, pkey=self.user_key,
+            proxy_host=self.proxy_host, proxy_port=self.proxy_port,
+            num_retries=1,
+        )
+
+    def test_forwarder_exit(self):
+        def _start_server():
+            raise Exception
+
+        forwarder = LocalForwarder()
+        forwarder.daemon = True
+        forwarder.start()
+        forwarder.started.wait()
+        client = SSHClient(
+            self.proxy_host, port=self.proxy_port, pkey=self.user_key)
+        forwarder.enqueue(client, self.proxy_host, self.port)
+        forwarder.out_q.get()
+        self.assertTrue(len(forwarder._servers) > 0)
+        client.sock.close()
+        client.disconnect()
+        forwarder._cleanup_servers()
+        self.assertEqual(len(forwarder._servers), 0)
+        forwarder._start_server = _start_server
+        forwarder.enqueue(client, self.proxy_host, self.port)
+        sleep(.1)
+
+    def test_socket_channel_error(self):
+        class SocketError(Exception):
+            pass
+        class ChannelFailure(object):
+            def read(self):
+                raise SocketRecvError
+            def write(self, data):
+                raise SocketSendError
+            def eof(self):
+                return False
+            def close(self):
+                return
+        class Channel(object):
+            def __init__(self):
+                self._eof = False
+            def read(self):
+                return 5, b"asdfa"
+            def write(self, data):
+                return 0, len(data)
+            def eof(self):
+                return self._eof
+            def close(self):
+                return
+        class Socket(object):
+            def recv(self, num):
+                return b"asdfaf"
+            def close(self):
+                return
+        class SocketFailure(object):
+            def sendall(self, data):
+                raise SocketError
+            def recv(self, num):
+                raise SocketError
+            def close(self):
+                return
+        class SocketEmpty(object):
+            def recv(self, num):
+                return b""
+            def close(self):
+                return
+        client = SSHClient(
+            self.proxy_host, port=self.proxy_port, pkey=self.user_key)
+        server = TunnelServer(client, self.proxy_host, self.port)
+        let = spawn(server._read_forward_sock, SocketEmpty(), Channel())
+        let.start()
+        sleep(.01)
+        self.assertRaises(SocketSendError, server._read_forward_sock, Socket(), ChannelFailure())
+        self.assertRaises(SocketError, server._read_forward_sock, SocketFailure(), Channel())
+        self.assertRaises(SocketError, server._read_channel, SocketFailure(), Channel())
+        self.assertRaises(SocketRecvError, server._read_channel, Socket(), ChannelFailure())
+        channel = Channel()
+        _socket = Socket()
+        source_let = spawn(server._read_forward_sock, _socket, channel)
+        dest_let = spawn(server._read_channel, _socket, channel)
+        channel._eof = True
+        self.assertIsNone(server._wait_send_receive_lets(source_let, dest_let, channel, _socket))
+        let.kill()
+
+    def test_server_start(self):
+        _port = 1234
+        class Server(object):
+            def __init__(self):
+                self.started = False
+                self.listen_port = _port
+        server = Server()
+        forwarder = LocalForwarder()
+        let = spawn(forwarder._get_server_listen_port, None, server)
+        let.start()
+        sleep(.01)
+        server.started = True
+        sleep(.01)
+        with GTimeout(seconds=1):
+            port = forwarder.out_q.get()
+        self.assertEqual(port, _port)

@@ -451,6 +451,11 @@ class LibSSHParallelTest(unittest.TestCase):
         self.client.join(output)
         self.assertTrue(self.client.finished(output))
 
+    def test_default_finished(self):
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.user_key)
+        self.assertTrue(client.finished())
+
     def test_agent_auth(self):
         client = ParallelSSHClient(
             [self.host], port=self.port,
@@ -491,6 +496,12 @@ class LibSSHParallelTest(unittest.TestCase):
             for host_out in output:
                 stdout = list(host_out.stdout)
                 self.assertListEqual(stdout, [self.resp])
+
+    def test_join_bad_host_out(self):
+        out = HostOutput(None, None, None, None)
+        self.assertIsNone(self.client._join(out))
+        self.assertIsNone(self.client._join(None))
+        self.assertIsNone(self.client.join([None]))
 
     # def test_multiple_run_command_timeout(self):
     #     client = ParallelSSHClient([self.host], port=self.port,
