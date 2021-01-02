@@ -166,8 +166,7 @@ class TunnelServer(StreamServer):
             joinall((source, dest), raise_error=True)
         finally:
             logger.debug("Closing channel and forward socket")
-            while channel is not None and channel.close() == LIBSSH2_ERROR_EAGAIN:
-                self._client.poll(timeout=.5)
+            self._client.close_channel(channel)
             forward_sock.close()
 
     def _read_forward_sock(self, forward_sock, channel):

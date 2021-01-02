@@ -274,24 +274,36 @@ class TunnelTest(unittest.TestCase):
                 raise SocketSendError
             def eof(self):
                 return False
+            def close(self):
+                return
         class Channel(object):
+            def __init__(self):
+                self._eof = False
             def read(self):
                 return 5, b"asdfa"
             def write(self, data):
-                pass
+                return 0, len(data)
             def eof(self):
-                return False
+                return self._eof
+            def close(self):
+                return
         class Socket(object):
             def recv(self, num):
                 return b"asdfaf"
+            def close(self):
+                return
         class SocketFailure(object):
             def sendall(self, data):
                 raise SocketError
             def recv(self, num):
                 raise SocketError
+            def close(self):
+                return
         class SocketEmpty(object):
             def recv(self, num):
                 return b""
+            def close(self):
+                return
         client = SSHClient(
             self.proxy_host, port=self.proxy_port, pkey=self.user_key)
         server = TunnelServer(client, self.proxy_host, self.port)
@@ -302,6 +314,12 @@ class TunnelTest(unittest.TestCase):
         self.assertRaises(SocketError, server._read_forward_sock, SocketFailure(), Channel())
         self.assertRaises(SocketError, server._read_channel, SocketFailure(), Channel())
         self.assertRaises(SocketRecvError, server._read_channel, Socket(), ChannelFailure())
+        channel = Channel()
+        _socket = Socket()
+        source_let = spawn(server._read_forward_sock, _socket, channel)
+        dest_let = spawn(server._read_channel, _socket, channel)
+        channel._eof = True
+        self.assertIsNone(server._wait_send_receive_lets(source_let, dest_let, channel, _socket))
         let.kill()
 
     def test_server_start(self):
