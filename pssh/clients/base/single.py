@@ -304,7 +304,7 @@ class BaseSSHClient(object):
                 logger.debug(
                     "Authentication with identity file %s failed with %s, "
                     "continuing with other identities",
-                    ex, identity_file)
+                    identity_file, ex)
                 continue
             else:
                 logger.debug("Authentication succeeded with identity file %s",
