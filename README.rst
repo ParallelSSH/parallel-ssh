@@ -129,9 +129,7 @@ Why This Library
 
 Because other options are either immature, unstable, lacking in performance or all of the aforementioned.
 
-Certain other self-proclaimed *leading* Python SSH libraries leave a lot to be desired from a performance and stability point of view, as well as suffering from a lack of maintenance with hundreds of open issues, unresolved pull requests and inherent design flaws.
-
-The SSH libraries ``parallel-ssh`` uses are, on the other hand, long standing mature C libraries in `libssh2 <https://libssh2.org>`_ and `libssh <https://libssh.org>`_ that have been in production use for decades and are part of some of the most widely distributed software available today - `Git` itself, `OpenSSH`, `Curl` and many others.
+The SSH libraries ``parallel-ssh`` uses are long standing mature C libraries in `libssh2 <https://libssh2.org>`_ and `libssh <https://libssh.org>`_ that have been in production use for decades and are part of some of the most widely distributed software available today - `Git` itself, `OpenSSH`, `Curl` and many others.
 
 These low level libraries are far better placed to provide the maturity, stability and performance needed from an SSH client for production use.
 
