@@ -344,7 +344,9 @@ class BaseSSHClient(object):
                 if self.password is None:
                     raise
         if self.password is None:
-            raise AuthenticationError("No remaining authentication methods")
+            msg = "No remaining authentication methods"
+            logger.error(msg)
+            raise AuthenticationError(msg)
         logger.debug("Private key auth failed, trying password")
         self._password_auth()
 

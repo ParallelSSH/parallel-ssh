@@ -199,11 +199,9 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertIsInstance(client, SSHClient)
 
     def test_no_auth(self):
-        class _SSHClient(SSHClient):
-            IDENTITIES = set()
         self.assertRaises(
             AuthenticationError,
-            _SSHClient,
+            SSHClient,
             self.host,
             port=self.port,
             num_retries=1,
