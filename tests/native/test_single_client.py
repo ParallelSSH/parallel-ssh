@@ -22,7 +22,6 @@ import tempfile
 from hashlib import sha256
 from datetime import datetime
 
-from unittest.mock import patch
 from gevent import sleep, spawn, Timeout as GTimeout
 
 from pssh.clients.native import SSHClient
@@ -172,36 +171,32 @@ class SSH2ClientTest(SSH2TestCase):
         client.session.handshake(client.sock)
         self.assertRaises(AuthenticationException, client.auth)
 
-    def test_default_identities_auth(self):
-        client = SSHClient(self.host, port=self.port,
-                           pkey=self.user_key,
-                           num_retries=1,
-                           allow_agent=False)
-        client.session.disconnect()
-        client.pkey = None
-        del client.session
-        del client.sock
-        client._connect(self.host, self.port)
-        client._init_session()
-        # Default identities auth only
-        self.assertRaises(AuthenticationException, client._identity_auth)
-        # Default auth
-        self.assertRaises(AuthenticationException, client.auth)
-
     def test_identity_auth(self):
+        class _SSHClient(SSHClient):
+            IDENTITIES = (self.user_key,)
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
                            num_retries=1,
                            allow_agent=False)
-        client.session.disconnect()
+        client.disconnect()
         client.pkey = None
         del client.session
         del client.sock
         client._connect(self.host, self.port)
         client._init_session()
-        with patch.object(client, 'IDENTITIES', (self.user_key,)):
-            # Auth should succeed
-            client.auth()
+        client.IDENTITIES = (self.user_key,)
+        # Default identities auth only should succeed
+        client._identity_auth()
+        client.disconnect()
+        client._connect(self.host, self.port)
+        client._init_session()
+        # Auth should succeed
+        self.assertIsNone(client.auth())
+        # Standard init with custom identities
+        client = _SSHClient(self.host, port=self.port,
+                            num_retries=1,
+                            allow_agent=False)
+        self.assertIsInstance(client, SSHClient)
 
     def test_agent_auth_failure(self):
         class UnknownError(Exception):
@@ -213,15 +208,15 @@ class SSH2ClientTest(SSH2TestCase):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
                            num_retries=1,
-                           allow_agent=True)
+                           allow_agent=True,
+                           identity_auth=False)
         client.session.disconnect()
         client.pkey = None
-        with patch.object(client, 'IDENTITIES', set()):
-            client._connect(self.host, self.port)
-            client._agent_auth = _agent_auth_unk
-            self.assertRaises(AuthenticationError, client.auth)
-            client._agent_auth = _agent_auth_agent_err
-            self.assertRaises(AuthenticationError, client.auth)
+        client._connect(self.host, self.port)
+        client._agent_auth = _agent_auth_unk
+        self.assertRaises(AuthenticationError, client.auth)
+        client._agent_auth = _agent_auth_agent_err
+        self.assertRaises(AuthenticationError, client.auth)
 
     def test_agent_fwd(self):
         client = SSHClient(self.host, port=self.port,

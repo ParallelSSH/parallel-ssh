@@ -75,7 +75,9 @@ class SSHTestCase(unittest.TestCase):
         cls.user = USER
         cls.client = SSHClient(cls.host, port=cls.port,
                                pkey=PKEY_FILENAME,
-                               num_retries=1)
+                               num_retries=1,
+                               identity_auth=False,
+                               )
 
     @classmethod
     def tearDownClass(cls):
