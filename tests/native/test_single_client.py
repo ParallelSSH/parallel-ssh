@@ -218,6 +218,20 @@ class SSH2ClientTest(SSH2TestCase):
         client._agent_auth = _agent_auth_agent_err
         self.assertRaises(AuthenticationError, client.auth)
 
+    def test_agent_auth_fake_success(self):
+        def _agent_auth():
+            return
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1,
+                           allow_agent=True,
+                           identity_auth=False)
+        client.session.disconnect()
+        client.pkey = None
+        client._connect(self.host, self.port)
+        client._agent_auth = _agent_auth
+        self.assertIsNone(client.auth())
+
     def test_agent_fwd(self):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
