@@ -330,7 +330,7 @@ class BaseSSHClient(object):
                 self._agent_auth()
             except (AgentAuthenticationError, AgentConnectionError, AgentGetIdentityError,
                     AgentListIdentitiesError) as ex:
-                logger.debug("Agent auth failed with %s"
+                logger.debug("Agent auth failed with %s "
                              "continuing with other authentication methods", ex)
             except Exception as ex:
                 logger.error("Agent auth failed with - %s", ex)
