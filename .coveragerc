@@ -3,21 +3,8 @@ source = pssh
 
 [report]
 omit =
-    */python?.?/*
-    */site-packages/nose/*
-    fake_server/*
-    */test*
-    eggs/*
-    pssh_local.py
-    setup.py
-    /home/travis/virtualenv/python*/lib/python*/*
     */_version.py
-    *.pyx
 exclude_lines =
     pragma: no cover
     def __repr__
-    raise AssertionError
     raise NotImplementedError
-    if __name__ == .__main__.:
-    logger.debug
-    continue
