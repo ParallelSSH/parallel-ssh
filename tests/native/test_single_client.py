@@ -15,20 +15,18 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import unittest
 import os
-import time
 import subprocess
 import shutil
 import tempfile
 from hashlib import sha256
 from datetime import datetime
 
-from gevent import socket, sleep, spawn, Timeout as GTimeout
+from unittest.mock import patch
+from gevent import sleep, spawn, Timeout as GTimeout
 
 from pssh.clients.native import SSHClient
 from ssh2.session import Session
-from ssh2.channel import Channel
 from ssh2.exceptions import SocketDisconnectError, BannerRecvError, SocketRecvError, \
     AgentConnectionError, AgentListIdentitiesError, \
     AgentAuthenticationError, AgentGetIdentityError, SFTPProtocolError
@@ -37,7 +35,6 @@ from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
     AuthenticationError
 
 from .base_ssh2_case import SSH2TestCase
-from ..embedded_server.openssh import OpenSSHServer
 
 
 class SSH2ClientTest(SSH2TestCase):
@@ -191,6 +188,21 @@ class SSH2ClientTest(SSH2TestCase):
         # Default auth
         self.assertRaises(AuthenticationException, client.auth)
 
+    def test_identity_auth(self):
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1,
+                           allow_agent=False)
+        client.session.disconnect()
+        client.pkey = None
+        del client.session
+        del client.sock
+        client._connect(self.host, self.port)
+        client._init_session()
+        with patch.object(client, 'IDENTITIES', (self.user_key,)):
+            # Auth should succeed
+            client.auth()
+
     def test_agent_auth_failure(self):
         class UnknownError(Exception):
             pass
@@ -204,11 +216,12 @@ class SSH2ClientTest(SSH2TestCase):
                            allow_agent=True)
         client.session.disconnect()
         client.pkey = None
-        client._connect(self.host, self.port)
-        client._agent_auth = _agent_auth_unk
-        self.assertRaises(AuthenticationError, client.auth)
-        client._agent_auth = _agent_auth_agent_err
-        self.assertRaises(AuthenticationError, client.auth)
+        with patch.object(client, 'IDENTITIES', set()):
+            client._connect(self.host, self.port)
+            client._agent_auth = _agent_auth_unk
+            self.assertRaises(AuthenticationError, client.auth)
+            client._agent_auth = _agent_auth_agent_err
+            self.assertRaises(AuthenticationError, client.auth)
 
     def test_agent_fwd(self):
         client = SSHClient(self.host, port=self.port,
@@ -317,6 +330,7 @@ class SSH2ClientTest(SSH2TestCase):
                 super(SSHClient, self).__init__(
                     host, port=port, num_retries=2,
                     allow_agent=True)
+                self.IDENTITIES = set()
 
             def _init_session(self):
                 self.session = Session()

@@ -237,7 +237,7 @@ class SSHClient(BaseSSHClient):
                 return
         if self.identity_auth:
             try:
-                self._identity_auth()
+                return self._identity_auth()
             except AuthenticationError:
                 if self.password is None:
                     raise
