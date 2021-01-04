@@ -88,21 +88,35 @@ class SSHClientTest(SSHTestCase):
         self.assertListEqual(expected, stderr)
         self.assertEqual(len(output), 0)
 
-    def test_default_identities_auth(self):
+    def test_identity_auth(self):
+        class _SSHClient(SSHClient):
+            IDENTITIES = (self.user_key,)
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
                            num_retries=1,
+                           timeout=1,
                            allow_agent=False)
-        client.session.disconnect()
+        client.disconnect()
         client.pkey = None
         del client.session
         del client.sock
         client._connect(self.host, self.port)
         client._init_session()
-        # Default identities auth only
-        self.assertRaises(AuthenticationException, client._identity_auth)
-        # Default auth
-        self.assertRaises(AuthenticationException, client.auth)
+        client.IDENTITIES = (self.user_key,)
+        # Default identities auth only should succeed
+        client._identity_auth()
+        client.disconnect()
+        del client.session
+        del client.sock
+        client._connect(self.host, self.port)
+        client._init_session()
+        # Auth should succeed
+        self.assertIsNone(client.auth())
+        # Standard init with custom identities
+        client = _SSHClient(self.host, port=self.port,
+                            num_retries=1,
+                            allow_agent=False)
+        self.assertIsInstance(client, SSHClient)
 
     def test_long_running_cmd(self):
         host_out = self.client.run_command('sleep 2; exit 2')

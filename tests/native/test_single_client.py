@@ -15,20 +15,17 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import unittest
 import os
-import time
 import subprocess
 import shutil
 import tempfile
 from hashlib import sha256
 from datetime import datetime
 
-from gevent import socket, sleep, spawn, Timeout as GTimeout
+from gevent import sleep, spawn, Timeout as GTimeout
 
 from pssh.clients.native import SSHClient
 from ssh2.session import Session
-from ssh2.channel import Channel
 from ssh2.exceptions import SocketDisconnectError, BannerRecvError, SocketRecvError, \
     AgentConnectionError, AgentListIdentitiesError, \
     AgentAuthenticationError, AgentGetIdentityError, SFTPProtocolError
@@ -37,7 +34,6 @@ from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
     AuthenticationError
 
 from .base_ssh2_case import SSH2TestCase
-from ..embedded_server.openssh import OpenSSHServer
 
 
 class SSH2ClientTest(SSH2TestCase):
@@ -175,21 +171,32 @@ class SSH2ClientTest(SSH2TestCase):
         client.session.handshake(client.sock)
         self.assertRaises(AuthenticationException, client.auth)
 
-    def test_default_identities_auth(self):
+    def test_identity_auth(self):
+        class _SSHClient(SSHClient):
+            IDENTITIES = (self.user_key,)
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
                            num_retries=1,
                            allow_agent=False)
-        client.session.disconnect()
+        client.disconnect()
         client.pkey = None
         del client.session
         del client.sock
         client._connect(self.host, self.port)
         client._init_session()
-        # Default identities auth only
-        self.assertRaises(AuthenticationException, client._identity_auth)
-        # Default auth
-        self.assertRaises(AuthenticationException, client.auth)
+        client.IDENTITIES = (self.user_key,)
+        # Default identities auth only should succeed
+        client._identity_auth()
+        client.disconnect()
+        client._connect(self.host, self.port)
+        client._init_session()
+        # Auth should succeed
+        self.assertIsNone(client.auth())
+        # Standard init with custom identities
+        client = _SSHClient(self.host, port=self.port,
+                            num_retries=1,
+                            allow_agent=False)
+        self.assertIsInstance(client, SSHClient)
 
     def test_agent_auth_failure(self):
         class UnknownError(Exception):
@@ -201,7 +208,8 @@ class SSH2ClientTest(SSH2TestCase):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
                            num_retries=1,
-                           allow_agent=True)
+                           allow_agent=True,
+                           identity_auth=False)
         client.session.disconnect()
         client.pkey = None
         client._connect(self.host, self.port)
@@ -209,6 +217,20 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertRaises(AuthenticationError, client.auth)
         client._agent_auth = _agent_auth_agent_err
         self.assertRaises(AuthenticationError, client.auth)
+
+    def test_agent_auth_fake_success(self):
+        def _agent_auth():
+            return
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1,
+                           allow_agent=True,
+                           identity_auth=False)
+        client.session.disconnect()
+        client.pkey = None
+        client._connect(self.host, self.port)
+        client._agent_auth = _agent_auth
+        self.assertIsNone(client.auth())
 
     def test_agent_fwd(self):
         client = SSHClient(self.host, port=self.port,
@@ -317,6 +339,7 @@ class SSH2ClientTest(SSH2TestCase):
                 super(SSHClient, self).__init__(
                     host, port=port, num_retries=2,
                     allow_agent=True)
+                self.IDENTITIES = set()
 
             def _init_session(self):
                 self.session = Session()

@@ -24,8 +24,7 @@ from gevent import sleep, spawn, get_hub, Timeout as GTimeout
 from gevent.select import POLLIN, POLLOUT
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
-    Timeout as SSH2Timeout, AgentConnectionError, AgentListIdentitiesError, \
-    AgentAuthenticationError, AgentGetIdentityError
+    Timeout as SSH2Timeout
 from ssh2.session import Session, LIBSSH2_SESSION_BLOCK_INBOUND, LIBSSH2_SESSION_BLOCK_OUTBOUND
 from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR, LIBSSH2_SFTP_S_IRGRP, \
@@ -217,32 +216,6 @@ class SSHClient(BaseSSHClient):
 
     def _agent_auth(self):
         self.session.agent_auth(self.user)
-
-    def auth(self):
-        if self.pkey is not None:
-            logger.debug(
-                "Proceeding with private key file authentication")
-            return self._pkey_auth(self.pkey, password=self.password)
-        if self.allow_agent:
-            try:
-                self._agent_auth()
-            except (AgentAuthenticationError, AgentConnectionError, AgentGetIdentityError,
-                    AgentListIdentitiesError) as ex:
-                logger.debug("Agent auth failed with %s"
-                             "continuing with other authentication methods", ex)
-            except Exception as ex:
-                logger.error("Unknown error during agent authentication - %s", ex)
-            else:
-                logger.debug("Authentication with SSH Agent succeeded")
-                return
-        if self.identity_auth:
-            try:
-                self._identity_auth()
-            except AuthenticationError:
-                if self.password is None:
-                    raise
-        logger.debug("Private key auth failed, trying password")
-        self._password_auth()
 
     def _pkey_auth(self, pkey_file, password=None):
         self.session.userauth_publickey_fromfile(

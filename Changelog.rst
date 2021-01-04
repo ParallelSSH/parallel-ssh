@@ -1,6 +1,14 @@
 Change Log
 ============
 
+2.5.1
++++++
+
+Fixes
+-----
+
+* Successful identity file authentication would raise error - #264.
+
 2.5.0
 +++++
 
