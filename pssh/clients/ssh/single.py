@@ -120,6 +120,9 @@ class SSHClient(BaseSSHClient):
         if self.sock is not None and not self.sock.closed:
             self.sock.close()
 
+    def _agent_auth(self):
+        self.session.userauth_agent(self.user)
+
     def _keepalive(self):
         pass
 
