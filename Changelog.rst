@@ -9,6 +9,7 @@ Fixes
 
 * Agent authentication would not work for the libssh clients under ``pssh.clients.ssh`` - #267.
 * Password authentication would be attempted if all other methods failed even when no password was provided.
+* Gevent minimum version was too low - #269.
 
 2.5.1
 +++++
