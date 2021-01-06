@@ -198,6 +198,17 @@ class SSH2ClientTest(SSH2TestCase):
                             allow_agent=False)
         self.assertIsInstance(client, SSHClient)
 
+    def test_no_auth(self):
+        self.assertRaises(
+            AuthenticationError,
+            SSHClient,
+            self.host,
+            port=self.port,
+            num_retries=1,
+            allow_agent=False,
+            identity_auth=False,
+        )
+
     def test_agent_auth_failure(self):
         class UnknownError(Exception):
             pass

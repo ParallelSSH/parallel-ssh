@@ -38,7 +38,7 @@ setup(name='parallel-ssh',
                         '*.tests', '*.tests.*')
       ),
       install_requires=[
-          'gevent>=1.1', 'ssh2-python>=0.22.0', 'ssh-python>=0.9.0'],
+          'gevent>=1.3.0', 'ssh2-python>=0.22.0', 'ssh-python>=0.9.0'],
       classifiers=[
           'Development Status :: 5 - Production/Stable',
           'License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)',

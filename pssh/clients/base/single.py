@@ -330,10 +330,10 @@ class BaseSSHClient(object):
                 self._agent_auth()
             except (AgentAuthenticationError, AgentConnectionError, AgentGetIdentityError,
                     AgentListIdentitiesError) as ex:
-                logger.debug("Agent auth failed with %s"
-                             "continuing with other authentication methods", ex)
+                logger.debug("Agent auth failed with %s "
+                             "continuing with other authentication methods", repr(ex))
             except Exception as ex:
-                logger.error("Agent auth failed with - %s", ex)
+                logger.error("Agent auth failed with - %s", repr(ex))
             else:
                 logger.debug("Authentication with SSH Agent succeeded")
                 return
@@ -343,8 +343,15 @@ class BaseSSHClient(object):
             except AuthenticationError:
                 if self.password is None:
                     raise
+        if self.password is None:
+            msg = "No remaining authentication methods"
+            logger.error(msg)
+            raise AuthenticationError(msg)
         logger.debug("Private key auth failed, trying password")
         self._password_auth()
+
+    def _agent_auth(self):
+        raise NotImplementedError
 
     def _password_auth(self):
         raise NotImplementedError

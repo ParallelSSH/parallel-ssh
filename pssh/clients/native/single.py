@@ -221,7 +221,7 @@ class SSHClient(BaseSSHClient):
         self.session.userauth_publickey_fromfile(
             self.user,
             pkey_file,
-            passphrase=password if password is not None else '')
+            passphrase=password if password is not None else b'')
 
     def _password_auth(self):
         try:

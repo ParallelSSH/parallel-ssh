@@ -22,6 +22,7 @@ from datetime import datetime
 
 from gevent import sleep, Timeout as GTimeout, spawn
 from ssh.session import Session
+from ssh.exceptions import AuthenticationDenied
 from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
     SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout, \
     AuthenticationError
@@ -237,6 +238,52 @@ class SSHClientTest(SSHTestCase):
 
     def test_invalid_mkdir(self):
         self.assertRaises(OSError, self.client._make_local_dir, '/my_new_dir')
+
+    def test_no_auth(self):
+        self.assertRaises(
+            AuthenticationError,
+            SSHClient,
+            self.host,
+            port=self.port,
+            num_retries=1,
+            allow_agent=False,
+            identity_auth=False,
+        )
+
+    def test_agent_auth_failure(self):
+        class UnknownError(Exception):
+            pass
+        def _agent_auth_unk():
+            raise UnknownError
+        def _agent_auth_agent_err():
+            raise AuthenticationDenied
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1,
+                           allow_agent=True,
+                           identity_auth=False)
+        client.session.disconnect()
+        client.pkey = None
+        client._connect(self.host, self.port)
+        self.assertRaises(AuthenticationDenied, client._agent_auth)
+        client._agent_auth = _agent_auth_unk
+        self.assertRaises(AuthenticationError, client.auth)
+        client._agent_auth = _agent_auth_agent_err
+        self.assertRaises(AuthenticationError, client.auth)
+
+    def test_agent_auth_fake_success(self):
+        def _agent_auth():
+            return
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1,
+                           allow_agent=True,
+                           identity_auth=False)
+        client.session.disconnect()
+        client.pkey = None
+        client._connect(self.host, self.port)
+        client._agent_auth = _agent_auth
+        self.assertIsNone(client.auth())
 
     # TODO:
     # * disconnect exc
