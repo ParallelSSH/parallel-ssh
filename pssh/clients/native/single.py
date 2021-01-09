@@ -719,6 +719,7 @@ class SSHClient(BaseSSHClient):
             total_written += bytes_written
             if rc == LIBSSH2_ERROR_EAGAIN:
                 self.poll(timeout=timeout)
+            sleep()
 
     def _eagain_write(self, write_func, data, timeout=None):
         return self.eagain_write(write_func, data, timeout=timeout)

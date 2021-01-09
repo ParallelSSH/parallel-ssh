@@ -645,3 +645,4 @@ class BaseSSHClient(object):
         poller = poll()
         poller.register(self.sock, eventmask=events)
         poller.poll(timeout=timeout)
+        sleep()
