@@ -538,6 +538,9 @@ class BaseSSHClient(object):
                 ret = func(*args, **kwargs)
             return ret
 
+    def _eagain_write(self, write_func, data, timeout=None):
+        raise NotImplementedError
+
     def _eagain(self, func, *args, **kwargs):
         raise NotImplementedError
 
