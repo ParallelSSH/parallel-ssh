@@ -1,6 +1,15 @@
 Change Log
 ============
 
+2.5.3
++++++
+
+Fixes
+-----
+
+* Writing large files via ``scp_send`` or ``sftp_put`` could timeout unexpectedly on opening remote file.
+
+
 2.5.2
 +++++
 
