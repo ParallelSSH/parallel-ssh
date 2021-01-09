@@ -1,6 +1,15 @@
 Change Log
 ============
 
+2.5.3
++++++
+
+Fixes
+-----
+
+* Sending files via ``scp_send`` or ``sftp_put`` with timeout set could timeout unexpectedly on opening remote file - #271.
+
+
 2.5.2
 +++++
 
