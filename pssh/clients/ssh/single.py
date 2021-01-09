@@ -304,7 +304,7 @@ class SSHClient(BaseSSHClient):
         self._eagain(channel.close, timeout=self.timeout)
 
     def poll(self, timeout=None):
-        """ssh-python based co-operative gevent select on session socket."""
+        """ssh-python based co-operative gevent poll on session socket."""
         timeout = self.timeout if timeout is None else timeout
         directions = self.session.get_poll_flags()
         if directions == 0:
@@ -318,19 +318,7 @@ class SSHClient(BaseSSHClient):
 
     def _eagain(self, func, *args, **kwargs):
         """Run function given and handle EAGAIN for an ssh-python session"""
-        timeout = kwargs.pop('timeout', self.timeout)
-        with GTimeout(seconds=timeout, exception=Timeout):
-            ret = func(*args, **kwargs)
-            while ret == SSH_AGAIN:
-                self.poll(timeout=timeout)
-                ret = func(*args, **kwargs)
-            return ret
+        return self._eagain_errcode(func, SSH_AGAIN, *args, **kwargs)
 
     def _eagain_write(self, write_func, data, timeout=None):
-        data_len = len(data)
-        total_written = 0
-        while total_written < data_len:
-            rc, bytes_written = write_func(data[total_written:])
-            total_written += bytes_written
-            if rc == SSH_AGAIN:
-                self.poll(timeout=timeout)
+        return self._eagain_write_errcode(write_func, data, SSH_AGAIN, timeout=timeout)

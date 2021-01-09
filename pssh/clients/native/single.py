@@ -20,7 +20,7 @@ import os
 from collections import deque
 from warnings import warn
 
-from gevent import sleep, spawn, get_hub, Timeout as GTimeout
+from gevent import sleep, spawn, get_hub
 from gevent.select import POLLIN, POLLOUT
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
@@ -314,13 +314,7 @@ class SSHClient(BaseSSHClient):
         self._eagain(channel.close)
 
     def _eagain(self, func, *args, **kwargs):
-        timeout = kwargs.pop('timeout', self.timeout)
-        with GTimeout(seconds=timeout, exception=Timeout):
-            ret = func(*args, **kwargs)
-            while ret == LIBSSH2_ERROR_EAGAIN:
-                self.poll()
-                ret = func(*args, **kwargs)
-            return ret
+        return self._eagain_errcode(func, LIBSSH2_ERROR_EAGAIN, *args, **kwargs)
 
     def _make_sftp(self):
         """Make SFTP client from open transport"""
@@ -707,19 +701,12 @@ class SSHClient(BaseSSHClient):
             events |= POLLOUT
         self._poll_socket(events, timeout=timeout)
 
-    def eagain_write(self, write_func, data, timeout=None):
+    def _eagain_write(self, write_func, data, timeout=None):
         """Write data with given write_func for an ssh2-python session while
         handling EAGAIN and resuming writes from last written byte on each call to
         write_func.
         """
-        data_len = len(data)
-        total_written = 0
-        while total_written < data_len:
-            rc, bytes_written = write_func(data[total_written:])
-            total_written += bytes_written
-            if rc == LIBSSH2_ERROR_EAGAIN:
-                self.poll(timeout=timeout)
-            sleep()
+        return self._eagain_write_errcode(write_func, data, LIBSSH2_ERROR_EAGAIN, timeout=timeout)
 
-    def _eagain_write(self, write_func, data, timeout=None):
-        return self.eagain_write(write_func, data, timeout=timeout)
+    def eagain_write(self, write_func, data, timeout=None):
+        return self._eagain_write(write_func, data, timeout=timeout)

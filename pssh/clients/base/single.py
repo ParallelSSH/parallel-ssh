@@ -519,8 +519,24 @@ class BaseSSHClient(object):
         host_out = self._make_host_output(channel, encoding, _timeout)
         return host_out
 
-    def _eagain_write(self, write_func, data, timeout=None):
-        raise NotImplementedError
+    def _eagain_write_errcode(self, write_func, data, eagain, timeout=None):
+        data_len = len(data)
+        total_written = 0
+        while total_written < data_len:
+            rc, bytes_written = write_func(data[total_written:])
+            total_written += bytes_written
+            if rc == eagain:
+                self.poll(timeout=timeout)
+            sleep()
+
+    def _eagain_errcode(self, func, eagain, *args, **kwargs):
+        timeout = kwargs.pop('timeout', self.timeout)
+        with GTimeout(seconds=timeout, exception=Timeout):
+            ret = func(*args, **kwargs)
+            while ret == eagain:
+                self.poll()
+                ret = func(*args, **kwargs)
+            return ret
 
     def _eagain(self, func, *args, **kwargs):
         raise NotImplementedError
@@ -645,4 +661,3 @@ class BaseSSHClient(object):
         poller = poll()
         poller.register(self.sock, eventmask=events)
         poller.poll(timeout=timeout)
-        sleep()
