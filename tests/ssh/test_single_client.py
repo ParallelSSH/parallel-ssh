@@ -308,7 +308,6 @@ class SSHClientTest(SSHTestCase):
         client.session.disconnect()
         client.pkey = None
         client._connect(self.host, self.port)
-        self.assertRaises(AuthenticationDenied, client._agent_auth)
         client._agent_auth = _agent_auth_unk
         self.assertRaises(AuthenticationError, client.auth)
         client._agent_auth = _agent_auth_agent_err

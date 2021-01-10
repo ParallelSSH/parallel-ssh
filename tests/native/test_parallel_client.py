@@ -352,7 +352,9 @@ class ParallelSSHClientTest(unittest.TestCase):
         expected_num_tries = 2
         client = ParallelSSHClient([self.host], port=listen_port,
                                    pkey=self.user_key,
-                                   num_retries=expected_num_tries)
+                                   num_retries=expected_num_tries,
+                                   retry_delay=.1,
+                                   )
         self.assertRaises(ConnectionErrorException, client.run_command, 'blah')
         try:
             client.run_command('blah')
