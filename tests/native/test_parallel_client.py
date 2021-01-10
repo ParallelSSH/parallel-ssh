@@ -1386,7 +1386,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    pkey=self.user_key)
         output = client.run_command(cmd, host_args=host_args)
         try:
-            client.join(output, timeout=.15)
+            client.join(output, timeout=.2)
         except Timeout as ex:
             finished_output = ex.args[2]
             unfinished_output = ex.args[3]
@@ -1516,17 +1516,13 @@ class ParallelSSHClientTest(unittest.TestCase):
             os.unlink(_file)
 
     def test_file_read_no_timeout(self):
-        try:
-            xrange
-        except NameError:
-            xrange = range
         dir_name = os.path.dirname(__file__)
         _file = os.sep.join((dir_name, 'file_to_read'))
-        contents = [b'a line\n' for _ in xrange(10000)]
+        contents = [b'a line\n' for _ in range(1000)]
         with open(_file, 'wb') as fh:
             fh.writelines(contents)
-        output = self.client.run_command('cat %s' % (_file,), timeout=10)
         try:
+            output = self.client.run_command('cat %s' % (_file,), timeout=10)
             _out = list(output[0].stdout)
         finally:
             os.unlink(_file)

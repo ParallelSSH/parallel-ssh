@@ -406,13 +406,9 @@ class LibSSHParallelTest(unittest.TestCase):
             os.unlink(_file)
 
     def test_file_read_no_timeout(self):
-        try:
-            xrange
-        except NameError:
-            xrange = range
         dir_name = os.path.dirname(__file__)
         _file = os.sep.join((dir_name, 'file_to_read'))
-        contents = [b'a line\n' for _ in xrange(10000)]
+        contents = [b'a line\n' for _ in range(1000)]
         with open(_file, 'wb') as fh:
             fh.writelines(contents)
         try:
