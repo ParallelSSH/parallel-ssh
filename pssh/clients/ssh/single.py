@@ -168,8 +168,6 @@ class SSHClient(BaseSSHClient):
         return super(SSHClient, self).auth()
 
     def _password_auth(self):
-        if not self.password:
-            raise AuthenticationError("All authentication methods failed")
         try:
             self.session.userauth_password(self.password)
         except Exception as ex:
