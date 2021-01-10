@@ -187,6 +187,7 @@ class TunnelTest(unittest.TestCase):
                                        proxy_pkey=self.user_key,
                                        proxy_port=self.proxy_port,
                                        num_retries=1,
+                                       retry_delay=.1,
                                        )
             output = client.run_command(self.cmd)
             client.join(output)

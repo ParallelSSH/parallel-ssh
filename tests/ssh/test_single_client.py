@@ -120,15 +120,15 @@ class SSHClientTest(SSHTestCase):
         self.assertIsInstance(client, SSHClient)
 
     def test_long_running_cmd(self):
-        host_out = self.client.run_command('sleep 2; exit 2')
+        host_out = self.client.run_command('sleep .2; exit 2')
         self.assertRaises(ValueError, self.client.wait_finished, host_out.channel)
         self.client.wait_finished(host_out)
         exit_code = host_out.exit_code
         self.assertEqual(exit_code, 2)
 
     def test_wait_finished_timeout(self):
-        host_out = self.client.run_command('sleep 2')
-        timeout = 1
+        host_out = self.client.run_command('sleep .2')
+        timeout = .1
         self.assertFalse(self.client.finished(host_out.channel))
         start = datetime.now()
         self.assertRaises(Timeout, self.client.wait_finished, host_out, timeout=timeout)
@@ -187,7 +187,7 @@ class SSHClientTest(SSHTestCase):
     def test_interactive_shell_exit_code(self):
         with self.client.open_shell() as shell:
             shell.run(self.cmd)
-            shell.run('sleep 1')
+            shell.run('sleep .1')
             shell.run(self.cmd)
             shell.run('exit 1')
         stdout = list(shell.output.stdout)
@@ -225,7 +225,8 @@ class SSHClientTest(SSHTestCase):
 
     def test_connection_timeout(self):
         cmd = spawn(SSHClient, 'fakehost.com', port=12345,
-                    num_retries=2, timeout=1, _auth_thread_pool=False)
+                    retry_delay=.1,
+                    num_retries=2, timeout=.2, _auth_thread_pool=False)
         # Should fail within greenlet timeout, otherwise greenlet will
         # raise timeout which will fail the test
         self.assertRaises(ConnectionErrorException, cmd.get, timeout=2)
@@ -242,8 +243,8 @@ class SSHClientTest(SSHTestCase):
 
     def test_connection_timeout(self):
         cmd = spawn(SSHClient, 'fakehost.com', port=12345,
-                    retry_delay=1,
-                    num_retries=2, timeout=1, _auth_thread_pool=False)
+                    retry_delay=.1,
+                    num_retries=2, timeout=.2, _auth_thread_pool=False)
         # Should fail within greenlet timeout, otherwise greenlet will
         # raise timeout which will fail the test
         self.assertRaises(ConnectionErrorException, cmd.get, timeout=5)
@@ -334,7 +335,9 @@ class SSHClientTest(SSHTestCase):
             raise DiscError
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
-                           num_retries=1)
+                           num_retries=1,
+                           retry_delay=.1,
+                           )
         client._disconnect_eagain = _disc
         client._connect_init_session_retry(0)
         client.disconnect()

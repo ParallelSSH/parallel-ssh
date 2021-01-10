@@ -145,7 +145,7 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertListEqual(stdout, ['a line'])
 
     def test_long_running_cmd(self):
-        host_out = self.client.run_command('sleep 2; exit 2')
+        host_out = self.client.run_command('sleep .2; exit 2')
         self.assertRaises(ValueError, self.client.wait_finished, host_out.channel)
         self.client.wait_finished(host_out)
         exit_code = host_out.exit_code
@@ -387,8 +387,8 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertIsNone(self.client.wait_finished(host_out))
 
     def test_wait_finished_timeout(self):
-        host_out = self.client.run_command('sleep 2')
-        timeout = 1
+        host_out = self.client.run_command('sleep .2')
+        timeout = .1
         self.assertFalse(self.client.finished(host_out.channel))
         start = datetime.now()
         self.assertRaises(Timeout, self.client.wait_finished, host_out, timeout=timeout)
@@ -915,9 +915,12 @@ class SSH2ClientTest(SSH2TestCase):
             raise DiscError
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
-                           num_retries=1)
+                           retry_delay=.1,
+                           num_retries=1,
+                           timeout=1,
+                           )
         client._disconnect_eagain = _disc
-        client._connect_init_session_retry(0)
+        client._connect_init_session_retry(1)
         client.disconnect()
 
 
