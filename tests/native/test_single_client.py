@@ -106,9 +106,10 @@ class SSH2ClientTest(SSH2TestCase):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
                            num_retries=1,
-                           timeout=1)
-        def _session(timeout=2):
-            sleep(2)
+                           retry_delay=.1,
+                           timeout=.1)
+        def _session(timeout=None):
+            sleep(.2)
         client.open_session = _session
         self.assertRaises(GTimeout, client.run_command, self.cmd)
 
@@ -892,7 +893,7 @@ class SSH2ClientTest(SSH2TestCase):
     def test_interactive_shell_exit_code(self):
         with self.client.open_shell() as shell:
             shell.run(self.cmd)
-            shell.run('sleep 1')
+            shell.run('sleep .1')
             shell.run(self.cmd)
             shell.run('exit 1')
         stdout = list(shell.stdout)

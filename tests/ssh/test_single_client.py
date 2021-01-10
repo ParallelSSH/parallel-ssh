@@ -235,9 +235,9 @@ class SSHClientTest(SSHTestCase):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
                            num_retries=2,
-                           timeout=1)
-        def _session(timeout=2):
-            sleep(2)
+                           timeout=.1)
+        def _session(timeout=None):
+            sleep(.2)
         client.open_session = _session
         self.assertRaises(GTimeout, client.run_command, self.cmd)
 
