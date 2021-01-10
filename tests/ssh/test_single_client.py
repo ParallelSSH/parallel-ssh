@@ -194,11 +194,41 @@ class SSHClientTest(SSHTestCase):
         self.assertListEqual(stdout, [self.resp, self.resp])
         self.assertEqual(shell.output.exit_code, 1)
 
+    def test_identity_auth_failure(self):
+        self.assertRaises(AuthenticationException,
+                          SSHClient, self.host, port=self.port, num_retries=1,
+                          allow_agent=False)
+
     def test_password_auth_failure(self):
         self.assertRaises(AuthenticationError,
                           SSHClient, self.host, port=self.port, num_retries=1,
                           allow_agent=False,
                           password='blah blah blah')
+
+    def test_retry_failure(self):
+        self.assertRaises(ConnectionErrorException,
+                          SSHClient, self.host, port=12345,
+                          timeout=1,
+                          retry_delay=.1,
+                          num_retries=2, _auth_thread_pool=False)
+
+    def test_auth_retry_failure(self):
+        self.assertRaises(AuthenticationException,
+                          SSHClient, self.host, port=self.port,
+                          user=self.user,
+                          password='fake',
+                          timeout=1,
+                          retry_delay=.1,
+                          num_retries=2,
+                          allow_agent=False,
+                          )
+
+    def test_connection_timeout(self):
+        cmd = spawn(SSHClient, 'fakehost.com', port=12345,
+                    num_retries=2, timeout=1, _auth_thread_pool=False)
+        # Should fail within greenlet timeout, otherwise greenlet will
+        # raise timeout which will fail the test
+        self.assertRaises(ConnectionErrorException, cmd.get, timeout=2)
 
     def test_open_session_timeout(self):
         client = SSHClient(self.host, port=self.port,
@@ -235,6 +265,19 @@ class SSHClientTest(SSHTestCase):
                            num_retries=1)
         client._open_session = _session
         self.assertRaises(SessionError, client.open_session)
+
+    def test_session_connect_exc(self):
+        class Error(Exception):
+            pass
+        def _con():
+            raise Error
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=2,
+                           retry_delay=.2,
+                           )
+        client._session_connect = _con
+        self.assertRaises(Error, client._init_session)
 
     def test_invalid_mkdir(self):
         self.assertRaises(OSError, self.client._make_local_dir, '/my_new_dir')

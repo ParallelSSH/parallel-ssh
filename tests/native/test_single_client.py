@@ -299,7 +299,9 @@ class SSH2ClientTest(SSH2TestCase):
     def test_retry_failure(self):
         self.assertRaises(ConnectionErrorException,
                           SSHClient, self.host, port=12345,
-                          num_retries=2, _auth_thread_pool=False)
+                          num_retries=2, _auth_thread_pool=False,
+                          retry_delay=.1,
+                          )
 
     def test_auth_retry_failure(self):
         self.assertRaises(AuthenticationException,
@@ -307,6 +309,7 @@ class SSH2ClientTest(SSH2TestCase):
                           user=self.user,
                           password='fake',
                           num_retries=3,
+                          retry_delay=.1,
                           allow_agent=False)
 
     def test_connection_timeout(self):

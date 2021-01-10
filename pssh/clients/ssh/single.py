@@ -144,7 +144,7 @@ class SSHClient(BaseSSHClient):
         self.session.set_socket(self.sock)
         logger.debug("Session started, connecting with existing socket")
         try:
-            self.session.connect()
+            self._session_connect()
         except Exception as ex:
             if retries < self.num_retries:
                 return self._connect_init_session_retry(retries=retries+1)
@@ -153,6 +153,9 @@ class SSHClient(BaseSSHClient):
             ex.host = self.host
             ex.port = self.port
             raise ex
+
+    def _session_connect(self):
+        self.session.connect()
 
     def auth(self):
         if self.gssapi_auth or (self.gssapi_server_identity or self.gssapi_client_identity):
