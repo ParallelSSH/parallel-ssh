@@ -1425,10 +1425,10 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_partial_read_timeout_close_cmd(self):
         self.assertTrue(self.client.finished())
         output = self.client.run_command('while true; do echo a line; sleep .1; done',
-                                         use_pty=True, timeout=.1)
+                                         use_pty=True, timeout=.15)
         stdout = []
         try:
-            with GTimeout(seconds=.2):
+            with GTimeout(seconds=.25):
                 for line in output[0].stdout:
                     stdout.append(line)
         except Timeout:

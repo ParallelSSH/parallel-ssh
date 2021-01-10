@@ -388,7 +388,7 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertIsNone(self.client.wait_finished(host_out))
 
     def test_wait_finished_timeout(self):
-        host_out = self.client.run_command('sleep .2')
+        host_out = self.client.run_command('sleep .25')
         timeout = .1
         self.assertFalse(self.client.finished(host_out.channel))
         start = datetime.now()
