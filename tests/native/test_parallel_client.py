@@ -1588,12 +1588,14 @@ class ParallelSSHClientTest(unittest.TestCase):
                 pass
 
     def test_scp_send_large_files_timeout(self):
-        hosts = ['127.0.0.1%s' % (i,) for i in range(1, 5)]
+        hosts = ['127.0.0.1%s' % (i,) for i in range(1, 10)]
         servers = [OpenSSHServer(host, port=self.port) for host in hosts]
         for server in servers:
             server.start_server()
         client = ParallelSSHClient(
-            hosts, port=self.port, pkey=self.user_key, num_retries=1, timeout=1)
+            hosts, port=self.port, pkey=self.user_key, num_retries=1, timeout=1,
+            pool_size=len(hosts),
+        )
         local_filename = 'test_file'
         remote_filepath = 'file_copy'
         copy_args = [{
