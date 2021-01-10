@@ -388,13 +388,13 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertIsNone(self.client.wait_finished(host_out))
 
     def test_wait_finished_timeout(self):
-        host_out = self.client.run_command('sleep .25')
+        host_out = self.client.run_command('sleep .2')
         timeout = .1
         self.assertFalse(self.client.finished(host_out.channel))
         start = datetime.now()
         self.assertRaises(Timeout, self.client.wait_finished, host_out, timeout=timeout)
         dt = datetime.now() - start
-        self.assertTrue(timeout*1.05 > dt.total_seconds() > timeout)
+        self.assertTrue(timeout*1.1 > dt.total_seconds() > timeout)
         self.client.wait_finished(host_out)
         self.assertTrue(self.client.finished(host_out.channel))
 
