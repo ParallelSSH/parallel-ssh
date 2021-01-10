@@ -1568,6 +1568,7 @@ class ParallelSSHClientTest(unittest.TestCase):
             joinall(cmds, raise_error=True)
             self.assertTrue(os.path.isdir(remote_test_dir_abspath))
             self.assertTrue(os.path.isfile(remote_file_abspath))
+            sleep(.1)
             remote_file_data = open(remote_file_abspath, 'r').read()
             self.assertEqual(remote_file_data.strip(), test_file_data)
         except Exception:
@@ -1984,11 +1985,4 @@ class ParallelSSHClientTest(unittest.TestCase):
                 self.assertListEqual(stdout, [self.resp])
 
     # TODO:
-    # * forward agent enabled
     # * password auth
-    # * sftp init error
-    # * copy dir recurse off
-    # * sftp put error
-    # * scp recv file not exist
-    # * scp send error opening remote file
-    # * sftp get error reading remote file

@@ -162,12 +162,18 @@ class SSHClient(BaseSSHClient):
         proxy_local_port = FORWARDER.out_q.get()
         return proxy_local_port
 
+    def _disconnect_eagain(self):
+        self._eagain(self.session.disconnect)
+
     def disconnect(self):
-        """Disconnect session, close socket if needed."""
+        """Attempt to disconnect session.
+
+        Any errors on calling disconnect are suppressed by this function.
+        """
         self._keepalive_greenlet = None
         if self.session is not None:
             try:
-                self._eagain(self.session.disconnect)
+                self._disconnect_eagain()
             except Exception:
                 pass
             self.session = None
@@ -316,10 +322,13 @@ class SSHClient(BaseSSHClient):
     def _eagain(self, func, *args, **kwargs):
         return self._eagain_errcode(func, LIBSSH2_ERROR_EAGAIN, *args, **kwargs)
 
+    def _make_sftp_eagain(self):
+        return self._eagain(self.session.sftp_init)
+
     def _make_sftp(self):
         """Make SFTP client from open transport"""
         try:
-            sftp = self._eagain(self.session.sftp_init)
+            sftp = self._make_sftp_eagain()
         except Exception as ex:
             raise SFTPError(ex)
         return sftp
@@ -486,6 +495,28 @@ class SSHClient(BaseSSHClient):
         logger.info("Copied local file %s from remote destination %s:%s",
                     local_file, self.host, remote_file)
 
+    def _scp_recv_recursive(self, remote_file, local_file, sftp, encoding='utf-8'):
+        try:
+            self._eagain(sftp.stat, remote_file)
+        except (SFTPHandleError, SFTPProtocolError):
+            msg = "Remote file or directory %s does not exist"
+            logger.error(msg, remote_file)
+            raise SCPError(msg, remote_file)
+        try:
+            dir_h = self._sftp_openfh(sftp.opendir, remote_file)
+        except SFTPError:
+            # remote_file is not a dir, scp file
+            self.scp_recv(remote_file, local_file, encoding=encoding)
+        else:
+            try:
+                os.makedirs(local_file)
+            except OSError:
+                pass
+            file_list = self._sftp_readdir(dir_h)
+            return self._scp_recv_dir(file_list, remote_file,
+                                      local_file, sftp,
+                                      encoding=encoding)
+
     def scp_recv(self, remote_file, local_file, recurse=False, sftp=None,
                  encoding='utf-8'):
         """Copy remote file to local host via SCP.
@@ -505,33 +536,13 @@ class SSHClient(BaseSSHClient):
           enabled.
         :type encoding: str
 
-        :raises: :py:class:`pssh.exceptions.SCPError` when a directory is
-          supplied to ``local_file`` and ``recurse`` is not set.
         :raises: :py:class:`pssh.exceptions.SCPError` on errors copying file.
         :raises: :py:class:`IOError` on local file IO errors.
         :raises: :py:class:`OSError` on local OS errors like permission denied.
         """
         if recurse:
             sftp = self._make_sftp() if sftp is None else sftp
-            try:
-                self._eagain(sftp.stat, remote_file)
-            except (SFTPHandleError, SFTPProtocolError):
-                msg = "Remote file or directory %s does not exist"
-                logger.error(msg, remote_file)
-                raise SCPError(msg, remote_file)
-            try:
-                dir_h = self._sftp_openfh(sftp.opendir, remote_file)
-            except SFTPError:
-                pass
-            else:
-                try:
-                    os.makedirs(local_file)
-                except OSError:
-                    pass
-                file_list = self._sftp_readdir(dir_h)
-                return self._scp_recv_dir(file_list, remote_file,
-                                          local_file, sftp,
-                                          encoding=encoding)
+            return self._scp_recv_recursive(remote_file, local_file, sftp, encoding=encoding)
         elif local_file.endswith('/'):
             remote_filename = remote_file.rsplit('/')[-1]
             local_file += remote_filename
@@ -561,11 +572,6 @@ class SSHClient(BaseSSHClient):
                     continue
                 total += size
                 local_fh.write(data)
-            if total != fileinfo.st_size:
-                msg = "Error copying data from remote file %s on host %s. " \
-                      "Copied %s out of %s total bytes"
-                raise SCPError(msg, remote_file, self.host, total,
-                               fileinfo.st_size)
         finally:
             local_fh.close()
             file_chan.close()
