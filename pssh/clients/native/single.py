@@ -21,7 +21,6 @@ from collections import deque
 from warnings import warn
 
 from gevent import sleep, spawn, get_hub
-from gevent.select import POLLIN, POLLOUT
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
     Timeout as SSH2Timeout
@@ -696,16 +695,12 @@ class SSHClient(BaseSSHClient):
         Blocks current greenlet only if socket has pending read or write operations
         in the appropriate direction.
         """
-        timeout = self.timeout if timeout is None else timeout
-        directions = self.session.block_directions()
-        if directions == 0:
-            return
-        events = 0
-        if directions & LIBSSH2_SESSION_BLOCK_INBOUND:
-            events = POLLIN
-        if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:
-            events |= POLLOUT
-        self._poll_socket(events, timeout=timeout)
+        self._poll_errcodes(
+            self.session.block_directions,
+            LIBSSH2_SESSION_BLOCK_INBOUND,
+            LIBSSH2_SESSION_BLOCK_OUTBOUND,
+            timeout=timeout,
+        )
 
     def _eagain_write(self, write_func, data, timeout=None):
         """Write data with given write_func for an ssh2-python session while

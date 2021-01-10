@@ -916,6 +916,9 @@ class SSH2ClientTest(SSH2TestCase):
         client._disconnect_eagain = _disc
         client.disconnect()
 
+    def test_poll_inbound(self):
+        pass
+
 
     # TODO
     # * read output callback

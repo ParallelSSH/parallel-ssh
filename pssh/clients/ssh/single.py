@@ -18,7 +18,6 @@
 import logging
 
 from gevent import sleep, spawn, Timeout as GTimeout, joinall
-from gevent.select import POLLIN, POLLOUT
 from ssh import options
 from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
 from ssh.key import import_privkey_file, import_cert_file, copy_cert_to_privkey
@@ -305,16 +304,12 @@ class SSHClient(BaseSSHClient):
 
     def poll(self, timeout=None):
         """ssh-python based co-operative gevent poll on session socket."""
-        timeout = self.timeout if timeout is None else timeout
-        directions = self.session.get_poll_flags()
-        if directions == 0:
-            return
-        events = 0
-        if directions & SSH_READ_PENDING:
-            events = POLLIN
-        if directions & SSH_WRITE_PENDING:
-            events |= POLLOUT
-        self._poll_socket(events, timeout=timeout)
+        self._poll_errcodes(
+            self.session.get_poll_flags,
+            SSH_READ_PENDING,
+            SSH_WRITE_PENDING,
+            timeout=timeout,
+        )
 
     def _eagain(self, func, *args, **kwargs):
         """Run function given and handle EAGAIN for an ssh-python session"""
