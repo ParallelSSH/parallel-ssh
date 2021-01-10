@@ -292,15 +292,15 @@ class ParallelSSHClientTest(unittest.TestCase):
                               Timeout)
 
     def test_timeout_on_open_session(self):
-        timeout = 1
+        timeout = .1
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key,
                                    timeout=timeout,
                                    num_retries=1)
-        def _session(timeout=1):
-            sleep(timeout+1)
+        def _session(timeout=None):
+            sleep(.2)
         joinall(client.connect_auth())
-        sleep(.1)
+        sleep(.01)
         client._host_clients[(0, self.host)].open_session = _session
         self.assertRaises(Timeout, client.run_command, self.cmd)
 
@@ -1832,8 +1832,8 @@ class ParallelSSHClientTest(unittest.TestCase):
             client.join(output, timeout=1, consume_output=True)
             for host_out in output:
                 self.assertTrue(host_out.client.finished(host_out.channel))
-        output = client.run_command('sleep 2', return_list=True)
-        self.assertRaises(Timeout, client.join, output, timeout=1, consume_output=True)
+        output = client.run_command('sleep .2', return_list=True)
+        self.assertRaises(Timeout, client.join, output, timeout=.1, consume_output=True)
         for host_out in output:
             self.assertFalse(host_out.client.finished(host_out.channel))
 

@@ -104,6 +104,7 @@ class TunnelTest(unittest.TestCase):
             client = SSHClient(
                 remote_host, port=self.proxy_port, pkey=self.user_key,
                 num_retries=1,
+                retry_delay=.1,
                 proxy_host=self.proxy_host,
             )
             output = client.run_command(self.cmd)
