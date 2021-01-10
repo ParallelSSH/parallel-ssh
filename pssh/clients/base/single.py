@@ -245,9 +245,12 @@ class BaseSSHClient(object):
     def _shell(self, channel):
         raise NotImplementedError
 
+    def _disconnect_eagain(self):
+        self._eagain(self.session.disconnect)
+
     def _connect_init_session_retry(self, retries):
         try:
-            self.session.disconnect()
+            self._disconnect_eagain()
         except Exception:
             pass
         self.session = None

@@ -917,10 +917,8 @@ class SSH2ClientTest(SSH2TestCase):
                            pkey=self.user_key,
                            num_retries=1)
         client._disconnect_eagain = _disc
+        client._connect_init_session_retry(0)
         client.disconnect()
-
-    def test_poll_inbound(self):
-        pass
 
 
     # TODO

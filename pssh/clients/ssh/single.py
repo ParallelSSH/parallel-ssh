@@ -270,7 +270,6 @@ class SSHClient(BaseSSHClient):
         with GTimeout(seconds=timeout, exception=Timeout):
             joinall((host_output.buffers.stdout.reader, host_output.buffers.stderr.reader))
         logger.debug("Readers finished, closing channel")
-        # Close channel
         self.close_channel(channel)
 
     def finished(self, channel):

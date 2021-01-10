@@ -161,9 +161,6 @@ class SSHClient(BaseSSHClient):
         proxy_local_port = FORWARDER.out_q.get()
         return proxy_local_port
 
-    def _disconnect_eagain(self):
-        self._eagain(self.session.disconnect)
-
     def disconnect(self):
         """Attempt to disconnect session.
 

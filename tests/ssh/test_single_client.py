@@ -328,5 +328,14 @@ class SSHClientTest(SSHTestCase):
         client._agent_auth = _agent_auth
         self.assertIsNone(client.auth())
 
-    # TODO:
-    # * disconnect exc
+    def test_disconnect_exc(self):
+        class DiscError(Exception):
+            pass
+        def _disc():
+            raise DiscError
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1)
+        client._disconnect_eagain = _disc
+        client._connect_init_session_retry(0)
+        client.disconnect()
