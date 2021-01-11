@@ -502,16 +502,15 @@ class SSHClient(BaseSSHClient):
             dir_h = self._sftp_openfh(sftp.opendir, remote_file)
         except SFTPError:
             # remote_file is not a dir, scp file
-            self.scp_recv(remote_file, local_file, encoding=encoding)
-        else:
-            try:
-                os.makedirs(local_file)
-            except OSError:
-                pass
-            file_list = self._sftp_readdir(dir_h)
-            return self._scp_recv_dir(file_list, remote_file,
-                                      local_file, sftp,
-                                      encoding=encoding)
+            return self.scp_recv(remote_file, local_file, encoding=encoding)
+        try:
+            os.makedirs(local_file)
+        except OSError:
+            pass
+        file_list = self._sftp_readdir(dir_h)
+        return self._scp_recv_dir(file_list, remote_file,
+                                  local_file, sftp,
+                                  encoding=encoding)
 
     def scp_recv(self, remote_file, local_file, recurse=False, sftp=None,
                  encoding='utf-8'):
