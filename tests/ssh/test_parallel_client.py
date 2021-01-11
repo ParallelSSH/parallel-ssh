@@ -60,7 +60,9 @@ class LibSSHParallelTest(unittest.TestCase):
         cls.client = ParallelSSHClient([cls.host],
                                        pkey=PKEY_FILENAME,
                                        port=cls.port,
-                                       num_retries=1)
+                                       num_retries=1,
+                                       retry_delay=.1,
+                                       )
 
     @classmethod
     def tearDownClass(cls):
@@ -69,7 +71,7 @@ class LibSSHParallelTest(unittest.TestCase):
         del cls.server
 
     def setUp(self):
-        self.long_cmd = lambda lines: 'for (( i=0; i<%s; i+=1 )) do echo $i; sleep 1; done' % (lines,)
+        self.long_cmd = lambda lines: 'for (( i=0; i<%s; i+=1 )) do echo $i; sleep .1; done' % (lines,)
 
     def make_random_port(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -95,11 +97,11 @@ class LibSSHParallelTest(unittest.TestCase):
     def test_join_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)
-        output = client.run_command('echo me; sleep 1.5')
-        self.assertRaises(Timeout, client.join, output, timeout=1)
+        output = client.run_command('echo me; sleep .5')
+        self.assertRaises(Timeout, client.join, output, timeout=.1)
         self.assertFalse(output[0].client.finished(output[0].channel))
         self.assertFalse(output[0].channel.is_eof())
-        client.join(output, timeout=2)
+        client.join(output, timeout=1)
         self.assertTrue(output[0].channel.is_eof())
         self.assertTrue(client.finished(output))
 
@@ -368,7 +370,7 @@ class LibSSHParallelTest(unittest.TestCase):
     def test_read_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)
-        output = client.run_command('sleep 2; echo me; echo me; echo me', timeout=1)
+        output = client.run_command('sleep .3; echo me; echo me; echo me', timeout=.2)
         for host_out in output:
             self.assertRaises(Timeout, list, host_out.stdout)
         self.assertFalse(output[0].channel.is_eof())
@@ -386,8 +388,8 @@ class LibSSHParallelTest(unittest.TestCase):
             fh.writelines(contents)
         try:
             output = self.client.run_command(
-                'tail -f %s' % (_file,), use_pty=True, timeout=5)
-            self.assertRaises(Timeout, self.client.join, output, timeout=1)
+                'tail -f %s' % (_file,), use_pty=True, read_timeout=.1)
+            self.assertRaises(Timeout, self.client.join, output, timeout=.1)
             for host_out in output:
                 try:
                     for line in host_out.stdout:
@@ -396,7 +398,7 @@ class LibSSHParallelTest(unittest.TestCase):
                     pass
                 else:
                     raise Exception("Timeout should have been raised")
-            self.assertRaises(Timeout, self.client.join, output, timeout=1)
+            self.assertRaises(Timeout, self.client.join, output, timeout=.1)
             channel = output[0].channel
             output[0].client.close_channel(channel)
             self.client.join(output)
@@ -404,13 +406,9 @@ class LibSSHParallelTest(unittest.TestCase):
             os.unlink(_file)
 
     def test_file_read_no_timeout(self):
-        try:
-            xrange
-        except NameError:
-            xrange = range
         dir_name = os.path.dirname(__file__)
         _file = os.sep.join((dir_name, 'file_to_read'))
-        contents = [b'a line\n' for _ in xrange(10000)]
+        contents = [b'a line\n' for _ in range(1000)]
         with open(_file, 'wb') as fh:
             fh.writelines(contents)
         try:
@@ -444,13 +442,6 @@ class LibSSHParallelTest(unittest.TestCase):
         output = self.client.run_command('sleep 1', return_list=True)
         self.assertRaises(Timeout, self.client.join, output, timeout=0.2)
 
-    def test_finished_list_output(self):
-        output = self.client.run_command('sleep 1', return_list=True)
-        self.assertIsInstance(output, list)
-        self.assertFalse(self.client.finished(output))
-        self.client.join(output)
-        self.assertTrue(self.client.finished(output))
-
     def test_default_finished(self):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)
@@ -472,8 +463,8 @@ class LibSSHParallelTest(unittest.TestCase):
             client.join(output, timeout=1, consume_output=True)
             for host_out in output:
                 self.assertTrue(host_out.client.finished(host_out.channel))
-        output = client.run_command('sleep 2', return_list=True)
-        self.assertRaises(Timeout, client.join, output, timeout=1, consume_output=True)
+        output = client.run_command('sleep .2', return_list=True)
+        self.assertRaises(Timeout, client.join, output, timeout=.1, consume_output=True)
         for host_out in output:
             self.assertFalse(host_out.client.finished(host_out.channel))
 

@@ -27,7 +27,8 @@ from socket import gaierror as sock_gaierror, error as sock_error
 
 from gevent import sleep, socket, Timeout as GTimeout
 from gevent.hub import Hub
-from gevent.select import poll
+from gevent.select import poll, POLLIN, POLLOUT
+
 from ssh2.utils import find_eol
 from ssh2.exceptions import AgentConnectionError, AgentListIdentitiesError, \
     AgentAuthenticationError, AgentGetIdentityError
@@ -244,9 +245,12 @@ class BaseSSHClient(object):
     def _shell(self, channel):
         raise NotImplementedError
 
+    def _disconnect_eagain(self):
+        self._eagain(self.session.disconnect)
+
     def _connect_init_session_retry(self, retries):
         try:
-            self.session.disconnect()
+            self._disconnect_eagain()
         except Exception:
             pass
         self.session = None
@@ -664,3 +668,15 @@ class BaseSSHClient(object):
         poller = poll()
         poller.register(self.sock, eventmask=events)
         poller.poll(timeout=timeout)
+
+    def _poll_errcodes(self, directions_func, inbound, outbound, timeout=None):
+        timeout = self.timeout if timeout is None else timeout
+        directions = directions_func()
+        if directions == 0:
+            return
+        events = 0
+        if directions & inbound:
+            events = POLLIN
+        if directions & outbound:
+            events |= POLLOUT
+        self._poll_socket(events, timeout=timeout)

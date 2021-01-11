@@ -18,7 +18,6 @@
 import logging
 
 from gevent import sleep, spawn, Timeout as GTimeout, joinall
-from gevent.select import POLLIN, POLLOUT
 from ssh import options
 from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
 from ssh.key import import_privkey_file, import_cert_file, copy_cert_to_privkey
@@ -145,7 +144,7 @@ class SSHClient(BaseSSHClient):
         self.session.set_socket(self.sock)
         logger.debug("Session started, connecting with existing socket")
         try:
-            self.session.connect()
+            self._session_connect()
         except Exception as ex:
             if retries < self.num_retries:
                 return self._connect_init_session_retry(retries=retries+1)
@@ -154,6 +153,9 @@ class SSHClient(BaseSSHClient):
             ex.host = self.host
             ex.port = self.port
             raise ex
+
+    def _session_connect(self):
+        self.session.connect()
 
     def auth(self):
         if self.gssapi_auth or (self.gssapi_server_identity or self.gssapi_client_identity):
@@ -166,8 +168,6 @@ class SSHClient(BaseSSHClient):
         return super(SSHClient, self).auth()
 
     def _password_auth(self):
-        if not self.password:
-            raise AuthenticationError("All authentication methods failed")
         try:
             self.session.userauth_password(self.password)
         except Exception as ex:
@@ -270,7 +270,6 @@ class SSHClient(BaseSSHClient):
         with GTimeout(seconds=timeout, exception=Timeout):
             joinall((host_output.buffers.stdout.reader, host_output.buffers.stderr.reader))
         logger.debug("Readers finished, closing channel")
-        # Close channel
         self.close_channel(channel)
 
     def finished(self, channel):
@@ -305,16 +304,12 @@ class SSHClient(BaseSSHClient):
 
     def poll(self, timeout=None):
         """ssh-python based co-operative gevent poll on session socket."""
-        timeout = self.timeout if timeout is None else timeout
-        directions = self.session.get_poll_flags()
-        if directions == 0:
-            return
-        events = 0
-        if directions & SSH_READ_PENDING:
-            events = POLLIN
-        if directions & SSH_WRITE_PENDING:
-            events |= POLLOUT
-        self._poll_socket(events, timeout=timeout)
+        self._poll_errcodes(
+            self.session.get_poll_flags,
+            SSH_READ_PENDING,
+            SSH_WRITE_PENDING,
+            timeout=timeout,
+        )
 
     def _eagain(self, func, *args, **kwargs):
         """Run function given and handle EAGAIN for an ssh-python session"""

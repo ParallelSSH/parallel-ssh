@@ -106,9 +106,10 @@ class SSH2ClientTest(SSH2TestCase):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
                            num_retries=1,
-                           timeout=1)
-        def _session(timeout=2):
-            sleep(2)
+                           retry_delay=.1,
+                           timeout=.1)
+        def _session(timeout=None):
+            sleep(.2)
         client.open_session = _session
         self.assertRaises(GTimeout, client.run_command, self.cmd)
 
@@ -145,7 +146,7 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertListEqual(stdout, ['a line'])
 
     def test_long_running_cmd(self):
-        host_out = self.client.run_command('sleep 2; exit 2')
+        host_out = self.client.run_command('sleep .2; exit 2')
         self.assertRaises(ValueError, self.client.wait_finished, host_out.channel)
         self.client.wait_finished(host_out)
         exit_code = host_out.exit_code
@@ -299,7 +300,9 @@ class SSH2ClientTest(SSH2TestCase):
     def test_retry_failure(self):
         self.assertRaises(ConnectionErrorException,
                           SSHClient, self.host, port=12345,
-                          num_retries=2, _auth_thread_pool=False)
+                          num_retries=2, _auth_thread_pool=False,
+                          retry_delay=.1,
+                          )
 
     def test_auth_retry_failure(self):
         self.assertRaises(AuthenticationException,
@@ -307,6 +310,7 @@ class SSH2ClientTest(SSH2TestCase):
                           user=self.user,
                           password='fake',
                           num_retries=3,
+                          retry_delay=.1,
                           allow_agent=False)
 
     def test_connection_timeout(self):
@@ -384,13 +388,13 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertIsNone(self.client.wait_finished(host_out))
 
     def test_wait_finished_timeout(self):
-        host_out = self.client.run_command('sleep 2')
-        timeout = 1
+        host_out = self.client.run_command('sleep .2')
+        timeout = .1
         self.assertFalse(self.client.finished(host_out.channel))
         start = datetime.now()
         self.assertRaises(Timeout, self.client.wait_finished, host_out, timeout=timeout)
         dt = datetime.now() - start
-        self.assertTrue(timeout*1.05 > dt.total_seconds() > timeout)
+        self.assertTrue(timeout*1.1 > dt.total_seconds() > timeout)
         self.client.wait_finished(host_out)
         self.assertTrue(self.client.finished(host_out.channel))
 
@@ -426,10 +430,11 @@ class SSH2ClientTest(SSH2TestCase):
             self.assertRaises(
                 SCPError, self.client.scp_recv, to_copy_dir_path, copy_to_path, recurse=True)
         finally:
-            try:
-                shutil.rmtree(copy_to_path)
-            except Exception:
-                pass
+            for _path in (copy_to_path, to_copy_dir_path):
+                try:
+                    shutil.rmtree(_path)
+                except Exception:
+                    pass
 
     def test_copy_file_abspath_recurse(self):
         cur_dir = os.path.dirname(__file__)
@@ -448,6 +453,10 @@ class SSH2ClientTest(SSH2TestCase):
                 os.makedirs(to_copy_dir_path)
             except OSError:
                 pass
+            self.assertRaises(
+                ValueError,
+                self.client.copy_file, to_copy_dir_path, copy_to_path, recurse=False)
+            self.assertFalse(os.path.isdir(copy_to_path))
             self.client.copy_file(to_copy_dir_path, copy_to_path, recurse=True)
             self.assertTrue(os.path.isdir(copy_to_path))
             for _file in files:
@@ -642,6 +651,51 @@ class SSH2ClientTest(SSH2TestCase):
                 except Exception:
                     pass
 
+    def test_scp_send_err(self):
+        cur_dir = os.path.dirname(__file__)
+        file_name = 'file1'
+        file_copy_to = 'file_copied'
+        file_path_from = os.path.sep.join([cur_dir, file_name])
+        file_copy_to_dirpath = os.path.expanduser('~/') + file_copy_to
+        for _path in (file_path_from, file_copy_to_dirpath):
+            try:
+                os.unlink(_path)
+            except OSError:
+                pass
+        try:
+            with open(file_path_from, 'wb') as fh:
+                fh.write(b"adsfasldkfjabafj")
+            # Permission denied reading local file
+            os.chmod(file_path_from, 0o100)
+            self.assertRaises(
+                SCPError,
+                self.client.scp_send, file_path_from, file_copy_to_dirpath)
+            os.chmod(file_path_from, 0o500)
+            self.client.scp_send(file_path_from, file_copy_to_dirpath)
+            self.assertTrue(os.path.isfile(file_copy_to_dirpath))
+            # OS file flush race condition
+            sleep(.1)
+            read_file_size = os.stat(file_path_from).st_size
+            written_file_size = os.stat(file_copy_to_dirpath).st_size
+            self.assertEqual(read_file_size, written_file_size)
+            sha = sha256()
+            with open(file_path_from, 'rb') as fh:
+                for block in fh:
+                    sha.update(block)
+            read_file_hash = sha.hexdigest()
+            sha = sha256()
+            with open(file_copy_to_dirpath, 'rb') as fh:
+                for block in fh:
+                    sha.update(block)
+            written_file_hash = sha.hexdigest()
+            self.assertEqual(read_file_hash, written_file_hash)
+        finally:
+            for _path in (file_path_from, file_copy_to_dirpath):
+                try:
+                    os.unlink(_path)
+                except Exception:
+                    pass
+
     def test_scp_send_dir_target(self):
         cur_dir = os.path.dirname(__file__)
         file_name = 'file1'
@@ -725,7 +779,7 @@ class SSH2ClientTest(SSH2TestCase):
                 except OSError:
                     pass
 
-    def test_scp_recv_dir_target(self):
+    def test_scp_dir_target(self):
         cur_dir = os.path.dirname(__file__)
         file_name = 'file1'
         file_path_from = os.path.sep.join([cur_dir, file_name])
@@ -766,6 +820,66 @@ class SSH2ClientTest(SSH2TestCase):
                 except OSError:
                     pass
 
+    def test_scp_recv_dir_target_recurse_err(self):
+        copy_from_dir = os.path.sep.join([os.path.dirname(__file__), 'copy_from_dir'])
+        try:
+            os.makedirs(copy_from_dir)
+        except OSError:
+            pass
+        file_names = ['file1', 'file2']
+        file_copy_to_parent_dir = os.path.expanduser('~/copy_parent_dir')
+        file_copy_to_dirpath = os.path.sep.join([file_copy_to_parent_dir, 'copy_to_dir'])
+        _files = [os.path.sep.join([copy_from_dir, file_name])
+                  for file_name in file_names]
+        copied_files = [os.path.sep.join([file_copy_to_dirpath, file_name])
+                        for file_name in file_names]
+        try:
+            os.chmod(file_copy_to_parent_dir, 0o711)
+        except OSError:
+            pass
+        try:
+            shutil.rmtree(file_copy_to_parent_dir)
+        except OSError:
+            pass
+        os.chmod(copy_from_dir, 0o711)
+        for _path in _files:
+            try:
+                os.unlink(_path)
+            except OSError:
+                pass
+        for _path in _files:
+            with open(_path, 'wb') as fh:
+                fh.write(b"adsfasldkfjabafj")
+        # Permission denied for creating directories under parent dir
+        os.mkdir(file_copy_to_parent_dir, mode=0o500)
+        try:
+            self.assertRaises(
+                PermissionError,
+                self.client.scp_recv, copy_from_dir, file_copy_to_dirpath, recurse=True)
+            self.assertFalse(os.path.isdir(file_copy_to_dirpath))
+            for _path in copied_files:
+                self.assertFalse(os.path.isfile(_path))
+            os.chmod(file_copy_to_parent_dir, 0o700)
+            # Permission denied reading remote dir
+            os.chmod(copy_from_dir, 0o000)
+            self.assertRaises(
+                SCPError,
+                self.client.scp_recv, copy_from_dir, file_copy_to_dirpath, recurse=True)
+            self.assertFalse(os.path.isdir(file_copy_to_dirpath))
+            for _path in copied_files:
+                self.assertFalse(os.path.isfile(_path))
+        finally:
+            for _path in [file_copy_to_parent_dir, copy_from_dir]:
+                os.chmod(_path, 0o711)
+            try:
+                shutil.rmtree(copy_from_dir)
+            except OSError:
+                pass
+            try:
+                shutil.rmtree(file_copy_to_parent_dir)
+            except OSError:
+                pass
+
     def test_interactive_shell(self):
         with self.client.open_shell() as shell:
             shell.run(self.cmd)
@@ -779,17 +893,37 @@ class SSH2ClientTest(SSH2TestCase):
     def test_interactive_shell_exit_code(self):
         with self.client.open_shell() as shell:
             shell.run(self.cmd)
-            shell.run('sleep 1')
+            shell.run('sleep .1')
             shell.run(self.cmd)
             shell.run('exit 1')
         stdout = list(shell.stdout)
         self.assertListEqual(stdout, [self.resp, self.resp])
         self.assertEqual(shell.exit_code, 1)
 
+    def test_sftp_init_exc(self):
+        def _make_sftp():
+            raise Exception
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1)
+        client._make_sftp_eagain = _make_sftp
+        self.assertRaises(SFTPError, client._make_sftp)
+
+    def test_disconnect_exc(self):
+        class DiscError(Exception):
+            pass
+        def _disc():
+            raise DiscError
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           retry_delay=.1,
+                           num_retries=1,
+                           timeout=1,
+                           )
+        client._disconnect_eagain = _disc
+        client._connect_init_session_retry(1)
+        client.disconnect()
+
 
     # TODO
-    # * scp recv recursive local dir permission denied
     # * read output callback
-    # * disconnect exception
-    # * SFTP init exception
-    # * copy file local_file dir no recurse exception

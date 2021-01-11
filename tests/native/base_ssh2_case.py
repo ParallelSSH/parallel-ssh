@@ -60,6 +60,7 @@ class SSH2TestCase(unittest.TestCase):
                                pkey=PKEY_FILENAME,
                                num_retries=1,
                                identity_auth=False,
+                               retry_delay=.1,
                                )
 
     @classmethod
