@@ -17,7 +17,7 @@
 
 import logging
 
-from gevent import sleep, spawn, Timeout as GTimeout, joinall
+from gevent import sleep, spawn, Timeout as GTimeout, joinall, get_hub
 from ssh import options
 from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
 from ssh.key import import_privkey_file, import_cert_file, copy_cert_to_privkey
@@ -32,6 +32,7 @@ from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 
 logger = logging.getLogger(__name__)
+THREAD_POOL = get_hub().threadpool
 
 
 class SSHClient(BaseSSHClient):
@@ -155,7 +156,7 @@ class SSHClient(BaseSSHClient):
             raise ex
 
     def _session_connect(self):
-        self.session.connect()
+        THREAD_POOL.apply(self.session.connect)
 
     def auth(self):
         if self.gssapi_auth or (self.gssapi_server_identity or self.gssapi_client_identity):
@@ -243,7 +244,7 @@ class SSHClient(BaseSSHClient):
                 # Yield event loop to other greenlets if we have no data to
                 # send back, meaning the generator does not yield and can there
                 # for block other generators/greenlets from running.
-                sleep(.1)
+                sleep(.001)
 
     def wait_finished(self, host_output, timeout=None):
         """Wait for EOF from channel and close channel.
