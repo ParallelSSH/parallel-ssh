@@ -230,8 +230,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
     def _make_ssh_client(self, host_i, host):
         auth_thread_pool = True
-        logger.debug("Make client request for host %s, (host_i, host) in clients: %s",
-                     host, (host_i, host) in self._host_clients)
+        logger.debug("Make client request for host %s, %s, (host_i, host) in clients: %s",
+                     host_i, host, (host_i, host) in self._host_clients)
         if (host_i, host) not in self._host_clients \
            or self._host_clients[(host_i, host)] is None:
             _user, _port, _password, _pkey, proxy_host, proxy_port, proxy_user, \

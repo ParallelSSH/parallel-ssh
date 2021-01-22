@@ -179,7 +179,7 @@ class SSHClient(BaseSSHClient):
         if self.cert_file is not None:
             logger.debug("Certificate file set - trying certificate authentication")
             self._import_cert_file(pkey)
-        self.session.userauth_publickey(pkey)
+        THREAD_POOL.apply(self.session.userauth_publickey, args=(pkey,))
 
     def _import_cert_file(self, pkey):
         cert_key = import_cert_file(self.cert_file)
@@ -191,7 +191,7 @@ class SSHClient(BaseSSHClient):
         return self._eagain(channel.request_shell)
 
     def _open_session(self):
-        channel = self.session.channel_new()
+        channel = THREAD_POOL.apply(self.session.channel_new)
         channel.set_blocking(0)
         self._eagain(channel.open_session)
         return channel

@@ -220,10 +220,12 @@ class SSHClient(BaseSSHClient):
         self.session.agent_auth(self.user)
 
     def _pkey_auth(self, pkey_file, password=None):
-        self.session.userauth_publickey_fromfile(
-            self.user,
-            pkey_file,
-            passphrase=password if password is not None else b'')
+        passphrase = password if password is not None else b''
+        THREAD_POOL.apply(
+            self.session.userauth_publickey_fromfile,
+            args=(self.user, pkey_file),
+            kwds={'passphrase': passphrase},
+        )
 
     def _password_auth(self):
         try:
@@ -232,11 +234,13 @@ class SSHClient(BaseSSHClient):
             raise AuthenticationError("Password authentication failed - %s", ex)
 
     def _open_session(self):
+        # chan = THREAD_POOL.apply(self._eagain, args=(self.session.open_session,))
         chan = self._eagain(self.session.open_session)
         return chan
 
     def open_session(self):
         """Open new channel from session"""
+        logger.debug("Opening session")
         try:
             chan = self._open_session()
         except Exception as ex:
@@ -272,7 +276,9 @@ class SSHClient(BaseSSHClient):
         if use_pty:
             self._eagain(channel.pty)
         logger.debug("Executing command '%s'", cmd)
-        self._eagain(channel.execute, cmd)
+        sleep()
+        THREAD_POOL.apply(self._eagain, args=(channel.execute, cmd))
+        # self._eagain(channel.execute, cmd)
         return channel
 
     def _read_output_to_buffer(self, read_func, _buffer):
@@ -281,6 +287,7 @@ class SSHClient(BaseSSHClient):
                 size, data = read_func()
                 while size == LIBSSH2_ERROR_EAGAIN:
                     self.poll()
+                    sleep(.000001)
                     size, data = read_func()
                 if size <= 0:
                     break
@@ -317,6 +324,8 @@ class SSHClient(BaseSSHClient):
 
     def _eagain(self, func, *args, **kwargs):
         return self._eagain_errcode(func, LIBSSH2_ERROR_EAGAIN, *args, **kwargs)
+        # return THREAD_POOL.apply(self._eagain_errcode,
+        #                          args=(func, LIBSSH2_ERROR_EAGAIN, *args), kwds=kwargs)
 
     def _make_sftp_eagain(self):
         return self._eagain(self.session.sftp_init)

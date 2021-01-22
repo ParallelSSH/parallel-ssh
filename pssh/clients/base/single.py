@@ -537,9 +537,12 @@ class BaseSSHClient(object):
         timeout = kwargs.pop('timeout', self.timeout)
         with GTimeout(seconds=timeout, exception=Timeout):
             ret = func(*args, **kwargs)
+            sleep(.0000001)
             while ret == eagain:
                 self.poll()
+                sleep(.0000001)
                 ret = func(*args, **kwargs)
+            sleep(.0000001)
             return ret
 
     def _eagain_write(self, write_func, data, timeout=None):
@@ -667,6 +670,7 @@ class BaseSSHClient(object):
         timeout = timeout * 1000 if timeout is not None else 100
         poller = poll()
         poller.register(self.sock, eventmask=events)
+        # logger.debug("Polling with timeout %s", timeout)
         poller.poll(timeout=timeout)
 
     def _poll_errcodes(self, directions_func, inbound, outbound, timeout=None):
