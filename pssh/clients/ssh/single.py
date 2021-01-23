@@ -18,6 +18,7 @@
 import logging
 
 from gevent import sleep, spawn, Timeout as GTimeout, joinall, get_hub
+from gevent.lock import RLock
 from ssh import options
 from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
 from ssh.key import import_privkey_file, import_cert_file, copy_cert_to_privkey
@@ -102,6 +103,7 @@ class SSHClient(BaseSSHClient):
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
         """
+        self._session_lock = RLock()
         self.cert_file = _validate_pkey_path(cert_file, host)
         self.gssapi_auth = gssapi_auth
         self.gssapi_server_identity = gssapi_server_identity
@@ -190,10 +192,15 @@ class SSHClient(BaseSSHClient):
     def _shell(self, channel):
         return self._eagain(channel.request_shell)
 
-    def _open_session(self):
-        channel = THREAD_POOL.apply(self.session.channel_new)
+    def _channel_new(self):
+        channel = self.session.channel_new()
         channel.set_blocking(0)
-        THREAD_POOL.apply(self._eagain, args=(channel.open_session,))
+        self._eagain(channel.open_session)
+        return channel
+
+    def _open_session(self):
+        with self._session_lock:
+            channel = THREAD_POOL.apply(self._channel_new)
         return channel
 
     def open_session(self):
@@ -226,23 +233,23 @@ class SSHClient(BaseSSHClient):
         if use_pty:
             self._eagain(channel.request_pty, timeout=self.timeout)
         logger.debug("Executing command '%s'", cmd)
-        THREAD_POOL.apply(self._eagain,
-                          args=(channel.request_exec, cmd),
-                          kwds={'timeout': self.timeout})
+        self._eagain(channel.request_exec, cmd)
         return channel
 
     def _read_output_to_buffer(self, channel, _buffer, is_stderr=False):
-        while True:
-            self.poll(timeout=self.timeout)
-            try:
-                size, data = channel.read_nonblocking(is_stderr=is_stderr)
-            except EOF:
-                _buffer.eof.set()
-                sleep(.000001)
-                return
-            if size > 0:
-                _buffer.write(data)
-            sleep(.000001)
+        try:
+            while True:
+                self.poll()
+                try:
+                    size, data = channel.read_nonblocking(is_stderr=is_stderr)
+                except EOF:
+                    sleep(.0000001)
+                    return
+                if size > 0:
+                    _buffer.write(data)
+                sleep(.0000001)
+        finally:
+            _buffer.eof.set()
 
     def wait_finished(self, host_output, timeout=None):
         """Wait for EOF from channel and close channel.
