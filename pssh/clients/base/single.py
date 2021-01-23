@@ -541,7 +541,7 @@ class BaseSSHClient(object):
             while ret == eagain:
                 self.poll()
                 ret = func(*args, **kwargs)
-                sleep()
+                sleep(.000001)
             sleep()
             return ret
 
