@@ -238,11 +238,11 @@ class SSHClient(BaseSSHClient):
     def _open_session(self):
         with self._session_lock:
             chan = THREAD_POOL.apply(self._eagain, args=(self.session.open_session,))
+        # chan = self._eagain(self.session.open_session)
         return chan
 
     def open_session(self):
         """Open new channel from session"""
-        logger.debug("Opening session")
         try:
             chan = self._open_session()
         except Exception as ex:
@@ -288,7 +288,7 @@ class SSHClient(BaseSSHClient):
                 while size == LIBSSH2_ERROR_EAGAIN:
                     self.poll()
                     size, data = read_func()
-                    sleep(.0000001)
+                    sleep()
                 if size <= 0:
                     break
                 _buffer.write(data)

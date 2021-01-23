@@ -306,9 +306,10 @@ class SSHClient(BaseSSHClient):
         :type channel: :py:class:`ssh.channel.Channel`
         """
         logger.debug("Closing channel")
-        THREAD_POOL.apply(self._eagain,
-                          args=(channel.close,),
-                          kwds={'timeout': self.timeout})
+        self._eagain(channel.close)
+        # THREAD_POOL.apply(self._eagain,
+        #                   args=(channel.close,),
+        #                   kwds={'timeout': self.timeout})
 
     def poll(self, timeout=None):
         """ssh-python based co-operative gevent poll on session socket."""
