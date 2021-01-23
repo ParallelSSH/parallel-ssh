@@ -283,7 +283,6 @@ class SSHClient(BaseSSHClient):
         try:
             while True:
                 size, data = read_func()
-                sleep()
                 while size == LIBSSH2_ERROR_EAGAIN:
                     self.poll()
                     size, data = read_func()
@@ -291,6 +290,7 @@ class SSHClient(BaseSSHClient):
                 if size <= 0:
                     break
                 _buffer.write(data)
+                sleep()
         finally:
             _buffer.eof.set()
 
@@ -314,12 +314,11 @@ class SSHClient(BaseSSHClient):
         if channel is None:
             return
         self._eagain(channel.wait_eof, timeout=timeout)
-        # Close channel to indicate no more commands will be sent over it
         self.close_channel(channel)
 
     def close_channel(self, channel):
         logger.debug("Closing channel")
-        self._eagain(channel.close)
+        THREAD_POOL.apply(self._eagain, args=(channel.close,))
 
     def _eagain(self, func, *args, **kwargs):
         return self._eagain_errcode(func, LIBSSH2_ERROR_EAGAIN, *args, **kwargs)

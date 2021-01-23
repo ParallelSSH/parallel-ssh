@@ -226,7 +226,6 @@ class SSHClient(BaseSSHClient):
         if use_pty:
             self._eagain(channel.request_pty, timeout=self.timeout)
         logger.debug("Executing command '%s'", cmd)
-        # self._eagain(channel.request_exec, cmd, timeout=self.timeout)
         THREAD_POOL.apply(self._eagain,
                           args=(channel.request_exec, cmd),
                           kwds={'timeout': self.timeout})
@@ -241,9 +240,9 @@ class SSHClient(BaseSSHClient):
                 _buffer.eof.set()
                 sleep(.000001)
                 return
-            sleep(.000001)
             if size > 0:
                 _buffer.write(data)
+            sleep(.000001)
 
     def wait_finished(self, host_output, timeout=None):
         """Wait for EOF from channel and close channel.
@@ -300,7 +299,9 @@ class SSHClient(BaseSSHClient):
         :type channel: :py:class:`ssh.channel.Channel`
         """
         logger.debug("Closing channel")
-        self._eagain(channel.close, timeout=self.timeout)
+        THREAD_POOL.apply(self._eagain,
+                          args=(channel.close,),
+                          kwds={'timeout': self.timeout})
 
     def poll(self, timeout=None):
         """ssh-python based co-operative gevent poll on session socket."""
