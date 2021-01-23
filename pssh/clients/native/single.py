@@ -292,7 +292,7 @@ class SSHClient(BaseSSHClient):
                 if size <= 0:
                     break
                 _buffer.write(data)
-                sleep(.0000001)
+                sleep()
         finally:
             _buffer.eof.set()
 
