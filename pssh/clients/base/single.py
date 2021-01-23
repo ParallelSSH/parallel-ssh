@@ -537,12 +537,12 @@ class BaseSSHClient(object):
         timeout = kwargs.pop('timeout', self.timeout)
         with GTimeout(seconds=timeout, exception=Timeout):
             ret = func(*args, **kwargs)
-            sleep(.0000001)
+            sleep()
             while ret == eagain:
                 self.poll()
-                sleep(.0000001)
                 ret = func(*args, **kwargs)
-            sleep(.0000001)
+                sleep()
+            sleep()
             return ret
 
     def _eagain_write(self, write_func, data, timeout=None):
