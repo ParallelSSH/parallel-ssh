@@ -272,7 +272,6 @@ class BaseParallelSSHClient(object):
                      shell=None, use_pty=False,
                      encoding='utf-8', read_timeout=None):
         """Make SSHClient if needed, run command on host"""
-        # logger.debug("_run_command with read timeout %s", read_timeout)
         try:
             _client = self._make_ssh_client(host_i, host)
             host_out = _client.run_command(
