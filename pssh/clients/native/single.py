@@ -234,8 +234,8 @@ class SSHClient(BaseSSHClient):
             raise AuthenticationError("Password authentication failed - %s", ex)
 
     def _open_session(self):
-        # chan = THREAD_POOL.apply(self._eagain, args=(self.session.open_session,))
-        chan = self._eagain(self.session.open_session)
+        chan = THREAD_POOL.apply(self._eagain, args=(self.session.open_session,))
+        # chan = self._eagain(self.session.open_session)
         return chan
 
     def open_session(self):
@@ -276,19 +276,18 @@ class SSHClient(BaseSSHClient):
         if use_pty:
             self._eagain(channel.pty)
         logger.debug("Executing command '%s'", cmd)
-        sleep()
         THREAD_POOL.apply(self._eagain, args=(channel.execute, cmd))
-        # self._eagain(channel.execute, cmd)
         return channel
 
     def _read_output_to_buffer(self, read_func, _buffer):
         try:
             while True:
                 size, data = read_func()
+                sleep()
                 while size == LIBSSH2_ERROR_EAGAIN:
                     self.poll()
-                    sleep(.000001)
                     size, data = read_func()
+                    sleep(.0000001)
                 if size <= 0:
                     break
                 _buffer.write(data)

@@ -193,7 +193,7 @@ class SSHClient(BaseSSHClient):
     def _open_session(self):
         channel = THREAD_POOL.apply(self.session.channel_new)
         channel.set_blocking(0)
-        self._eagain(channel.open_session)
+        THREAD_POOL.apply(self._eagain, args=(channel.open_session,))
         return channel
 
     def open_session(self):
@@ -226,7 +226,9 @@ class SSHClient(BaseSSHClient):
         if use_pty:
             self._eagain(channel.request_pty, timeout=self.timeout)
         logger.debug("Executing command '%s'", cmd)
-        self._eagain(channel.request_exec, cmd, timeout=self.timeout)
+        THREAD_POOL.apply(self._eagain,
+                          args=(channel.request_exec, cmd),
+                          kwds={'timeout': self.timeout})
         return channel
 
     def _read_output_to_buffer(self, channel, _buffer, is_stderr=False):

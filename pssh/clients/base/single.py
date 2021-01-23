@@ -667,10 +667,9 @@ class BaseSSHClient(object):
             return
         # gevent.select.poll converts seconds to miliseconds to match python socket
         # implementation
-        timeout = timeout * 1000 if timeout is not None else 100
+        timeout = timeout * 1000 if timeout is not None else 1
         poller = poll()
         poller.register(self.sock, eventmask=events)
-        # logger.debug("Polling with timeout %s", timeout)
         poller.poll(timeout=timeout)
 
     def _poll_errcodes(self, directions_func, inbound, outbound, timeout=None):
