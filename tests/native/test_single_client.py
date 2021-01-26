@@ -302,7 +302,7 @@ class SSH2ClientTest(SSH2TestCase):
                                password='blah blah blah',
                                )
         except AuthenticationException as ex:
-            self.assertIsInstance(ex.args[3].args[1], SSH2AuthenticationError)
+            self.assertIsInstance(ex.args[3], SSH2AuthenticationError)
         else:
             raise AssertionError
 

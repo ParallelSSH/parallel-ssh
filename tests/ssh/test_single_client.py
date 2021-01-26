@@ -207,7 +207,7 @@ class SSHClientTest(SSHTestCase):
                                password='blah blah blah',
                                )
         except AuthenticationException as ex:
-            self.assertIsInstance(ex.args[3].args[1], AuthenticationDenied)
+            self.assertIsInstance(ex.args[3], AuthenticationDenied)
         else:
             raise AssertionError
 

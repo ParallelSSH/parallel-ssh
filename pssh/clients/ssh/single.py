@@ -168,10 +168,7 @@ class SSHClient(BaseSSHClient):
         return super(SSHClient, self).auth()
 
     def _password_auth(self):
-        try:
-            self.session.userauth_password(self.user, self.password)
-        except Exception as ex:
-            raise AuthenticationError("Password authentication failed - %s", ex)
+        self.session.userauth_password(self.user, self.password)
 
     def _pkey_auth(self, pkey_file, password=None):
         pkey = import_privkey_file(pkey_file, passphrase=password if password is not None else '')
