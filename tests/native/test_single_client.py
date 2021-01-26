@@ -320,7 +320,9 @@ class SSH2ClientTest(SSH2TestCase):
                           password='fake',
                           num_retries=3,
                           retry_delay=.1,
-                          allow_agent=False)
+                          allow_agent=False,
+                          identity_auth=False,
+                          )
 
     def test_connection_timeout(self):
         cmd = spawn(SSHClient, 'fakehost.com', port=12345,

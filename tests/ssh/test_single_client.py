@@ -227,6 +227,7 @@ class SSHClientTest(SSHTestCase):
                           retry_delay=.1,
                           num_retries=2,
                           allow_agent=False,
+                          identity_auth=False,
                           )
 
     def test_connection_timeout(self):
