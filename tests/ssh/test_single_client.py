@@ -200,10 +200,16 @@ class SSHClientTest(SSHTestCase):
                           allow_agent=False)
 
     def test_password_auth_failure(self):
-        self.assertRaises(AuthenticationError,
-                          SSHClient, self.host, port=self.port, num_retries=1,
-                          allow_agent=False,
-                          password='blah blah blah')
+        try:
+            client = SSHClient(self.host, port=self.port, num_retries=1,
+                               allow_agent=False,
+                               identity_auth=False,
+                               password='blah blah blah',
+                               )
+        except AuthenticationException as ex:
+            self.assertIsInstance(ex.args[3].args[1], AuthenticationDenied)
+        else:
+            raise AssertionError
 
     def test_retry_failure(self):
         self.assertRaises(ConnectionErrorException,
