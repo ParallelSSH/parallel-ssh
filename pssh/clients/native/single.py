@@ -34,7 +34,7 @@ from .tunnel import FORWARDER
 from ..base.single import BaseSSHClient
 from ...output import HostOutput
 from ...exceptions import SessionError, SFTPError, \
-    SFTPIOError, Timeout, SCPError, ProxyError, AuthenticationError
+    SFTPIOError, Timeout, SCPError, ProxyError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 

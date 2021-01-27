@@ -27,7 +27,7 @@ from ssh.error_codes import SSH_AGAIN
 from ..base.single import BaseSSHClient
 from ..common import _validate_pkey_path
 from ...output import HostOutput
-from ...exceptions import AuthenticationError, SessionError, Timeout
+from ...exceptions import SessionError, Timeout
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 
