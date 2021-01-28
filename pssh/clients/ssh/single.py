@@ -27,7 +27,7 @@ from ssh.error_codes import SSH_AGAIN
 from ..base.single import BaseSSHClient
 from ..common import _validate_pkey_path
 from ...output import HostOutput
-from ...exceptions import AuthenticationError, SessionError, Timeout
+from ...exceptions import SessionError, Timeout
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 
@@ -168,10 +168,7 @@ class SSHClient(BaseSSHClient):
         return super(SSHClient, self).auth()
 
     def _password_auth(self):
-        try:
-            self.session.userauth_password(self.password)
-        except Exception as ex:
-            raise AuthenticationError("Password authentication failed - %s", ex)
+        self.session.userauth_password(self.user, self.password)
 
     def _pkey_auth(self, pkey_file, password=None):
         pkey = import_privkey_file(pkey_file, passphrase=password if password is not None else '')

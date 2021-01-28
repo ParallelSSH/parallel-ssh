@@ -20,6 +20,10 @@ jobs:
           name: Deps
           command: |
             sudo apt-get install openssh-server --fix-missing
+      - run:
+          command: |
+            pip install -U -r requirements_dev.txt
+          name: Build
       - python/save-cache:
           dependency-file: requirements_dev.txt
           key: depsv3-{{ .Branch }}.{{ arch }}-PY<< parameters.python_ver >>
@@ -29,14 +33,11 @@ jobs:
           name: Check readme
       - run:
           command: |
-            pip install -U -r requirements_dev.txt
-          name: Build
-      - run:
-          command: |
             flake8 pssh
           name: flake
       - run:
           command: |
+            set -x
             eval "$(ssh-agent -s)"
             pytest --cov-append --cov=pssh tests/test_output.py tests/test_utils.py tests/test_host_config.py
             pytest --reruns 10 --cov-append --cov=pssh tests/native/test_tunnel.py tests/native/test_agent.py
