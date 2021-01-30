@@ -18,7 +18,6 @@
 import logging
 
 from gevent import sleep, spawn, Timeout as GTimeout, joinall, get_hub
-from gevent.lock import RLock
 from ssh import options
 from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
 from ssh.key import import_privkey_file, import_cert_file, copy_cert_to_privkey
@@ -103,7 +102,6 @@ class SSHClient(BaseSSHClient):
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
         """
-        self._session_lock = RLock()
         self.cert_file = _validate_pkey_path(cert_file, host)
         self.gssapi_auth = gssapi_auth
         self.gssapi_server_identity = gssapi_server_identity
@@ -189,19 +187,14 @@ class SSHClient(BaseSSHClient):
         copy_cert_to_privkey(cert_key, pkey)
         logger.debug("Imported certificate file %s for pkey %s", self.cert_file, self.pkey)
 
-    def _shell(self, channel):
-        return self._eagain(channel.request_shell)
-
-    def _channel_new(self):
-        channel = self.session.channel_new()
-        channel.set_blocking(0)
-        self._eagain(channel.open_session)
-        return channel
+    def _shell(self, chan):
+        return self._eagain(chan.request_shell)
 
     def _open_session(self):
-        with self._session_lock:
-            channel = THREAD_POOL.apply(self._channel_new)
-        return channel
+        chan = self.session.channel_new()
+        chan.set_blocking(0)
+        self._eagain(chan.open_session)
+        return chan
 
     def open_session(self):
         """Open new channel from session."""
@@ -307,9 +300,6 @@ class SSHClient(BaseSSHClient):
         """
         logger.debug("Closing channel")
         self._eagain(channel.close)
-        # THREAD_POOL.apply(self._eagain,
-        #                   args=(channel.close,),
-        #                   kwds={'timeout': self.timeout})
 
     def poll(self, timeout=None):
         """ssh-python based co-operative gevent poll on session socket."""

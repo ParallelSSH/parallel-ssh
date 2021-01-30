@@ -21,7 +21,6 @@ from collections import deque
 from warnings import warn
 
 from gevent import sleep, spawn, get_hub
-from gevent.lock import RLock
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
     Timeout as SSH2Timeout
@@ -100,7 +99,6 @@ class SSHClient(BaseSSHClient):
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
         """
-        self._session_lock = RLock()
         self.forward_ssh_agent = forward_ssh_agent
         self._forward_requested = False
         self.keepalive_seconds = keepalive_seconds
@@ -236,9 +234,7 @@ class SSHClient(BaseSSHClient):
             raise AuthenticationError("Password authentication failed - %s", ex)
 
     def _open_session(self):
-        with self._session_lock:
-            chan = THREAD_POOL.apply(self._eagain, args=(self.session.open_session,))
-        # chan = self._eagain(self.session.open_session)
+        chan = self._eagain(self.session.open_session)
         return chan
 
     def open_session(self):
@@ -288,11 +284,11 @@ class SSHClient(BaseSSHClient):
                 while size == LIBSSH2_ERROR_EAGAIN:
                     self.poll()
                     size, data = read_func()
-                    sleep()
+                    sleep(.0000001)
                 if size <= 0:
                     break
                 _buffer.write(data)
-                sleep()
+                sleep(.0000001)
         finally:
             _buffer.eof.set()
 
