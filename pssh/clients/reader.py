@@ -77,4 +77,4 @@ class ConcurrentRWBuffer(object):
             if data:
                 yield data
             elif self._read_pos == self._write_pos:
-                sleep(.000001)
+                sleep(.01)
