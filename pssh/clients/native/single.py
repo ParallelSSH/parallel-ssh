@@ -34,7 +34,7 @@ from .tunnel import FORWARDER
 from ..base.single import BaseSSHClient
 from ...output import HostOutput
 from ...exceptions import SessionError, SFTPError, \
-    SFTPIOError, Timeout, SCPError, ProxyError, AuthenticationError
+    SFTPIOError, Timeout, SCPError, ProxyError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 
@@ -228,10 +228,7 @@ class SSHClient(BaseSSHClient):
         )
 
     def _password_auth(self):
-        try:
-            self.session.userauth_password(self.user, self.password)
-        except Exception as ex:
-            raise AuthenticationError("Password authentication failed - %s", ex)
+        self.session.userauth_password(self.user, self.password)
 
     def _open_session(self):
         chan = self._eagain(self.session.open_session)

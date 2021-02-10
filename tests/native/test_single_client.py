@@ -26,12 +26,15 @@ from gevent import sleep, spawn, Timeout as GTimeout
 
 from pssh.clients.native import SSHClient
 from ssh2.session import Session
-from ssh2.exceptions import SocketDisconnectError, BannerRecvError, SocketRecvError, \
-    AgentConnectionError, AgentListIdentitiesError, \
-    AgentAuthenticationError, AgentGetIdentityError, SFTPProtocolError
-from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
-    SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout, \
-    AuthenticationError
+from ssh2.exceptions import (SocketDisconnectError, BannerRecvError, SocketRecvError,
+                             AgentConnectionError, AgentListIdentitiesError,
+                             AgentAuthenticationError, AgentGetIdentityError, SFTPProtocolError,
+                             AuthenticationError as SSH2AuthenticationError,
+                             )
+from pssh.exceptions import (AuthenticationException, ConnectionErrorException,
+                             SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout,
+                             AuthenticationError,
+                             )
 
 from .base_ssh2_case import SSH2TestCase
 
@@ -292,10 +295,16 @@ class SSH2ClientTest(SSH2TestCase):
                           allow_agent=False)
 
     def test_password_auth_failure(self):
-        self.assertRaises(AuthenticationException,
-                          SSHClient, self.host, port=self.port, num_retries=1,
-                          allow_agent=False,
-                          password='blah blah blah')
+        try:
+            client = SSHClient(self.host, port=self.port, num_retries=1,
+                               allow_agent=False,
+                               identity_auth=False,
+                               password='blah blah blah',
+                               )
+        except AuthenticationException as ex:
+            self.assertIsInstance(ex.args[3], SSH2AuthenticationError)
+        else:
+            raise AssertionError
 
     def test_retry_failure(self):
         self.assertRaises(ConnectionErrorException,
@@ -311,7 +320,9 @@ class SSH2ClientTest(SSH2TestCase):
                           password='fake',
                           num_retries=3,
                           retry_delay=.1,
-                          allow_agent=False)
+                          allow_agent=False,
+                          identity_auth=False,
+                          )
 
     def test_connection_timeout(self):
         cmd = spawn(SSHClient, 'fakehost.com', port=12345,
