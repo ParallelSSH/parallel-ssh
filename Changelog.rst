@@ -1,6 +1,16 @@
 Change Log
 ============
 
+
+2.5.4
++++++
+
+Fixes
+------
+
+* Password authentication via ``pssh.clients.ssh`` would not work - #276
+
+
 2.5.3
 +++++
 
