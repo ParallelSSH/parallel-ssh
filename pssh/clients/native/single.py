@@ -21,6 +21,7 @@ from collections import deque
 from warnings import warn
 
 from gevent import sleep, spawn, get_hub
+from gevent.lock import RLock
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
     Timeout as SSH2Timeout
@@ -106,6 +107,7 @@ class SSHClient(BaseSSHClient):
         self._proxy_client = None
         self.host = host
         self.port = port if port is not None else 22
+        self._lock = RLock()
         if proxy_host is not None:
             _port = port if proxy_port is None else proxy_port
             _pkey = pkey if proxy_pkey is None else proxy_pkey
@@ -196,7 +198,8 @@ class SSHClient(BaseSSHClient):
             self.session.set_timeout(self.timeout * 1000)
         try:
             if self._auth_thread_pool:
-                THREAD_POOL.apply(self.session.handshake, (self.sock,))
+                with self._lock:
+                    THREAD_POOL.apply(self.session.handshake, (self.sock,))
             else:
                 self.session.handshake(self.sock)
         except Exception as ex:
@@ -221,14 +224,16 @@ class SSHClient(BaseSSHClient):
 
     def _pkey_auth(self, pkey_file, password=None):
         passphrase = password if password is not None else b''
-        THREAD_POOL.apply(
-            self.session.userauth_publickey_fromfile,
-            args=(self.user, pkey_file),
-            kwds={'passphrase': passphrase},
-        )
+        with self._lock:
+            THREAD_POOL.apply(
+                self.session.userauth_publickey_fromfile,
+                args=(self.user, pkey_file),
+                kwds={'passphrase': passphrase},
+            )
 
     def _password_auth(self):
-        THREAD_POOL.apply(self.session.userauth_password, args=(self.user, self.password))
+        with self._lock:
+            THREAD_POOL.apply(self.session.userauth_password, args=(self.user, self.password))
 
     def _open_session(self):
         chan = self._eagain(self.session.open_session)
