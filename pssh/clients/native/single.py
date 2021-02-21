@@ -228,7 +228,7 @@ class SSHClient(BaseSSHClient):
         )
 
     def _password_auth(self):
-        self.session.userauth_password(self.user, self.password)
+        THREAD_POOL.apply(self.session.userauth_password, args=(self.user, self.password))
 
     def _open_session(self):
         chan = self._eagain(self.session.open_session)

@@ -121,7 +121,7 @@ class SSHClient(BaseSSHClient):
             self.sock.close()
 
     def _agent_auth(self):
-        self.session.userauth_agent(self.user)
+        THREAD_POOL.apply(self.session.userauth_agent, args=(self.user,))
 
     def _keepalive(self):
         pass
@@ -161,7 +161,7 @@ class SSHClient(BaseSSHClient):
     def auth(self):
         if self.gssapi_auth or (self.gssapi_server_identity or self.gssapi_client_identity):
             try:
-                return self.session.userauth_gssapi()
+                return THREAD_POOL.apply(self.session.userauth_gssapi)
             except Exception as ex:
                 logger.error(
                     "GSSAPI authentication with server id %s and client id %s failed - %s",
@@ -169,13 +169,13 @@ class SSHClient(BaseSSHClient):
         return super(SSHClient, self).auth()
 
     def _password_auth(self):
-        self.session.userauth_password(self.user, self.password)
+        THREAD_POOL.apply(self.session.userauth_password, args=(self.user, self.password))
 
     def _pkey_auth(self, pkey_file, password=None):
         pkey = import_privkey_file(pkey_file, passphrase=password if password is not None else '')
         if self.cert_file is not None:
             logger.debug("Certificate file set - trying certificate authentication")
-            self._import_cert_file(pkey)
+            THREAD_POOL.apply(self._import_cert_file, args=(pkey,))
         THREAD_POOL.apply(self.session.userauth_publickey, args=(pkey,))
 
     def _import_cert_file(self, pkey):
