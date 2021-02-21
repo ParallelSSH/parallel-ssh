@@ -17,12 +17,7 @@
 
 import logging
 import os
-try:
-    import pwd
-except ImportError:
-    WIN_PLATFORM = True
-else:
-    WIN_PLATFORM = False
+from getpass import getuser
 from socket import gaierror as sock_gaierror, error as sock_error
 
 from gevent import sleep, socket, Timeout as GTimeout
@@ -174,11 +169,7 @@ class BaseSSHClient(object):
                  identity_auth=True):
         self._auth_thread_pool = _auth_thread_pool
         self.host = host
-        self.user = user if user else None
-        if self.user is None and not WIN_PLATFORM:
-            self.user = pwd.getpwuid(os.geteuid()).pw_name
-        elif self.user is None and WIN_PLATFORM:
-            raise ValueError("Must provide user parameter on Windows")
+        self.user = user if user else getuser()
         self.password = password
         self.port = port if port else 22
         self.num_retries = num_retries
