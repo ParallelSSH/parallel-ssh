@@ -18,6 +18,7 @@
 import logging
 
 from gevent import sleep, spawn, Timeout as GTimeout, joinall, get_hub
+from gevent.lock import RLock
 from ssh import options
 from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
 from ssh.key import import_privkey_file, import_cert_file, copy_cert_to_privkey
@@ -107,6 +108,7 @@ class SSHClient(BaseSSHClient):
         self.gssapi_server_identity = gssapi_server_identity
         self.gssapi_client_identity = gssapi_client_identity
         self.gssapi_delegate_credentials = gssapi_delegate_credentials
+        self._lock = RLock()
         super(SSHClient, self).__init__(
             host, user=user, password=password, port=port, pkey=pkey,
             num_retries=num_retries, retry_delay=retry_delay,
@@ -121,7 +123,8 @@ class SSHClient(BaseSSHClient):
             self.sock.close()
 
     def _agent_auth(self):
-        THREAD_POOL.apply(self.session.userauth_agent, args=(self.user,))
+        with self._lock:
+            THREAD_POOL.apply(self.session.userauth_agent, args=(self.user,))
 
     def _keepalive(self):
         pass
@@ -156,12 +159,14 @@ class SSHClient(BaseSSHClient):
             raise ex
 
     def _session_connect(self):
-        THREAD_POOL.apply(self.session.connect)
+        with self._lock:
+            THREAD_POOL.apply(self.session.connect)
 
     def auth(self):
         if self.gssapi_auth or (self.gssapi_server_identity or self.gssapi_client_identity):
             try:
-                return THREAD_POOL.apply(self.session.userauth_gssapi)
+                with self._lock:
+                    return THREAD_POOL.apply(self.session.userauth_gssapi)
             except Exception as ex:
                 logger.error(
                     "GSSAPI authentication with server id %s and client id %s failed - %s",
@@ -169,18 +174,23 @@ class SSHClient(BaseSSHClient):
         return super(SSHClient, self).auth()
 
     def _password_auth(self):
-        THREAD_POOL.apply(self.session.userauth_password, args=(self.user, self.password))
+        with self._lock:
+            THREAD_POOL.apply(self.session.userauth_password, args=(self.user, self.password))
 
     def _pkey_auth(self, pkey_file, password=None):
-        pkey = import_privkey_file(pkey_file, passphrase=password if password is not None else '')
+        passphrase = password if password is not None else ''
+        pkey = THREAD_POOL.apply(
+            import_privkey_file, args=(pkey_file,), kwds={'passphrase': passphrase})
         if self.cert_file is not None:
             logger.debug("Certificate file set - trying certificate authentication")
             THREAD_POOL.apply(self._import_cert_file, args=(pkey,))
-        THREAD_POOL.apply(self.session.userauth_publickey, args=(pkey,))
+        with self._lock:
+            THREAD_POOL.apply(self.session.userauth_publickey, args=(pkey,))
 
     def _import_cert_file(self, pkey):
         cert_key = import_cert_file(self.cert_file)
-        self.session.userauth_try_publickey(cert_key)
+        with self._lock:
+            self.session.userauth_try_publickey(cert_key)
         copy_cert_to_privkey(cert_key, pkey)
         logger.debug("Imported certificate file %s for pkey %s", self.cert_file, self.pkey)
 
