@@ -7,7 +7,13 @@ Change Log
 Changes
 -------
 
+* Performance and scaling improvements for all clients. Allow ``ssh-python`` (``libssh``) client to use multiple cores for authentication.
 * ``user`` keyword argument no longer required on Windows - exception is raised if user cannot be identified.
+
+Fixes
+-----
+
+* ``ParallelSSHClient.connect_auth`` would not honour client pool size.
 
 2.5.4
 +++++
