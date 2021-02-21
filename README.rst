@@ -62,7 +62,7 @@ Run ``uname`` on two hosts in parallel.
   for host_output in output:
       for line in host_output.stdout:
           print(line)
-      exit_code = host_out.exit_code
+      exit_code = host_output.exit_code
 
 :Output:
 
