@@ -281,11 +281,11 @@ class SSHClient(BaseSSHClient):
                 while size == LIBSSH2_ERROR_EAGAIN:
                     self.poll()
                     size, data = read_func()
-                    sleep(.0000001)
+                    sleep()
                 if size <= 0:
                     break
                 _buffer.write(data)
-                sleep(.0000001)
+                sleep()
         finally:
             _buffer.eof.set()
 

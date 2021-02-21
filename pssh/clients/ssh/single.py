@@ -233,11 +233,10 @@ class SSHClient(BaseSSHClient):
                 try:
                     size, data = channel.read_nonblocking(is_stderr=is_stderr)
                 except EOF:
-                    sleep(.0000001)
                     return
                 if size > 0:
                     _buffer.write(data)
-                sleep(.0000001)
+                sleep()
         finally:
             _buffer.eof.set()
 
