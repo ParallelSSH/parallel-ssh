@@ -1,6 +1,13 @@
 Change Log
 ============
 
+2.6.0
++++++
+
+Changes
+-------
+
+* ``user`` keyword argument no longer required on Windows - exception is raised if user cannot be identified.
 
 2.5.4
 +++++
