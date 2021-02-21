@@ -169,9 +169,7 @@ class BaseSSHClient(object):
                  identity_auth=True):
         self._auth_thread_pool = _auth_thread_pool
         self.host = host
-        self.user = user if user else None
-        if self.user is None:
-            self.user = getuser()
+        self.user = user if user else getuser()
         self.password = password
         self.port = port if port else 22
         self.num_retries = num_retries
