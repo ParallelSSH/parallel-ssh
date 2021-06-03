@@ -487,56 +487,6 @@ class ParallelSSHClientTest(unittest.TestCase):
                 os.unlink(remote_file_abspath)
                 os.unlink(local_file_path)
 
-    def test_copy_remote_dir_encoding(self):
-        client = ParallelSSHClient([self.host], port=self.port,
-                                   pkey=self.user_key)
-        test_file_data = 'test'
-        dir_name = os.path.dirname(__file__)
-        local_test_path = os.sep.join((dir_name, 'directory_test_local_remote_copied'))
-        remote_test_path = 'directory_test_remote_copy'
-        remote_test_path_abs = os.sep.join((dir_name, remote_test_path))
-        remote_test_path_rel = os.sep.join(
-            (dir_name.replace(os.path.expanduser('~') + os.sep, ''),
-             remote_test_path))
-        local_copied_dir = '_'.join([local_test_path, self.host])
-        suffix = b"\xbc"
-        encoding = 'latin-1'
-        encoded_fn = (b"a_file_" + suffix).decode(encoding)
-        for path in [local_test_path, remote_test_path_abs, local_copied_dir]:
-            try:
-                shutil.rmtree(path)
-            except OSError:
-                try:
-                    os.unlink(path)
-                except Exception:
-                    pass
-                pass
-        os.mkdir(remote_test_path_abs)
-        local_file_paths = []
-        # TODO: Ensure copy_remote_dir called with correct encoding
-        for i in range(0, 10):
-            remote_file_path_dir = os.path.join(
-                remote_test_path_abs, 'sub_dir', 'dir_foo' + encoded_fn + str(i))
-            os.makedirs(remote_file_path_dir)
-            remote_file_path = os.path.join(remote_file_path_dir, "foo" + str(i))
-            local_file_path = os.path.join(
-                local_copied_dir, 'sub_dir', 'dir_foo' + encoded_fn + str(i), "foo" + str(i))
-            local_file_paths.append(local_file_path)
-            with open(remote_file_path, 'w') as fh:
-                fh.write(test_file_data)
-        cmds = self.client.copy_remote_file(remote_test_path_abs, local_test_path,
-                                            recurse=True)
-        joinall(cmds, raise_error=True)
-        try:
-            self.assertTrue(os.path.isdir(local_copied_dir))
-            for path in local_file_paths:
-                self.assertTrue(os.path.isfile(path))
-        finally:
-            try:
-                shutil.rmtree(local_copied_dir)
-            except Exception:
-                pass
-
     def test_pssh_client_directory_abs_path(self):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)
