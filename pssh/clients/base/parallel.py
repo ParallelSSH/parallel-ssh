@@ -335,8 +335,7 @@ class BaseParallelSSHClient(object):
                 timeout, finished_output, unfinished_output,
             )
 
-    def _join(self, host_out, consume_output=False, timeout=None,
-              encoding="utf-8"):
+    def _join(self, host_out, consume_output=False, timeout=None):
         if host_out is None:
             return
         client = host_out.client

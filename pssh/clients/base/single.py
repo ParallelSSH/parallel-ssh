@@ -630,7 +630,7 @@ class BaseSSHClient(object):
             remote_path = os.path.join(remote_dir, file_name)
             local_path = os.path.join(local_dir, file_name)
             self.copy_remote_file(remote_path, local_path, sftp=sftp,
-                                  recurse=True)
+                                  recurse=True) #, encoding=encoding)
 
     def _make_local_dir(self, dirpath):
         if os.path.exists(dirpath):
