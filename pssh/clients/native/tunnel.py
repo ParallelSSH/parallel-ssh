@@ -16,7 +16,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import logging
-from pssh.clients.native.single import SSHClient
 
 from threading import Thread, Event
 try:
@@ -117,7 +116,7 @@ class LocalForwarder(Thread):
                          exc_info=1)
             self.shutdown()
 
-    def cleanup_server(self, client: SSHClient):
+    def cleanup_server(self, client):
         """The purpose of this function is for a proxied client to notify the LocalForwarder that it 
         is shutting down and its corresponding server can also be shut down."""
         server = self._servers[client]
