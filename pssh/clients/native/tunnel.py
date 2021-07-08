@@ -117,8 +117,8 @@ class LocalForwarder(Thread):
             self.shutdown()
 
     def cleanup_server(self, client):
-        """The purpose of this function is for a proxied client to notify the LocalForwarder that it 
-        is shutting down and its corresponding server can also be shut down."""
+        """The purpose of this function is for a proxied client to notify the LocalForwarder that it
+         is shutting down and its corresponding server can also be shut down."""
         server = self._servers[client]
         server.stop()
         del self._servers[client]
