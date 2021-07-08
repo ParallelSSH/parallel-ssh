@@ -23,6 +23,7 @@ import sys
 import string
 import random
 import time
+import gc
 
 from datetime import datetime
 from socket import timeout as socket_timeout
@@ -32,7 +33,7 @@ from gevent import sleep, spawn, Timeout as GTimeout
 
 from pssh.config import HostConfig
 from pssh.clients.native import SSHClient, ParallelSSHClient
-from pssh.clients.native.tunnel import LocalForwarder, TunnelServer
+from pssh.clients.native.tunnel import LocalForwarder, TunnelServer, FORWARDER
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
@@ -93,6 +94,36 @@ class TunnelTest(unittest.TestCase):
             self.assertListEqual(_stdout, [self.resp])
             self.assertEqual(remote_host, client.host)
             self.assertEqual(self.port, client.port)
+        finally:
+            remote_server.stop()
+    
+    # The purpose of this test is to exercise 
+    # https://github.com/ParallelSSH/parallel-ssh/issues/304 
+    def test_tunnel_server_reconn(self):
+        remote_host = '127.0.0.8'
+        remote_server = OpenSSHServer(listen_ip=remote_host, port=self.port)
+        remote_server.start_server()
+
+        reconn_n = 20       # Number of reconnect attempts
+        reconn_delay = 1    # Number of seconds to delay betwen reconnects
+        try:
+            for _ in range(reconn_n):
+                client = SSHClient(
+                    remote_host, port=self.port, pkey=self.user_key,
+                    num_retries=1,
+                    proxy_host=self.proxy_host,
+                    proxy_pkey=self.user_key,
+                    proxy_port=self.proxy_port,
+                )
+                output = client.run_command(self.cmd)
+                _stdout = list(output.stdout)
+                self.assertListEqual(_stdout, [self.resp])
+                self.assertEqual(remote_host, client.host)
+                self.assertEqual(self.port, client.port)
+                client.disconnect()
+                FORWARDER._cleanup_servers()
+                time.sleep(reconn_delay)
+                gc.collect()
         finally:
             remote_server.stop()
 
