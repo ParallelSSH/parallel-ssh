@@ -173,9 +173,18 @@ class SSHClient(BaseSSHClient):
             except Exception:
                 pass
             self.session = None
-        self.sock = None
         if isinstance(self._proxy_client, SSHClient):
-            self._proxy_client.disconnect()
+            # Don't disconnect proxy client here - let the TunnelServer do it at the time that
+            # _wait_send_receive_lets ends. The cleanup_server call here triggers the TunnelServer
+            # to stop.
+            FORWARDER.cleanup_server(self._proxy_client)
+
+            # I wanted to clean up all the sockets here to avoid a ResourceWarning from unittest,
+            # but unfortunately closing this socket here causes a segfault, not sure why yet.
+            # self.sock.close()
+        else:
+            self.sock.close()
+        self.sock = None
 
     def spawn_send_keepalive(self):
         """Spawns a new greenlet that sends keep alive messages every

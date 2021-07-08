@@ -171,9 +171,12 @@ class TunnelServer(StreamServer):
         try:
             joinall((source, dest), raise_error=True)
         finally:
-            logger.debug("Closing channel and forward socket")
+            # Forward socket does not need to be closed here; StreamServer does it in do_close
+            logger.debug("Closing channel")
             self._client.close_channel(channel)
-            forward_sock.close()
+
+            # Disconnect client here to make sure it happens AFTER close_channel
+            self._client.disconnect()
 
     def _read_forward_sock(self, forward_sock, channel):
         while True:
