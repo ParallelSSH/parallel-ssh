@@ -16,6 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import logging
+from pssh.clients.native.single import SSHClient
 
 from threading import Thread, Event
 try:
@@ -90,10 +91,8 @@ class LocalForwarder(Thread):
 
     def _cleanup_servers(self):
         for client in list(self._servers.keys()):
-            server = self._servers[client]
             if client.sock is None or client.sock.closed:
-                server.stop()
-                del self._servers[client]
+                self.cleanup_server(client)
 
     def run(self):
         """Thread runner ensures a non main hub has been created for all subsequent
@@ -117,6 +116,13 @@ class LocalForwarder(Thread):
             logger.error("Tunnel thread caught exception and will exit:",
                          exc_info=1)
             self.shutdown()
+
+    def cleanup_server(self, client: SSHClient):
+        """The purpose of this function is for a proxied client to notify the LocalForwarder that it 
+        is shutting down and its corresponding server can also be shut down."""
+        server = self._servers[client]
+        server.stop()
+        del self._servers[client]
 
 
 class TunnelServer(StreamServer):
