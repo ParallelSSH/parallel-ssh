@@ -21,7 +21,6 @@ import logging
 
 import gevent.pool
 
-from warnings import warn
 from gevent import joinall, spawn, Timeout as GTimeout
 from gevent.hub import Hub
 
@@ -171,7 +170,7 @@ class BaseParallelSSHClient(object):
 
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
-                    encoding='utf-8', return_list=True,
+                    encoding='utf-8',
                     *args, **kwargs):
         if host_args:
             try:
@@ -194,11 +193,9 @@ class BaseParallelSSHClient(object):
                     for host_i, host in enumerate(self.hosts)]
         self.cmds = cmds
         joinall(cmds, timeout=self.timeout)
-        return self._get_output_from_cmds(cmds, raise_error=stop_on_errors,
-                                          return_list=return_list)
+        return self._get_output_from_cmds(cmds, raise_error=stop_on_errors)
 
-    def _get_output_from_cmds(self, cmds, raise_error=False,
-                              return_list=True):
+    def _get_output_from_cmds(self, cmds, raise_error=False):
         _cmds = [spawn(self._get_output_from_greenlet, cmd, raise_error=raise_error)
                  for cmd in cmds]
         finished = joinall(_cmds, raise_error=True)
@@ -217,17 +214,11 @@ class BaseParallelSSHClient(object):
             return HostOutput(host, None, None, None,
                               exception=ex)
 
-    def get_last_output(self, cmds=None, timeout=None,
-                        return_list=True):
+    def get_last_output(self, cmds=None):
         """Get output for last commands executed by ``run_command``.
 
         :param cmds: Commands to get output for. Defaults to ``client.cmds``
         :type cmds: list(:py:class:`gevent.Greenlet`)
-        :param timeout: No-op - to be removed.
-        :param return_list: No-op - list of ``HostOutput`` always returned.
-          Parameter kept for backwards compatibility - to be removed in future
-          releases.
-        :type return_list: bool
 
         :rtype: dict or list
         """
@@ -235,15 +226,7 @@ class BaseParallelSSHClient(object):
         if cmds is None:
             return
         return self._get_output_from_cmds(
-            cmds, return_list=return_list,
-            raise_error=False)
-
-    def reset_output_generators(self, host_out, timeout=None,
-                                client=None, channel=None,
-                                encoding='utf-8'):
-        """No-op - to be removed."""
-        warn("This function is a no-op and deprecated. "
-             "It will be removed in future releases")
+            cmds, raise_error=False)
 
     def _get_host_config_values(self, host_i, host):
         if self.host_config is None:
@@ -308,8 +291,7 @@ class BaseParallelSSHClient(object):
         for line in stderr:
             pass
 
-    def join(self, output=None, consume_output=False, timeout=None,
-             encoding='utf-8'):
+    def join(self, output=None, consume_output=False, timeout=None):
         """Wait until all remote commands in output have finished.
         Does *not* block other commands from running in parallel.
 
@@ -328,9 +310,6 @@ class BaseParallelSSHClient(object):
           Since self.timeout is passed onto each individual SSH session it is
           **not** used for any parallel functions like `run_command` or `join`.
         :type timeout: int
-        :param encoding: Unused - encoding from each ``HostOutput`` is used instead.
-          To be removed in future releases.
-        :type encoding: str
 
         :raises: :py:class:`pssh.exceptions.Timeout` on timeout requested and
           reached with commands still running.
@@ -341,7 +320,7 @@ class BaseParallelSSHClient(object):
         elif not isinstance(output, list):
             raise ValueError("Unexpected output object type")
         cmds = [self.pool.spawn(self._join, host_out, timeout=timeout,
-                                consume_output=consume_output, encoding=encoding)
+                                consume_output=consume_output)
                 for host_i, host_out in enumerate(output)]
         # Errors raised by self._join should be propagated.
         finished_cmds = joinall(cmds, raise_error=True, timeout=timeout)

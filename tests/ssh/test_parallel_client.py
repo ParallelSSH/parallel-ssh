@@ -370,7 +370,7 @@ class LibSSHParallelTest(unittest.TestCase):
     def test_read_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)
-        output = client.run_command('sleep .3; echo me; echo me; echo me', timeout=.2)
+        output = client.run_command('sleep .3; echo me; echo me; echo me', read_timeout=.2)
         for host_out in output:
             self.assertRaises(Timeout, list, host_out.stdout)
         self.assertFalse(output[0].channel.is_eof())
@@ -412,7 +412,7 @@ class LibSSHParallelTest(unittest.TestCase):
         with open(_file, 'wb') as fh:
             fh.writelines(contents)
         try:
-            output = self.client.run_command('cat %s' % (_file,), timeout=10)
+            output = self.client.run_command('cat %s' % (_file,), read_timeout=10)
             _out = list(output[0].stdout)
         finally:
             os.unlink(_file)
@@ -439,7 +439,7 @@ class LibSSHParallelTest(unittest.TestCase):
         self.assertRaises(AuthenticationException, client.run_command, self.cmd)
 
     def test_long_running_cmd_join_timeout(self):
-        output = self.client.run_command('sleep 1', return_list=True)
+        output = self.client.run_command('sleep 1')
         self.assertRaises(Timeout, self.client.join, output, timeout=0.2)
 
     def test_default_finished(self):
@@ -459,11 +459,11 @@ class LibSSHParallelTest(unittest.TestCase):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)
         for _ in range(5):
-            output = client.run_command(self.cmd, return_list=True)
+            output = client.run_command(self.cmd)
             client.join(output, timeout=1, consume_output=True)
             for host_out in output:
                 self.assertTrue(host_out.client.finished(host_out.channel))
-        output = client.run_command('sleep .2', return_list=True)
+        output = client.run_command('sleep .2')
         self.assertRaises(Timeout, client.join, output, timeout=.1, consume_output=True)
         for host_out in output:
             self.assertFalse(host_out.client.finished(host_out.channel))
