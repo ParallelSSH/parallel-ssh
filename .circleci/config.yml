@@ -100,13 +100,11 @@ workflows:
                 - "3.7"
                 - "3.8"
           filters:
-            branches:
-              ignore: /.*/
             tags:
               ignore: /.*/
-      - release
-          # filters:            
-            # tags:
-            #   only: /.*/
-            # branches:
-            #   ignore: /.*/
+      - release:
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
