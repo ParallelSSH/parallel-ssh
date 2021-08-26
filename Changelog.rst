@@ -10,6 +10,11 @@ Changes
 * ``user`` keyword argument no longer required on Windows - exception is raised if user cannot be identified.
 * Removed deprecated since ``2.0.0`` functions and parameters.
 
+Fixes
+-----
+
+* ``copy_remote_file`` with recurse enabled would not use a provided encoding for sub-directories - #284
+
 2.5.4
 +++++
 

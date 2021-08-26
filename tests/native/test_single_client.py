@@ -19,6 +19,7 @@ import os
 import subprocess
 import shutil
 import tempfile
+from unittest.mock import MagicMock, call
 from hashlib import sha256
 from datetime import datetime
 
@@ -934,6 +935,29 @@ class SSH2ClientTest(SSH2TestCase):
         client._disconnect_eagain = _disc
         client._connect_init_session_retry(1)
         client.disconnect()
+
+    def test_copy_remote_dir_encoding(self):
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1)
+        remote_file_mock = MagicMock()
+        suffix = b"\xbc"
+        encoding = 'latin-1'
+        encoded_fn = suffix.decode(encoding)
+        file_list = [suffix + b"1", suffix + b"2"]
+        client.copy_remote_file = remote_file_mock
+        local_dir = (b"l_dir" + suffix).decode(encoding)
+        remote_dir = (b"r_dir" + suffix).decode(encoding)
+        client._copy_remote_dir(
+            file_list, local_dir, remote_dir, None, encoding=encoding)
+        call_args = [call(local_dir + "/" + file_list[0].decode(encoding),
+                          remote_dir + "/" + file_list[0].decode(encoding),
+                          recurse=True, sftp=None, encoding=encoding),
+                     call(local_dir + "/" + file_list[1].decode(encoding),
+                          remote_dir + "/" + file_list[1].decode(encoding),
+                          recurse=True, sftp=None, encoding=encoding)
+                     ]
+        self.assertListEqual(remote_file_mock.call_args_list, call_args)
 
 
     # TODO
