@@ -937,21 +937,16 @@ class SSH2ClientTest(SSH2TestCase):
         client.disconnect()
 
     def test_copy_remote_dir_encoding(self):
-        client = SSHClient(self.host, port=self.port,
-                           pkey=self.user_key,
-                           retry_delay=.1,
-                           num_retries=1,
-                           timeout=1,
-                           )
         remote_file_mock = MagicMock()
         suffix = b"\xbc"
         encoding = 'latin-1'
         encoded_fn = suffix.decode(encoding)
         file_list = [suffix + b"1", suffix + b"2"]
-        client.copy_remote_file = remote_file_mock
+        orig_func = self.client.copy_remote_file
+        self.client.copy_remote_file = remote_file_mock
         local_dir = (b"l_dir" + suffix).decode(encoding)
         remote_dir = (b"r_dir" + suffix).decode(encoding)
-        client._copy_remote_dir(
+        self.client._copy_remote_dir(
             file_list, local_dir, remote_dir, None, encoding=encoding)
         call_args = [call(local_dir + "/" + file_list[0].decode(encoding),
                           remote_dir + "/" + file_list[0].decode(encoding),
@@ -961,6 +956,7 @@ class SSH2ClientTest(SSH2TestCase):
                           recurse=True, sftp=None, encoding=encoding)
                      ]
         self.assertListEqual(remote_file_mock.call_args_list, call_args)
+        self.client.copy_remote_file = orig_func
 
 
     # TODO
