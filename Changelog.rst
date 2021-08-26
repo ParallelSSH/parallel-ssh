@@ -14,6 +14,8 @@ Fixes
 -----
 
 * ``copy_remote_file`` with recurse enabled would not use a provided encoding for sub-directories - #284
+* Reconnecting to the same proxy host when proxy is configured would sometimes cause segfauls - ##304
+
 
 2.5.4
 +++++
