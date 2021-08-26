@@ -8,6 +8,7 @@ Changes
 -------
 
 * ``user`` keyword argument no longer required on Windows - exception is raised if user cannot be identified.
+* Removed deprecated since ``2.0.0`` functions and parameters.
 
 2.5.4
 +++++

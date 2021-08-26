@@ -143,8 +143,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8', timeout=None, read_timeout=None,
-                    return_list=False):
+                    encoding='utf-8', read_timeout=None,
+                    ):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output.
 
@@ -193,14 +193,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
           raise :py:class:`pssh.exceptions.Timeout`
           after ``timeout`` number seconds if remote output is not ready.
         :type read_timeout: float
-        :param timeout: Deprecated - use read_timeout. Same as
-          read_timeout and kept for backwards compatibility - to be removed
-          in future release.
-        :type timeout: float
-        :param return_list: No-op - list of ``HostOutput`` always returned.
-          Parameter kept for backwards compatibility - to be removed in future
-          releases.
-        :type return_list: bool
         :rtype: list(:py:class:`pssh.output.HostOutput`)
 
         :raises: :py:class:`pssh.exceptions.AuthenticationError` on
@@ -225,8 +217,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, command, stop_on_errors=stop_on_errors, host_args=host_args,
             user=user, shell=shell, sudo=sudo,
             encoding=encoding, use_pty=use_pty,
-            return_list=return_list,
-            read_timeout=read_timeout if read_timeout else timeout,
+            read_timeout=read_timeout,
         )
 
     def _make_ssh_client(self, host_i, host):
