@@ -70,7 +70,7 @@ jobs:
       - run:
           name: Deps
           command: |
-            sudo apt-get install python-pip
+            sudo apt-get install python3-pip
             pip install -U pip
             pip install -U twine
             which twine
@@ -103,7 +103,7 @@ workflows:
             tags:
               ignore: /.*/
       - release:
-          filters:            
+          filters:
             tags:
               only: /.*/
             branches:
