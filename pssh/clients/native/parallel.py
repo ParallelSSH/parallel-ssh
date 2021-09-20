@@ -80,7 +80,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type pool_size: int
         :param host_config: (Optional) Per-host configuration for cases where
           not all hosts use the same configuration.
-        :type host_config: list, dict
+        :type host_config: list
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent.
         :type allow_agent: bool
