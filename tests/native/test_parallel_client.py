@@ -934,18 +934,17 @@ class ParallelSSHClientTest(unittest.TestCase):
         """Test per-host configuration functionality of ParallelSSHClient"""
         hosts = [('127.0.0.%01d' % n, self.make_random_port())
                  for n in range(1,3)]
-        host_config = dict.fromkeys([h for h,_ in hosts])
+        host_config = {h:HostConfig() for h,_ in hosts}
         servers = []
         password = 'overriden_pass'
         fake_key = 'FAKE KEY'
         for host, port in hosts:
             server = OpenSSHServer(listen_ip=host, port=port)
             server.start_server()
-            host_config[host] = {}
-            host_config[host]['port'] = port
-            host_config[host]['user'] = self.user
-            host_config[host]['password'] = password
-            host_config[host]['private_key'] = self.user_key
+            host_config[host].port = port
+            host_config[host].user = self.user
+            host_config[host].password = password
+            host_config[host].private_key = self.user_key
             servers.append(server)
         host_config[hosts[1][0]]['private_key'] = fake_key
         client = ParallelSSHClient([h for h, _ in hosts],
