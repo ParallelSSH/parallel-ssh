@@ -24,6 +24,7 @@ import gevent.pool
 from gevent import joinall, spawn, Timeout as GTimeout
 from gevent.hub import Hub
 
+from ...config import HostConfig
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import HostArgumentError, Timeout, ShellError
 from ...output import HostOutput
@@ -234,22 +235,19 @@ class BaseParallelSSHClient(object):
                 getattr(self, 'proxy_host', None), \
                 getattr(self, 'proxy_port', None), getattr(self, 'proxy_user', None), \
                 getattr(self, 'proxy_password', None), getattr(self, 'proxy_pkey', None)
-        elif isinstance(self.host_config, list):
+        if isinstance(self.host_config, list):
             config = self.host_config[host_i]
-            return config.user or self.user, config.port or self.port, \
-                config.password or self.password, config.private_key or self.pkey, \
-                config.proxy_host or getattr(self, 'proxy_host', None), \
-                config.proxy_port or getattr(self, 'proxy_port', None), \
-                config.proxy_user or getattr(self, 'proxy_user', None), \
-                config.proxy_password or getattr(self, 'proxy_password', None), \
-                config.proxy_pkey or getattr(self, 'proxy_pkey', None)
         elif isinstance(self.host_config, dict):
-            _user = self.host_config.get(host, {}).get('user', self.user)
-            _port = self.host_config.get(host, {}).get('port', self.port)
-            _password = self.host_config.get(host, {}).get(
-                'password', self.password)
-            _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
-            return _user, _port, _password, _pkey, None, None, None, None, None
+            config = self.host_config.get(host, HostConfig())
+        else:
+            return
+        return config.user or self.user, config.port or self.port, \
+            config.password or self.password, config.private_key or self.pkey, \
+            config.proxy_host or getattr(self, 'proxy_host', None), \
+            config.proxy_port or getattr(self, 'proxy_port', None), \
+            config.proxy_user or getattr(self, 'proxy_user', None), \
+            config.proxy_password or getattr(self, 'proxy_password', None), \
+            config.proxy_pkey or getattr(self, 'proxy_pkey', None)
 
     def _run_command(self, host_i, host, command, sudo=False, user=None,
                      shell=None, use_pty=False,
