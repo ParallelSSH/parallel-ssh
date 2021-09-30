@@ -34,7 +34,7 @@ from ssh2.exceptions import (SocketDisconnectError, BannerRecvError, SocketRecvE
                              )
 from pssh.exceptions import (AuthenticationException, ConnectionErrorException,
                              SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout,
-                             AuthenticationError, NoIPV6AddressFoundError,
+                             AuthenticationError, NoIPv6AddressFoundError,
                              )
 
 from .base_ssh2_case import SSH2TestCase
@@ -98,7 +98,7 @@ class SSH2ClientTest(SSH2TestCase):
             SSHClient(self.host,
                       port=self.port, pkey=self.user_key,
                       num_retries=1, ipv6_only=True)
-        except NoIPV6AddressFoundError as ex:
+        except NoIPv6AddressFoundError as ex:
             self.assertEqual(len(ex.args), 3)
             self.assertIsInstance(ex.args[2], list)
             self.assertTrue(len(ex.args[2]) > 0)

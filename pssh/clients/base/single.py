@@ -32,7 +32,7 @@ from ..common import _validate_pkey_path
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ..reader import ConcurrentRWBuffer
 from ...exceptions import UnknownHostError, AuthenticationError, \
-    ConnectionError, Timeout, NoIPV6AddressFoundError
+    ConnectionError, Timeout, NoIPv6AddressFoundError
 from ...output import HostOutput, HostOutputBuffers, BufferData
 
 
@@ -262,7 +262,7 @@ class BaseSSHClient(object):
         if self.ipv6_only:
             filtered = [addr for addr in addr_info if addr[0] is socket.AF_INET6]
             if not filtered:
-                raise NoIPV6AddressFoundError(
+                raise NoIPv6AddressFoundError(
                     "Requested IPV6 only and no IPV6 addresses found for host %s from "
                     "address list %s", host, [addr for _, _, _, _, addr in addr_info])
             addr_info = filtered
@@ -270,8 +270,8 @@ class BaseSSHClient(object):
 
     def _connect(self, host, port, retries=1):
         addr_info = self._get_addr_info(host, port)
-        family, type, proto, _, sock_addr = addr_info[0]
-        self.sock = socket.socket(family, type)
+        family, _type, proto, _, sock_addr = addr_info[0]
+        self.sock = socket.socket(family, _type)
         if self.timeout:
             self.sock.settimeout(self.timeout)
         logger.debug("Connecting to %s:%s", host, port)

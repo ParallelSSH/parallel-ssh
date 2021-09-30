@@ -21,7 +21,6 @@ import random
 import string
 import logging
 import pwd
-from threading import Thread
 from subprocess import Popen
 from time import sleep
 from sys import version_info
@@ -74,7 +73,7 @@ class OpenSSHServer(object):
             fh.write(template.render(parent_dir=os.path.abspath(DIR_NAME),
                                      listen_ip=self.listen_ip,
                                      random_server=self.random_server,
-            ))
+                                     ))
             fh.write(os.linesep)
         with open(PRINCIPALS_TMPL) as fh:
             _princ_tmpl = fh.read()
@@ -92,8 +91,8 @@ class OpenSSHServer(object):
 
     def wait_for_port(self):
         addr_info = socket.getaddrinfo(self.listen_ip, self.port, proto=socket.IPPROTO_TCP)
-        family, type, proto, _, sock_addr = addr_info[0]
-        sock = socket.socket(family, type)
+        family, _type, proto, _, sock_addr = addr_info[0]
+        sock = socket.socket(family, _type)
         while sock.connect_ex((self.listen_ip, self.port)) != 0:
             sleep(.1)
         sleep(.5)

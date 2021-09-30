@@ -98,9 +98,9 @@ class SSHClient(BaseSSHClient):
         :param keepalive_seconds: Interval of keep alive messages being sent to
           server. Set to ``0`` or ``False`` to disable.
         :type keepalive_seconds: int
-        :param ipv6_only: Choose IPV6 addresses only if multiple are available
-          for the host or raise UnknownHost exception otherwise. Note this will
-          disable connecting to an IPV4 address if an IP address is provided instead.
+        :param ipv6_only: Choose IPv6 addresses only if multiple are available
+          for the host or raise NoIPv6AddressFoundError otherwise. Note this will
+          disable connecting to an IPv4 address if an IP address is provided instead.
         :type ipv6_only: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding

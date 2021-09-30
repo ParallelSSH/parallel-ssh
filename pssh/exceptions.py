@@ -19,7 +19,7 @@
 """Exceptions raised by parallel-ssh classes."""
 
 
-class NoIPV6AddressFoundError(Exception):
+class NoIPv6AddressFoundError(Exception):
     """Raised when an IPV6 only address was requested but none are
      available for a host.
 

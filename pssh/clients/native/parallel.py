@@ -36,7 +36,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
                  proxy_host=None, proxy_port=None,
                  proxy_user=None, proxy_password=None, proxy_pkey=None,
                  forward_ssh_agent=False,
-                 keepalive_seconds=60, identity_auth=True):
+                 keepalive_seconds=60, identity_auth=True,
+                 ipv6_only=False,
+                 ):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -109,6 +111,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
           Defaults to False if not set.
           Requires agent forwarding implementation in libssh2 version used.
         :type forward_ssh_agent: bool
+        :param ipv6_only: Choose IPv6 addresses only if multiple are available
+          for the host(s) or raise NoIPv6AddressFoundError otherwise. Note this will
+          disable connecting to an IPv4 address if an IP address is provided instead.
+        :type ipv6_only: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
