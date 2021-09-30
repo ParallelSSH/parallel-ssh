@@ -32,7 +32,7 @@ from ..common import _validate_pkey_path
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ..reader import ConcurrentRWBuffer
 from ...exceptions import UnknownHostError, AuthenticationError, \
-    ConnectionError, Timeout
+    ConnectionError, Timeout, NoIPV6AddressFoundError
 from ...output import HostOutput, HostOutputBuffers, BufferData
 
 
@@ -166,7 +166,9 @@ class BaseSSHClient(object):
                  proxy_host=None,
                  proxy_port=None,
                  _auth_thread_pool=True,
-                 identity_auth=True):
+                 identity_auth=True,
+                 ipv6_only=False,
+                 ):
         self._auth_thread_pool = _auth_thread_pool
         self.host = host
         self.user = user if user else getuser()
@@ -183,6 +185,7 @@ class BaseSSHClient(object):
         self.pkey = _validate_pkey_path(pkey, self.host)
         self.identity_auth = identity_auth
         self._keepalive_greenlet = None
+        self.ipv6_only = ipv6_only
         self._init()
 
     def _init(self):
@@ -254,13 +257,26 @@ class BaseSSHClient(object):
         self._connect(self._host, self._port, retries=retries)
         return self._init_session(retries=retries)
 
+    def _get_addr_info(self, host, port):
+        addr_info = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
+        if self.ipv6_only:
+            filtered = [addr for addr in addr_info if addr[0] is socket.AF_INET6]
+            if not filtered:
+                raise NoIPV6AddressFoundError(
+                    "Requested IPV6 only and no IPV6 addresses found for host %s from "
+                    "address list %s", host, [addr for _, _, _, _, addr in addr_info])
+            addr_info = filtered
+        return addr_info
+
     def _connect(self, host, port, retries=1):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        addr_info = self._get_addr_info(host, port)
+        family, type, proto, _, sock_addr = addr_info[0]
+        self.sock = socket.socket(family, type)
         if self.timeout:
             self.sock.settimeout(self.timeout)
         logger.debug("Connecting to %s:%s", host, port)
         try:
-            self.sock.connect((host, port))
+            self.sock.connect(sock_addr)
         except sock_gaierror as ex:
             logger.error("Could not resolve host '%s' - retry %s/%s",
                          host, retries, self.num_retries)
@@ -387,8 +403,8 @@ class BaseSSHClient(object):
         """Read standard error buffer.
         Returns a generator of line by line output.
 
-        :param stdout_buffer: Buffer to read from.
-        :type stdout_buffer: :py:class:`pssh.clients.reader.ConcurrentRWBuffer`
+        :param stderr_buffer: Buffer to read from.
+        :type stderr_buffer: :py:class:`pssh.clients.reader.ConcurrentRWBuffer`
         :rtype: generator
         """
         logger.debug("Reading from stderr buffer, timeout=%s", timeout)

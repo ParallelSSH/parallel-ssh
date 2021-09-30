@@ -34,10 +34,11 @@ from ssh2.exceptions import (SocketDisconnectError, BannerRecvError, SocketRecvE
                              )
 from pssh.exceptions import (AuthenticationException, ConnectionErrorException,
                              SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout,
-                             AuthenticationError,
+                             AuthenticationError, NoIPV6AddressFoundError,
                              )
 
 from .base_ssh2_case import SSH2TestCase
+from ..embedded_server.openssh import OpenSSHServer
 
 
 class SSH2ClientTest(SSH2TestCase):
@@ -85,6 +86,27 @@ class SSH2ClientTest(SSH2TestCase):
                 pass
         self.assertRaises(
             SFTPIOError, client.copy_remote_file, 'fake_remote_file_not_exists', 'local')
+
+    def test_ipv6(self):
+        host = '::1'
+        server = OpenSSHServer(listen_ip=host, port=self.port)
+        server.start_server()
+        client = SSHClient(host, port=self.port, pkey=self.user_key,
+                           num_retries=1)
+        self.assertIsInstance(client, SSHClient)
+        try:
+            SSHClient(self.host,
+                      port=self.port, pkey=self.user_key,
+                      num_retries=1, ipv6_only=True)
+        except NoIPV6AddressFoundError as ex:
+            self.assertEqual(len(ex.args), 3)
+            self.assertIsInstance(ex.args[2], list)
+            self.assertTrue(len(ex.args[2]) > 0)
+            _host, _port = ex.args[2][0]
+            self.assertEqual(_host, self.host)
+            self.assertEqual(_port, self.port)
+        else:
+            raise AssertionError
 
     def test_scp_fail(self):
         self.assertRaises(SCPError, self.client.scp_recv, 'fakey', 'fake')

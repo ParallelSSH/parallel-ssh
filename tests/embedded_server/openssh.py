@@ -91,11 +91,13 @@ class OpenSSHServer(object):
         self.wait_for_port()
 
     def wait_for_port(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        addr_info = socket.getaddrinfo(self.listen_ip, self.port, proto=socket.IPPROTO_TCP)
+        family, type, proto, _, sock_addr = addr_info[0]
+        sock = socket.socket(family, type)
         while sock.connect_ex((self.listen_ip, self.port)) != 0:
             sleep(.1)
         sleep(.5)
-        del sock
+        sock.close()
 
     def stop(self):
         if self.server_proc is not None and self.server_proc.returncode is None:
