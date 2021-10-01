@@ -901,11 +901,12 @@ Connecting to localhost via an IPv6 address.
    <..>
 
 Asking client to only use IPv6 for DNS resolution.
+:py:class:`NoIPv6AddressFoundError <pssh.exceptions.NoIPv6AddressFoundError>` is raised if no IPv6 address is available
+for hosts.
 
 .. code-block:: python
 
    client = ParallelSSHClient(['myhost.com'], ipv6_only=True)
-   # NoIPv6AddressFoundError raised if no IPv6 address is available for host
    output = client.run_command('echo me')
 
 Similarly for single clients.
