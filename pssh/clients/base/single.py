@@ -263,7 +263,7 @@ class BaseSSHClient(object):
             filtered = [addr for addr in addr_info if addr[0] is socket.AF_INET6]
             if not filtered:
                 raise NoIPv6AddressFoundError(
-                    "Requested IPV6 only and no IPV6 addresses found for host %s from "
+                    "Requested IPv6 only and no IPv6 addresses found for host %s from "
                     "address list %s", host, [addr for _, _, _, _, addr in addr_info])
             addr_info = filtered
         return addr_info

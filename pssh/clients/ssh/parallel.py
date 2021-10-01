@@ -138,7 +138,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
             allow_agent=allow_agent, num_retries=num_retries,
             timeout=timeout, pool_size=pool_size,
             host_config=host_config, retry_delay=retry_delay,
-            identity_auth=identity_auth)
+            identity_auth=identity_auth,
+            ipv6_only=ipv6_only,
+        )
         self.pkey = _validate_pkey_path(pkey)
         self.cert_file = _validate_pkey_path(cert_file)
         self.forward_ssh_agent = forward_ssh_agent
@@ -245,6 +247,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 gssapi_client_identity=self.gssapi_client_identity,
                 gssapi_delegate_credentials=self.gssapi_delegate_credentials,
                 identity_auth=self.identity_auth,
+                ipv6_only=self.ipv6_only,
             )
             self._host_clients[(host_i, host)] = _client
             # TODO - Add forward agent functionality

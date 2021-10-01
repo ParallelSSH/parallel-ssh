@@ -124,7 +124,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
             allow_agent=allow_agent, num_retries=num_retries,
             timeout=timeout, pool_size=pool_size,
             host_config=host_config, retry_delay=retry_delay,
-            identity_auth=identity_auth)
+            identity_auth=identity_auth,
+            ipv6_only=ipv6_only,
+        )
         self.pkey = _validate_pkey_path(pkey)
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
@@ -247,6 +249,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 forward_ssh_agent=self.forward_ssh_agent,
                 keepalive_seconds=self.keepalive_seconds,
                 identity_auth=self.identity_auth,
+                ipv6_only=self.ipv6_only,
             )
             self._host_clients[(host_i, host)] = _client
             return _client

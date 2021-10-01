@@ -36,7 +36,7 @@ from pssh.clients.native import ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
-    PKeyFileError, ShellError, HostArgumentError
+    PKeyFileError, ShellError, HostArgumentError, NoIPv6AddressFoundError
 from pssh.output import HostOutput
 
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
@@ -272,13 +272,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(len(hosts), len(output))
         self.assertIsNotNone(output[1].exception)
         self.assertEqual(output[1].exception.host, hosts[1])
-        try:
-            raise output[1].exception
-        except ConnectionErrorException:
-            pass
-        else:
-            raise Exception("Expected ConnectionError, got %s instead" % (
-                output[1].exception,))
+        self.assertIsInstance(output[1].exception, ConnectionErrorException)
 
     def test_pssh_client_timeout(self):
         # 1ms timeout
@@ -1894,6 +1888,22 @@ class ParallelSSHClientTest(unittest.TestCase):
             for host_out in output:
                 stdout = list(host_out.stdout)
                 self.assertListEqual(stdout, [self.resp])
+
+    def test_ipv6(self):
+        server = OpenSSHServer(listen_ip='::1', port=self.port)
+        server.start_server()
+        hosts = ['::1']
+        client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key, num_retries=1)
+        output = client.run_command(self.cmd)
+        for host_out in output:
+            self.assertEqual(hosts[0], host_out.host)
+            self.assertListEqual(list(host_out.stdout), [self.resp])
+        client = ParallelSSHClient([self.host], port=self.port, pkey=self.user_key, num_retries=1, ipv6_only=True)
+        output = client.run_command(self.cmd, stop_on_errors=False)
+        for host_out in output:
+            # self.assertEqual(self.host, host_out.host)
+            self.assertIsInstance(host_out.exception, NoIPv6AddressFoundError)
+
 
     # TODO:
     # * password auth

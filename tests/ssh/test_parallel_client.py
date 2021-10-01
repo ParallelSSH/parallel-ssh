@@ -27,7 +27,7 @@ from pssh.output import HostOutput
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
-    ProxyError, PKeyFileError
+    ProxyError, PKeyFileError, NoIPv6AddressFoundError
 from pssh.clients.ssh.parallel import ParallelSSHClient
 
 from .base_ssh_case import PKEY_FILENAME, PUB_FILE, USER_CERT_PRIV_KEY, \
@@ -493,6 +493,21 @@ class LibSSHParallelTest(unittest.TestCase):
         self.assertIsNone(self.client._join(out))
         self.assertIsNone(self.client._join(None))
         self.assertIsNone(self.client.join([None]))
+
+    def test_ipv6(self):
+        server = OpenSSHServer(listen_ip='::1', port=self.port)
+        server.start_server()
+        hosts = ['::1']
+        client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key, num_retries=1)
+        output = client.run_command(self.cmd)
+        for host_out in output:
+            self.assertEqual(hosts[0], host_out.host)
+            self.assertListEqual(list(host_out.stdout), [self.resp])
+        client = ParallelSSHClient([self.host], port=self.port, pkey=self.user_key, num_retries=1, ipv6_only=True)
+        output = client.run_command(self.cmd, stop_on_errors=False)
+        for host_out in output:
+            # self.assertEqual(self.host, host_out.host)
+            self.assertIsInstance(host_out.exception, NoIPv6AddressFoundError)
 
     # def test_multiple_run_command_timeout(self):
     #     client = ParallelSSHClient([self.host], port=self.port,
