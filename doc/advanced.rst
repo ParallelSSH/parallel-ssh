@@ -915,5 +915,7 @@ Similarly for single clients.
 
    client = SSHClient(['myhost.com'], ipv6_only=True)
 
+For choosing a mix of IPv4/IPv6 depending on the host name, developers can use `socket.getaddrinfo` directly and pick
+from available addresses.
 
 *New in 2.7.0*
