@@ -225,8 +225,6 @@ class SSHClient(BaseSSHClient):
             logger.error(msg, self.host, self.port, ex)
             if isinstance(ex, SSH2Timeout):
                 raise Timeout(msg, self.host, self.port, ex)
-            ex.host = self.host
-            ex.port = self.port
             raise
 
     def _keepalive(self):

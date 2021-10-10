@@ -299,8 +299,6 @@ class BaseSSHClient(object):
                 "Error connecting to host '%s:%s' - %s - retry %s/%s",
                 host, port, str(error_type), retries,
                 self.num_retries,)
-            ex.host = host
-            ex.port = port
             raise ex
 
     def _identity_auth(self):

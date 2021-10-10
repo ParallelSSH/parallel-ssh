@@ -199,17 +199,17 @@ class BaseParallelSSHClient(object):
         return self._get_output_from_cmds(cmds, raise_error=stop_on_errors)
 
     def _get_output_from_cmds(self, cmds, raise_error=False):
-        _cmds = [spawn(self._get_output_from_greenlet, cmd, raise_error=raise_error)
-                 for cmd in cmds]
+        _cmds = [spawn(self._get_output_from_greenlet, cmd_i, cmd, raise_error=raise_error)
+                 for cmd_i, cmd in enumerate(cmds)]
         finished = joinall(_cmds, raise_error=True)
         return [f.get() for f in finished]
 
-    def _get_output_from_greenlet(self, cmd, raise_error=False):
+    def _get_output_from_greenlet(self, cmd_i, cmd, raise_error=False):
+        host = self.hosts[cmd_i]
         try:
             host_out = cmd.get()
             return host_out
         except (GTimeout, Exception) as ex:
-            host = ex.host if hasattr(ex, 'host') else None
             if isinstance(ex, GTimeout):
                 ex = Timeout()
             if raise_error:
@@ -530,7 +530,6 @@ class BaseParallelSSHClient(object):
         try:
             return func(*args, **kwargs)
         except Exception as ex:
-            ex.host = host
             raise ex
 
     def _make_ssh_client(self, host_i, host):
