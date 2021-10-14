@@ -269,7 +269,18 @@ class BaseSSHClient(object):
         return addr_info
 
     def _connect(self, host, port, retries=1):
-        addr_info = self._get_addr_info(host, port)
+        try:
+            addr_info = self._get_addr_info(host, port)
+        except sock_gaierror as ex:
+            logger.error("Could not resolve host '%s' - retry %s/%s",
+                         host, retries, self.num_retries)
+            if retries < self.num_retries:
+                sleep(self.retry_delay)
+                return self._connect(host, port, retries=retries+1)
+            unknown_ex = UnknownHostError("Unknown host %s - %s - retry %s/%s",
+                                          host, str(ex.args[1]), retries,
+                                          self.num_retries)
+            raise unknown_ex from ex
         family, _type, proto, _, sock_addr = addr_info[0]
         self.sock = socket.socket(family, _type)
         if self.timeout:
@@ -277,18 +288,6 @@ class BaseSSHClient(object):
         logger.debug("Connecting to %s:%s", host, port)
         try:
             self.sock.connect(sock_addr)
-        except sock_gaierror as ex:
-            logger.error("Could not resolve host '%s' - retry %s/%s",
-                         host, retries, self.num_retries)
-            if retries < self.num_retries:
-                sleep(self.retry_delay)
-                return self._connect(host, port, retries=retries+1)
-            ex = UnknownHostError("Unknown host %s - %s - retry %s/%s",
-                                  host, str(ex.args[1]), retries,
-                                  self.num_retries)
-            ex.host = host
-            ex.port = port
-            raise ex
         except sock_error as ex:
             logger.error("Error connecting to host '%s:%s' - retry %s/%s",
                          host, port, retries, self.num_retries)
