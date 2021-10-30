@@ -16,13 +16,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import os
-import socket
 import random
 import string
 import logging
 import pwd
-from subprocess import Popen
-from time import sleep
+from subprocess import Popen, TimeoutExpired
 from sys import version_info
 
 from jinja2 import Template
@@ -87,16 +85,13 @@ class OpenSSHServer(object):
                '-h', SERVER_KEY, '-f', self.sshd_config]
         logger.debug("Starting server with %s" % (" ".join(cmd),))
         self.server_proc = Popen(cmd)
-        self.wait_for_port()
-
-    def wait_for_port(self):
-        addr_info = socket.getaddrinfo(self.listen_ip, self.port, proto=socket.IPPROTO_TCP)
-        family, _type, proto, _, sock_addr = addr_info[0]
-        sock = socket.socket(family, _type)
-        while sock.connect_ex((self.listen_ip, self.port)) != 0:
-            sleep(.1)
-        sleep(.5)
-        sock.close()
+        try:
+            self.server_proc.wait(.1)
+        except TimeoutExpired:
+            pass
+        else:
+            logger.error(self.server_proc.stdout.read())
+            raise Exception("Server could not start")
 
     def stop(self):
         if self.server_proc is not None and self.server_proc.returncode is None:
