@@ -20,6 +20,7 @@ import os
 import subprocess
 from datetime import datetime
 from sys import version_info
+from unittest.mock import patch, MagicMock
 
 from gevent import joinall, spawn, socket, Greenlet, sleep
 from pssh import logger as pssh_logger
@@ -494,20 +495,25 @@ class LibSSHParallelTest(unittest.TestCase):
         self.assertIsNone(self.client._join(None))
         self.assertIsNone(self.client.join([None]))
 
-    def test_ipv6(self):
-        server = OpenSSHServer(listen_ip='::1', port=self.port)
-        server.start_server()
+    @patch('pssh.clients.base.single.socket')
+    def test_ipv6(self, gsocket):
         hosts = ['::1']
         client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key, num_retries=1)
-        output = client.run_command(self.cmd)
-        for host_out in output:
-            self.assertEqual(hosts[0], host_out.host)
-            self.assertListEqual(list(host_out.stdout), [self.resp])
-        client = ParallelSSHClient([self.host], port=self.port, pkey=self.user_key, num_retries=1, ipv6_only=True)
+        addr_info = ('::1', self.port, 0, 0)
+        gsocket.IPPROTO_TCP = socket.IPPROTO_TCP
+        gsocket.socket = MagicMock()
+        _sock = MagicMock()
+        gsocket.socket.return_value = _sock
+        sock_con = MagicMock()
+        _sock.connect = sock_con
+        getaddrinfo = MagicMock()
+        gsocket.getaddrinfo = getaddrinfo
+        getaddrinfo.return_value = [(
+            socket.AF_INET6, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info)]
         output = client.run_command(self.cmd, stop_on_errors=False)
         for host_out in output:
-            # self.assertEqual(self.host, host_out.host)
-            self.assertIsInstance(host_out.exception, NoIPv6AddressFoundError)
+            self.assertEqual(hosts[0], host_out.host)
+            self.assertIsInstance(host_out.exception, TypeError)
 
     # def test_multiple_run_command_timeout(self):
     #     client = ParallelSSHClient([self.host], port=self.port,

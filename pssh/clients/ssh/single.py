@@ -148,9 +148,9 @@ class SSHClient(BaseSSHClient):
         if self.gssapi_client_identity or self.gssapi_server_identity:
             self.session.options_set_gssapi_delegate_credentials(
                 self.gssapi_delegate_credentials)
-        self.session.set_socket(self.sock)
         logger.debug("Session started, connecting with existing socket")
         try:
+            self.session.set_socket(self.sock)
             self._session_connect()
         except Exception as ex:
             if retries < self.num_retries:
