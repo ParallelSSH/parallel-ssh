@@ -11,6 +11,12 @@ Changes
 * Added ``ipv6_only`` flag to ``ParallelSSHClient`` and ``SSHClient`` for choosing only IPv6 addresses when both v4 and
   v6 are available.
 * Removed Python 2 from binary wheel compatibility as it is no longer supported and not guaranteed to work.
+* Hostname is now an argument for all exceptions raised by single clients.
+
+Fixes
+-----
+
+* ``HostOutput`` would have empty host on some exceptions when ``stop_on_errors`` is ``False`` - #297
 
 2.6.0
 +++++
