@@ -105,7 +105,6 @@ class BaseParallelSSHClient(object):
                 encoding=encoding, read_timeout=read_timeout)
             return shell
         except (GTimeout, Exception) as ex:
-            host = ex.host if hasattr(ex, 'host') else None
             logger.error("Failed to run on host %s - %s", host, ex)
             raise ex
 
@@ -266,7 +265,6 @@ class BaseParallelSSHClient(object):
                 use_pty=use_pty, encoding=encoding, read_timeout=read_timeout)
             return host_out
         except (GTimeout, Exception) as ex:
-            host = ex.host if hasattr(ex, 'host') else None
             logger.error("Failed to run on host %s - %s", host, ex)
             raise ex
 
@@ -431,13 +429,9 @@ class BaseParallelSSHClient(object):
 
     def _copy_file(self, host_i, host, local_file, remote_file, recurse=False):
         """Make sftp client, copy file"""
-        try:
-            self._make_ssh_client(host_i, host)
-            return self._host_clients[(host_i, host)].copy_file(
-                local_file, remote_file, recurse=recurse)
-        except Exception as ex:
-            ex.host = host
-            raise ex
+        client = self._make_ssh_client(host_i, host)
+        return client.copy_file(
+            local_file, remote_file, recurse=recurse)
 
     def copy_remote_file(self, remote_file, local_file, recurse=False,
                          suffix_separator='_', copy_args=None, **kwargs):
@@ -518,13 +512,9 @@ class BaseParallelSSHClient(object):
     def _copy_remote_file(self, host_i, host, remote_file, local_file, recurse,
                           **kwargs):
         """Make sftp client, copy file to local"""
-        try:
-            self._make_ssh_client(host_i, host)
-            return self._host_clients[(host_i, host)].copy_remote_file(
-                remote_file, local_file, recurse=recurse, **kwargs)
-        except Exception as ex:
-            ex.host = host
-            raise ex
+        client = self._make_ssh_client(host_i, host)
+        return client.copy_remote_file(
+            remote_file, local_file, recurse=recurse, **kwargs)
 
     def _handle_greenlet_exc(self, func, host, *args, **kwargs):
         try:

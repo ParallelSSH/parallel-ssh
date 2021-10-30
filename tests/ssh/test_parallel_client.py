@@ -232,7 +232,7 @@ class LibSSHParallelTest(unittest.TestCase):
         self.assertIsNotNone(output[1].exception,
                              msg="Failed host %s has no exception in output - %s" % (hosts[1], output,))
         self.assertTrue(output[1].exception is not None)
-        self.assertEqual(output[1].exception.host, hosts[1])
+        self.assertEqual(output[1].exception.args[1], hosts[1])
         try:
             raise output[1].exception
         except ConnectionErrorException:
@@ -316,12 +316,8 @@ class LibSSHParallelTest(unittest.TestCase):
         try:
             raise output[0].exception
         except ConnectionErrorException as ex:
-            self.assertEqual(ex.host, host,
-                             msg="Exception host argument is %s, should be %s" % (
-                                 ex.host, host,))
-            self.assertEqual(ex.args[2], port,
-                             msg="Exception port argument is %s, should be %s" % (
-                                 ex.args[2], port,))
+            self.assertEqual(ex.args[1], host)
+            self.assertEqual(ex.args[2], port)
         else:
             raise Exception("Expected ConnectionErrorException")
 
