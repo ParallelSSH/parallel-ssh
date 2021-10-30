@@ -16,14 +16,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import os
-import socket
 import random
 import string
 import logging
 import pwd
-from threading import Thread
-from subprocess import Popen
-from time import sleep
+from subprocess import Popen, TimeoutExpired
 from sys import version_info
 
 from jinja2 import Template
@@ -74,7 +71,7 @@ class OpenSSHServer(object):
             fh.write(template.render(parent_dir=os.path.abspath(DIR_NAME),
                                      listen_ip=self.listen_ip,
                                      random_server=self.random_server,
-            ))
+                                     ))
             fh.write(os.linesep)
         with open(PRINCIPALS_TMPL) as fh:
             _princ_tmpl = fh.read()
@@ -88,14 +85,13 @@ class OpenSSHServer(object):
                '-h', SERVER_KEY, '-f', self.sshd_config]
         logger.debug("Starting server with %s" % (" ".join(cmd),))
         self.server_proc = Popen(cmd)
-        self.wait_for_port()
-
-    def wait_for_port(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        while sock.connect_ex((self.listen_ip, self.port)) != 0:
-            sleep(.1)
-        sleep(.5)
-        del sock
+        try:
+            self.server_proc.wait(.1)
+        except TimeoutExpired:
+            pass
+        else:
+            logger.error(self.server_proc.stdout.read())
+            raise Exception("Server could not start")
 
     def stop(self):
         if self.server_proc is not None and self.server_proc.returncode is None:

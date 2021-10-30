@@ -58,7 +58,9 @@ class SSHClient(BaseSSHClient):
                  proxy_user=None,
                  proxy_password=None,
                  _auth_thread_pool=True, keepalive_seconds=60,
-                 identity_auth=True,):
+                 identity_auth=True,
+                 ipv6_only=False,
+                 ):
         """:param host: Host name or IP to connect to.
         :type host: str
         :param user: User to connect as. Defaults to logged in user.
@@ -95,6 +97,11 @@ class SSHClient(BaseSSHClient):
         :type proxy_port: int
         :param keepalive_seconds: Interval of keep alive messages being sent to
           server. Set to ``0`` or ``False`` to disable.
+        :type keepalive_seconds: int
+        :param ipv6_only: Choose IPv6 addresses only if multiple are available
+          for the host or raise NoIPv6AddressFoundError otherwise. Note this will
+          disable connecting to an IPv4 address if an IP address is provided instead.
+        :type ipv6_only: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
@@ -126,7 +133,9 @@ class SSHClient(BaseSSHClient):
             allow_agent=allow_agent, _auth_thread_pool=_auth_thread_pool,
             timeout=timeout,
             proxy_host=proxy_host, proxy_port=proxy_port,
-            identity_auth=identity_auth)
+            identity_auth=identity_auth,
+            ipv6_only=ipv6_only,
+        )
 
     def _shell(self, channel):
         return self._eagain(channel.shell)

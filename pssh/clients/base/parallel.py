@@ -41,7 +41,9 @@ class BaseParallelSSHClient(object):
                  num_retries=DEFAULT_RETRIES,
                  timeout=120, pool_size=10,
                  host_config=None, retry_delay=RETRY_DELAY,
-                 identity_auth=True):
+                 identity_auth=True,
+                 ipv6_only=False,
+                 ):
         self.allow_agent = allow_agent
         self.pool_size = pool_size
         self.pool = gevent.pool.Pool(size=self.pool_size)
@@ -57,6 +59,7 @@ class BaseParallelSSHClient(object):
         self.retry_delay = retry_delay
         self.cmds = None
         self.identity_auth = identity_auth
+        self.ipv6_only = ipv6_only
         self._check_host_config()
 
     def _validate_hosts(self, _hosts):

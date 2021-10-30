@@ -49,6 +49,7 @@ class SSHClient(BaseSSHClient):
                  gssapi_server_identity=None,
                  gssapi_client_identity=None,
                  gssapi_delegate_credentials=False,
+                 ipv6_only=False,
                  _auth_thread_pool=True):
         """:param host: Host name or IP to connect to.
         :type host: str
@@ -97,6 +98,10 @@ class SSHClient(BaseSSHClient):
         :param gssapi_delegate_credentials: Enable/disable server credentials
           delegation.
         :type gssapi_delegate_credentials: bool
+        :param ipv6_only: Choose IPv6 addresses only if multiple are available
+          for the host or raise NoIPv6AddressFoundError otherwise. Note this will
+          disable connecting to an IPv4 address if an IP address is provided instead.
+        :type ipv6_only: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
@@ -112,7 +117,9 @@ class SSHClient(BaseSSHClient):
             allow_agent=allow_agent,
             _auth_thread_pool=_auth_thread_pool,
             timeout=timeout,
-            identity_auth=identity_auth)
+            identity_auth=identity_auth,
+            ipv6_only=ipv6_only,
+        )
 
     def disconnect(self):
         """Close socket if needed."""
@@ -141,9 +148,9 @@ class SSHClient(BaseSSHClient):
         if self.gssapi_client_identity or self.gssapi_server_identity:
             self.session.options_set_gssapi_delegate_credentials(
                 self.gssapi_delegate_credentials)
-        self.session.set_socket(self.sock)
         logger.debug("Session started, connecting with existing socket")
         try:
+            self.session.set_socket(self.sock)
             self._session_connect()
         except Exception as ex:
             if retries < self.num_retries:

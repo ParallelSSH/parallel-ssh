@@ -882,3 +882,40 @@ Clients for hosts that would be removed by a reassignment can be calculated with
 
    set(enumerate(client.hosts)).difference(
        set(enumerate(new_hosts)))
+
+
+IPv6 Addresses
+***************
+
+All clients support IPv6 addresses in both host list, and via DNS. Typically IPv4 addresses are preferred as they are
+the first entries in DNS resolution depending on DNS server configuration and entries.
+
+The ``ipv6_only`` flag may be used to override this behaviour and force the client(s) to only choose IPv6 addresses, or
+raise an error if none are available.
+
+Connecting to localhost via an IPv6 address.
+
+.. code-block:: python
+
+   client = ParallelSSHClient(['::1'])
+   <..>
+
+Asking client to only use IPv6 for DNS resolution.
+:py:class:`NoIPv6AddressFoundError <pssh.exceptions.NoIPv6AddressFoundError>` is raised if no IPv6 address is available
+for hosts.
+
+.. code-block:: python
+
+   client = ParallelSSHClient(['myhost.com'], ipv6_only=True)
+   output = client.run_command('echo me')
+
+Similarly for single clients.
+
+.. code-block:: python
+
+   client = SSHClient(['myhost.com'], ipv6_only=True)
+
+For choosing a mix of IPv4/IPv6 depending on the host name, developers can use `socket.getaddrinfo` directly and pick
+from available addresses.
+
+*New in 2.7.0*

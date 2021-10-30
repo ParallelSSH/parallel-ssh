@@ -20,6 +20,7 @@ import os
 import subprocess
 from datetime import datetime
 from sys import version_info
+from unittest.mock import patch, MagicMock
 
 from gevent import joinall, spawn, socket, Greenlet, sleep
 from pssh import logger as pssh_logger
@@ -27,7 +28,7 @@ from pssh.output import HostOutput
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, SessionError, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
-    ProxyError, PKeyFileError
+    ProxyError, PKeyFileError, NoIPv6AddressFoundError
 from pssh.clients.ssh.parallel import ParallelSSHClient
 
 from .base_ssh_case import PKEY_FILENAME, PUB_FILE, USER_CERT_PRIV_KEY, \
@@ -493,6 +494,26 @@ class LibSSHParallelTest(unittest.TestCase):
         self.assertIsNone(self.client._join(out))
         self.assertIsNone(self.client._join(None))
         self.assertIsNone(self.client.join([None]))
+
+    @patch('pssh.clients.base.single.socket')
+    def test_ipv6(self, gsocket):
+        hosts = ['::1']
+        client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key, num_retries=1)
+        addr_info = ('::1', self.port, 0, 0)
+        gsocket.IPPROTO_TCP = socket.IPPROTO_TCP
+        gsocket.socket = MagicMock()
+        _sock = MagicMock()
+        gsocket.socket.return_value = _sock
+        sock_con = MagicMock()
+        _sock.connect = sock_con
+        getaddrinfo = MagicMock()
+        gsocket.getaddrinfo = getaddrinfo
+        getaddrinfo.return_value = [(
+            socket.AF_INET6, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info)]
+        output = client.run_command(self.cmd, stop_on_errors=False)
+        for host_out in output:
+            self.assertEqual(hosts[0], host_out.host)
+            self.assertIsInstance(host_out.exception, TypeError)
 
     # def test_multiple_run_command_timeout(self):
     #     client = ParallelSSHClient([self.host], port=self.port,

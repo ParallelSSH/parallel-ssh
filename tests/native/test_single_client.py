@@ -19,11 +19,12 @@ import os
 import subprocess
 import shutil
 import tempfile
-from unittest.mock import MagicMock, call
+from pytest import raises
+from unittest.mock import MagicMock, call, patch
 from hashlib import sha256
 from datetime import datetime
 
-from gevent import sleep, spawn, Timeout as GTimeout
+from gevent import sleep, spawn, Timeout as GTimeout, socket
 
 from pssh.clients.native import SSHClient
 from ssh2.session import Session
@@ -34,10 +35,11 @@ from ssh2.exceptions import (SocketDisconnectError, BannerRecvError, SocketRecvE
                              )
 from pssh.exceptions import (AuthenticationException, ConnectionErrorException,
                              SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout,
-                             AuthenticationError,
+                             AuthenticationError, NoIPv6AddressFoundError,
                              )
 
 from .base_ssh2_case import SSH2TestCase
+from ..embedded_server.openssh import OpenSSHServer
 
 
 class SSH2ClientTest(SSH2TestCase):
@@ -85,6 +87,46 @@ class SSH2ClientTest(SSH2TestCase):
                 pass
         self.assertRaises(
             SFTPIOError, client.copy_remote_file, 'fake_remote_file_not_exists', 'local')
+
+    @patch('pssh.clients.base.single.socket')
+    def test_ipv6(self, gsocket):
+        # As of Oct 2021, CircleCI does not support IPv6 in its containers.
+        # Rather than having to create and manage our own docker containers just for testing, we patch gevent.socket
+        # and test it unit test style.
+        # Not ideal, but managing our own containers for one test is worse.
+        host = '::1'
+        addr_info = ('::1', self.port, 0, 0)
+        gsocket.IPPROTO_TCP = socket.IPPROTO_TCP
+        gsocket.socket = MagicMock()
+        _sock = MagicMock()
+        gsocket.socket.return_value = _sock
+        sock_con = MagicMock()
+        _sock.connect = sock_con
+        getaddrinfo = MagicMock()
+        gsocket.getaddrinfo = getaddrinfo
+        getaddrinfo.return_value = [(
+            socket.AF_INET6, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info)]
+        with raises(TypeError):
+            # Mock object as a file descriptor will raise TypeError
+            client = SSHClient(host, port=self.port, pkey=self.user_key,
+                               num_retries=1)
+        getaddrinfo.assert_called_once_with(host, self.port, proto=socket.IPPROTO_TCP)
+        sock_con.assert_called_once_with(addr_info)
+
+    def test_no_ipv6(self):
+        try:
+            SSHClient(self.host,
+                      port=self.port, pkey=self.user_key,
+                      num_retries=1, ipv6_only=True)
+        except NoIPv6AddressFoundError as ex:
+            self.assertEqual(len(ex.args), 3)
+            self.assertIsInstance(ex.args[2], list)
+            self.assertTrue(len(ex.args[2]) > 0)
+            _host, _port = ex.args[2][0]
+            self.assertEqual(_host, self.host)
+            self.assertEqual(_port, self.port)
+        else:
+            raise AssertionError
 
     def test_scp_fail(self):
         self.assertRaises(SCPError, self.client.scp_recv, 'fakey', 'fake')
