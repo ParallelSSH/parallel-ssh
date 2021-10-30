@@ -23,12 +23,11 @@ import unittest
 import pwd
 import os
 import shutil
-import sys
 import string
 import random
 from hashlib import sha256
 from datetime import datetime
-from platform import python_version
+from unittest.mock import patch, MagicMock
 
 from gevent import joinall, spawn, socket, Greenlet, sleep, Timeout as GTimeout
 from pssh.config import HostConfig
@@ -1889,21 +1888,32 @@ class ParallelSSHClientTest(unittest.TestCase):
                 stdout = list(host_out.stdout)
                 self.assertListEqual(stdout, [self.resp])
 
-    def test_ipv6(self):
-        server = OpenSSHServer(listen_ip='::1', port=self.port)
-        server.start_server()
+    @patch('pssh.clients.base.single.socket')
+    def test_ipv6(self, gsocket):
         hosts = ['::1']
         client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key, num_retries=1)
-        output = client.run_command(self.cmd)
+        addr_info = ('::1', self.port, 0, 0)
+        gsocket.IPPROTO_TCP = socket.IPPROTO_TCP
+        gsocket.socket = MagicMock()
+        _sock = MagicMock()
+        gsocket.socket.return_value = _sock
+        sock_con = MagicMock()
+        _sock.connect = sock_con
+        getaddrinfo = MagicMock()
+        gsocket.getaddrinfo = getaddrinfo
+        getaddrinfo.return_value = [(
+            socket.AF_INET6, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info)]
+        output = client.run_command(self.cmd, stop_on_errors=False)
         for host_out in output:
             self.assertEqual(hosts[0], host_out.host)
-            self.assertListEqual(list(host_out.stdout), [self.resp])
+            self.assertIsInstance(host_out.exception, TypeError)
+
+    def test_no_ipv6(self):
         client = ParallelSSHClient([self.host], port=self.port, pkey=self.user_key, num_retries=1, ipv6_only=True)
         output = client.run_command(self.cmd, stop_on_errors=False)
         for host_out in output:
             # self.assertEqual(self.host, host_out.host)
             self.assertIsInstance(host_out.exception, NoIPv6AddressFoundError)
-
 
     # TODO:
     # * password auth
