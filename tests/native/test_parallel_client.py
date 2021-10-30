@@ -1289,15 +1289,6 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    num_retries=1)
         self.assertRaises(UnknownHostException, client.run_command, self.cmd)
 
-    def test_open_channel_failure(self):
-        client = ParallelSSHClient([self.host], port=self.port,
-                                   pkey=self.user_key)
-        output = client.run_command(self.cmd)
-        client.join(output)
-        output[0].client.session.disconnect()
-        self.assertRaises(SessionError, output[0].client.open_session)
-        self.assertEqual(output[0].exit_code, 0)
-
     def test_invalid_host_out(self):
         output = {'blah': None}
         self.assertRaises(ValueError, self.client.join, output)
