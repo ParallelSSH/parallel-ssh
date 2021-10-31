@@ -310,7 +310,7 @@ class BaseParallelSSHClient(object):
           self.pool.
           Since self.timeout is passed onto each individual SSH session it is
           **not** used for any parallel functions like `run_command` or `join`.
-        :type timeout: int
+        :type timeout: float
 
         :raises: :py:class:`pssh.exceptions.Timeout` on timeout requested and
           reached with commands still running.
