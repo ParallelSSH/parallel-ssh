@@ -17,6 +17,7 @@ Fixes
 -----
 
 * ``HostOutput`` would have empty host on some exceptions when ``stop_on_errors`` is ``False`` - #297
+* Race condition when forcefully closing channel via ``SSHClient.close_channel`` while channel data was left unread.
 
 2.6.0
 +++++
