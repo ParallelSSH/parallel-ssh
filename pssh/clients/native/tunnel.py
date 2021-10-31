@@ -164,9 +164,9 @@ class TunnelServer(StreamServer):
         logger.debug("Waiting for read/write greenlets")
         self._source_let = source
         self._dest_let = dest
-        self._wait_send_receive_lets(source, dest, channel, socket)
+        self._wait_send_receive_lets(source, dest, channel)
 
-    def _wait_send_receive_lets(self, source, dest, channel, forward_sock):
+    def _wait_send_receive_lets(self, source, dest, channel):
         try:
             joinall((source, dest), raise_error=True)
         finally:

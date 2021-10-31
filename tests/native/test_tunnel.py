@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis
+# Copyright (C) 2014-2021 Panos Kittenis
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -18,27 +18,18 @@
 import unittest
 import pwd
 import os
-import shutil
-import sys
-import string
-import random
 import time
 import gc
 
 from datetime import datetime
-from socket import timeout as socket_timeout
 from sys import version_info
-from collections import deque
 from gevent import sleep, spawn, Timeout as GTimeout
 
 from pssh.config import HostConfig
 from pssh.clients.native import SSHClient, ParallelSSHClient
 from pssh.clients.native.tunnel import LocalForwarder, TunnelServer, FORWARDER
-from pssh.exceptions import UnknownHostException, \
-    AuthenticationException, ConnectionErrorException, SessionError, \
-    HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
-    ProxyError
-from ssh2.exceptions import ChannelFailure, SocketSendError, SocketRecvError
+from pssh.exceptions import ProxyError
+from ssh2.exceptions import SocketSendError, SocketRecvError
 
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
 from ..embedded_server.openssh import OpenSSHServer
@@ -350,7 +341,7 @@ class TunnelTest(unittest.TestCase):
         source_let = spawn(server._read_forward_sock, _socket, channel)
         dest_let = spawn(server._read_channel, _socket, channel)
         channel._eof = True
-        self.assertIsNone(server._wait_send_receive_lets(source_let, dest_let, channel, _socket))
+        self.assertIsNone(server._wait_send_receive_lets(source_let, dest_let, channel))
         let.kill()
 
     def test_server_start(self):
