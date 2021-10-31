@@ -225,8 +225,6 @@ class SSHClient(BaseSSHClient):
             logger.error(msg, self.host, self.port, ex)
             if isinstance(ex, SSH2Timeout):
                 raise Timeout(msg, self.host, self.port, ex)
-            ex.host = self.host
-            ex.port = self.port
             raise
 
     def _keepalive(self):
@@ -483,9 +481,9 @@ class SSHClient(BaseSSHClient):
         try:
             self._eagain(sftp.stat, remote_file)
         except (SFTPHandleError, SFTPProtocolError):
-            msg = "Remote file or directory %s does not exist"
-            logger.error(msg, remote_file)
-            raise SFTPIOError(msg, remote_file)
+            msg = "Remote file or directory %s on host %s does not exist"
+            logger.error(msg, remote_file, self.host)
+            raise SFTPIOError(msg, remote_file, self.host)
         try:
             dir_h = self._sftp_openfh(sftp.opendir, remote_file)
         except SFTPError:

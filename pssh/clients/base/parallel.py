@@ -105,7 +105,6 @@ class BaseParallelSSHClient(object):
                 encoding=encoding, read_timeout=read_timeout)
             return shell
         except (GTimeout, Exception) as ex:
-            host = ex.host if hasattr(ex, 'host') else None
             logger.error("Failed to run on host %s - %s", host, ex)
             raise ex
 
@@ -199,17 +198,17 @@ class BaseParallelSSHClient(object):
         return self._get_output_from_cmds(cmds, raise_error=stop_on_errors)
 
     def _get_output_from_cmds(self, cmds, raise_error=False):
-        _cmds = [spawn(self._get_output_from_greenlet, cmd, raise_error=raise_error)
-                 for cmd in cmds]
+        _cmds = [spawn(self._get_output_from_greenlet, cmd_i, cmd, raise_error=raise_error)
+                 for cmd_i, cmd in enumerate(cmds)]
         finished = joinall(_cmds, raise_error=True)
         return [f.get() for f in finished]
 
-    def _get_output_from_greenlet(self, cmd, raise_error=False):
+    def _get_output_from_greenlet(self, cmd_i, cmd, raise_error=False):
+        host = self.hosts[cmd_i]
         try:
             host_out = cmd.get()
             return host_out
         except (GTimeout, Exception) as ex:
-            host = ex.host if hasattr(ex, 'host') else None
             if isinstance(ex, GTimeout):
                 ex = Timeout()
             if raise_error:
@@ -266,7 +265,6 @@ class BaseParallelSSHClient(object):
                 use_pty=use_pty, encoding=encoding, read_timeout=read_timeout)
             return host_out
         except (GTimeout, Exception) as ex:
-            host = ex.host if hasattr(ex, 'host') else None
             logger.error("Failed to run on host %s - %s", host, ex)
             raise ex
 
@@ -312,7 +310,7 @@ class BaseParallelSSHClient(object):
           self.pool.
           Since self.timeout is passed onto each individual SSH session it is
           **not** used for any parallel functions like `run_command` or `join`.
-        :type timeout: int
+        :type timeout: float
 
         :raises: :py:class:`pssh.exceptions.Timeout` on timeout requested and
           reached with commands still running.
@@ -431,13 +429,9 @@ class BaseParallelSSHClient(object):
 
     def _copy_file(self, host_i, host, local_file, remote_file, recurse=False):
         """Make sftp client, copy file"""
-        try:
-            self._make_ssh_client(host_i, host)
-            return self._host_clients[(host_i, host)].copy_file(
-                local_file, remote_file, recurse=recurse)
-        except Exception as ex:
-            ex.host = host
-            raise ex
+        client = self._make_ssh_client(host_i, host)
+        return client.copy_file(
+            local_file, remote_file, recurse=recurse)
 
     def copy_remote_file(self, remote_file, local_file, recurse=False,
                          suffix_separator='_', copy_args=None, **kwargs):
@@ -518,19 +512,14 @@ class BaseParallelSSHClient(object):
     def _copy_remote_file(self, host_i, host, remote_file, local_file, recurse,
                           **kwargs):
         """Make sftp client, copy file to local"""
-        try:
-            self._make_ssh_client(host_i, host)
-            return self._host_clients[(host_i, host)].copy_remote_file(
-                remote_file, local_file, recurse=recurse, **kwargs)
-        except Exception as ex:
-            ex.host = host
-            raise ex
+        client = self._make_ssh_client(host_i, host)
+        return client.copy_remote_file(
+            remote_file, local_file, recurse=recurse, **kwargs)
 
     def _handle_greenlet_exc(self, func, host, *args, **kwargs):
         try:
             return func(*args, **kwargs)
         except Exception as ex:
-            ex.host = host
             raise ex
 
     def _make_ssh_client(self, host_i, host):

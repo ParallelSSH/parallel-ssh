@@ -270,7 +270,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue(client.finished(output))
         self.assertEqual(len(hosts), len(output))
         self.assertIsNotNone(output[1].exception)
-        self.assertEqual(output[1].exception.host, hosts[1])
+        self.assertEqual(output[1].exception.args[1], hosts[1])
         self.assertIsInstance(output[1].exception, ConnectionErrorException)
 
     def test_pssh_client_timeout(self):
@@ -374,7 +374,7 @@ class ParallelSSHClientTest(unittest.TestCase):
             try:
                 cmd.get()
             except Exception as ex:
-                self.assertEqual(ex.host, self.host)
+                self.assertEqual(ex.args[1], self.host)
                 self.assertIsInstance(ex, ConnectionErrorException)
             else:
                 raise Exception("Expected ConnectionErrorException, got none")
@@ -582,7 +582,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         try:
             cmds[0].get()
         except Exception as ex:
-            self.assertEqual(ex.host, self.host)
+            self.assertEqual(ex.args[2], self.host)
             self.assertIsInstance(ex, SFTPIOError)
         else:
             raise Exception("Expected SFTPIOError, got none")
@@ -871,12 +871,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         try:
             raise output[0].exception
         except ConnectionErrorException as ex:
-            self.assertEqual(ex.host, host,
-                             msg="Exception host argument is %s, should be %s" % (
-                                 ex.host, host,))
-            self.assertEqual(ex.args[2], port,
-                             msg="Exception port argument is %s, should be %s" % (
-                                 ex.args[2], port,))
+            self.assertEqual(ex.args[1], host)
+            self.assertEqual(ex.args[2], port)
         else:
             raise Exception("Expected ConnectionErrorException")
 
@@ -950,7 +946,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         try:
             raise output[1].exception
         except PKeyFileError as ex:
-            self.assertEqual(ex.host, host)
+            self.assertEqual(output[1].host, hosts[1][0])
         else:
             raise AssertionError("Expected ValueError on host %s",
                                  hosts[0][0])
@@ -988,7 +984,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         try:
             raise output[1].exception
         except PKeyFileError as ex:
-            self.assertEqual(ex.host, host)
+            self.assertEqual(output[1].host, hosts[1][0])
         else:
             raise AssertionError("Expected ValueError on host %s",
                                  hosts[0][0])
@@ -1292,15 +1288,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient([host], port=self.port,
                                    num_retries=1)
         self.assertRaises(UnknownHostException, client.run_command, self.cmd)
-
-    def test_open_channel_failure(self):
-        client = ParallelSSHClient([self.host], port=self.port,
-                                   pkey=self.user_key)
-        output = client.run_command(self.cmd)
-        client.join(output)
-        output[0].client.session.disconnect()
-        self.assertRaises(SessionError, output[0].client.open_session)
-        self.assertEqual(output[0].exit_code, 0)
 
     def test_invalid_host_out(self):
         output = {'blah': None}
@@ -1621,7 +1608,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         try:
             joinall(cmds, raise_error=True)
         except Exception as ex:
-            self.assertEqual(ex.host, self.host)
+            self.assertEqual(ex.args[2], self.host)
             self.assertIsInstance(ex, SCPError)
         else:
             raise Exception("Expected SCPError, got none")
@@ -1912,7 +1899,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient([self.host], port=self.port, pkey=self.user_key, num_retries=1, ipv6_only=True)
         output = client.run_command(self.cmd, stop_on_errors=False)
         for host_out in output:
-            # self.assertEqual(self.host, host_out.host)
+            self.assertEqual(self.host, host_out.host)
             self.assertIsInstance(host_out.exception, NoIPv6AddressFoundError)
 
     # TODO:

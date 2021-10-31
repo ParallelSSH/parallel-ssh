@@ -112,8 +112,7 @@ class LocalForwarder(Thread):
                     continue
                 self._start_server()
         except Exception:
-            logger.error("Tunnel thread caught exception and will exit:",
-                         exc_info=1)
+            logger.exception("Tunnel thread caught exception and will exit:")
             self.shutdown()
 
     def cleanup_server(self, client):
@@ -141,6 +140,7 @@ class TunnelServer(StreamServer):
         self._client = client
         self._retries = num_retries
         self.bind_address = bind_address
+        self.exception = None
 
     @property
     def listen_port(self):
@@ -164,9 +164,9 @@ class TunnelServer(StreamServer):
         logger.debug("Waiting for read/write greenlets")
         self._source_let = source
         self._dest_let = dest
-        self._wait_send_receive_lets(source, dest, channel, socket)
+        self._wait_send_receive_lets(source, dest, channel)
 
-    def _wait_send_receive_lets(self, source, dest, channel, forward_sock):
+    def _wait_send_receive_lets(self, source, dest, channel):
         try:
             joinall((source, dest), raise_error=True)
         finally:

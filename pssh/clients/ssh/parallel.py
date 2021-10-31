@@ -89,7 +89,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type pool_size: int
         :param host_config: (Optional) Per-host configuration for cases where
           not all hosts use the same configuration.
-        :type host_config: dict
+        :type host_config: list(:py:class:`pssh.config.HostConfig`)
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent. Currently unused - always off.
         :type allow_agent: bool

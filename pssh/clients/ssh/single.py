@@ -157,8 +157,6 @@ class SSHClient(BaseSSHClient):
                 return self._connect_init_session_retry(retries=retries+1)
             msg = "Error connecting to host %s:%s - %s"
             logger.error(msg, self.host, self.port, ex)
-            ex.host = self.host
-            ex.port = self.port
             raise ex
 
     def _session_connect(self):
