@@ -91,6 +91,7 @@ class OpenSSHServer(object):
             pass
         else:
             logger.error(self.server_proc.stdout.read())
+            logger.error(self.server_proc.stderr.read())
             raise Exception("Server could not start")
 
     def stop(self):

@@ -96,7 +96,7 @@ class TunnelTest(unittest.TestCase):
         remote_server.start_server()
 
         reconn_n = 20       # Number of reconnect attempts
-        reconn_delay = 1    # Number of seconds to delay betwen reconnects
+        reconn_delay = .1    # Number of seconds to delay between reconnects
         try:
             for _ in range(reconn_n):
                 client = SSHClient(
