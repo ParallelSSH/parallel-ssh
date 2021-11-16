@@ -120,20 +120,20 @@ class SSHClientTest(SSHTestCase):
         self.assertIsInstance(client, SSHClient)
 
     def test_long_running_cmd(self):
-        host_out = self.client.run_command('sleep 2; exit 2')
+        host_out = self.client.run_command('sleep .2; exit 2')
         self.assertRaises(ValueError, self.client.wait_finished, host_out.channel)
         self.client.wait_finished(host_out)
         exit_code = host_out.exit_code
         self.assertEqual(exit_code, 2)
 
     def test_wait_finished_timeout(self):
-        host_out = self.client.run_command('sleep 2')
-        timeout = 1
+        host_out = self.client.run_command('sleep .2')
+        timeout = .1
         self.assertFalse(self.client.finished(host_out.channel))
         start = datetime.now()
         self.assertRaises(Timeout, self.client.wait_finished, host_out, timeout=timeout)
         dt = datetime.now() - start
-        self.assertTrue(timeout*1.05 > dt.total_seconds() > timeout)
+        self.assertTrue(timeout*1.1 > dt.total_seconds() > timeout)
         self.client.wait_finished(host_out)
         self.assertTrue(self.client.finished(host_out.channel))
 
@@ -187,33 +187,71 @@ class SSHClientTest(SSHTestCase):
     def test_interactive_shell_exit_code(self):
         with self.client.open_shell() as shell:
             shell.run(self.cmd)
-            shell.run('sleep 1')
+            shell.run('sleep .1')
             shell.run(self.cmd)
             shell.run('exit 1')
         stdout = list(shell.output.stdout)
         self.assertListEqual(stdout, [self.resp, self.resp])
         self.assertEqual(shell.output.exit_code, 1)
 
-    def test_password_auth_failure(self):
-        self.assertRaises(AuthenticationError,
+    def test_identity_auth_failure(self):
+        self.assertRaises(AuthenticationException,
                           SSHClient, self.host, port=self.port, num_retries=1,
+                          allow_agent=False)
+
+    def test_password_auth_failure(self):
+        try:
+            client = SSHClient(self.host, port=self.port, num_retries=1,
+                               allow_agent=False,
+                               identity_auth=False,
+                               password='blah blah blah',
+                               )
+        except AuthenticationException as ex:
+            self.assertIsInstance(ex.args[3], AuthenticationDenied)
+        else:
+            raise AssertionError
+
+    def test_retry_failure(self):
+        self.assertRaises(ConnectionErrorException,
+                          SSHClient, self.host, port=12345,
+                          timeout=1,
+                          retry_delay=.1,
+                          num_retries=2, _auth_thread_pool=False)
+
+    def test_auth_retry_failure(self):
+        self.assertRaises(AuthenticationException,
+                          SSHClient, self.host, port=self.port,
+                          user=self.user,
+                          password='fake',
+                          timeout=1,
+                          retry_delay=.1,
+                          num_retries=2,
                           allow_agent=False,
-                          password='blah blah blah')
+                          identity_auth=False,
+                          )
+
+    def test_connection_timeout(self):
+        cmd = spawn(SSHClient, 'fakehost.com', port=12345,
+                    retry_delay=.1,
+                    num_retries=2, timeout=.2, _auth_thread_pool=False)
+        # Should fail within greenlet timeout, otherwise greenlet will
+        # raise timeout which will fail the test
+        self.assertRaises(ConnectionErrorException, cmd.get, timeout=2)
 
     def test_open_session_timeout(self):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
                            num_retries=2,
-                           timeout=1)
-        def _session(timeout=2):
-            sleep(2)
+                           timeout=.1)
+        def _session(timeout=None):
+            sleep(.2)
         client.open_session = _session
         self.assertRaises(GTimeout, client.run_command, self.cmd)
 
     def test_connection_timeout(self):
         cmd = spawn(SSHClient, 'fakehost.com', port=12345,
-                    retry_delay=1,
-                    num_retries=2, timeout=1, _auth_thread_pool=False)
+                    retry_delay=.1,
+                    num_retries=2, timeout=.2, _auth_thread_pool=False)
         # Should fail within greenlet timeout, otherwise greenlet will
         # raise timeout which will fail the test
         self.assertRaises(ConnectionErrorException, cmd.get, timeout=5)
@@ -235,6 +273,19 @@ class SSHClientTest(SSHTestCase):
                            num_retries=1)
         client._open_session = _session
         self.assertRaises(SessionError, client.open_session)
+
+    def test_session_connect_exc(self):
+        class Error(Exception):
+            pass
+        def _con():
+            raise Error
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=2,
+                           retry_delay=.2,
+                           )
+        client._session_connect = _con
+        self.assertRaises(Error, client._init_session)
 
     def test_invalid_mkdir(self):
         self.assertRaises(OSError, self.client._make_local_dir, '/my_new_dir')
@@ -265,7 +316,6 @@ class SSHClientTest(SSHTestCase):
         client.session.disconnect()
         client.pkey = None
         client._connect(self.host, self.port)
-        self.assertRaises(AuthenticationDenied, client._agent_auth)
         client._agent_auth = _agent_auth_unk
         self.assertRaises(AuthenticationError, client.auth)
         client._agent_auth = _agent_auth_agent_err
@@ -285,5 +335,16 @@ class SSHClientTest(SSHTestCase):
         client._agent_auth = _agent_auth
         self.assertIsNone(client.auth())
 
-    # TODO:
-    # * disconnect exc
+    def test_disconnect_exc(self):
+        class DiscError(Exception):
+            pass
+        def _disc():
+            raise DiscError
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1,
+                           retry_delay=.1,
+                           )
+        client._disconnect_eagain = _disc
+        client._connect_init_session_retry(0)
+        client.disconnect()

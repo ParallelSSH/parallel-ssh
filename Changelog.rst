@@ -1,6 +1,58 @@
 Change Log
 ============
 
+2.7.0
++++++
+
+Changes
+-------
+
+* All clients now support IPv6 addresses for both DNS and IP entries in host list.
+* Added ``ipv6_only`` flag to ``ParallelSSHClient`` and ``SSHClient`` for choosing only IPv6 addresses when both v4 and
+  v6 are available.
+* Removed Python 2 from binary wheel compatibility as it is no longer supported and not guaranteed to work.
+* Host name is now an argument for all exceptions raised by single clients.
+
+Fixes
+-----
+
+* ``HostOutput`` would have empty host on some exceptions when ``stop_on_errors`` is ``False`` - #297
+* Race condition when forcefully closing channel via ``SSHClient.close_channel`` while channel data was left unread.
+
+2.6.0
++++++
+
+Changes
+-------
+
+* ``user`` keyword argument no longer required on Windows - exception is raised if user cannot be identified.
+* Removed deprecated since ``2.0.0`` functions and parameters.
+
+Fixes
+-----
+
+* ``copy_remote_file`` with recurse enabled would not use a provided encoding for sub-directories - #284
+* Reconnecting to the same proxy host when proxy is configured would sometimes cause segfauls - ##304
+
+
+2.5.4
++++++
+
+Fixes
+------
+
+* Password authentication via ``pssh.clients.ssh`` would not work - #276
+
+
+2.5.3
++++++
+
+Fixes
+-----
+
+* Sending files via ``scp_send`` or ``sftp_put`` with timeout set could timeout unexpectedly on opening remote file - #271.
+
+
 2.5.2
 +++++
 

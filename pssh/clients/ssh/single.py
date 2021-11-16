@@ -18,7 +18,6 @@
 import logging
 
 from gevent import sleep, spawn, Timeout as GTimeout, joinall
-from gevent.select import POLLIN, POLLOUT
 from ssh import options
 from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
 from ssh.key import import_privkey_file, import_cert_file, copy_cert_to_privkey
@@ -28,7 +27,7 @@ from ssh.error_codes import SSH_AGAIN
 from ..base.single import BaseSSHClient
 from ..common import _validate_pkey_path
 from ...output import HostOutput
-from ...exceptions import AuthenticationError, SessionError, Timeout
+from ...exceptions import SessionError, Timeout
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 
@@ -50,6 +49,7 @@ class SSHClient(BaseSSHClient):
                  gssapi_server_identity=None,
                  gssapi_client_identity=None,
                  gssapi_delegate_credentials=False,
+                 ipv6_only=False,
                  _auth_thread_pool=True):
         """:param host: Host name or IP to connect to.
         :type host: str
@@ -98,6 +98,10 @@ class SSHClient(BaseSSHClient):
         :param gssapi_delegate_credentials: Enable/disable server credentials
           delegation.
         :type gssapi_delegate_credentials: bool
+        :param ipv6_only: Choose IPv6 addresses only if multiple are available
+          for the host or raise NoIPv6AddressFoundError otherwise. Note this will
+          disable connecting to an IPv4 address if an IP address is provided instead.
+        :type ipv6_only: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
@@ -113,7 +117,9 @@ class SSHClient(BaseSSHClient):
             allow_agent=allow_agent,
             _auth_thread_pool=_auth_thread_pool,
             timeout=timeout,
-            identity_auth=identity_auth)
+            identity_auth=identity_auth,
+            ipv6_only=ipv6_only,
+        )
 
     def disconnect(self):
         """Close socket if needed."""
@@ -142,18 +148,19 @@ class SSHClient(BaseSSHClient):
         if self.gssapi_client_identity or self.gssapi_server_identity:
             self.session.options_set_gssapi_delegate_credentials(
                 self.gssapi_delegate_credentials)
-        self.session.set_socket(self.sock)
         logger.debug("Session started, connecting with existing socket")
         try:
-            self.session.connect()
+            self.session.set_socket(self.sock)
+            self._session_connect()
         except Exception as ex:
             if retries < self.num_retries:
                 return self._connect_init_session_retry(retries=retries+1)
             msg = "Error connecting to host %s:%s - %s"
             logger.error(msg, self.host, self.port, ex)
-            ex.host = self.host
-            ex.port = self.port
             raise ex
+
+    def _session_connect(self):
+        self.session.connect()
 
     def auth(self):
         if self.gssapi_auth or (self.gssapi_server_identity or self.gssapi_client_identity):
@@ -166,12 +173,7 @@ class SSHClient(BaseSSHClient):
         return super(SSHClient, self).auth()
 
     def _password_auth(self):
-        if not self.password:
-            raise AuthenticationError("All authentication methods failed")
-        try:
-            self.session.userauth_password(self.password)
-        except Exception as ex:
-            raise AuthenticationError("Password authentication failed - %s", ex)
+        self.session.userauth_password(self.user, self.password)
 
     def _pkey_auth(self, pkey_file, password=None):
         pkey = import_privkey_file(pkey_file, passphrase=password if password is not None else '')
@@ -270,7 +272,6 @@ class SSHClient(BaseSSHClient):
         with GTimeout(seconds=timeout, exception=Timeout):
             joinall((host_output.buffers.stdout.reader, host_output.buffers.stderr.reader))
         logger.debug("Readers finished, closing channel")
-        # Close channel
         self.close_channel(channel)
 
     def finished(self, channel):
@@ -304,33 +305,17 @@ class SSHClient(BaseSSHClient):
         self._eagain(channel.close, timeout=self.timeout)
 
     def poll(self, timeout=None):
-        """ssh-python based co-operative gevent select on session socket."""
-        timeout = self.timeout if timeout is None else timeout
-        directions = self.session.get_poll_flags()
-        if directions == 0:
-            return
-        events = 0
-        if directions & SSH_READ_PENDING:
-            events = POLLIN
-        if directions & SSH_WRITE_PENDING:
-            events |= POLLOUT
-        self._poll_socket(events, timeout=timeout)
+        """ssh-python based co-operative gevent poll on session socket."""
+        self._poll_errcodes(
+            self.session.get_poll_flags,
+            SSH_READ_PENDING,
+            SSH_WRITE_PENDING,
+            timeout=timeout,
+        )
 
     def _eagain(self, func, *args, **kwargs):
         """Run function given and handle EAGAIN for an ssh-python session"""
-        timeout = kwargs.pop('timeout', self.timeout)
-        with GTimeout(seconds=timeout, exception=Timeout):
-            ret = func(*args, **kwargs)
-            while ret == SSH_AGAIN:
-                self.poll(timeout=timeout)
-                ret = func(*args, **kwargs)
-            return ret
+        return self._eagain_errcode(func, SSH_AGAIN, *args, **kwargs)
 
     def _eagain_write(self, write_func, data, timeout=None):
-        data_len = len(data)
-        total_written = 0
-        while total_written < data_len:
-            rc, bytes_written = write_func(data[total_written:])
-            total_written += bytes_written
-            if rc == SSH_AGAIN:
-                self.poll(timeout=timeout)
+        return self._eagain_write_errcode(write_func, data, SSH_AGAIN, timeout=timeout)

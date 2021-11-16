@@ -19,24 +19,28 @@ import unittest
 
 from pssh.config import HostConfig
 
+
 class TestHostConfig(unittest.TestCase):
 
     def test_host_config_entries(self):
-        user='user'
-        port=22
-        password='password'
-        private_key='private key'
-        allow_agent=False
-        num_retries=1
-        retry_delay=1
-        timeout=1
-        identity_auth=False
-        proxy_host='proxy_host'
-        keepalive_seconds=1
+        user = 'user'
+        port = 22
+        password = 'password'
+        private_key = 'private key'
+        allow_agent = False
+        num_retries = 1
+        retry_delay = 1
+        timeout = 1
+        identity_auth = False
+        proxy_host = 'proxy_host'
+        keepalive_seconds = 1
+        ipv6_only = True
         cfg = HostConfig(
             user=user, port=port, password=password, private_key=private_key,
             allow_agent=allow_agent, num_retries=num_retries, retry_delay=retry_delay,
-            timeout=timeout, identity_auth=identity_auth, proxy_host=proxy_host)
+            timeout=timeout, identity_auth=identity_auth, proxy_host=proxy_host,
+            ipv6_only=ipv6_only,
+        )
         self.assertEqual(cfg.user, user)
         self.assertEqual(cfg.port, port)
         self.assertEqual(cfg.password, password)
@@ -47,6 +51,7 @@ class TestHostConfig(unittest.TestCase):
         self.assertEqual(cfg.timeout, timeout)
         self.assertEqual(cfg.identity_auth, identity_auth)
         self.assertEqual(cfg.proxy_host, proxy_host)
+        self.assertEqual(cfg.ipv6_only, ipv6_only)
 
     def test_host_config_bad_entries(self):
         self.assertRaises(ValueError, HostConfig, user=22)
@@ -64,3 +69,4 @@ class TestHostConfig(unittest.TestCase):
         self.assertRaises(ValueError, HostConfig, proxy_password=1)
         self.assertRaises(ValueError, HostConfig, proxy_pkey=1)
         self.assertRaises(ValueError, HostConfig, keepalive_seconds='')
+        self.assertRaises(ValueError, HostConfig, ipv6_only='')

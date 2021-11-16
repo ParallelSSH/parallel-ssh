@@ -35,8 +35,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
                  allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
                  proxy_host=None, proxy_port=None,
                  proxy_user=None, proxy_password=None, proxy_pkey=None,
-                 forward_ssh_agent=False, tunnel_timeout=None,
-                 keepalive_seconds=60, identity_auth=True):
+                 forward_ssh_agent=False,
+                 keepalive_seconds=60, identity_auth=True,
+                 ipv6_only=False,
+                 ):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -80,7 +82,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type pool_size: int
         :param host_config: (Optional) Per-host configuration for cases where
           not all hosts use the same configuration.
-        :type host_config: dict
+        :type host_config: list(:py:class:`pssh.config.HostConfig`)
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent.
         :type allow_agent: bool
@@ -109,7 +111,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
           Defaults to False if not set.
           Requires agent forwarding implementation in libssh2 version used.
         :type forward_ssh_agent: bool
-        :param tunnel_timeout: No-op - to be removed.
+        :param ipv6_only: Choose IPv6 addresses only if multiple are available
+          for the host(s) or raise NoIPv6AddressFoundError otherwise. Note this will
+          disable connecting to an IPv4 address if an IP address is provided instead.
+        :type ipv6_only: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
@@ -119,7 +124,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
             allow_agent=allow_agent, num_retries=num_retries,
             timeout=timeout, pool_size=pool_size,
             host_config=host_config, retry_delay=retry_delay,
-            identity_auth=identity_auth)
+            identity_auth=identity_auth,
+            ipv6_only=ipv6_only,
+        )
         self.pkey = _validate_pkey_path(pkey)
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
@@ -131,8 +138,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8', timeout=None, read_timeout=None,
-                    return_list=False):
+                    encoding='utf-8', read_timeout=None,
+                    ):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output.
 
@@ -181,14 +188,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
           raise :py:class:`pssh.exceptions.Timeout`
           after ``timeout`` seconds when set if remote output is not ready.
         :type read_timeout: float
-        :param timeout: Deprecated - use read_timeout. Same as
-          read_timeout and kept for backwards compatibility - to be removed
-          in future release.
-        :type timeout: float
-        :param return_list: No-op - list of ``HostOutput`` always returned.
-          Parameter kept for backwards compatibility - to be removed in future
-          releases.
-        :type return_list: bool
         :rtype: list(:py:class:`pssh.output.HostOutput`)
 
         :raises: :py:class:`pssh.exceptions.AuthenticationError` on
@@ -214,7 +213,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, command, stop_on_errors=stop_on_errors, host_args=host_args,
             user=user, shell=shell, sudo=sudo,
             encoding=encoding, use_pty=use_pty,
-            return_list=return_list, read_timeout=read_timeout if read_timeout else timeout,
+            read_timeout=read_timeout,
         )
 
     def __del__(self):
@@ -250,6 +249,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 forward_ssh_agent=self.forward_ssh_agent,
                 keepalive_seconds=self.keepalive_seconds,
                 identity_auth=self.identity_auth,
+                ipv6_only=self.ipv6_only,
             )
             self._host_clients[(host_i, host)] = _client
             return _client

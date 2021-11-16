@@ -20,8 +20,8 @@ import os
 from collections import deque
 from warnings import warn
 
-from gevent import sleep, spawn, get_hub, Timeout as GTimeout
-from gevent.select import POLLIN, POLLOUT
+from gevent import sleep, spawn, get_hub
+from gevent.lock import RLock
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
     Timeout as SSH2Timeout
@@ -35,7 +35,7 @@ from .tunnel import FORWARDER
 from ..base.single import BaseSSHClient
 from ...output import HostOutput
 from ...exceptions import SessionError, SFTPError, \
-    SFTPIOError, Timeout, SCPError, ProxyError, AuthenticationError
+    SFTPIOError, Timeout, SCPError, ProxyError
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
 
@@ -59,7 +59,9 @@ class SSHClient(BaseSSHClient):
                  proxy_user=None,
                  proxy_password=None,
                  _auth_thread_pool=True, keepalive_seconds=60,
-                 identity_auth=True,):
+                 identity_auth=True,
+                 ipv6_only=False,
+                 ):
         """:param host: Host name or IP to connect to.
         :type host: str
         :param user: User to connect as. Defaults to logged in user.
@@ -96,6 +98,11 @@ class SSHClient(BaseSSHClient):
         :type proxy_port: int
         :param keepalive_seconds: Interval of keep alive messages being sent to
           server. Set to ``0`` or ``False`` to disable.
+        :type keepalive_seconds: int
+        :param ipv6_only: Choose IPv6 addresses only if multiple are available
+          for the host or raise NoIPv6AddressFoundError otherwise. Note this will
+          disable connecting to an IPv4 address if an IP address is provided instead.
+        :type ipv6_only: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
@@ -121,13 +128,16 @@ class SSHClient(BaseSSHClient):
                 identity_auth=identity_auth,
             )
             proxy_host = '127.0.0.1'
+        self._chan_lock = RLock()
         super(SSHClient, self).__init__(
             host, user=user, password=password, port=port, pkey=pkey,
             num_retries=num_retries, retry_delay=retry_delay,
             allow_agent=allow_agent, _auth_thread_pool=_auth_thread_pool,
             timeout=timeout,
             proxy_host=proxy_host, proxy_port=proxy_port,
-            identity_auth=identity_auth)
+            identity_auth=identity_auth,
+            ipv6_only=ipv6_only,
+        )
 
     def _shell(self, channel):
         return self._eagain(channel.shell)
@@ -163,17 +173,29 @@ class SSHClient(BaseSSHClient):
         return proxy_local_port
 
     def disconnect(self):
-        """Disconnect session, close socket if needed."""
+        """Attempt to disconnect session.
+
+        Any errors on calling disconnect are suppressed by this function.
+        """
         self._keepalive_greenlet = None
         if self.session is not None:
             try:
-                self._eagain(self.session.disconnect)
+                self._disconnect_eagain()
             except Exception:
                 pass
             self.session = None
-        self.sock = None
         if isinstance(self._proxy_client, SSHClient):
-            self._proxy_client.disconnect()
+            # Don't disconnect proxy client here - let the TunnelServer do it at the time that
+            # _wait_send_receive_lets ends. The cleanup_server call here triggers the TunnelServer
+            # to stop.
+            FORWARDER.cleanup_server(self._proxy_client)
+
+            # I wanted to clean up all the sockets here to avoid a ResourceWarning from unittest,
+            # but unfortunately closing this socket here causes a segfault, not sure why yet.
+            # self.sock.close()
+        else:
+            self.sock.close()
+        self.sock = None
 
     def spawn_send_keepalive(self):
         """Spawns a new greenlet that sends keep alive messages every
@@ -205,8 +227,6 @@ class SSHClient(BaseSSHClient):
             logger.error(msg, self.host, self.port, ex)
             if isinstance(ex, SSH2Timeout):
                 raise Timeout(msg, self.host, self.port, ex)
-            ex.host = self.host
-            ex.port = self.port
             raise
 
     def _keepalive(self):
@@ -224,10 +244,7 @@ class SSHClient(BaseSSHClient):
             passphrase=password if password is not None else b'')
 
     def _password_auth(self):
-        try:
-            self.session.userauth_password(self.user, self.password)
-        except Exception as ex:
-            raise AuthenticationError("Password authentication failed - %s", ex)
+        self.session.userauth_password(self.user, self.password)
 
     def _open_session(self):
         chan = self._eagain(self.session.open_session)
@@ -276,10 +293,12 @@ class SSHClient(BaseSSHClient):
     def _read_output_to_buffer(self, read_func, _buffer):
         try:
             while True:
-                size, data = read_func()
+                with self._chan_lock:
+                    size, data = read_func()
                 while size == LIBSSH2_ERROR_EAGAIN:
                     self.poll()
-                    size, data = read_func()
+                    with self._chan_lock:
+                        size, data = read_func()
                 if size <= 0:
                     break
                 _buffer.write(data)
@@ -310,22 +329,20 @@ class SSHClient(BaseSSHClient):
         self.close_channel(channel)
 
     def close_channel(self, channel):
-        logger.debug("Closing channel")
-        self._eagain(channel.close)
+        with self._chan_lock:
+            logger.debug("Closing channel")
+            self._eagain(channel.close)
 
     def _eagain(self, func, *args, **kwargs):
-        timeout = kwargs.pop('timeout', self.timeout)
-        with GTimeout(seconds=timeout, exception=Timeout):
-            ret = func(*args, **kwargs)
-            while ret == LIBSSH2_ERROR_EAGAIN:
-                self.poll()
-                ret = func(*args, **kwargs)
-            return ret
+        return self._eagain_errcode(func, LIBSSH2_ERROR_EAGAIN, *args, **kwargs)
+
+    def _make_sftp_eagain(self):
+        return self._eagain(self.session.sftp_init)
 
     def _make_sftp(self):
         """Make SFTP client from open transport"""
         try:
-            sftp = self._eagain(self.session.sftp_init)
+            sftp = self._make_sftp_eagain()
         except Exception as ex:
             raise SFTPError(ex)
         return sftp
@@ -469,9 +486,9 @@ class SSHClient(BaseSSHClient):
         try:
             self._eagain(sftp.stat, remote_file)
         except (SFTPHandleError, SFTPProtocolError):
-            msg = "Remote file or directory %s does not exist"
-            logger.error(msg, remote_file)
-            raise SFTPIOError(msg, remote_file)
+            msg = "Remote file or directory %s on host %s does not exist"
+            logger.error(msg, remote_file, self.host)
+            raise SFTPIOError(msg, remote_file, self.host)
         try:
             dir_h = self._sftp_openfh(sftp.opendir, remote_file)
         except SFTPError:
@@ -492,6 +509,27 @@ class SSHClient(BaseSSHClient):
         logger.info("Copied local file %s from remote destination %s:%s",
                     local_file, self.host, remote_file)
 
+    def _scp_recv_recursive(self, remote_file, local_file, sftp, encoding='utf-8'):
+        try:
+            self._eagain(sftp.stat, remote_file)
+        except (SFTPHandleError, SFTPProtocolError):
+            msg = "Remote file or directory %s does not exist"
+            logger.error(msg, remote_file)
+            raise SCPError(msg, remote_file)
+        try:
+            dir_h = self._sftp_openfh(sftp.opendir, remote_file)
+        except SFTPError:
+            # remote_file is not a dir, scp file
+            return self.scp_recv(remote_file, local_file, encoding=encoding)
+        try:
+            os.makedirs(local_file)
+        except OSError:
+            pass
+        file_list = self._sftp_readdir(dir_h)
+        return self._scp_recv_dir(file_list, remote_file,
+                                  local_file, sftp,
+                                  encoding=encoding)
+
     def scp_recv(self, remote_file, local_file, recurse=False, sftp=None,
                  encoding='utf-8'):
         """Copy remote file to local host via SCP.
@@ -511,33 +549,13 @@ class SSHClient(BaseSSHClient):
           enabled.
         :type encoding: str
 
-        :raises: :py:class:`pssh.exceptions.SCPError` when a directory is
-          supplied to ``local_file`` and ``recurse`` is not set.
         :raises: :py:class:`pssh.exceptions.SCPError` on errors copying file.
         :raises: :py:class:`IOError` on local file IO errors.
         :raises: :py:class:`OSError` on local OS errors like permission denied.
         """
         if recurse:
             sftp = self._make_sftp() if sftp is None else sftp
-            try:
-                self._eagain(sftp.stat, remote_file)
-            except (SFTPHandleError, SFTPProtocolError):
-                msg = "Remote file or directory %s does not exist"
-                logger.error(msg, remote_file)
-                raise SCPError(msg, remote_file)
-            try:
-                dir_h = self._sftp_openfh(sftp.opendir, remote_file)
-            except SFTPError:
-                pass
-            else:
-                try:
-                    os.makedirs(local_file)
-                except OSError:
-                    pass
-                file_list = self._sftp_readdir(dir_h)
-                return self._scp_recv_dir(file_list, remote_file,
-                                          local_file, sftp,
-                                          encoding=encoding)
+            return self._scp_recv_recursive(remote_file, local_file, sftp, encoding=encoding)
         elif local_file.endswith('/'):
             remote_filename = remote_file.rsplit('/')[-1]
             local_file += remote_filename
@@ -567,11 +585,6 @@ class SSHClient(BaseSSHClient):
                     continue
                 total += size
                 local_fh.write(data)
-            if total != fileinfo.st_size:
-                msg = "Error copying data from remote file %s on host %s. " \
-                      "Copied %s out of %s total bytes"
-                raise SCPError(msg, remote_file, self.host, total,
-                               fileinfo.st_size)
         finally:
             local_fh.close()
             file_chan.close()
@@ -696,29 +709,19 @@ class SSHClient(BaseSSHClient):
         Blocks current greenlet only if socket has pending read or write operations
         in the appropriate direction.
         """
-        timeout = self.timeout if timeout is None else timeout
-        directions = self.session.block_directions()
-        if directions == 0:
-            return
-        events = 0
-        if directions & LIBSSH2_SESSION_BLOCK_INBOUND:
-            events = POLLIN
-        if directions & LIBSSH2_SESSION_BLOCK_OUTBOUND:
-            events |= POLLOUT
-        self._poll_socket(events, timeout=timeout)
+        self._poll_errcodes(
+            self.session.block_directions,
+            LIBSSH2_SESSION_BLOCK_INBOUND,
+            LIBSSH2_SESSION_BLOCK_OUTBOUND,
+            timeout=timeout,
+        )
 
-    def eagain_write(self, write_func, data, timeout=None):
+    def _eagain_write(self, write_func, data, timeout=None):
         """Write data with given write_func for an ssh2-python session while
         handling EAGAIN and resuming writes from last written byte on each call to
         write_func.
         """
-        data_len = len(data)
-        total_written = 0
-        while total_written < data_len:
-            rc, bytes_written = write_func(data[total_written:])
-            total_written += bytes_written
-            if rc == LIBSSH2_ERROR_EAGAIN:
-                self.poll(timeout=timeout)
+        return self._eagain_write_errcode(write_func, data, LIBSSH2_ERROR_EAGAIN, timeout=timeout)
 
-    def _eagain_write(self, write_func, data, timeout=None):
-        return self.eagain_write(write_func, data, timeout=timeout)
+    def eagain_write(self, write_func, data, timeout=None):
+        return self._eagain_write(write_func, data, timeout=timeout)

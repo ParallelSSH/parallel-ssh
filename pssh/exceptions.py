@@ -19,6 +19,16 @@
 """Exceptions raised by parallel-ssh classes."""
 
 
+class NoIPv6AddressFoundError(Exception):
+    """Raised when an IPV6 only address was requested but none are
+     available for a host.
+
+     This exception is raised instead of UnknownHostError
+     in the case where only IPV4 addresses are available via DNS for a host,
+     or an IPV4 address was provided but IPV6 only was requested.
+     """
+
+
 class UnknownHostError(Exception):
     """Raised when a host is unknown (dns failure)"""
     pass

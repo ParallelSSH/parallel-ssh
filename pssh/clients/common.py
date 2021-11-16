@@ -29,6 +29,5 @@ def _validate_pkey_path(pkey, host=None):
               "Please use either absolute or relative to user directory " \
               "paths like '~/.ssh/my_key' for pkey parameter"
         ex = PKeyFileError(msg, pkey)
-        ex.host = host
         raise ex
     return pkey

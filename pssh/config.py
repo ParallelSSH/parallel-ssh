@@ -27,7 +27,7 @@ class HostConfig(object):
     __slots__ = ('user', 'port', 'password', 'private_key', 'allow_agent',
                  'num_retries', 'retry_delay', 'timeout', 'identity_auth',
                  'proxy_host', 'proxy_port', 'proxy_user', 'proxy_password', 'proxy_pkey',
-                 'keepalive_seconds',
+                 'keepalive_seconds', 'ipv6_only',
                  )
 
     def __init__(self, user=None, port=None, password=None, private_key=None,
@@ -36,6 +36,7 @@ class HostConfig(object):
                  proxy_host=None, proxy_port=None, proxy_user=None, proxy_password=None,
                  proxy_pkey=None,
                  keepalive_seconds=None,
+                 ipv6_only=None,
                  ):
         """
         :param user: Username to login as.
@@ -72,6 +73,8 @@ class HostConfig(object):
         :param keepalive_seconds: Seconds between keepalive packets being sent.
           0 to disable.
         :type keepalive_seconds: int
+        :param ipv6_only: Use IPv6 addresses only. Currently unused.
+        :type ipv6_only: bool
         """
         self.user = user
         self.port = port
@@ -88,6 +91,7 @@ class HostConfig(object):
         self.proxy_password = proxy_password
         self.proxy_pkey = proxy_pkey
         self.keepalive_seconds = keepalive_seconds
+        self.ipv6_only = ipv6_only
         self._sanity_checks()
 
     def _sanity_checks(self):
@@ -121,3 +125,5 @@ class HostConfig(object):
             raise ValueError("Proxy pkey %s is not a string" % (self.proxy_pkey,))
         if self.keepalive_seconds is not None and not isinstance(self.keepalive_seconds, int):
             raise ValueError("Keepalive seconds %s is not an integer" % (self.keepalive_seconds,))
+        if self.ipv6_only is not None and not isinstance(self.ipv6_only, bool):
+            raise ValueError("IPv6 only %s is not a boolean value" % (self.ipv6_only,))

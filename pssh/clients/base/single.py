@@ -17,17 +17,13 @@
 
 import logging
 import os
-try:
-    import pwd
-except ImportError:
-    WIN_PLATFORM = True
-else:
-    WIN_PLATFORM = False
+from getpass import getuser
 from socket import gaierror as sock_gaierror, error as sock_error
 
 from gevent import sleep, socket, Timeout as GTimeout
 from gevent.hub import Hub
-from gevent.select import poll
+from gevent.select import poll, POLLIN, POLLOUT
+
 from ssh2.utils import find_eol
 from ssh2.exceptions import AgentConnectionError, AgentListIdentitiesError, \
     AgentAuthenticationError, AgentGetIdentityError
@@ -36,7 +32,7 @@ from ..common import _validate_pkey_path
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ..reader import ConcurrentRWBuffer
 from ...exceptions import UnknownHostError, AuthenticationError, \
-    ConnectionError, Timeout
+    ConnectionError, Timeout, NoIPv6AddressFoundError
 from ...output import HostOutput, HostOutputBuffers, BufferData
 
 
@@ -170,14 +166,12 @@ class BaseSSHClient(object):
                  proxy_host=None,
                  proxy_port=None,
                  _auth_thread_pool=True,
-                 identity_auth=True):
+                 identity_auth=True,
+                 ipv6_only=False,
+                 ):
         self._auth_thread_pool = _auth_thread_pool
         self.host = host
-        self.user = user if user else None
-        if self.user is None and not WIN_PLATFORM:
-            self.user = pwd.getpwuid(os.geteuid()).pw_name
-        elif self.user is None and WIN_PLATFORM:
-            raise ValueError("Must provide user parameter on Windows")
+        self.user = user if user else getuser()
         self.password = password
         self.port = port if port else 22
         self.num_retries = num_retries
@@ -191,6 +185,7 @@ class BaseSSHClient(object):
         self.pkey = _validate_pkey_path(pkey, self.host)
         self.identity_auth = identity_auth
         self._keepalive_greenlet = None
+        self.ipv6_only = ipv6_only
         self._init()
 
     def _init(self):
@@ -244,9 +239,12 @@ class BaseSSHClient(object):
     def _shell(self, channel):
         raise NotImplementedError
 
+    def _disconnect_eagain(self):
+        self._eagain(self.session.disconnect)
+
     def _connect_init_session_retry(self, retries):
         try:
-            self.session.disconnect()
+            self._disconnect_eagain()
         except Exception:
             pass
         self.session = None
@@ -259,25 +257,37 @@ class BaseSSHClient(object):
         self._connect(self._host, self._port, retries=retries)
         return self._init_session(retries=retries)
 
+    def _get_addr_info(self, host, port):
+        addr_info = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
+        if self.ipv6_only:
+            filtered = [addr for addr in addr_info if addr[0] is socket.AF_INET6]
+            if not filtered:
+                raise NoIPv6AddressFoundError(
+                    "Requested IPv6 only and no IPv6 addresses found for host %s from "
+                    "address list %s", host, [addr for _, _, _, _, addr in addr_info])
+            addr_info = filtered
+        return addr_info
+
     def _connect(self, host, port, retries=1):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if self.timeout:
-            self.sock.settimeout(self.timeout)
-        logger.debug("Connecting to %s:%s", host, port)
         try:
-            self.sock.connect((host, port))
+            addr_info = self._get_addr_info(host, port)
         except sock_gaierror as ex:
             logger.error("Could not resolve host '%s' - retry %s/%s",
                          host, retries, self.num_retries)
             if retries < self.num_retries:
                 sleep(self.retry_delay)
                 return self._connect(host, port, retries=retries+1)
-            ex = UnknownHostError("Unknown host %s - %s - retry %s/%s",
-                                  host, str(ex.args[1]), retries,
-                                  self.num_retries)
-            ex.host = host
-            ex.port = port
-            raise ex
+            unknown_ex = UnknownHostError("Unknown host %s - %s - retry %s/%s",
+                                          host, str(ex.args[1]), retries,
+                                          self.num_retries)
+            raise unknown_ex from ex
+        family, _type, proto, _, sock_addr = addr_info[0]
+        self.sock = socket.socket(family, _type)
+        if self.timeout:
+            self.sock.settimeout(self.timeout)
+        logger.debug("Connecting to %s:%s", host, port)
+        try:
+            self.sock.connect(sock_addr)
         except sock_error as ex:
             logger.error("Error connecting to host '%s:%s' - retry %s/%s",
                          host, port, retries, self.num_retries)
@@ -289,8 +299,6 @@ class BaseSSHClient(object):
                 "Error connecting to host '%s:%s' - %s - retry %s/%s",
                 host, port, str(error_type), retries,
                 self.num_retries,)
-            ex.host = host
-            ex.port = port
             raise ex
 
     def _identity_auth(self):
@@ -392,8 +400,8 @@ class BaseSSHClient(object):
         """Read standard error buffer.
         Returns a generator of line by line output.
 
-        :param stdout_buffer: Buffer to read from.
-        :type stdout_buffer: :py:class:`pssh.clients.reader.ConcurrentRWBuffer`
+        :param stderr_buffer: Buffer to read from.
+        :type stderr_buffer: :py:class:`pssh.clients.reader.ConcurrentRWBuffer`
         :rtype: generator
         """
         logger.debug("Reading from stderr buffer, timeout=%s", timeout)
@@ -519,6 +527,25 @@ class BaseSSHClient(object):
         host_out = self._make_host_output(channel, encoding, _timeout)
         return host_out
 
+    def _eagain_write_errcode(self, write_func, data, eagain, timeout=None):
+        data_len = len(data)
+        total_written = 0
+        while total_written < data_len:
+            rc, bytes_written = write_func(data[total_written:])
+            total_written += bytes_written
+            if rc == eagain:
+                self.poll(timeout=timeout)
+            sleep()
+
+    def _eagain_errcode(self, func, eagain, *args, **kwargs):
+        timeout = kwargs.pop('timeout', self.timeout)
+        with GTimeout(seconds=timeout, exception=Timeout):
+            ret = func(*args, **kwargs)
+            while ret == eagain:
+                self.poll()
+                ret = func(*args, **kwargs)
+            return ret
+
     def _eagain_write(self, write_func, data, timeout=None):
         raise NotImplementedError
 
@@ -616,7 +643,7 @@ class BaseSSHClient(object):
             remote_path = os.path.join(remote_dir, file_name)
             local_path = os.path.join(local_dir, file_name)
             self.copy_remote_file(remote_path, local_path, sftp=sftp,
-                                  recurse=True)
+                                  recurse=True, encoding=encoding)
 
     def _make_local_dir(self, dirpath):
         if os.path.exists(dirpath):
@@ -645,3 +672,15 @@ class BaseSSHClient(object):
         poller = poll()
         poller.register(self.sock, eventmask=events)
         poller.poll(timeout=timeout)
+
+    def _poll_errcodes(self, directions_func, inbound, outbound, timeout=None):
+        timeout = self.timeout if timeout is None else timeout
+        directions = directions_func()
+        if directions == 0:
+            return
+        events = 0
+        if directions & inbound:
+            events = POLLIN
+        if directions & outbound:
+            events |= POLLOUT
+        self._poll_socket(events, timeout=timeout)

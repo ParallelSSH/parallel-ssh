@@ -3,9 +3,10 @@ codecov
 flake8
 sphinx
 sphinx_rtd_theme
-pytest<6.1.0
+pytest
 pytest-cov
 pytest-rerunfailures
 jinja2
+pre-commit
 -r requirements.txt
 -e .
