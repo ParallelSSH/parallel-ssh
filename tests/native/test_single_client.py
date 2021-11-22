@@ -19,6 +19,7 @@ import os
 import subprocess
 import shutil
 import tempfile
+from tempfile import NamedTemporaryFile
 from pytest import raises
 from unittest.mock import MagicMock, call, patch
 from hashlib import sha256
@@ -561,6 +562,22 @@ class SSH2ClientTest(SSH2TestCase):
                 shutil.rmtree(copy_to_abs_dir, ignore_errors=True)
             except Exception:
                 pass
+
+    def test_copy_file_with_newlines(self):
+        with NamedTemporaryFile('wb') as temp_file:
+            # 2MB
+            for _ in range(200512):
+                temp_file.write(b'asdfartkj\n')
+            now = datetime.now()
+            try:
+                self.client.copy_file(os.path.abspath(temp_file.name), 'write_file')
+                took = datetime.now() - now
+                assert took.total_seconds() < 1
+            finally:
+                try:
+                    os.unlink(os.path.expanduser('~/write_file'))
+                except OSError:
+                    pass
 
     def test_sftp_mkdir_abspath(self):
         remote_dir = '/tmp/dir_to_create/dir1/dir2/dir3'
