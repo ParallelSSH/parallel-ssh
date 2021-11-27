@@ -568,6 +568,7 @@ class SSH2ClientTest(SSH2TestCase):
             # 2MB
             for _ in range(200512):
                 temp_file.write(b'asdfartkj\n')
+            temp_file.flush()
             now = datetime.now()
             try:
                 self.client.copy_file(os.path.abspath(temp_file.name), 'write_file')
