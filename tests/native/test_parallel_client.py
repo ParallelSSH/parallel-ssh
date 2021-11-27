@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis
+# Copyright (C) 2014-2021 Panos Kittenis
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -29,11 +29,11 @@ from hashlib import sha256
 from datetime import datetime
 from unittest.mock import patch, MagicMock
 
-from gevent import joinall, spawn, socket, Greenlet, sleep, Timeout as GTimeout
+from gevent import joinall, spawn, socket, sleep, Timeout as GTimeout
 from pssh.config import HostConfig
 from pssh.clients.native import ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
-    AuthenticationException, ConnectionErrorException, SessionError, \
+    AuthenticationException, ConnectionErrorException, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
     PKeyFileError, ShellError, HostArgumentError, NoIPv6AddressFoundError
 from pssh.output import HostOutput
@@ -1042,6 +1042,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    pkey=self.user_key,
                                    num_retries=2)
         output = client.run_command(cmd, host_args=host_args)
+        client.join()
         for i, host in enumerate(hosts):
             expected = [host_args[i]]
             stdout = list(output[i].stdout)
@@ -1050,6 +1051,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         host_args = (('arg1', 'arg2'), ('arg3', 'arg4'), ('arg5', 'arg6'),)
         cmd = 'echo %s %s'
         output = client.run_command(cmd, host_args=host_args)
+        client.join()
         for i, host in enumerate(hosts):
             expected = ["%s %s" % host_args[i]]
             stdout = list(output[i].stdout)
@@ -1197,14 +1199,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         output = self.client.run_command(self.cmd, sudo=True)
         self.assertEqual(len(output), len(self.client.hosts))
         self.assertTrue(output[0].channel is not None)
-
-    @unittest.skipUnless(bool(os.getenv('TRAVIS')), "Not on Travis CI - skipping")
-    def test_run_command_sudo_var(self):
-        command = """for i in 1 2 3; do echo $i; done"""
-        output = list(self.client.run_command(
-            command, sudo=True)[0].stdout)
-        expected = ['1','2','3']
-        self.assertListEqual(output, expected)
 
     def test_conn_failure(self):
         """Test connection error failure case - ConnectionErrorException"""

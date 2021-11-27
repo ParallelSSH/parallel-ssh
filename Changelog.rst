@@ -1,6 +1,16 @@
 Change Log
 ============
 
+2.7.1
++++++
+
+Fixes
+------
+
+* ``copy_file`` performance would be abnormally low when copying plain text files - 100x performance increase. Binary
+  file copying performance has also increased.
+
+
 2.7.0
 +++++
 

@@ -45,6 +45,8 @@ THREAD_POOL = get_hub().threadpool
 
 class SSHClient(BaseSSHClient):
     """ssh2-python (libssh2) based non-blocking SSH client."""
+    # 2MB buffer
+    _BUF_SIZE = 2048 * 1024
 
     def __init__(self, host,
                  user=None, password=None, port=None,
@@ -411,9 +413,11 @@ class SSHClient(BaseSSHClient):
                     local_file, self.host, remote_file)
 
     def _sftp_put(self, remote_fh, local_file):
-        with open(local_file, 'rb', 2097152) as local_fh:
-            for data in local_fh:
+        with open(local_file, 'rb', self._BUF_SIZE) as local_fh:
+            data = local_fh.read(self._BUF_SIZE)
+            while data:
                 self.eagain_write(remote_fh.write, data)
+                data = local_fh.read(self._BUF_SIZE)
 
     def sftp_put(self, sftp, local_file, remote_file):
         mode = LIBSSH2_SFTP_S_IRUSR | \
