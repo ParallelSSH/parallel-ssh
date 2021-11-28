@@ -334,7 +334,7 @@ class BaseSSHClient(object):
     def auth(self):
         if self.pkey is not None:
             logger.debug(
-                "Proceeding with private key file authentication")
+                "Proceeding with private key authentication")
             return self._pkey_auth(self.pkey)
         if self.allow_agent:
             try:
@@ -369,8 +369,10 @@ class BaseSSHClient(object):
 
     def _pkey_auth(self, pkey):
         if isinstance(pkey, str):
+            logger.debug("Private key is provided as str, using as private key file path")
             return self._pkey_file_auth(pkey, password=self.password)
         elif isinstance(pkey, bytes):
+            logger.debug("Private key is provided in bytes, using as private key data")
             return self._pkey_from_memory()
 
     def _pkey_file_auth(self, pkey_file, password=None):

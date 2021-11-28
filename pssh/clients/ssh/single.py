@@ -20,7 +20,8 @@ import logging
 from gevent import sleep, spawn, Timeout as GTimeout, joinall
 from ssh import options
 from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
-from ssh.key import import_privkey_file, import_cert_file, copy_cert_to_privkey
+from ssh.key import import_privkey_file, import_cert_file, copy_cert_to_privkey,\
+    import_privkey_base64
 from ssh.exceptions import EOF
 from ssh.error_codes import SSH_AGAIN
 
@@ -62,7 +63,8 @@ class SSHClient(BaseSSHClient):
         :param pkey: Private key file path to use for authentication. Path must
           be either absolute path or relative to user home directory
           like ``~/<path>``.
-        :type pkey: str
+          Bytes type input is used as private key data for authentication.
+        :type pkey: str or bytes
         :param cert_file: Public key signed certificate file to use for
           authentication. The corresponding private key must also be provided
           via ``pkey`` parameter.
@@ -106,7 +108,7 @@ class SSHClient(BaseSSHClient):
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
         """
-        self.cert_file = _validate_pkey_path(cert_file, host)
+        self.cert_file = _validate_pkey_path(cert_file)
         self.gssapi_auth = gssapi_auth
         self.gssapi_server_identity = gssapi_server_identity
         self.gssapi_client_identity = gssapi_client_identity
@@ -177,10 +179,19 @@ class SSHClient(BaseSSHClient):
 
     def _pkey_file_auth(self, pkey_file, password=None):
         pkey = import_privkey_file(pkey_file, passphrase=password if password is not None else '')
+        return self._pkey_obj_auth(pkey)
+
+    def _pkey_obj_auth(self, pkey):
         if self.cert_file is not None:
             logger.debug("Certificate file set - trying certificate authentication")
             self._import_cert_file(pkey)
         self.session.userauth_publickey(pkey)
+
+    def _pkey_from_memory(self):
+        pkey = import_privkey_base64(
+            self.pkey,
+            passphrase=self.password if self.password is not None else b'')
+        return self._pkey_obj_auth(pkey)
 
     def _import_cert_file(self, pkey):
         cert_key = import_cert_file(self.cert_file)

@@ -75,7 +75,8 @@ class SSHClient(BaseSSHClient):
         :param pkey: Private key file path to use for authentication. Path must
           be either absolute path or relative to user home directory
           like ``~/<path>``.
-        :type pkey: str
+          Bytes type input is used as private key data for authentication.
+        :type pkey: str or bytes
         :param num_retries: (Optional) Number of connection and authentication
           attempts before the client gives up. Defaults to 3.
         :type num_retries: int

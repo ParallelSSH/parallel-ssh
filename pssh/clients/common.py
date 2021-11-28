@@ -16,11 +16,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import os
-import logging
 
 from ..exceptions import PKeyFileError
-
-logger = logging.getLogger(__name__)
 
 
 def _validate_pkey_path(pkey):
@@ -37,9 +34,8 @@ def _validate_pkey_path(pkey):
 
 
 def _validate_pkey(pkey):
+    if pkey is None:
+        return
     if isinstance(pkey, str):
-        logger.debug("Private key is provided as str, using as private key file path")
         return _validate_pkey_path(pkey)
-    elif isinstance(pkey, bytes):
-        logger.debug("Private key is provided in bytes, using as private key data")
-        return pkey
+    return pkey

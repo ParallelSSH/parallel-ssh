@@ -53,8 +53,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param pkey: Private key file path or private key data to use.
           Paths must be str type and either absolute
           path or relative to user home directory like ``~/<path>``.
-          Bytes type input is used as private key data as returned by file.read().
-          Bytes data must *not* already be base64 encoded - that is handled by library.
+          Bytes type input is used as private key data for authentication.
         :type pkey: str or bytes
         :param num_retries: (Optional) Number of connection and authentication
           attempts before the client gives up. Defaults to 3.
@@ -238,9 +237,14 @@ class ParallelSSHClient(BaseParallelSSHClient):
            or self._host_clients[(host_i, host)] is None:
             _user, _port, _password, _pkey, proxy_host, proxy_port, proxy_user, \
                 proxy_password, proxy_pkey = self._get_host_config_values(host_i, host)
+            if isinstance(self.pkey, str):
+                with open(_pkey, 'rb') as fh:
+                    _pkey_data = fh.read()
+            else:
+                _pkey_data = _pkey
             _client = SSHClient(
                 host, user=_user, password=_password, port=_port,
-                pkey=_pkey, num_retries=self.num_retries,
+                pkey=_pkey_data, num_retries=self.num_retries,
                 timeout=self.timeout,
                 allow_agent=self.allow_agent, retry_delay=self.retry_delay,
                 proxy_host=proxy_host,

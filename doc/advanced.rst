@@ -24,6 +24,24 @@ A private key can also be provided programmatically.
 Where ``my_key`` is a private key file under `.ssh` in the user's home directory.
 
 
+In-Memory Private Keys
+========================
+
+Private key data can also be provided as bytes for authentication from in-memory private keys.
+
+.. code-block:: python
+
+   from pssh.clients import ParallelSSHClient
+
+   pkey_data = b"""-----BEGIN RSA PRIVATE KEY-----
+   <key data>
+   -----END RSA PRIVATE KEY-----
+   """
+   client = ParallelSSHClient(hosts, pkey=pkey_data)
+
+Private key data provided this way *must* be in bytes. This is supported by all parallel and single host clients.
+
+
 Native Clients
 ***************
 
