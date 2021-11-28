@@ -53,6 +53,12 @@ class SSHClientTest(SSHTestCase):
         client.open_session = _session
         self.assertRaises(GTimeout, client.run_command, self.cmd)
 
+    def test_pkey_from_memory(self):
+        with open(self.user_key, 'rb') as fh:
+            key_data = fh.read()
+        SSHClient(self.host, port=self.port,
+                  pkey=key_data, num_retries=1, timeout=1)
+
     def test_execute(self):
         host_out = self.client.run_command(self.cmd)
         output = list(host_out.stdout)

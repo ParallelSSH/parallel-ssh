@@ -18,7 +18,7 @@
 import logging
 
 from .single import SSHClient
-from ..common import _validate_pkey_path
+from ..common import _validate_pkey_path, _validate_pkey
 from ..base.parallel import BaseParallelSSHClient
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
@@ -54,7 +54,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type port: int
         :param pkey: Private key file path to use. Path must be either absolute
           path or relative to user home directory like ``~/<path>``.
-        :type pkey: str
+          Bytes type input is used as private key data for authentication.
+        :type pkey: str or bytes
         :param cert_file: Public key signed certificate file to use for
           authentication. The corresponding private key must also be provided
           via ``pkey`` parameter.
@@ -141,7 +142,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             identity_auth=identity_auth,
             ipv6_only=ipv6_only,
         )
-        self.pkey = _validate_pkey_path(pkey)
+        self.pkey = _validate_pkey(pkey)
         self.cert_file = _validate_pkey_path(cert_file)
         self.forward_ssh_agent = forward_ssh_agent
         self.gssapi_auth = gssapi_auth
@@ -235,9 +236,14 @@ class ParallelSSHClient(BaseParallelSSHClient):
            or self._host_clients[(host_i, host)] is None:
             _user, _port, _password, _pkey, _, _, _, _, _ = \
                 self._get_host_config_values(host_i, host)
+            if isinstance(self.pkey, str):
+                with open(_pkey, 'rb') as fh:
+                    _pkey_data = fh.read()
+            else:
+                _pkey_data = _pkey
             _client = SSHClient(
                 host, user=_user, password=_password, port=_port,
-                pkey=_pkey,
+                pkey=_pkey_data,
                 cert_file=self.cert_file,
                 num_retries=self.num_retries,
                 timeout=self.timeout,

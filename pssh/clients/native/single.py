@@ -75,7 +75,8 @@ class SSHClient(BaseSSHClient):
         :param pkey: Private key file path to use for authentication. Path must
           be either absolute path or relative to user home directory
           like ``~/<path>``.
-        :type pkey: str
+          Bytes type input is used as private key data for authentication.
+        :type pkey: str or bytes
         :param num_retries: (Optional) Number of connection and authentication
           attempts before the client gives up. Defaults to 3.
         :type num_retries: int
@@ -239,11 +240,18 @@ class SSHClient(BaseSSHClient):
     def _agent_auth(self):
         self.session.agent_auth(self.user)
 
-    def _pkey_auth(self, pkey_file, password=None):
+    def _pkey_file_auth(self, pkey_file, password=None):
         self.session.userauth_publickey_fromfile(
             self.user,
             pkey_file,
             passphrase=password if password is not None else b'')
+
+    def _pkey_from_memory(self, pkey_data):
+        self.session.userauth_publickey_frommemory(
+            self.user,
+            pkey_data,
+            passphrase=self.password if self.password is not None else b'',
+        )
 
     def _password_auth(self):
         self.session.userauth_password(self.user, self.password)

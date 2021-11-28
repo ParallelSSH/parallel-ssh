@@ -28,7 +28,7 @@ from ssh2.utils import find_eol
 from ssh2.exceptions import AgentConnectionError, AgentListIdentitiesError, \
     AgentAuthenticationError, AgentGetIdentityError
 
-from ..common import _validate_pkey_path
+from ..common import _validate_pkey
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ..reader import ConcurrentRWBuffer
 from ...exceptions import UnknownHostError, AuthenticationError, \
@@ -182,11 +182,14 @@ class BaseSSHClient(object):
         self.session = None
         self._host = proxy_host if proxy_host else host
         self._port = proxy_port if proxy_port else self.port
-        self.pkey = _validate_pkey_path(pkey, self.host)
+        self.pkey = _validate_pkey(pkey)
         self.identity_auth = identity_auth
         self._keepalive_greenlet = None
         self.ipv6_only = ipv6_only
         self._init()
+
+    def _pkey_from_memory(self, pkey_data):
+        raise NotImplementedError
 
     def _init(self):
         self._connect(self._host, self._port)
@@ -309,7 +312,7 @@ class BaseSSHClient(object):
                 "Trying to authenticate with identity file %s",
                 identity_file)
             try:
-                self._pkey_auth(identity_file, password=self.password)
+                self._pkey_file_auth(identity_file, password=self.password)
             except Exception as ex:
                 logger.debug(
                     "Authentication with identity file %s failed with %s, "
@@ -331,8 +334,8 @@ class BaseSSHClient(object):
     def auth(self):
         if self.pkey is not None:
             logger.debug(
-                "Proceeding with private key file authentication")
-            return self._pkey_auth(self.pkey, password=self.password)
+                "Proceeding with private key authentication")
+            return self._pkey_auth(self.pkey)
         if self.allow_agent:
             try:
                 self._agent_auth()
@@ -364,7 +367,17 @@ class BaseSSHClient(object):
     def _password_auth(self):
         raise NotImplementedError
 
-    def _pkey_auth(self, pkey_file, password=None):
+    def _pkey_auth(self, pkey):
+        _pkey = pkey
+        if isinstance(pkey, str):
+            logger.debug("Private key is provided as str, loading from private key file path")
+            with open(pkey, 'rb') as fh:
+                _pkey = fh.read()
+        elif isinstance(pkey, bytes):
+            logger.debug("Private key is provided in bytes, using as private key data")
+        return self._pkey_from_memory(_pkey)
+
+    def _pkey_file_auth(self, pkey_file, password=None):
         raise NotImplementedError
 
     def _open_session(self):

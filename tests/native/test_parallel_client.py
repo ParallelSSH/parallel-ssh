@@ -87,6 +87,12 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient([self.host], pkey=self.user_key, port=self.port, num_retries=1)
         joinall(client.connect_auth(), raise_error=True)
 
+    def test_pkey_from_memory(self):
+        with open(self.user_key, 'rb') as fh:
+            key = fh.read()
+        client = ParallelSSHClient([self.host], pkey=key, port=self.port, num_retries=1)
+        joinall(client.connect_auth(), raise_error=True)
+
     def test_client_shells(self):
         shells = self.client.open_shell()
         self.client.run_shell_commands(shells, self.cmd)

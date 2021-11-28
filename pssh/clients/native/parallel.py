@@ -18,7 +18,7 @@
 import logging
 
 from .single import SSHClient
-from ..common import _validate_pkey_path
+from ..common import _validate_pkey
 from ..base.parallel import BaseParallelSSHClient
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import HostArgumentError
@@ -50,9 +50,11 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param port: (Optional) Port number to use for SSH connection. Defaults
           to 22.
         :type port: int
-        :param pkey: Private key file path to use. Path must be either absolute
+        :param pkey: Private key file path or private key data to use.
+          Paths must be str type and either absolute
           path or relative to user home directory like ``~/<path>``.
-        :type pkey: str
+          Bytes type input is used as private key data for authentication.
+        :type pkey: str or bytes
         :param num_retries: (Optional) Number of connection and authentication
           attempts before the client gives up. Defaults to 3.
         :type num_retries: int
@@ -127,10 +129,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
             identity_auth=identity_auth,
             ipv6_only=ipv6_only,
         )
-        self.pkey = _validate_pkey_path(pkey)
+        self.pkey = _validate_pkey(pkey)
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
-        self.proxy_pkey = _validate_pkey_path(proxy_pkey)
+        self.proxy_pkey = _validate_pkey(proxy_pkey)
         self.proxy_user = proxy_user
         self.proxy_password = proxy_password
         self.forward_ssh_agent = forward_ssh_agent
@@ -235,9 +237,14 @@ class ParallelSSHClient(BaseParallelSSHClient):
            or self._host_clients[(host_i, host)] is None:
             _user, _port, _password, _pkey, proxy_host, proxy_port, proxy_user, \
                 proxy_password, proxy_pkey = self._get_host_config_values(host_i, host)
+            if isinstance(self.pkey, str):
+                with open(_pkey, 'rb') as fh:
+                    _pkey_data = fh.read()
+            else:
+                _pkey_data = _pkey
             _client = SSHClient(
                 host, user=_user, password=_password, port=_port,
-                pkey=_pkey, num_retries=self.num_retries,
+                pkey=_pkey_data, num_retries=self.num_retries,
                 timeout=self.timeout,
                 allow_agent=self.allow_agent, retry_delay=self.retry_delay,
                 proxy_host=proxy_host,

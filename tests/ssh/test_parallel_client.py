@@ -95,6 +95,12 @@ class LibSSHParallelTest(unittest.TestCase):
         client._host_clients[(0, self.host)].open_session = _session
         self.assertRaises(Timeout, client.run_command, self.cmd)
 
+    def test_pkey_from_memory(self):
+        with open(self.user_key, 'rb') as fh:
+            key = fh.read()
+        client = ParallelSSHClient([self.host], pkey=key, port=self.port, num_retries=1)
+        joinall(client.connect_auth(), raise_error=True)
+
     def test_join_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)

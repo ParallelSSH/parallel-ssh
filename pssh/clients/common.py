@@ -20,7 +20,7 @@ import os
 from ..exceptions import PKeyFileError
 
 
-def _validate_pkey_path(pkey, host=None):
+def _validate_pkey_path(pkey):
     if pkey is None:
         return
     pkey = os.path.normpath(os.path.expanduser(pkey))
@@ -30,4 +30,12 @@ def _validate_pkey_path(pkey, host=None):
               "paths like '~/.ssh/my_key' for pkey parameter"
         ex = PKeyFileError(msg, pkey)
         raise ex
+    return pkey
+
+
+def _validate_pkey(pkey):
+    if pkey is None:
+        return
+    if isinstance(pkey, str):
+        return _validate_pkey_path(pkey)
     return pkey
