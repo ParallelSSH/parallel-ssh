@@ -239,11 +239,18 @@ class SSHClient(BaseSSHClient):
     def _agent_auth(self):
         self.session.agent_auth(self.user)
 
-    def _pkey_auth(self, pkey_file, password=None):
+    def _pkey_file_auth(self, pkey_file, password=None):
         self.session.userauth_publickey_fromfile(
             self.user,
             pkey_file,
             passphrase=password if password is not None else b'')
+
+    def _pkey_from_memory(self):
+        self.session.userauth_publickey_frommemory(
+            self.user,
+            self.pkey,
+            passphrase=self.password if self.password is not None else b'',
+        )
 
     def _password_auth(self):
         self.session.userauth_password(self.user, self.password)

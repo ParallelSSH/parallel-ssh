@@ -175,7 +175,7 @@ class SSHClient(BaseSSHClient):
     def _password_auth(self):
         self.session.userauth_password(self.user, self.password)
 
-    def _pkey_auth(self, pkey_file, password=None):
+    def _pkey_file_auth(self, pkey_file, password=None):
         pkey = import_privkey_file(pkey_file, passphrase=password if password is not None else '')
         if self.cert_file is not None:
             logger.debug("Certificate file set - trying certificate authentication")

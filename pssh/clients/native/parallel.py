@@ -18,7 +18,7 @@
 import logging
 
 from .single import SSHClient
-from ..common import _validate_pkey_path
+from ..common import _validate_pkey
 from ..base.parallel import BaseParallelSSHClient
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import HostArgumentError
@@ -50,9 +50,12 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param port: (Optional) Port number to use for SSH connection. Defaults
           to 22.
         :type port: int
-        :param pkey: Private key file path to use. Path must be either absolute
+        :param pkey: Private key file path or private key data to use.
+          Paths must be str type and either absolute
           path or relative to user home directory like ``~/<path>``.
-        :type pkey: str
+          Bytes type input is used as private key data as returned by file.read().
+          Bytes data must *not* already be base64 encoded - that is handled by library.
+        :type pkey: str or bytes
         :param num_retries: (Optional) Number of connection and authentication
           attempts before the client gives up. Defaults to 3.
         :type num_retries: int
@@ -127,10 +130,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
             identity_auth=identity_auth,
             ipv6_only=ipv6_only,
         )
-        self.pkey = _validate_pkey_path(pkey)
+        self.pkey = _validate_pkey(pkey)
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
-        self.proxy_pkey = _validate_pkey_path(proxy_pkey)
+        self.proxy_pkey = _validate_pkey(proxy_pkey)
         self.proxy_user = proxy_user
         self.proxy_password = proxy_password
         self.forward_ssh_agent = forward_ssh_agent
