@@ -8,7 +8,7 @@ Changes
 --------
 
 * All clients now support private key data as bytes in ``pkey`` parameter for authentication from in-memory private key
-  data - #
+  data - #317
 * Parallel clients now read a provided private key path only once and use in-memory data for authentication to avoid
   reading same file multiple times, if a path is provided.
 
