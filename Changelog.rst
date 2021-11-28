@@ -8,7 +8,8 @@ Changes
 --------
 
 * All clients now support private key data as bytes in ``pkey`` parameter for authentication from in-memory private key
-  data - #317
+  data - #317. See `documentation <https://parallel-ssh.readthedocs.io/en/latest/advanced.html#in-memory-private-keys>`_
+  for examples.
 * Parallel clients now read a provided private key path only once and use in-memory data for authentication to avoid
   reading same file multiple times, if a path is provided.
 
