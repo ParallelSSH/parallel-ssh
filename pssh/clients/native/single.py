@@ -246,10 +246,10 @@ class SSHClient(BaseSSHClient):
             pkey_file,
             passphrase=password if password is not None else b'')
 
-    def _pkey_from_memory(self):
+    def _pkey_from_memory(self, pkey_data):
         self.session.userauth_publickey_frommemory(
             self.user,
-            self.pkey,
+            pkey_data,
             passphrase=self.password if self.password is not None else b'',
         )
 

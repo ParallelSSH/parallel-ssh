@@ -187,11 +187,11 @@ class SSHClient(BaseSSHClient):
             self._import_cert_file(pkey)
         self.session.userauth_publickey(pkey)
 
-    def _pkey_from_memory(self):
-        pkey = import_privkey_base64(
-            self.pkey,
+    def _pkey_from_memory(self, pkey_data):
+        _pkey = import_privkey_base64(
+            pkey_data,
             passphrase=self.password if self.password is not None else b'')
-        return self._pkey_obj_auth(pkey)
+        return self._pkey_obj_auth(_pkey)
 
     def _import_cert_file(self, pkey):
         cert_key = import_cert_file(self.cert_file)

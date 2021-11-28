@@ -188,7 +188,7 @@ class BaseSSHClient(object):
         self.ipv6_only = ipv6_only
         self._init()
 
-    def _pkey_from_memory(self):
+    def _pkey_from_memory(self, pkey_data):
         raise NotImplementedError
 
     def _init(self):
@@ -368,12 +368,14 @@ class BaseSSHClient(object):
         raise NotImplementedError
 
     def _pkey_auth(self, pkey):
+        _pkey = pkey
         if isinstance(pkey, str):
-            logger.debug("Private key is provided as str, using as private key file path")
-            return self._pkey_file_auth(pkey, password=self.password)
+            logger.debug("Private key is provided as str, loading from private key file path")
+            with open(pkey, 'rb') as fh:
+                _pkey = fh.read()
         elif isinstance(pkey, bytes):
             logger.debug("Private key is provided in bytes, using as private key data")
-            return self._pkey_from_memory()
+        return self._pkey_from_memory(_pkey)
 
     def _pkey_file_auth(self, pkey_file, password=None):
         raise NotImplementedError
