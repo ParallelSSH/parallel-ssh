@@ -284,13 +284,24 @@ class BaseSSHClient(object):
                                           host, str(ex.args[1]), retries,
                                           self.num_retries)
             raise unknown_ex from ex
-        family, _type, proto, _, sock_addr = addr_info[0]
+        for i, (family, _type, proto, _, sock_addr) in enumerate(addr_info):
+            try:
+                self._connect_socket(family, _type, proto, sock_addr, host, port, retries)
+            except ConnectionRefusedError:
+                if i+1 == len(addr_info):
+                    logger.error("No available addresses from %s", addr_info)
+                    raise
+                continue
+
+    def _connect_socket(self, family, _type, proto, sock_addr, host, port, retries):
         self.sock = socket.socket(family, _type)
         if self.timeout:
             self.sock.settimeout(self.timeout)
         logger.debug("Connecting to %s:%s", host, port)
         try:
             self.sock.connect(sock_addr)
+        except ConnectionRefusedError:
+            raise
         except sock_error as ex:
             logger.error("Error connecting to host '%s:%s' - retry %s/%s",
                          host, port, retries, self.num_retries)

@@ -20,6 +20,8 @@ import subprocess
 import shutil
 import tempfile
 from tempfile import NamedTemporaryFile
+
+import pytest
 from pytest import raises
 from unittest.mock import MagicMock, call, patch
 from hashlib import sha256
@@ -88,6 +90,10 @@ class SSH2ClientTest(SSH2TestCase):
                 pass
         self.assertRaises(
             SFTPIOError, client.copy_remote_file, 'fake_remote_file_not_exists', 'local')
+
+    def test_conn_refused(self):
+        with pytest.raises(ConnectionRefusedError):
+            SSHClient('127.0.0.99', port=self.port, num_retries=1, timeout=1)
 
     @patch('pssh.clients.base.single.socket')
     def test_ipv6(self, gsocket):
