@@ -238,14 +238,14 @@ class LibSSHParallelTest(unittest.TestCase):
         self.assertIsNotNone(output[1].exception,
                              msg="Failed host %s has no exception in output - %s" % (hosts[1], output,))
         self.assertTrue(output[1].exception is not None)
-        self.assertEqual(output[1].exception.args[1], hosts[1])
+        self.assertEqual(output[1].host, hosts[1])
+        self.assertEqual(output[1].exception.args[-2], hosts[1])
         try:
             raise output[1].exception
         except ConnectionErrorException:
             pass
         else:
-            raise Exception("Expected ConnectionError, got %s instead" % (
-                output[1].exception,))
+            raise Exception("Expected ConnectionError, got %s instead" % (output[1].exception,))
 
     def test_pssh_client_timeout(self):
         # 1ms timeout
@@ -316,14 +316,13 @@ class LibSSHParallelTest(unittest.TestCase):
                                    num_retries=1)
         output = client.run_command(self.cmd, stop_on_errors=False)
         client.join(output)
-        self.assertIsNotNone(output[0].exception,
-                             msg="Got no exception for host %s - expected connection error" % (
-                                 host,))
+        self.assertIsInstance(output[0].exception, ConnectionErrorException)
+        self.assertEqual(output[0].host, host)
         try:
             raise output[0].exception
         except ConnectionErrorException as ex:
-            self.assertEqual(ex.args[1], host)
-            self.assertEqual(ex.args[2], port)
+            self.assertEqual(ex.args[-2], host)
+            self.assertEqual(ex.args[-1], port)
         else:
             raise Exception("Expected ConnectionErrorException")
 
