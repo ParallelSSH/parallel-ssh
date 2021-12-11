@@ -286,7 +286,7 @@ class BaseSSHClient(object):
             raise unknown_ex from ex
         for i, (family, _type, proto, _, sock_addr) in enumerate(addr_info):
             try:
-                self._connect_socket(family, _type, proto, sock_addr, host, port, retries)
+                return self._connect_socket(family, _type, proto, sock_addr, host, port, retries)
             except ConnectionRefusedError as ex:
                 if i+1 == len(addr_info):
                     logger.error("No available addresses from %s", [addr[4] for addr in addr_info])
