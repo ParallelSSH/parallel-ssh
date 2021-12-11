@@ -1,6 +1,18 @@
 Change Log
 ============
 
+2.9.0
++++++
+
+Changes
+--------
+
+* ``pssh.exceptions.ConnectionError`` is now the same as built-in ``ConnectionError`` and deprecated - to be removed.
+* Clients now attempt to continue connecting with all addresses in DNS list for host in the case where an address
+  refuses connection. For example where a host resolves to both IPv4 and v6 addresses while only one address is
+  accepting connections, or multiple v4/v6 addresses where only some are accepting connections.
+* Connection actively refused error is no longer subject to retries.
+
 2.8.0
 +++++
 

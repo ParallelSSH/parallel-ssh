@@ -207,8 +207,8 @@ class BaseSSHClient(object):
             if retries < self.num_retries:
                 sleep(self.retry_delay)
                 return self._auth_retry(retries=retries+1)
-            msg = "Authentication error while connecting to %s:%s - %s"
-            raise AuthenticationError(msg, self.host, self.port, ex)
+            msg = "Authentication error while connecting to %s:%s - %s - retries %s/%s"
+            raise AuthenticationError(msg, self.host, self.port, ex, retries, self.num_retries)
 
     def disconnect(self):
         raise NotImplementedError
@@ -287,9 +287,10 @@ class BaseSSHClient(object):
         for i, (family, _type, proto, _, sock_addr) in enumerate(addr_info):
             try:
                 self._connect_socket(family, _type, proto, sock_addr, host, port, retries)
-            except ConnectionRefusedError:
+            except ConnectionRefusedError as ex:
                 if i+1 == len(addr_info):
-                    logger.error("No available addresses from %s", addr_info)
+                    logger.error("No available addresses from %s", [addr[4] for addr in addr_info])
+                    ex.args += (host, port)
                     raise
                 continue
 

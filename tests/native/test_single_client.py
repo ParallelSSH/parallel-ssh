@@ -38,7 +38,7 @@ from ssh2.exceptions import (SocketDisconnectError, BannerRecvError, SocketRecvE
                              )
 from pssh.exceptions import (AuthenticationException, ConnectionErrorException,
                              SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout,
-                             AuthenticationError, NoIPv6AddressFoundError,
+                             AuthenticationError, NoIPv6AddressFoundError, ConnectionError
                              )
 
 from .base_ssh2_case import SSH2TestCase
@@ -363,7 +363,7 @@ class SSH2ClientTest(SSH2TestCase):
             raise AssertionError
 
     def test_retry_failure(self):
-        self.assertRaises(ConnectionErrorException,
+        self.assertRaises(ConnectionError,
                           SSHClient, self.host, port=12345,
                           num_retries=2, _auth_thread_pool=False,
                           retry_delay=.1,
