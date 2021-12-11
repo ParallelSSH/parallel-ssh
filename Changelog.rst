@@ -14,6 +14,7 @@ Changes
   accepting connections, or multiple v4/v6 addresses where only some are accepting connections.
 * Connection actively refused error is no longer subject to retries.
 
+
 2.8.0
 +++++
 
