@@ -1566,6 +1566,58 @@ class ParallelSSHClientTest(unittest.TestCase):
             except OSError:
                 pass
 
+    def test_scp_send_larger_files(self):
+        hosts = ['127.0.0.1%s' % (i,) for i in range(1, 3)]
+        servers = [OpenSSHServer(host, port=self.port) for host in hosts]
+        for server in servers:
+            server.start_server()
+        client = ParallelSSHClient(
+            hosts, port=self.port, pkey=self.user_key, num_retries=1, timeout=1,
+            pool_size=len(hosts),
+        )
+        local_filename = 'test_file'
+        remote_filepath = 'file_copy'
+        copy_args = [{
+            'local_file': local_filename,
+            'remote_file': 'host_%s_%s' % (n, remote_filepath)}
+                     for n in range(len(hosts))]
+        remote_file_names = [arg['remote_file'] for arg in copy_args]
+        sha = sha256()
+        with open(local_filename, 'wb') as file_h:
+            for _ in range(100000):
+                data = os.urandom(1024)
+                file_h.write(data)
+                sha.update(data)
+        source_file_sha = sha.hexdigest()
+        sha = sha256()
+        cmds = client.scp_send('%(local_file)s', '%(remote_file)s', copy_args=copy_args)
+        try:
+            joinall(cmds, raise_error=True)
+        except Exception:
+            raise
+        else:
+            # sleep(.2)
+            del client
+            for remote_file_name in remote_file_names:
+                remote_file_abspath = os.path.expanduser('~/' + remote_file_name)
+                self.assertTrue(os.path.isfile(remote_file_abspath))
+                with open(remote_file_abspath, 'rb') as remote_fh:
+                    data = remote_fh.read(10240)
+                    while data:
+                        sha.update(data)
+                        data = remote_fh.read(10240)
+                remote_file_sha = sha.hexdigest()
+                sha = sha256()
+                self.assertEqual(source_file_sha, remote_file_sha)
+        finally:
+            try:
+                os.unlink(local_filename)
+                for remote_file_name in remote_file_names:
+                    remote_file_abspath = os.path.expanduser('~/' + remote_file_name)
+                    os.unlink(remote_file_abspath)
+            except OSError:
+                pass
+
     def test_scp_bad_copy_args(self):
         client = ParallelSSHClient([self.host, self.host])
         copy_args = [{'local_file': 'fake_file', 'remote_file': 'fake_remote_file'}]
