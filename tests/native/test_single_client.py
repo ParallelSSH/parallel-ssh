@@ -405,10 +405,10 @@ class SSH2ClientTest(SSH2TestCase):
 
     def test_connection_timeout(self):
         cmd = spawn(SSHClient, 'fakehost.com', port=12345,
-                    num_retries=1, timeout=1, _auth_thread_pool=False)
+                    num_retries=1, timeout=.1, _auth_thread_pool=False)
         # Should fail within greenlet timeout, otherwise greenlet will
         # raise timeout which will fail the test
-        self.assertRaises(ConnectionErrorException, cmd.get, timeout=2)
+        self.assertRaises(ConnectionErrorException, cmd.get, timeout=1)
 
     def test_client_read_timeout(self):
         client = SSHClient(self.host, port=self.port,
