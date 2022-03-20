@@ -21,7 +21,7 @@ import logging
 from datetime import datetime
 
 from gevent import sleep, Timeout as GTimeout, spawn
-from ssh.session import Session
+# from ssh.session import Session
 from ssh.exceptions import AuthenticationDenied
 from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
     SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout, \

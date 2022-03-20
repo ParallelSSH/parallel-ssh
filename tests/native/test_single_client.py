@@ -20,6 +20,8 @@ import subprocess
 import shutil
 import tempfile
 from tempfile import NamedTemporaryFile
+
+import pytest
 from pytest import raises
 from unittest.mock import MagicMock, call, patch
 from hashlib import sha256
@@ -36,7 +38,7 @@ from ssh2.exceptions import (SocketDisconnectError, BannerRecvError, SocketRecvE
                              )
 from pssh.exceptions import (AuthenticationException, ConnectionErrorException,
                              SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout,
-                             AuthenticationError, NoIPv6AddressFoundError,
+                             AuthenticationError, NoIPv6AddressFoundError, ConnectionError
                              )
 
 from .base_ssh2_case import SSH2TestCase
@@ -89,6 +91,10 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertRaises(
             SFTPIOError, client.copy_remote_file, 'fake_remote_file_not_exists', 'local')
 
+    def test_conn_refused(self):
+        with pytest.raises(ConnectionRefusedError):
+            SSHClient('127.0.0.99', port=self.port, num_retries=1, timeout=1)
+
     @patch('pssh.clients.base.single.socket')
     def test_ipv6(self, gsocket):
         # As of Oct 2021, CircleCI does not support IPv6 in its containers.
@@ -102,17 +108,40 @@ class SSH2ClientTest(SSH2TestCase):
         _sock = MagicMock()
         gsocket.socket.return_value = _sock
         sock_con = MagicMock()
+        sock_con.side_effect = ConnectionRefusedError
         _sock.connect = sock_con
         getaddrinfo = MagicMock()
         gsocket.getaddrinfo = getaddrinfo
         getaddrinfo.return_value = [(
             socket.AF_INET6, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info)]
-        with raises(TypeError):
-            # Mock object as a file descriptor will raise TypeError
+        with raises(ConnectionError):
             client = SSHClient(host, port=self.port, pkey=self.user_key,
                                num_retries=1)
         getaddrinfo.assert_called_once_with(host, self.port, proto=socket.IPPROTO_TCP)
         sock_con.assert_called_once_with(addr_info)
+
+    @patch('pssh.clients.base.single.socket')
+    def test_multiple_available_addr(self, gsocket):
+        host = '127.0.0.1'
+        addr_info = (host, self.port)
+        gsocket.IPPROTO_TCP = socket.IPPROTO_TCP
+        gsocket.socket = MagicMock()
+        _sock = MagicMock()
+        gsocket.socket.return_value = _sock
+        sock_con = MagicMock()
+        sock_con.side_effect = ConnectionRefusedError
+        _sock.connect = sock_con
+        getaddrinfo = MagicMock()
+        gsocket.getaddrinfo = getaddrinfo
+        getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info),
+            (socket.AF_INET, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info),
+        ]
+        with raises(ConnectionError):
+            client = SSHClient(host, port=self.port, pkey=self.user_key,
+                               num_retries=1)
+        getaddrinfo.assert_called_with(host, self.port, proto=socket.IPPROTO_TCP)
+        assert sock_con.call_count == len(getaddrinfo.return_value)
 
     def test_no_ipv6(self):
         try:
@@ -357,7 +386,7 @@ class SSH2ClientTest(SSH2TestCase):
             raise AssertionError
 
     def test_retry_failure(self):
-        self.assertRaises(ConnectionErrorException,
+        self.assertRaises(ConnectionError,
                           SSHClient, self.host, port=12345,
                           num_retries=2, _auth_thread_pool=False,
                           retry_delay=.1,

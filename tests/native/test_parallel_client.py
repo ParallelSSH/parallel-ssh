@@ -35,7 +35,8 @@ from pssh.clients.native import ParallelSSHClient
 from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
-    PKeyFileError, ShellError, HostArgumentError, NoIPv6AddressFoundError
+    PKeyFileError, ShellError, HostArgumentError, NoIPv6AddressFoundError, \
+    AuthenticationError
 from pssh.output import HostOutput
 
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
@@ -276,7 +277,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue(client.finished(output))
         self.assertEqual(len(hosts), len(output))
         self.assertIsNotNone(output[1].exception)
-        self.assertEqual(output[1].exception.args[1], hosts[1])
+        self.assertEqual(output[1].host, hosts[1])
         self.assertIsInstance(output[1].exception, ConnectionErrorException)
 
     def test_pssh_client_timeout(self):
@@ -350,23 +351,23 @@ class ParallelSSHClientTest(unittest.TestCase):
 
     def test_pssh_client_retries(self):
         """Test connection error retries"""
-        listen_port = self.make_random_port()
+        # listen_port = self.make_random_port()
         expected_num_tries = 2
-        client = ParallelSSHClient([self.host], port=listen_port,
-                                   pkey=self.user_key,
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=b"fake",
                                    num_retries=expected_num_tries,
                                    retry_delay=.1,
                                    )
-        self.assertRaises(ConnectionErrorException, client.run_command, 'blah')
+        self.assertRaises(AuthenticationError, client.run_command, 'blah')
         try:
             client.run_command('blah')
-        except ConnectionErrorException as ex:
+        except AuthenticationError as ex:
+            max_tries = ex.args[-2:][0]
             num_tries = ex.args[-1:][0]
-            self.assertEqual(expected_num_tries, num_tries,
-                             msg="Got unexpected number of retries %s - "
-                             "expected %s" % (num_tries, expected_num_tries,))
+            self.assertEqual(expected_num_tries, max_tries)
+            self.assertEqual(expected_num_tries, num_tries)
         else:
-            raise Exception('No ConnectionErrorException')
+            raise Exception('No AuthenticationError')
 
     def test_sftp_exceptions(self):
         # Port with no server listening on it on separate ip
@@ -380,7 +381,8 @@ class ParallelSSHClientTest(unittest.TestCase):
             try:
                 cmd.get()
             except Exception as ex:
-                self.assertEqual(ex.args[1], self.host)
+                self.assertEqual(ex.args[2], self.host)
+                self.assertEqual(ex.args[3], port)
                 self.assertIsInstance(ex, ConnectionErrorException)
             else:
                 raise Exception("Expected ConnectionErrorException, got none")
@@ -859,7 +861,7 @@ class ParallelSSHClientTest(unittest.TestCase):
             _host_stdout = list(host_out.stdout)
             self.assertListEqual(_host_stdout, expected_stdout)
 
-    def test_connection_error_exception(self):
+    def test_connection_error(self):
         """Test that we get connection error exception in output with correct arguments"""
         # Make port with no server listening on it on separate ip
         host = '127.0.0.3'
@@ -874,13 +876,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         for host_output in output:
             exit_code = host_output.exit_code
             self.assertEqual(exit_code, None)
-        try:
-            raise output[0].exception
-        except ConnectionErrorException as ex:
-            self.assertEqual(ex.args[1], host)
-            self.assertEqual(ex.args[2], port)
-        else:
-            raise Exception("Expected ConnectionErrorException")
+        self.assertIsInstance(output[0].exception, ConnectionError)
 
     def test_bad_pkey_path(self):
         self.assertRaises(PKeyFileError, ParallelSSHClient, [self.host], port=self.port,

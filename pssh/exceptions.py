@@ -35,13 +35,7 @@ class UnknownHostError(Exception):
 
 
 UnknownHostException = UnknownHostError
-
-
-class ConnectionError(Exception):
-    """Raised on error connecting (connection refused/timed out)"""
-    pass
-
-
+ConnectionError = ConnectionError
 ConnectionErrorException = ConnectionError
 
 
