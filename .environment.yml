@@ -5,3 +5,6 @@ dependencies:
   - setuptools
   - pip
   - toolchain3
+  - libssh
+  - libssh2
+  - cython
