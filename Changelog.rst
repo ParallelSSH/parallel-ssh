@@ -8,12 +8,17 @@ Changes
 --------
 
 * ``pssh.exceptions.ConnectionError`` is now the same as built-in ``ConnectionError`` and deprecated - to be removed.
-* Clients now continue connecting with all addresses in DNS list. In the case where an address refuses connection,
+* Clients now attempt to connect with all addresses in DNS list. In the case where an address refuses connection,
   other available addresses are attempted without delay.
 
   For example where a host resolves to both IPv4 and v6 addresses while only one address is
   accepting connections, or multiple v4/v6 addresses where only some are accepting connections.
 * Connection actively refused error is no longer subject to retries.
+
+Fixes
+-----
+
+* ``scp_send`` in native clients would sometimes fail to send all data in a race condition with client going out of scope.
 
 
 2.8.0
