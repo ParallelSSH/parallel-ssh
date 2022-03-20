@@ -598,6 +598,7 @@ class SSHClient(BaseSSHClient):
                 total += size
                 local_fh.write(data)
         finally:
+            local_fh.flush()
             local_fh.close()
             file_chan.close()
 
@@ -659,13 +660,16 @@ class SSHClient(BaseSSHClient):
             raise SCPError(msg, remote_file, self.host, ex)
         try:
             with open(local_file, 'rb', 2097152) as local_fh:
-                for data in local_fh:
+                data = local_fh.read(self._BUF_SIZE)
+                while data:
                     self.eagain_write(chan.write, data)
+                    data = local_fh.read(self._BUF_SIZE)
         except Exception as ex:
             msg = "Error writing to remote file %s on host %s - %s"
             logger.error(msg, remote_file, self.host, ex)
             raise SCPError(msg, remote_file, self.host, ex)
         finally:
+            self._eagain(chan.flush)
             chan.close()
 
     def _sftp_openfh(self, open_func, remote_file, *args):

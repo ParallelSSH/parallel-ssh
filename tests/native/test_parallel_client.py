@@ -133,6 +133,8 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_client_shells_timeout(self):
         client = ParallelSSHClient([self.host], pkey=self.user_key, port=self.port,
                                    timeout=0.01, num_retries=1)
+        client._make_ssh_client = MagicMock()
+        client._make_ssh_client.side_effect = Timeout
         self.assertRaises(Timeout, client.open_shell)
 
     def test_client_shells_join_timeout(self):
@@ -1517,8 +1519,8 @@ class ParallelSSHClientTest(unittest.TestCase):
             except OSError:
                 pass
 
-    def test_scp_send_large_files_timeout(self):
-        hosts = ['127.0.0.1%s' % (i,) for i in range(1, 10)]
+    def test_scp_send_larger_files(self):
+        hosts = ['127.0.0.1%s' % (i,) for i in range(1, 3)]
         servers = [OpenSSHServer(host, port=self.port) for host in hosts]
         for server in servers:
             server.start_server()
@@ -1535,7 +1537,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         remote_file_names = [arg['remote_file'] for arg in copy_args]
         sha = sha256()
         with open(local_filename, 'wb') as file_h:
-            for _ in range(5000):
+            for _ in range(10000):
                 data = os.urandom(1024)
                 file_h.write(data)
                 sha.update(data)
@@ -1547,13 +1549,15 @@ class ParallelSSHClientTest(unittest.TestCase):
         except Exception:
             raise
         else:
-            sleep(.2)
+            del client
             for remote_file_name in remote_file_names:
                 remote_file_abspath = os.path.expanduser('~/' + remote_file_name)
                 self.assertTrue(os.path.isfile(remote_file_abspath))
                 with open(remote_file_abspath, 'rb') as remote_fh:
-                    for data in remote_fh:
+                    data = remote_fh.read(10240)
+                    while data:
                         sha.update(data)
+                        data = remote_fh.read(10240)
                 remote_file_sha = sha.hexdigest()
                 sha = sha256()
                 self.assertEqual(source_file_sha, remote_file_sha)
@@ -1678,6 +1682,60 @@ class ParallelSSHClientTest(unittest.TestCase):
                     shutil.rmtree(_path)
                 except Exception:
                     pass
+
+    def test_scp_recv_larger_files(self):
+        hosts = ['127.0.0.1%s' % (i,) for i in range(1, 3)]
+        servers = [OpenSSHServer(host, port=self.port) for host in hosts]
+        for server in servers:
+            server.start_server()
+        client = ParallelSSHClient(
+            hosts, port=self.port, pkey=self.user_key, num_retries=1, timeout=1,
+            pool_size=len(hosts),
+        )
+        dir_name = os.path.dirname(__file__)
+        remote_filename = 'test_file'
+        remote_filepath = os.path.join(dir_name, remote_filename)
+        local_filename = 'file_copy'
+        copy_args = [{
+            'remote_file': remote_filepath,
+            'local_file': os.path.expanduser("~/" + 'host_%s_%s' % (n, local_filename))}
+            for n in range(len(hosts))
+        ]
+        local_file_names = [
+            arg['local_file'] for arg in copy_args]
+        sha = sha256()
+        with open(remote_filepath, 'wb') as file_h:
+            for _ in range(10000):
+                data = os.urandom(1024)
+                file_h.write(data)
+                sha.update(data)
+            file_h.flush()
+        source_file_sha = sha.hexdigest()
+        sha = sha256()
+        cmds = client.scp_recv('%(remote_file)s', '%(local_file)s', copy_args=copy_args)
+        try:
+            joinall(cmds, raise_error=True)
+        except Exception:
+            raise
+        else:
+            del client
+            for _local_file_name in local_file_names:
+                self.assertTrue(os.path.isfile(_local_file_name))
+                with open(_local_file_name, 'rb') as fh:
+                    data = fh.read(10240)
+                    while data:
+                        sha.update(data)
+                        data = fh.read(10240)
+                local_file_sha = sha.hexdigest()
+                sha = sha256()
+                self.assertEqual(source_file_sha, local_file_sha)
+        finally:
+            try:
+                os.unlink(remote_filepath)
+                for _local_file_name in local_file_names:
+                    os.unlink(_local_file_name)
+            except OSError:
+                pass
 
     def test_bad_hosts_value(self):
         self.assertRaises(TypeError, ParallelSSHClient, 'a host')

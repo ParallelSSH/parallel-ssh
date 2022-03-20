@@ -5,3 +5,4 @@ dependencies:
   - setuptools
   - pip
   - toolchain3
+  - cython

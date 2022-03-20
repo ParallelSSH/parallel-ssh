@@ -405,10 +405,10 @@ class SSH2ClientTest(SSH2TestCase):
 
     def test_connection_timeout(self):
         cmd = spawn(SSHClient, 'fakehost.com', port=12345,
-                    num_retries=1, timeout=1, _auth_thread_pool=False)
+                    num_retries=1, timeout=.1, _auth_thread_pool=False)
         # Should fail within greenlet timeout, otherwise greenlet will
         # raise timeout which will fail the test
-        self.assertRaises(ConnectionErrorException, cmd.get, timeout=2)
+        self.assertRaises(ConnectionErrorException, cmd.get, timeout=1)
 
     def test_client_read_timeout(self):
         client = SSHClient(self.host, port=self.port,
@@ -657,27 +657,22 @@ class SSH2ClientTest(SSH2TestCase):
                 os.unlink(_path)
             except OSError:
                 pass
+        sha = sha256()
         try:
             with open(file_path_from, 'wb') as fh:
-                # ~300MB
-                for _ in range(20000000):
-                    fh.write(b"adsfasldkfjabafj")
+                for _ in range(10000):
+                    data = os.urandom(1024)
+                    fh.write(data)
+                    sha.update(data)
+            source_file_sha = sha.hexdigest()
             self.client.scp_recv(file_path_from, file_copy_to_dirpath)
             self.assertTrue(os.path.isfile(file_copy_to_dirpath))
-            read_file_size = os.stat(file_path_from).st_size
-            written_file_size = os.stat(file_copy_to_dirpath).st_size
-            self.assertEqual(read_file_size, written_file_size)
-            sha = sha256()
-            with open(file_path_from, 'rb') as fh:
-                for block in fh:
-                    sha.update(block)
-            read_file_hash = sha.hexdigest()
             sha = sha256()
             with open(file_copy_to_dirpath, 'rb') as fh:
                 for block in fh:
                     sha.update(block)
             written_file_hash = sha.hexdigest()
-            self.assertEqual(read_file_hash, written_file_hash)
+            self.assertEqual(source_file_sha, written_file_hash)
         finally:
             for _path in (file_path_from, file_copy_to_dirpath):
                 try:
@@ -728,29 +723,22 @@ class SSH2ClientTest(SSH2TestCase):
                 os.unlink(_path)
             except OSError:
                 pass
+        sha = sha256()
         try:
             with open(file_path_from, 'wb') as fh:
-                # ~300MB
-                for _ in range(20000000):
-                    fh.write(b"adsfasldkfjabafj")
+                for _ in range(10000):
+                    data = os.urandom(1024)
+                    fh.write(data)
+                    sha.update(data)
+            source_file_sha = sha.hexdigest()
             self.client.scp_send(file_path_from, file_copy_to_dirpath)
             self.assertTrue(os.path.isfile(file_copy_to_dirpath))
-            # OS file flush race condition
-            sleep(.1)
-            read_file_size = os.stat(file_path_from).st_size
-            written_file_size = os.stat(file_copy_to_dirpath).st_size
-            self.assertEqual(read_file_size, written_file_size)
-            sha = sha256()
-            with open(file_path_from, 'rb') as fh:
-                for block in fh:
-                    sha.update(block)
-            read_file_hash = sha.hexdigest()
             sha = sha256()
             with open(file_copy_to_dirpath, 'rb') as fh:
                 for block in fh:
                     sha.update(block)
             written_file_hash = sha.hexdigest()
-            self.assertEqual(read_file_hash, written_file_hash)
+            self.assertEqual(source_file_sha, written_file_hash)
         finally:
             for _path in (file_path_from, file_copy_to_dirpath):
                 try:
