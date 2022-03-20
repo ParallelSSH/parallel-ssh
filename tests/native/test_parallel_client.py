@@ -133,6 +133,8 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_client_shells_timeout(self):
         client = ParallelSSHClient([self.host], pkey=self.user_key, port=self.port,
                                    timeout=0.01, num_retries=1)
+        client._make_ssh_client = MagicMock()
+        client._make_ssh_client.side_effect = Timeout
         self.assertRaises(Timeout, client.open_shell)
 
     def test_client_shells_join_timeout(self):

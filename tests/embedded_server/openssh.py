@@ -86,7 +86,7 @@ class OpenSSHServer(object):
         logger.debug("Starting server with %s" % (" ".join(cmd),))
         self.server_proc = Popen(cmd)
         try:
-            self.server_proc.wait(2)
+            self.server_proc.wait(.3)
         except TimeoutExpired:
             pass
         else:
