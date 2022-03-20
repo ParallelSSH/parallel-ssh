@@ -108,17 +108,40 @@ class SSH2ClientTest(SSH2TestCase):
         _sock = MagicMock()
         gsocket.socket.return_value = _sock
         sock_con = MagicMock()
+        sock_con.side_effect = ConnectionRefusedError
         _sock.connect = sock_con
         getaddrinfo = MagicMock()
         gsocket.getaddrinfo = getaddrinfo
         getaddrinfo.return_value = [(
             socket.AF_INET6, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info)]
-        with raises(TypeError):
-            # Mock object as a file descriptor will raise TypeError
+        with raises(ConnectionError):
             client = SSHClient(host, port=self.port, pkey=self.user_key,
                                num_retries=1)
         getaddrinfo.assert_called_once_with(host, self.port, proto=socket.IPPROTO_TCP)
         sock_con.assert_called_once_with(addr_info)
+
+    @patch('pssh.clients.base.single.socket')
+    def test_multiple_available_addr(self, gsocket):
+        host = '127.0.0.1'
+        addr_info = (host, self.port)
+        gsocket.IPPROTO_TCP = socket.IPPROTO_TCP
+        gsocket.socket = MagicMock()
+        _sock = MagicMock()
+        gsocket.socket.return_value = _sock
+        sock_con = MagicMock()
+        sock_con.side_effect = ConnectionRefusedError
+        _sock.connect = sock_con
+        getaddrinfo = MagicMock()
+        gsocket.getaddrinfo = getaddrinfo
+        getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info),
+            (socket.AF_INET, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info),
+        ]
+        with raises(ConnectionError):
+            client = SSHClient(host, port=self.port, pkey=self.user_key,
+                               num_retries=1)
+        getaddrinfo.assert_called_with(host, self.port, proto=socket.IPPROTO_TCP)
+        assert sock_con.call_count == len(getaddrinfo.return_value)
 
     def test_no_ipv6(self):
         try:
