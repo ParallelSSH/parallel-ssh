@@ -75,7 +75,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           Host output read timeout can also be set separately via
           ``run_command(<..>, read_timeout=<seconds>)``
           Defaults to OS default - usually 60 seconds.
-        :type timeout: float
+        :type timeout: int or float
         :param pool_size: (Optional) Greenlet pool size. Controls
           concurrency, on how many hosts to execute tasks in parallel.
           Defaults to 100. Overhead in event

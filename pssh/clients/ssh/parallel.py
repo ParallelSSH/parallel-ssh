@@ -68,7 +68,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type num_retries: int
         :param retry_delay: Number of seconds to wait between retries. Defaults
           to :py:class:`pssh.constants.RETRY_DELAY`
-        :type retry_delay: int
+        :type retry_delay: int or float
         :param timeout: (Optional) Individual SSH client timeout setting in
           seconds passed on to each SSH client spawned by `ParallelSSHClient`.
 
@@ -81,7 +81,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           Parallel functions like `run_command` and `join` have a cummulative
           timeout setting that is separate to and
           not affected by `self.timeout`.
-        :type timeout: float
+        :type timeout: int or float
         :param pool_size: (Optional) Greenlet pool size. Controls
           concurrency, on how many hosts to execute tasks in parallel.
           Defaults to 100. Overhead in event

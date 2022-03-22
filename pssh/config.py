@@ -18,8 +18,6 @@
 
 """Host specific configuration."""
 
-from decimal import Decimal
-
 
 class HostConfig(object):
     """Host configuration for ParallelSSHClient.
@@ -63,9 +61,9 @@ class HostConfig(object):
           and SSH operations.
         :type num_retries: int
         :param retry_delay: Delay in seconds between retry attempts.
-        :type retry_delay: int or float or Decimal
+        :type retry_delay: int or float
         :param timeout: Timeout value for connection and SSH sessions in seconds.
-        :type timeout: int or float or Decimal
+        :type timeout: int or float
         :param identity_auth: Enable/disable identity file authentication under user's
           home directory (~/.ssh).
         :type identity_auth: bool
@@ -140,14 +138,10 @@ class HostConfig(object):
         if self.num_retries is not None and not isinstance(self.num_retries, int):
             raise ValueError("Num retries %s is not an integer" % (self.num_retries,))
         if self.timeout is not None and not \
-                (isinstance(self.timeout, int) or isinstance(self.timeout, float)
-                 or isinstance(self.timeout, Decimal)
-                ):
+                (isinstance(self.timeout, int) or isinstance(self.timeout, float)):
             raise ValueError("Timeout %s is not an integer" % (self.timeout,))
         if self.retry_delay is not None and not \
-                (isinstance(self.retry_delay, int) or isinstance(self.retry_delay, float)
-                 or isinstance(self.retry_delay, Decimal)
-                ):
+                (isinstance(self.retry_delay, int) or isinstance(self.retry_delay, float)):
             raise ValueError("Retry delay %s is not a number" % (self.retry_delay,))
         if self.identity_auth is not None and not isinstance(self.identity_auth, bool):
             raise ValueError("Identity auth %s is not a boolean" % (self.identity_auth,))
