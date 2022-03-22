@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis.
+# Copyright (C) 2014-2022 Panos Kittenis.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -29,7 +29,8 @@ class HostConfig(object):
     __slots__ = ('user', 'port', 'password', 'private_key', 'allow_agent',
                  'num_retries', 'retry_delay', 'timeout', 'identity_auth',
                  'proxy_host', 'proxy_port', 'proxy_user', 'proxy_password', 'proxy_pkey',
-                 'keepalive_seconds', 'ipv6_only',
+                 'keepalive_seconds', 'ipv6_only', 'cert_file', 'auth_thread_pool', 'gssapi_auth',
+                 'gssapi_server_identity', 'gssapi_client_identity', 'gssapi_delegate_credentials', 'forward_ssh_agent',
                  )
 
     def __init__(self, user=None, port=None, password=None, private_key=None,
@@ -39,6 +40,13 @@ class HostConfig(object):
                  proxy_pkey=None,
                  keepalive_seconds=None,
                  ipv6_only=None,
+                 cert_file=None,
+                 auth_thread_pool=True,
+                 gssapi_auth=False,
+                 gssapi_server_identity=None,
+                 gssapi_client_identity=None,
+                 gssapi_delegate_credentials=False,
+                 forward_ssh_agent=False,
                  ):
         """
         :param user: Username to login as.
@@ -55,9 +63,9 @@ class HostConfig(object):
           and SSH operations.
         :type num_retries: int
         :param retry_delay: Delay in seconds between retry attempts.
-        :type retry_delay: int
+        :type retry_delay: int or float or Decimal
         :param timeout: Timeout value for connection and SSH sessions in seconds.
-        :type timeout: int
+        :type timeout: int or float or Decimal
         :param identity_auth: Enable/disable identity file authentication under user's
           home directory (~/.ssh).
         :type identity_auth: bool
@@ -75,8 +83,21 @@ class HostConfig(object):
         :param keepalive_seconds: Seconds between keepalive packets being sent.
           0 to disable.
         :type keepalive_seconds: int
-        :param ipv6_only: Use IPv6 addresses only. Currently unused.
+        :param ipv6_only: Use IPv6 addresses only.
         :type ipv6_only: bool
+        :param cert_file: Certificate file for authentication (pssh.clients.ssh only)
+        :type cert_file: str
+        :param auth_thread_pool: Enable/Disable use of thread pool for authentication.
+        :type auth_thread_pool: bool
+        :param forward_ssh_agent: Currently unused.
+        :type forward_ssh_agent: bool
+        :param gssapi_server_identity: Set GSSAPI server identity. (pssh.clients.ssh only)
+        :type gssapi_server_identity: str
+        :param gssapi_server_identity: Set GSSAPI client identity. (pssh.clients.ssh only)
+        :type gssapi_server_identity: str
+        :param gssapi_delegate_credentials: Enable/disable server credentials
+          delegation. (pssh.clients.ssh only)
+        :type gssapi_delegate_credentials: bool
         """
         self.user = user
         self.port = port
@@ -94,6 +115,13 @@ class HostConfig(object):
         self.proxy_pkey = proxy_pkey
         self.keepalive_seconds = keepalive_seconds
         self.ipv6_only = ipv6_only
+        self.cert_file = cert_file
+        self.auth_thread_pool = auth_thread_pool
+        self.forward_ssh_agent = forward_ssh_agent
+        self.gssapi_auth = gssapi_auth
+        self.gssapi_server_identity = gssapi_server_identity
+        self.gssapi_client_identity = gssapi_client_identity
+        self.gssapi_delegate_credentials = gssapi_delegate_credentials
         self._sanity_checks()
 
     def _sanity_checks(self):
@@ -111,7 +139,10 @@ class HostConfig(object):
             raise ValueError("Allow agent %s is not a boolean" % (self.allow_agent,))
         if self.num_retries is not None and not isinstance(self.num_retries, int):
             raise ValueError("Num retries %s is not an integer" % (self.num_retries,))
-        if self.timeout is not None and not isinstance(self.timeout, int):
+        if self.timeout is not None and not \
+                (isinstance(self.timeout, int) or isinstance(self.timeout, float)
+                 or isinstance(self.timeout, Decimal)
+                ):
             raise ValueError("Timeout %s is not an integer" % (self.timeout,))
         if self.retry_delay is not None and not \
                 (isinstance(self.retry_delay, int) or isinstance(self.retry_delay, float)
@@ -134,3 +165,4 @@ class HostConfig(object):
             raise ValueError("Keepalive seconds %s is not an integer" % (self.keepalive_seconds,))
         if self.ipv6_only is not None and not isinstance(self.ipv6_only, bool):
             raise ValueError("IPv6 only %s is not a boolean value" % (self.ipv6_only,))
+        # TODO: Sanity checks
