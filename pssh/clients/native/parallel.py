@@ -229,9 +229,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 pass
             del s_client
 
-    # def _get_ssh_client(self, host_i, host):
-    #     BaseParallelSSHClient._get_ssh_client(self, host_i, host)
-
     def _make_ssh_client(self, host, cfg, _pkey_data):
         _client = SSHClient(
             host, user=cfg.user or self.user, password=cfg.password or self.password, port=cfg.port or self.port,

@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import unittest
-import pwd
+from getpass import getuser
 import os
 import time
 import gc
@@ -46,7 +46,7 @@ class TunnelTest(unittest.TestCase):
         cls.resp = u'me'
         cls.user_key = PKEY_FILENAME
         cls.user_pub_key = PUB_FILE
-        cls.user = pwd.getpwuid(os.geteuid()).pw_name
+        cls.user = getuser()
         cls.proxy_host = '127.0.0.9'
         cls.proxy_port = cls.port + 1
         cls.server = OpenSSHServer(listen_ip=cls.proxy_host, port=cls.proxy_port)
@@ -245,11 +245,12 @@ class TunnelTest(unittest.TestCase):
         output = client.run_command(self.cmd, stop_on_errors=False)
         client.join(output)
         self.assertIsInstance(output[1].exception, ProxyError)
+        self.assertTrue(output[1].exception is None)
         stdout = list(output[0].stdout)
         self.assertListEqual(stdout, [self.resp])
 
     def test_proxy_error(self):
-        client = ParallelSSHClient([self.proxy_host], self.port, pkey=self.user_key,
+        client = ParallelSSHClient([self.proxy_host], port=self.port, pkey=self.user_key,
                                    proxy_host='127.0.0.155',
                                    proxy_port=123,
                                    num_retries=1)
