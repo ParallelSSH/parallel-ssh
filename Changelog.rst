@@ -1,6 +1,14 @@
 Change Log
 ============
 
+2.9.1
++++++
+
+Fixes
+------
+
+* Even more rare race condition would sometimes cause ``scp_send`` to write incomplete files - #337
+
 2.9.0
 +++++
 
