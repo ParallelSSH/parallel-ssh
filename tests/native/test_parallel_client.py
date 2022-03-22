@@ -1538,7 +1538,6 @@ class ParallelSSHClientTest(unittest.TestCase):
                 file_h.write(data)
                 sha.update(data)
         source_file_sha = sha.hexdigest()
-        sha = sha256()
         cmds = client.scp_send('%(local_file)s', '%(remote_file)s', copy_args=copy_args)
         try:
             joinall(cmds, raise_error=True)
@@ -1547,6 +1546,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         else:
             del client
             for remote_file_name in remote_file_names:
+                sha = sha256()
                 remote_file_abspath = os.path.expanduser('~/' + remote_file_name)
                 self.assertTrue(os.path.isfile(remote_file_abspath))
                 with open(remote_file_abspath, 'rb') as remote_fh:
@@ -1554,8 +1554,8 @@ class ParallelSSHClientTest(unittest.TestCase):
                     while data:
                         sha.update(data)
                         data = remote_fh.read(10240)
+                    sha.update(data)
                 remote_file_sha = sha.hexdigest()
-                sha = sha256()
                 self.assertEqual(source_file_sha, remote_file_sha)
         finally:
             try:

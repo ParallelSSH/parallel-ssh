@@ -18,6 +18,8 @@
 
 """Host specific configuration."""
 
+from decimal import Decimal
+
 
 class HostConfig(object):
     """Host configuration for ParallelSSHClient.
@@ -101,16 +103,21 @@ class HostConfig(object):
             raise ValueError("Port %s is not an integer" % (self.port,))
         if self.password is not None and not isinstance(self.password, str):
             raise ValueError("Password %s is not a string" % (self.password,))
-        if self.private_key is not None and not isinstance(self.private_key, str):
-            raise ValueError("Private key %s is not a string" % (self.private_key,))
+        if self.private_key is not None and not (
+                isinstance(self.private_key, str) or isinstance(self.private_key, bytes)
+        ):
+            raise ValueError("Private key %s is not a string or bytes" % (self.private_key,))
         if self.allow_agent is not None and not isinstance(self.allow_agent, bool):
             raise ValueError("Allow agent %s is not a boolean" % (self.allow_agent,))
         if self.num_retries is not None and not isinstance(self.num_retries, int):
             raise ValueError("Num retries %s is not an integer" % (self.num_retries,))
         if self.timeout is not None and not isinstance(self.timeout, int):
             raise ValueError("Timeout %s is not an integer" % (self.timeout,))
-        if self.retry_delay is not None and not isinstance(self.retry_delay, int):
-            raise ValueError("Retry delay %s is not an integer" % (self.retry_delay,))
+        if self.retry_delay is not None and not \
+                (isinstance(self.retry_delay, int) or isinstance(self.retry_delay, float)
+                 or isinstance(self.retry_delay, Decimal)
+                ):
+            raise ValueError("Retry delay %s is not a number" % (self.retry_delay,))
         if self.identity_auth is not None and not isinstance(self.identity_auth, bool):
             raise ValueError("Identity auth %s is not a boolean" % (self.identity_auth,))
         if self.proxy_host is not None and not isinstance(self.proxy_host, str):

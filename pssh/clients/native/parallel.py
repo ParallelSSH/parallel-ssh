@@ -18,7 +18,7 @@
 import logging
 
 from .single import SSHClient
-from ..common import _validate_pkey
+from ..common import _validate_pkey, _validate_pkey_path
 from ..base.parallel import BaseParallelSSHClient
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import HostArgumentError
@@ -235,28 +235,30 @@ class ParallelSSHClient(BaseParallelSSHClient):
                      host, (host_i, host) in self._host_clients)
         if (host_i, host) not in self._host_clients \
            or self._host_clients[(host_i, host)] is None:
-            _user, _port, _password, _pkey, proxy_host, proxy_port, proxy_user, \
-                proxy_password, proxy_pkey = self._get_host_config_values(host_i, host)
-            if isinstance(self.pkey, str):
-                with open(_pkey, 'rb') as fh:
+            # _user, _port, _password, _pkey, proxy_host, proxy_port, proxy_user, \
+            #     proxy_password, proxy_pkey
+            cfg = self._get_host_config(host_i, host)
+            if isinstance(cfg.private_key, str):
+                _validate_pkey_path(cfg.private_key)
+                with open(cfg.private_key, 'rb') as fh:
                     _pkey_data = fh.read()
             else:
-                _pkey_data = _pkey
+                _pkey_data = cfg.private_key
             _client = SSHClient(
-                host, user=_user, password=_password, port=_port,
-                pkey=_pkey_data, num_retries=self.num_retries,
-                timeout=self.timeout,
-                allow_agent=self.allow_agent, retry_delay=self.retry_delay,
-                proxy_host=proxy_host,
-                proxy_port=proxy_port,
-                proxy_user=proxy_user,
-                proxy_password=proxy_password,
-                proxy_pkey=proxy_pkey,
+                host, user=cfg.user, password=cfg.password, port=cfg.port,
+                pkey=_pkey_data, num_retries=cfg.num_retries,
+                timeout=cfg.timeout,
+                allow_agent=cfg.allow_agent, retry_delay=cfg.retry_delay,
+                proxy_host=cfg.proxy_host,
+                proxy_port=cfg.proxy_port,
+                proxy_user=cfg.proxy_user,
+                proxy_password=cfg.proxy_password,
+                proxy_pkey=cfg.proxy_pkey,
                 _auth_thread_pool=auth_thread_pool,
                 forward_ssh_agent=self.forward_ssh_agent,
-                keepalive_seconds=self.keepalive_seconds,
-                identity_auth=self.identity_auth,
-                ipv6_only=self.ipv6_only,
+                keepalive_seconds=cfg.keepalive_seconds,
+                identity_auth=cfg.identity_auth,
+                ipv6_only=cfg.ipv6_only,
             )
             self._host_clients[(host_i, host)] = _client
             return _client

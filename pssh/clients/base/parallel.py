@@ -20,14 +20,13 @@
 import logging
 
 import gevent.pool
-
 from gevent import joinall, spawn, Timeout as GTimeout
 from gevent.hub import Hub
 
+from ...config import HostConfig
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-from ...exceptions import HostArgumentError, Timeout, ShellError
+from ...exceptions import HostArgumentError, Timeout, ShellError, HostConfigError
 from ...output import HostOutput
-
 
 Hub.NOT_ERROR = (Exception,)
 logger = logging.getLogger(__name__)
@@ -43,6 +42,12 @@ class BaseParallelSSHClient(object):
                  host_config=None, retry_delay=RETRY_DELAY,
                  identity_auth=True,
                  ipv6_only=False,
+                 proxy_host=None,
+                 proxy_port=None,
+                 proxy_user=None,
+                 proxy_password=None,
+                 proxy_pkey=None,
+                 keepalive_seconds=None,
                  ):
         self.allow_agent = allow_agent
         self.pool_size = pool_size
@@ -60,6 +65,12 @@ class BaseParallelSSHClient(object):
         self.cmds = None
         self.identity_auth = identity_auth
         self.ipv6_only = ipv6_only
+        self.proxy_host = proxy_host
+        self.proxy_port = proxy_port
+        self.proxy_user = proxy_user
+        self.proxy_password = proxy_password
+        self.proxy_pkey = proxy_pkey
+        self.keepalive_seconds = keepalive_seconds
         self._check_host_config()
 
     def _validate_hosts(self, _hosts):
@@ -230,28 +241,23 @@ class BaseParallelSSHClient(object):
         return self._get_output_from_cmds(
             cmds, raise_error=False)
 
-    def _get_host_config_values(self, host_i, host):
+    def _get_host_config(self, host_i, host):
         if self.host_config is None:
-            return self.user, self.port, self.password, self.pkey, \
-                getattr(self, 'proxy_host', None), \
-                getattr(self, 'proxy_port', None), getattr(self, 'proxy_user', None), \
-                getattr(self, 'proxy_password', None), getattr(self, 'proxy_pkey', None)
-        elif isinstance(self.host_config, list):
-            config = self.host_config[host_i]
-            return config.user or self.user, config.port or self.port, \
-                config.password or self.password, config.private_key or self.pkey, \
-                config.proxy_host or getattr(self, 'proxy_host', None), \
-                config.proxy_port or getattr(self, 'proxy_port', None), \
-                config.proxy_user or getattr(self, 'proxy_user', None), \
-                config.proxy_password or getattr(self, 'proxy_password', None), \
-                config.proxy_pkey or getattr(self, 'proxy_pkey', None)
-        elif isinstance(self.host_config, dict):
-            _user = self.host_config.get(host, {}).get('user', self.user)
-            _port = self.host_config.get(host, {}).get('port', self.port)
-            _password = self.host_config.get(host, {}).get(
-                'password', self.password)
-            _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
-            return _user, _port, _password, _pkey, None, None, None, None, None
+            config = HostConfig(
+                user=self.user, port=self.port, password=self.password, private_key=self.pkey,
+                allow_agent=self.allow_agent, num_retries=self.num_retries, retry_delay=self.retry_delay,
+                timeout=self.timeout, identity_auth=self.identity_auth, proxy_host=self.proxy_host,
+                proxy_port=self.proxy_port, proxy_user=self.proxy_user, proxy_password=self.proxy_password,
+                proxy_pkey=self.proxy_pkey,
+                keepalive_seconds=self.keepalive_seconds,
+                ipv6_only=self.ipv6_only,
+            )
+            return config
+        elif not isinstance(self.host_config, list):
+            raise HostConfigError("Host configuration of type %s is invalid - valid types are list[HostConfig]",
+                                  type(self.host_config))
+        config = self.host_config[host_i]
+        return config
 
     def _run_command(self, host_i, host, command, sudo=False, user=None,
                      shell=None, use_pty=False,

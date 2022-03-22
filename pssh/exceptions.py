@@ -96,3 +96,7 @@ class PKeyFileError(Exception):
 
 class ShellError(Exception):
     """Raised on errors running command on interactive shell"""
+
+
+class HostConfigError(Exception):
+    """Raised on invalid host configuration"""

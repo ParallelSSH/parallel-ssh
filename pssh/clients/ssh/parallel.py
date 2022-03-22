@@ -235,7 +235,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         if (host_i, host) not in self._host_clients \
            or self._host_clients[(host_i, host)] is None:
             _user, _port, _password, _pkey, _, _, _, _, _ = \
-                self._get_host_config_values(host_i, host)
+                self._get_host_config(host_i, host)
             if isinstance(self.pkey, str):
                 with open(_pkey, 'rb') as fh:
                     _pkey_data = fh.read()
