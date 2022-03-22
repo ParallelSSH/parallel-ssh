@@ -1519,13 +1519,9 @@ class ParallelSSHClientTest(unittest.TestCase):
             except OSError:
                 pass
 
-    def test_scp_send_larger_files(self):
-        hosts = ['127.0.0.1%s' % (i,) for i in range(1, 3)]
-        servers = [OpenSSHServer(host, port=self.port) for host in hosts]
-        for server in servers:
-            server.start_server()
+    def _scp_larger_files(self, hosts):
         client = ParallelSSHClient(
-            hosts, port=self.port, pkey=self.user_key, num_retries=1, timeout=1,
+            hosts, port=self.port, pkey=self.user_key, num_retries=1, timeout=30,
             pool_size=len(hosts),
         )
         local_filename = 'test_file'
@@ -1537,7 +1533,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         remote_file_names = [arg['remote_file'] for arg in copy_args]
         sha = sha256()
         with open(local_filename, 'wb') as file_h:
-            for _ in range(10000):
+            for _ in range(1000):
                 data = os.urandom(1024)
                 file_h.write(data)
                 sha.update(data)
@@ -1569,6 +1565,14 @@ class ParallelSSHClientTest(unittest.TestCase):
                     os.unlink(remote_file_abspath)
             except OSError:
                 pass
+
+    def test_scp_send_larger_files(self):
+        hosts = ['127.0.0.1%s' % (i,) for i in range(1, 3)]
+        servers = [OpenSSHServer(host, port=self.port) for host in hosts]
+        for server in servers:
+            server.start_server()
+        for _ in range(20):
+            self._scp_larger_files(hosts)
 
     def test_scp_bad_copy_args(self):
         client = ParallelSSHClient([self.host, self.host])

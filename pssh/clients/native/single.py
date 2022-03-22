@@ -670,7 +670,9 @@ class SSHClient(BaseSSHClient):
             raise SCPError(msg, remote_file, self.host, ex)
         finally:
             self._eagain(chan.flush)
-            chan.close()
+            self._eagain(chan.send_eof)
+            self._eagain(chan.wait_eof)
+            self._eagain(chan.wait_closed)
 
     def _sftp_openfh(self, open_func, remote_file, *args):
         try:
