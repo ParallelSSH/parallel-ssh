@@ -107,11 +107,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param proxy_pkey: (Optional) Private key file to be used for
           authentication with ``proxy_host``. Defaults to available keys from
           SSHAgent and user's SSH identities.
-        :type proxy_pkey: str
-        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
-          equivalent to `ssh -A` from the `ssh` command line utility.
-          Defaults to False if not set.
-          Requires agent forwarding implementation in libssh2 version used.
+          Bytes type input is used as private key data for authentication.
+        :type proxy_pkey: str or bytes
+        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding.
+          Currently unused.
         :type forward_ssh_agent: bool
         :param ipv6_only: Choose IPv6 addresses only if multiple are available
           for the host(s) or raise NoIPv6AddressFoundError otherwise. Note this will

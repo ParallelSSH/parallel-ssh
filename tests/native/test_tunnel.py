@@ -88,7 +88,29 @@ class TunnelTest(unittest.TestCase):
             self.assertEqual(self.port, client.port)
         finally:
             remote_server.stop()
-    
+
+    def test_proxy_pkey_bytes_data(self):
+        remote_host = '127.0.0.8'
+        remote_server = OpenSSHServer(listen_ip=remote_host, port=self.port)
+        remote_server.start_server()
+        with open(self.user_key, 'rb') as fh:
+            pkey_data = fh.read()
+        try:
+            client = ParallelSSHClient(
+                [remote_host], port=self.port, pkey=pkey_data,
+                num_retries=1,
+                proxy_host=self.proxy_host,
+                proxy_pkey=pkey_data,
+                proxy_port=self.proxy_port,
+            )
+            output = client.run_command(self.cmd)
+            _stdout = list(output[0].stdout)
+            self.assertListEqual(_stdout, [self.resp])
+            self.assertEqual(remote_host, output[0].host)
+            self.assertEqual(self.port, client.port)
+        finally:
+            remote_server.stop()
+
     # The purpose of this test is to exercise 
     # https://github.com/ParallelSSH/parallel-ssh/issues/304 
     def test_tunnel_server_reconn(self):
@@ -138,7 +160,7 @@ class TunnelTest(unittest.TestCase):
             remote_server.stop()
 
     def test_tunnel_parallel_client(self):
-        hosts = ['127.0.0.1%s' % (d,) for d in range(10)]
+        hosts = ['127.0.0.1%s' % (d,) for d in range(5)]
         servers = [OpenSSHServer(listen_ip=_host, port=self.port) for _host in hosts]
         for server in servers:
             server.start_server()

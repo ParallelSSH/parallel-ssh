@@ -552,15 +552,15 @@ class BaseParallelSSHClient(object):
     def _get_ssh_client(self, host_i, host):
         logger.debug("Make client request for host %s, (host_i, host) in clients: %s",
                      host, (host_i, host) in self._host_clients)
-        if (host_i, host) not in self._host_clients \
-                or self._host_clients[(host_i, host)] is None:
-            cfg = self._get_host_config(host_i, host)
-            _pkey = self.pkey if cfg.private_key is None else cfg.private_key
-            _pkey_data = self._load_pkey_data(_pkey)
-            _client = self._make_ssh_client(host, cfg, _pkey_data)
-            self._host_clients[(host_i, host)] = _client
+        _client = self._host_clients.get((host_i, host))
+        if _client is not None:
             return _client
-        return self._host_clients[(host_i, host)]
+        cfg = self._get_host_config(host_i, host)
+        _pkey = self.pkey if cfg.private_key is None else cfg.private_key
+        _pkey_data = self._load_pkey_data(_pkey)
+        _client = self._make_ssh_client(host, cfg, _pkey_data)
+        self._host_clients[(host_i, host)] = _client
+        return _client
 
     def _load_pkey_data(self, _pkey):
         if isinstance(_pkey, str):

@@ -8,7 +8,8 @@ Changes
 -------
 
 * All client configuration can now be provided via ``HostConfig`` on parallel clients.
-* Removed deprecated since ``2.0.0`` dictionary support for ``host_config`` values.
+* ``HostConfig.proxy_pkey`` can now also be provided as bytes for proxy authentication from in-memory private key data - #
+* Removed deprecated since ``2.0.0`` dictionary support for ``host_config`` entries.
 
 2.9.1
 +++++

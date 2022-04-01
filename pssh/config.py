@@ -153,8 +153,10 @@ class HostConfig(object):
             raise ValueError("Proxy user %s is not a string" % (self.proxy_user,))
         if self.proxy_password is not None and not isinstance(self.proxy_password, str):
             raise ValueError("Proxy password %s is not a string" % (self.proxy_password,))
-        if self.proxy_pkey is not None and not isinstance(self.proxy_pkey, str):
-            raise ValueError("Proxy pkey %s is not a string" % (self.proxy_pkey,))
+        if self.proxy_pkey is not None and not (
+                isinstance(self.proxy_pkey, str) or isinstance(self.proxy_pkey, bytes)
+        ):
+            raise ValueError("Proxy pkey %s is not a string or bytes" % (self.proxy_pkey,))
         if self.keepalive_seconds is not None and not isinstance(self.keepalive_seconds, int):
             raise ValueError("Keepalive seconds %s is not an integer" % (self.keepalive_seconds,))
         if self.ipv6_only is not None and not isinstance(self.ipv6_only, bool):
