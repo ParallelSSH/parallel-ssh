@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2021 Panos Kittenis
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -15,27 +15,27 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import unittest
-import pwd
+import gc
 import os
 import time
-import gc
-
+import unittest
 from datetime import datetime
+from getpass import getuser
 from sys import version_info
-from gevent import sleep, spawn, Timeout as GTimeout
 
-from pssh.config import HostConfig
-from pssh.clients.native import SSHClient, ParallelSSHClient
-from pssh.clients.native.tunnel import LocalForwarder, TunnelServer, FORWARDER
-from pssh.exceptions import ProxyError
+from gevent import sleep, spawn, Timeout as GTimeout
 from ssh2.exceptions import SocketSendError, SocketRecvError
 
+from pssh.clients.native import SSHClient, ParallelSSHClient
+from pssh.clients.native.tunnel import LocalForwarder, TunnelServer, FORWARDER
+from pssh.config import HostConfig
+from pssh.exceptions import ProxyError
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
 from ..embedded_server.openssh import OpenSSHServer
 
 
 class TunnelTest(unittest.TestCase):
+    server = None
 
     @classmethod
     def setUpClass(cls):
@@ -46,7 +46,7 @@ class TunnelTest(unittest.TestCase):
         cls.resp = u'me'
         cls.user_key = PKEY_FILENAME
         cls.user_pub_key = PUB_FILE
-        cls.user = pwd.getpwuid(os.geteuid()).pw_name
+        cls.user = getuser()
         cls.proxy_host = '127.0.0.9'
         cls.proxy_port = cls.port + 1
         cls.server = OpenSSHServer(listen_ip=cls.proxy_host, port=cls.proxy_port)
@@ -87,7 +87,29 @@ class TunnelTest(unittest.TestCase):
             self.assertEqual(self.port, client.port)
         finally:
             remote_server.stop()
-    
+
+    def test_proxy_pkey_bytes_data(self):
+        remote_host = '127.0.0.8'
+        remote_server = OpenSSHServer(listen_ip=remote_host, port=self.port)
+        remote_server.start_server()
+        with open(self.user_key, 'rb') as fh:
+            pkey_data = fh.read()
+        try:
+            client = ParallelSSHClient(
+                [remote_host], port=self.port, pkey=pkey_data,
+                num_retries=1,
+                proxy_host=self.proxy_host,
+                proxy_pkey=pkey_data,
+                proxy_port=self.proxy_port,
+            )
+            output = client.run_command(self.cmd)
+            _stdout = list(output[0].stdout)
+            self.assertListEqual(_stdout, [self.resp])
+            self.assertEqual(remote_host, output[0].host)
+            self.assertEqual(self.port, client.port)
+        finally:
+            remote_server.stop()
+
     # The purpose of this test is to exercise 
     # https://github.com/ParallelSSH/parallel-ssh/issues/304 
     def test_tunnel_server_reconn(self):
@@ -107,8 +129,7 @@ class TunnelTest(unittest.TestCase):
                     proxy_port=self.proxy_port,
                 )
                 output = client.run_command(self.cmd)
-                _stdout = list(output.stdout)
-                self.assertListEqual(_stdout, [self.resp])
+                client.wait_finished(output)
                 self.assertEqual(remote_host, client.host)
                 self.assertEqual(self.port, client.port)
                 client.disconnect()
@@ -138,7 +159,7 @@ class TunnelTest(unittest.TestCase):
             remote_server.stop()
 
     def test_tunnel_parallel_client(self):
-        hosts = ['127.0.0.1%s' % (d,) for d in range(10)]
+        hosts = ['127.0.0.1%s' % (d,) for d in range(5)]
         servers = [OpenSSHServer(listen_ip=_host, port=self.port) for _host in hosts]
         for server in servers:
             server.start_server()
@@ -245,11 +266,12 @@ class TunnelTest(unittest.TestCase):
         output = client.run_command(self.cmd, stop_on_errors=False)
         client.join(output)
         self.assertIsInstance(output[1].exception, ProxyError)
+        self.assertTrue(output[0].exception is None)
         stdout = list(output[0].stdout)
         self.assertListEqual(stdout, [self.resp])
 
     def test_proxy_error(self):
-        client = ParallelSSHClient([self.proxy_host], self.port, pkey=self.user_key,
+        client = ParallelSSHClient([self.proxy_host], port=self.port, pkey=self.user_key,
                                    proxy_host='127.0.0.155',
                                    proxy_port=123,
                                    num_retries=1)

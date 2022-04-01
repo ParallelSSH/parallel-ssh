@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -16,33 +16,30 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import os
-import subprocess
 import shutil
+import subprocess
 import tempfile
+from datetime import datetime
+from hashlib import sha256
 from tempfile import NamedTemporaryFile
+from unittest.mock import MagicMock, call, patch
 
 import pytest
-from pytest import raises
-from unittest.mock import MagicMock, call, patch
-from hashlib import sha256
-from datetime import datetime
-
 from gevent import sleep, spawn, Timeout as GTimeout, socket
-
-from pssh.clients.native import SSHClient
-from ssh2.session import Session
+from pytest import raises
 from ssh2.exceptions import (SocketDisconnectError, BannerRecvError, SocketRecvError,
                              AgentConnectionError, AgentListIdentitiesError,
                              AgentAuthenticationError, AgentGetIdentityError, SFTPProtocolError,
                              AuthenticationError as SSH2AuthenticationError,
                              )
+from ssh2.session import Session
+
+from pssh.clients.native import SSHClient
 from pssh.exceptions import (AuthenticationException, ConnectionErrorException,
                              SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout,
                              AuthenticationError, NoIPv6AddressFoundError, ConnectionError
                              )
-
 from .base_ssh2_case import SSH2TestCase
-from ..embedded_server.openssh import OpenSSHServer
 
 
 class SSH2ClientTest(SSH2TestCase):

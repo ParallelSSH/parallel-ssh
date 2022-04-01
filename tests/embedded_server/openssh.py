@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -15,16 +15,15 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+import logging
 import os
 import random
 import string
-import logging
-import pwd
+from getpass import getuser
 from subprocess import Popen, TimeoutExpired
-from sys import version_info
 
+from gevent import Timeout
 from jinja2 import Template
-
 
 logger = logging.getLogger('pssh.test.openssh_server')
 logger.setLevel(logging.DEBUG)
@@ -42,6 +41,10 @@ PRINCIPALS_TMPL = os.path.abspath(os.path.sep.join([DIR_NAME, 'principals.tmpl']
 PRINCIPALS = os.path.abspath(os.path.sep.join([DIR_NAME, 'principals']))
 
 
+class OpenSSHServerError(Exception):
+    pass
+
+
 class OpenSSHServer(object):
 
     def __init__(self, listen_ip='127.0.0.1', port=2222):
@@ -55,15 +58,15 @@ class OpenSSHServer(object):
         self.make_config()
 
     def _fix_masks(self):
-        _mask = int('0600') if version_info <= (2,) else 0o600
-        dir_mask = int('0755') if version_info <= (2,) else 0o755
+        _mask = 0o600
+        dir_mask = 0o755
         for _file in [SERVER_KEY, CA_HOST_KEY]:
             os.chmod(_file, _mask)
         for _dir in [DIR_NAME, PDIR_NAME, PPDIR_NAME]:
             os.chmod(_dir, dir_mask)
 
     def make_config(self):
-        user = pwd.getpwuid(os.geteuid()).pw_name
+        user = getuser()
         with open(SSHD_CONFIG_TMPL) as fh:
             tmpl = fh.read()
         template = Template(tmpl)
@@ -86,15 +89,18 @@ class OpenSSHServer(object):
         logger.debug("Starting server with %s" % (" ".join(cmd),))
         self.server_proc = Popen(cmd)
         try:
-            self.server_proc.wait(.3)
-        except TimeoutExpired:
-            pass
-        else:
+            with Timeout(seconds=5, exception=TimeoutError):
+                while True:
+                    try:
+                        self.server_proc.wait(.1)
+                    except TimeoutExpired:
+                        break
+        except TimeoutError:
             if self.server_proc.stdout is not None:
                 logger.error(self.server_proc.stdout.read())
             if self.server_proc.stderr is not None:
                 logger.error(self.server_proc.stderr.read())
-            raise Exception("Server could not start")
+            raise OpenSSHServerError("Server could not start")
 
     def stop(self):
         if self.server_proc is not None and self.server_proc.returncode is None:

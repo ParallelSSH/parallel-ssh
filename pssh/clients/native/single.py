@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis.
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -82,10 +82,10 @@ class SSHClient(BaseSSHClient):
         :type num_retries: int
         :param retry_delay: Number of seconds to wait between retries. Defaults
           to :py:class:`pssh.constants.RETRY_DELAY`
-        :type retry_delay: int
+        :type retry_delay: int or float
         :param timeout: SSH session timeout setting in seconds. This controls
           timeout setting of authenticated SSH sessions.
-        :type timeout: int
+        :type timeout: int or float
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent
         :type allow_agent: bool

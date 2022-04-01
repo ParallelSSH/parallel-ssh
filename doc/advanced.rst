@@ -352,7 +352,7 @@ In the above example, the client is configured to connect to hostname ``localhos
 
 When using ``host_config``, the number of ``HostConfig`` entries must match the number of hosts in ``client.hosts``. An exception is raised on client initialisation if not.
 
-As of `2.2.0`, proxy configuration can also be provided in ``HostConfig``.
+As of `2.10.0`, all client configuration can be provided in ``HostConfig``.
 
 .. _per-host-cmds:
 

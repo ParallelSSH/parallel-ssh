@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -15,24 +15,20 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import unittest
 import os
-import subprocess
+import unittest
 from datetime import datetime
 from sys import version_info
 from unittest.mock import patch, MagicMock
 
-from gevent import joinall, spawn, socket, Greenlet, sleep
-from pssh import logger as pssh_logger
-from pssh.output import HostOutput
-from pssh.exceptions import UnknownHostException, \
-    AuthenticationException, ConnectionErrorException, SessionError, \
-    HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
-    ProxyError, PKeyFileError, NoIPv6AddressFoundError
-from pssh.clients.ssh.parallel import ParallelSSHClient
+from gevent import joinall, spawn, socket, sleep
 
+from pssh import logger as pssh_logger
+from pssh.clients.ssh.parallel import ParallelSSHClient
+from pssh.exceptions import AuthenticationException, ConnectionErrorException, Timeout, PKeyFileError
+from pssh.output import HostOutput
 from .base_ssh_case import PKEY_FILENAME, PUB_FILE, USER_CERT_PRIV_KEY, \
-    USER_CERT_PUB_KEY, USER_CERT_FILE, CA_USER_KEY, USER, sign_cert
+    USER_CERT_FILE, CA_USER_KEY, USER, sign_cert
 from ..embedded_server.openssh import OpenSSHServer
 
 
@@ -83,13 +79,14 @@ class LibSSHParallelTest(unittest.TestCase):
         return listen_port
 
     def test_timeout_on_open_session(self):
-        timeout = 1
+        timeout = .1
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key,
                                    timeout=timeout,
                                    num_retries=1)
-        def _session(timeout=1):
-            sleep(timeout+1)
+
+        def _session(_=None):
+            sleep(.2)
         joinall(client.connect_auth())
         sleep(.01)
         client._host_clients[(0, self.host)].open_session = _session
@@ -267,7 +264,8 @@ class LibSSHParallelTest(unittest.TestCase):
         client = ParallelSSHClient([host], port=self.port,
                                    pkey=self.user_key,
                                    timeout=client_timeout,
-                                   num_retries=1)
+                                   num_retries=1,
+                                   retry_delay=.1)
         output = client.run_command('sleep 1', stop_on_errors=False)
         self.assertIsInstance(output[0].exception, ConnectionErrorException)
 

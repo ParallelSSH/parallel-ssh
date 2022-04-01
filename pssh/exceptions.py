@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis.
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -96,3 +96,7 @@ class PKeyFileError(Exception):
 
 class ShellError(Exception):
     """Raised on errors running command on interactive shell"""
+
+
+class HostConfigError(Exception):
+    """Raised on invalid host configuration"""

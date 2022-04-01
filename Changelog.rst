@@ -1,6 +1,16 @@
 Change Log
 ============
 
+2.10.0
+++++++
+
+Changes
+-------
+
+* All client configuration can now be provided via ``HostConfig`` on parallel clients.
+* ``proxy_pkey`` can now also be provided as bytes for proxy authentication from in-memory private key data - #338
+* Removed deprecated since ``2.0.0`` dictionary support for ``host_config`` entries.
+
 2.9.1
 +++++
 
@@ -18,7 +28,6 @@ Changes
 * ``pssh.exceptions.ConnectionError`` is now the same as built-in ``ConnectionError`` and deprecated - to be removed.
 * Clients now attempt to connect with all addresses in DNS list. In the case where an address refuses connection,
   other available addresses are attempted without delay.
-
   For example where a host resolves to both IPv4 and v6 addresses while only one address is
   accepting connections, or multiple v4/v6 addresses where only some are accepting connections.
 * Connection actively refused error is no longer subject to retries.

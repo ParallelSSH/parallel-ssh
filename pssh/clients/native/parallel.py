@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis.
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -18,11 +18,10 @@
 import logging
 
 from .single import SSHClient
-from ..common import _validate_pkey
 from ..base.parallel import BaseParallelSSHClient
+from ..common import _validate_pkey
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import HostArgumentError
-
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +59,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type num_retries: int
         :param retry_delay: Number of seconds to wait between retries. Defaults
           to :py:class:`pssh.constants.RETRY_DELAY`
-        :type retry_delay: int
+        :type retry_delay: int or float
         :param timeout: (Optional) Global timeout setting in seconds for all remote
           operations including all SSH client operations DNS, opening connections,
           reading output from remote servers,  et al.
@@ -75,7 +74,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           Host output read timeout can also be set separately via
           ``run_command(<..>, read_timeout=<seconds>)``
           Defaults to OS default - usually 60 seconds.
-        :type timeout: float
+        :type timeout: int or float
         :param pool_size: (Optional) Greenlet pool size. Controls
           concurrency, on how many hosts to execute tasks in parallel.
           Defaults to 100. Overhead in event
@@ -107,11 +106,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param proxy_pkey: (Optional) Private key file to be used for
           authentication with ``proxy_host``. Defaults to available keys from
           SSHAgent and user's SSH identities.
-        :type proxy_pkey: str
-        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
-          equivalent to `ssh -A` from the `ssh` command line utility.
-          Defaults to False if not set.
-          Requires agent forwarding implementation in libssh2 version used.
+          Bytes type input is used as private key data for authentication.
+        :type proxy_pkey: str or bytes
+        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding.
+          Currently unused.
         :type forward_ssh_agent: bool
         :param ipv6_only: Choose IPv6 addresses only if multiple are available
           for the host(s) or raise NoIPv6AddressFoundError otherwise. Note this will
@@ -229,38 +227,24 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 pass
             del s_client
 
-    def _make_ssh_client(self, host_i, host):
-        auth_thread_pool = True
-        logger.debug("Make client request for host %s, (host_i, host) in clients: %s",
-                     host, (host_i, host) in self._host_clients)
-        if (host_i, host) not in self._host_clients \
-           or self._host_clients[(host_i, host)] is None:
-            _user, _port, _password, _pkey, proxy_host, proxy_port, proxy_user, \
-                proxy_password, proxy_pkey = self._get_host_config_values(host_i, host)
-            if isinstance(self.pkey, str):
-                with open(_pkey, 'rb') as fh:
-                    _pkey_data = fh.read()
-            else:
-                _pkey_data = _pkey
-            _client = SSHClient(
-                host, user=_user, password=_password, port=_port,
-                pkey=_pkey_data, num_retries=self.num_retries,
-                timeout=self.timeout,
-                allow_agent=self.allow_agent, retry_delay=self.retry_delay,
-                proxy_host=proxy_host,
-                proxy_port=proxy_port,
-                proxy_user=proxy_user,
-                proxy_password=proxy_password,
-                proxy_pkey=proxy_pkey,
-                _auth_thread_pool=auth_thread_pool,
-                forward_ssh_agent=self.forward_ssh_agent,
-                keepalive_seconds=self.keepalive_seconds,
-                identity_auth=self.identity_auth,
-                ipv6_only=self.ipv6_only,
-            )
-            self._host_clients[(host_i, host)] = _client
-            return _client
-        return self._host_clients[(host_i, host)]
+    def _make_ssh_client(self, host, cfg, _pkey_data):
+        _client = SSHClient(
+            host, user=cfg.user or self.user, password=cfg.password or self.password, port=cfg.port or self.port,
+            pkey=_pkey_data, num_retries=cfg.num_retries or self.num_retries,
+            timeout=cfg.timeout or self.timeout,
+            allow_agent=cfg.allow_agent or self.allow_agent, retry_delay=cfg.retry_delay or self.retry_delay,
+            proxy_host=cfg.proxy_host or self.proxy_host,
+            proxy_port=cfg.proxy_port or self.proxy_port,
+            proxy_user=cfg.proxy_user or self.proxy_user,
+            proxy_password=cfg.proxy_password or self.proxy_password,
+            proxy_pkey=cfg.proxy_pkey or self.proxy_pkey,
+            _auth_thread_pool=cfg.auth_thread_pool or self._auth_thread_pool,
+            forward_ssh_agent=cfg.forward_ssh_agent or self.forward_ssh_agent,
+            keepalive_seconds=cfg.keepalive_seconds or self.keepalive_seconds,
+            identity_auth=cfg.identity_auth or self.identity_auth,
+            ipv6_only=cfg.ipv6_only or self.ipv6_only,
+        )
+        return _client
 
     def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel via SFTP.
@@ -386,13 +370,13 @@ class ParallelSSHClient(BaseParallelSSHClient):
             encoding=encoding)
 
     def _scp_send(self, host_i, host, local_file, remote_file, recurse=False):
-        self._make_ssh_client(host_i, host)
+        self._get_ssh_client(host_i, host)
         return self._handle_greenlet_exc(
             self._host_clients[(host_i, host)].scp_send, host,
             local_file, remote_file, recurse=recurse)
 
     def _scp_recv(self, host_i, host, remote_file, local_file, recurse=False):
-        self._make_ssh_client(host_i, host)
+        self._get_ssh_client(host_i, host)
         return self._handle_greenlet_exc(
             self._host_clients[(host_i, host)].scp_recv, host,
             remote_file, local_file, recurse=recurse)
