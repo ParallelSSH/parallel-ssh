@@ -21,10 +21,9 @@ import random
 import string
 from getpass import getuser
 from subprocess import Popen, TimeoutExpired
-from sys import version_info
 
-from jinja2 import Template
 from gevent import Timeout
+from jinja2 import Template
 
 logger = logging.getLogger('pssh.test.openssh_server')
 logger.setLevel(logging.DEBUG)
@@ -59,8 +58,8 @@ class OpenSSHServer(object):
         self.make_config()
 
     def _fix_masks(self):
-        _mask = int('0600') if version_info <= (2,) else 0o600
-        dir_mask = int('0755') if version_info <= (2,) else 0o755
+        _mask = 0o600
+        dir_mask = 0o755
         for _file in [SERVER_KEY, CA_HOST_KEY]:
             os.chmod(_file, _mask)
         for _dir in [DIR_NAME, PDIR_NAME, PPDIR_NAME]:
