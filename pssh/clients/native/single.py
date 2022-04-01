@@ -82,10 +82,10 @@ class SSHClient(BaseSSHClient):
         :type num_retries: int
         :param retry_delay: Number of seconds to wait between retries. Defaults
           to :py:class:`pssh.constants.RETRY_DELAY`
-        :type retry_delay: int
+        :type retry_delay: int or float
         :param timeout: SSH session timeout setting in seconds. This controls
           timeout setting of authenticated SSH sessions.
-        :type timeout: int
+        :type timeout: int or float
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent
         :type allow_agent: bool

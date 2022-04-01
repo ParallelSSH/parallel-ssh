@@ -159,4 +159,17 @@ class HostConfig(object):
             raise ValueError("Keepalive seconds %s is not an integer" % (self.keepalive_seconds,))
         if self.ipv6_only is not None and not isinstance(self.ipv6_only, bool):
             raise ValueError("IPv6 only %s is not a boolean value" % (self.ipv6_only,))
-        # TODO: Sanity checks
+        if self.cert_file is not None and not (
+                isinstance(self.cert_file, str) or isinstance(self.cert_file, bytes)
+        ):
+            raise ValueError("Cert file %s is not a string or bytes", self.cert_file)
+        if self.forward_ssh_agent is not None and not isinstance(self.forward_ssh_agent, bool):
+            raise ValueError("Forward SSH agent %s is not a bool", self.forward_ssh_agent)
+        if self.gssapi_auth is not None and not isinstance(self.gssapi_auth, bool):
+            raise ValueError("GSSAPI auth %s is not a bool", self.gssapi_auth)
+        if self.gssapi_server_identity is not None and not isinstance(self.gssapi_server_identity, str):
+            raise ValueError("GSSAPI server identity %s is not a string", self.gssapi_server_identity)
+        if self.gssapi_client_identity is not None and not isinstance(self.gssapi_client_identity, str):
+            raise ValueError("GSSAPI client identity %s is not a string", self.gssapi_client_identity)
+        if self.gssapi_delegate_credentials is not None and not isinstance(self.gssapi_delegate_credentials, bool):
+            raise ValueError("GSSAPI delegate credentials %s is not a bool", self.gssapi_delegate_credentials)

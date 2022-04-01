@@ -36,6 +36,7 @@ from ..embedded_server.openssh import OpenSSHServer
 
 
 class TunnelTest(unittest.TestCase):
+    server = None
 
     @classmethod
     def setUpClass(cls):
