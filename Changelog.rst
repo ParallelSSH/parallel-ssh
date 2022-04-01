@@ -1,6 +1,15 @@
 Change Log
 ============
 
+2.10.0
+++++++
+
+Changes
+-------
+
+* All client configuration can now be provided via ``HostConfig`` on parallel clients.
+* Removed deprecated since ``2.0.0`` dictionary support for ``host_config`` values.
+
 2.9.1
 +++++
 
