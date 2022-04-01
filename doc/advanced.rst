@@ -396,7 +396,7 @@ This expands to the following per host commands:
 
 A list of dictionaries can also be used as ``host_args`` for named argument substitution.
 
-In the following example, first host in host list will use cmd ``echo command-1``, second host ``echo command-2`` and so on.
+In the following example, first host in host list will use cmd ``echo command-0``, second host ``echo command-1`` and so on.
 
 .. code-block:: python
 
@@ -546,7 +546,7 @@ SFTP and SCP are both supported by ``parallel-ssh`` and functions are provided b
 
 Neither SFTP nor SCP have a shell interface and no output is sent for any SFTP/SCP commands.
 
-As such, SFTP functions in ``ParallelSSHClient`` return greenlets that will need to be joined to raise any exceptions from them. :py:func:`gevent.joinall` may be used for that.
+As such, SFTP/SCP functions in ``ParallelSSHClient`` return greenlets that will need to be joined to raise any exceptions from them. :py:func:`gevent.joinall` may be used for that.
 
 
 Copying files to remote hosts in parallel

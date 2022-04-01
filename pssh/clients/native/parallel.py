@@ -282,7 +282,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           local_file and recurse is not set
         :raises: :py:class:`pssh.exceptions.HostArgumentError` on number of
           per-host copy arguments not equal to number of hosts
-        :raises: :py:class:`pss.exceptions.SFTPError` on SFTP initialisation
+        :raises: :py:class:`pssh.exceptions.SFTPError` on SFTP initialisation
           errors
         :raises: :py:class:`pssh.exceptions.SFTPIOError` on I/O errors writing
           via SFTP
@@ -349,7 +349,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           local_file and recurse is not set
         :raises: :py:class:`pssh.exceptions.HostArgumentError` on number of
           per-host copy arguments not equal to number of hosts
-        :raises: :py:class:`pss.exceptions.SFTPError` on SFTP initialisation
+        :raises: :py:class:`pssh.exceptions.SFTPError` on SFTP initialisation
           errors
         :raises: :py:class:`pssh.exceptions.SFTPIOError` on I/O errors reading
           from SFTP
@@ -410,7 +410,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy
           commands.
 
-        :raises: :py:class:`pss.exceptions.SCPError` on errors copying file.
+        :raises: :py:class:`pssh.exceptions.SCPError` on errors copying file.
         :raises: :py:class:`OSError` on local OS errors like permission denied.
         """
         copy_args = [{'local_file': local_file,
@@ -482,7 +482,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           local_file and recurse is not set.
         :raises: :py:class:`pssh.exceptions.HostArgumentError` on number of
           per-host copy arguments not equal to number of hosts.
-        :raises: :py:class:`pss.exceptions.SCPError` on errors copying file.
+        :raises: :py:class:`pssh.exceptions.SCPError` on errors copying file.
         :raises: :py:class:`OSError` on local OS errors like permission denied.
 
         .. note ::
