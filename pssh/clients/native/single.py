@@ -397,7 +397,7 @@ class SSHClient(BaseSSHClient):
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           ``local_file`` and ``recurse`` is not set
-        :raises: :py:class:`pss.exceptions.SFTPError` on SFTP initialisation
+        :raises: :py:class:`pssh.exceptions.SFTPError` on SFTP initialisation
           errors
         :raises: :py:class:`pssh.exceptions.SFTPIOError` on I/O errors writing
           via SFTP
@@ -487,7 +487,7 @@ class SSHClient(BaseSSHClient):
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           ``local_file`` and ``recurse`` is not set
-        :raises: :py:class:`pss.exceptions.SFTPError` on SFTP initialisation
+        :raises: :py:class:`pssh.exceptions.SFTPError` on SFTP initialisation
           errors
         :raises: :py:class:`pssh.exceptions.SFTPIOError` on I/O errors reading
           from SFTP
@@ -619,7 +619,7 @@ class SSHClient(BaseSSHClient):
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           ``local_file`` and ``recurse`` is not set
-        :raises: :py:class:`pss.exceptions.SFTPError` on SFTP initialisation
+        :raises: :py:class:`pssh.exceptions.SFTPError` on SFTP initialisation
           errors
         :raises: :py:class:`pssh.exceptions.SFTPIOError` on I/O errors writing
           via SFTP
