@@ -18,11 +18,10 @@
 import logging
 
 from .single import SSHClient
-from ..common import _validate_pkey, _validate_pkey_path
 from ..base.parallel import BaseParallelSSHClient
+from ..common import _validate_pkey
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import HostArgumentError
-
 
 logger = logging.getLogger(__name__)
 

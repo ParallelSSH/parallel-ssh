@@ -28,7 +28,8 @@ class HostConfig(object):
                  'num_retries', 'retry_delay', 'timeout', 'identity_auth',
                  'proxy_host', 'proxy_port', 'proxy_user', 'proxy_password', 'proxy_pkey',
                  'keepalive_seconds', 'ipv6_only', 'cert_file', 'auth_thread_pool', 'gssapi_auth',
-                 'gssapi_server_identity', 'gssapi_client_identity', 'gssapi_delegate_credentials', 'forward_ssh_agent',
+                 'gssapi_server_identity', 'gssapi_client_identity', 'gssapi_delegate_credentials',
+                 'forward_ssh_agent',
                  )
 
     def __init__(self, user=None, port=None, password=None, private_key=None,
