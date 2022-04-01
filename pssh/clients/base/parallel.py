@@ -555,16 +555,20 @@ class BaseParallelSSHClient(object):
         if (host_i, host) not in self._host_clients \
                 or self._host_clients[(host_i, host)] is None:
             cfg = self._get_host_config(host_i, host)
-            if isinstance(cfg.private_key, str):
-                _validate_pkey_path(cfg.private_key)
-                with open(cfg.private_key, 'rb') as fh:
-                    _pkey_data = fh.read()
-            else:
-                _pkey_data = cfg.private_key
+            _pkey = self.pkey if cfg.private_key is None else cfg.private_key
+            _pkey_data = self._load_pkey_data(_pkey)
             _client = self._make_ssh_client(host, cfg, _pkey_data)
             self._host_clients[(host_i, host)] = _client
             return _client
         return self._host_clients[(host_i, host)]
 
+    def _load_pkey_data(self, _pkey):
+        if isinstance(_pkey, str):
+            _validate_pkey_path(_pkey)
+            with open(_pkey, 'rb') as fh:
+                _pkey_data = fh.read()
+            return _pkey_data
+        return _pkey
+
     def _make_ssh_client(self, host, cfg, _pkey_data):
-        raise NotImplementedError
+        assert _pkey_data is not None

@@ -245,7 +245,7 @@ class TunnelTest(unittest.TestCase):
         output = client.run_command(self.cmd, stop_on_errors=False)
         client.join(output)
         self.assertIsInstance(output[1].exception, ProxyError)
-        self.assertTrue(output[1].exception is None)
+        self.assertTrue(output[0].exception is None)
         stdout = list(output[0].stdout)
         self.assertListEqual(stdout, [self.resp])
 

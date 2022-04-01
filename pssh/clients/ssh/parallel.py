@@ -213,23 +213,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
             read_timeout=read_timeout,
         )
 
-    # def _get_ssh_client(self, host_i, host, *args):
-    #     super(self)._make_ssh_client(host_i, host, *args)
-    #     logger.debug("Make client request for host %s, (host_i, host) in clients: %s",
-    #                  host, (host_i, host) in self._host_clients)
-    #     if (host_i, host) not in self._host_clients \
-    #        or self._host_clients[(host_i, host)] is None:
-    #         if isinstance(self.pkey, str):
-    #             with open(_pkey, 'rb') as fh:
-    #                 _pkey_data = fh.read()
-    #         else:
-    #             _pkey_data = _pkey
-    #         _client = self._start_ssh_client(_password, _pkey_data, _port, _user, host)
-    #         self._host_clients[(host_i, host)] = _client
-    #         return _client
-    #     return self._host_clients[(host_i, host)]
-
     def _make_ssh_client(self, host, cfg, _pkey_data):
+        BaseParallelSSHClient._make_ssh_client(self, host, cfg, _pkey_data)
         _client = SSHClient(
             host, user=cfg.user or self.user, password=cfg.password or self.password, port=cfg.port or self.port,
             pkey=_pkey_data, num_retries=cfg.num_retries or self.num_retries,
