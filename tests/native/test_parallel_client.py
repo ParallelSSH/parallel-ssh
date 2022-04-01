@@ -20,7 +20,7 @@
 """Unittests for :mod:`pssh.ParallelSSHClient` class"""
 
 import unittest
-import pwd
+from getpass import getuser
 import os
 import shutil
 import string
@@ -57,7 +57,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         cls.resp = u'me'
         cls.user_key = PKEY_FILENAME
         cls.user_pub_key = PUB_FILE
-        cls.user = pwd.getpwuid(os.geteuid()).pw_name
+        cls.user = getuser()
         # Single client for all tests ensures that the client does not do
         # anything that causes server to disconnect the session and
         # affect all subsequent uses of the same session.

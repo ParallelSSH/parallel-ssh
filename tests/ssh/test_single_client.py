@@ -15,21 +15,17 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import unittest
 import logging
-
 from datetime import datetime
 
 from gevent import sleep, Timeout as GTimeout, spawn
-# from ssh.session import Session
 from ssh.exceptions import AuthenticationDenied
-from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
-    SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout, \
-    AuthenticationError
-from pssh.clients.ssh.single import SSHClient, logger as ssh_logger
 
+from pssh.clients.ssh.single import SSHClient, logger as ssh_logger
+from pssh.exceptions import AuthenticationException, ConnectionErrorException, \
+    SessionError, Timeout, \
+    AuthenticationError
 from .base_ssh_case import SSHTestCase
-from ..embedded_server.openssh import OpenSSHServer
 
 ssh_logger.setLevel(logging.DEBUG)
 logging.basicConfig()
@@ -42,16 +38,6 @@ class SSHClientTest(SSHTestCase):
                        pkey=self.user_key,
                        num_retries=1) as client:
             self.assertIsInstance(client, SSHClient)
-
-    def test_open_session_timeout(self):
-        client = SSHClient(self.host, port=self.port,
-                           pkey=self.user_key,
-                           num_retries=1,
-                           timeout=1)
-        def _session(timeout=2):
-            sleep(2)
-        client.open_session = _session
-        self.assertRaises(GTimeout, client.run_command, self.cmd)
 
     def test_pkey_from_memory(self):
         with open(self.user_key, 'rb') as fh:
@@ -159,13 +145,6 @@ class SSHClientTest(SSHTestCase):
         client.sock = None
         self.assertIsNone(client.poll())
 
-    def test_client_read_timeout(self):
-        client = SSHClient(self.host, port=self.port,
-                           pkey=self.user_key,
-                           num_retries=1)
-        host_out = client.run_command('sleep 2; echo me', timeout=0.2)
-        self.assertRaises(Timeout, list, host_out.stdout)
-
     def test_multiple_clients_exec_terminates_channels(self):
         # See #200 - Multiple clients should not interfere with
         # each other. session.disconnect can leave state in library
@@ -249,18 +228,11 @@ class SSHClientTest(SSHTestCase):
                            pkey=self.user_key,
                            num_retries=2,
                            timeout=.1)
+
         def _session(timeout=None):
             sleep(.2)
         client.open_session = _session
         self.assertRaises(GTimeout, client.run_command, self.cmd)
-
-    def test_connection_timeout(self):
-        cmd = spawn(SSHClient, 'fakehost.com', port=12345,
-                    retry_delay=.1,
-                    num_retries=2, timeout=.2, _auth_thread_pool=False)
-        # Should fail within greenlet timeout, otherwise greenlet will
-        # raise timeout which will fail the test
-        self.assertRaises(ConnectionErrorException, cmd.get, timeout=5)
 
     def test_client_read_timeout(self):
         client = SSHClient(self.host, port=self.port,

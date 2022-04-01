@@ -15,13 +15,13 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import unittest
-import pwd
-import os
 import logging
+import os
+import unittest
+from getpass import getuser
 from sys import version_info
 
-from pssh.clients.native import SSHClient, logger as ssh_logger
+from pssh.clients.native import SSHClient
 from ..embedded_server.openssh import OpenSSHServer
 
 
@@ -42,6 +42,8 @@ PUB_FILE = "%s.pub" % (PKEY_FILENAME,)
 
 
 class SSH2TestCase(unittest.TestCase):
+    client = None
+    server = None
 
     @classmethod
     def setUpClass(cls):
@@ -55,7 +57,7 @@ class SSH2TestCase(unittest.TestCase):
         cls.resp = u'me'
         cls.user_key = PKEY_FILENAME
         cls.user_pub_key = PUB_FILE
-        cls.user = pwd.getpwuid(os.geteuid()).pw_name
+        cls.user = getuser()
         cls.client = SSHClient(cls.host, port=cls.port,
                                pkey=PKEY_FILENAME,
                                num_retries=1,

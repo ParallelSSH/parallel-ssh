@@ -15,24 +15,20 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import unittest
 import os
-import subprocess
+import unittest
 from datetime import datetime
 from sys import version_info
 from unittest.mock import patch, MagicMock
 
-from gevent import joinall, spawn, socket, Greenlet, sleep
-from pssh import logger as pssh_logger
-from pssh.output import HostOutput
-from pssh.exceptions import UnknownHostException, \
-    AuthenticationException, ConnectionErrorException, SessionError, \
-    HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
-    ProxyError, PKeyFileError, NoIPv6AddressFoundError
-from pssh.clients.ssh.parallel import ParallelSSHClient
+from gevent import joinall, spawn, socket, sleep
 
+from pssh import logger as pssh_logger
+from pssh.clients.ssh.parallel import ParallelSSHClient
+from pssh.exceptions import AuthenticationException, ConnectionErrorException, Timeout, PKeyFileError
+from pssh.output import HostOutput
 from .base_ssh_case import PKEY_FILENAME, PUB_FILE, USER_CERT_PRIV_KEY, \
-    USER_CERT_PUB_KEY, USER_CERT_FILE, CA_USER_KEY, USER, sign_cert
+    USER_CERT_FILE, CA_USER_KEY, USER, sign_cert
 from ..embedded_server.openssh import OpenSSHServer
 
 
