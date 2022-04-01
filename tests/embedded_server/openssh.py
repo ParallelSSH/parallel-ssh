@@ -15,16 +15,16 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+import logging
 import os
 import random
 import string
-import logging
-import pwd
+from getpass import getuser
 from subprocess import Popen, TimeoutExpired
 from sys import version_info
 
 from jinja2 import Template
-
+from gevent import Timeout
 
 logger = logging.getLogger('pssh.test.openssh_server')
 logger.setLevel(logging.DEBUG)
@@ -40,6 +40,10 @@ SSHD_CONFIG_TMPL = os.path.abspath(os.path.sep.join(
 SSHD_CONFIG = os.path.abspath(os.path.sep.join([DIR_NAME, 'sshd_config']))
 PRINCIPALS_TMPL = os.path.abspath(os.path.sep.join([DIR_NAME, 'principals.tmpl']))
 PRINCIPALS = os.path.abspath(os.path.sep.join([DIR_NAME, 'principals']))
+
+
+class OpenSSHServerError(Exception):
+    pass
 
 
 class OpenSSHServer(object):
@@ -63,7 +67,7 @@ class OpenSSHServer(object):
             os.chmod(_dir, dir_mask)
 
     def make_config(self):
-        user = pwd.getpwuid(os.geteuid()).pw_name
+        user = getuser()
         with open(SSHD_CONFIG_TMPL) as fh:
             tmpl = fh.read()
         template = Template(tmpl)
@@ -86,15 +90,18 @@ class OpenSSHServer(object):
         logger.debug("Starting server with %s" % (" ".join(cmd),))
         self.server_proc = Popen(cmd)
         try:
-            self.server_proc.wait(.3)
-        except TimeoutExpired:
-            pass
-        else:
+            with Timeout(seconds=5, exception=TimeoutError):
+                while True:
+                    try:
+                        self.server_proc.wait(.1)
+                    except TimeoutExpired:
+                        break
+        except TimeoutError:
             if self.server_proc.stdout is not None:
                 logger.error(self.server_proc.stdout.read())
             if self.server_proc.stderr is not None:
                 logger.error(self.server_proc.stderr.read())
-            raise Exception("Server could not start")
+            raise OpenSSHServerError("Server could not start")
 
     def stop(self):
         if self.server_proc is not None and self.server_proc.returncode is None:

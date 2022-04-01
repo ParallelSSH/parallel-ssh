@@ -108,8 +108,7 @@ class TunnelTest(unittest.TestCase):
                     proxy_port=self.proxy_port,
                 )
                 output = client.run_command(self.cmd)
-                _stdout = list(output.stdout)
-                self.assertListEqual(_stdout, [self.resp])
+                client.wait_finished(output)
                 self.assertEqual(remote_host, client.host)
                 self.assertEqual(self.port, client.port)
                 client.disconnect()

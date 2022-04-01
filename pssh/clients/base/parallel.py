@@ -571,4 +571,4 @@ class BaseParallelSSHClient(object):
         return _pkey
 
     def _make_ssh_client(self, host, cfg, _pkey_data):
-        assert _pkey_data is not None
+        raise NotImplementedError
