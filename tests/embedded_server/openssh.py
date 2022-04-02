@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -15,19 +15,15 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+import logging
 import os
-import socket
 import random
 import string
-import logging
-import pwd
-from threading import Thread
-from subprocess import Popen
-from time import sleep
-from sys import version_info
+from getpass import getuser
+from subprocess import Popen, TimeoutExpired
 
+from gevent import Timeout
 from jinja2 import Template
-
 
 logger = logging.getLogger('pssh.test.openssh_server')
 logger.setLevel(logging.DEBUG)
@@ -45,6 +41,10 @@ PRINCIPALS_TMPL = os.path.abspath(os.path.sep.join([DIR_NAME, 'principals.tmpl']
 PRINCIPALS = os.path.abspath(os.path.sep.join([DIR_NAME, 'principals']))
 
 
+class OpenSSHServerError(Exception):
+    pass
+
+
 class OpenSSHServer(object):
 
     def __init__(self, listen_ip='127.0.0.1', port=2222):
@@ -58,15 +58,15 @@ class OpenSSHServer(object):
         self.make_config()
 
     def _fix_masks(self):
-        _mask = int('0600') if version_info <= (2,) else 0o600
-        dir_mask = int('0755') if version_info <= (2,) else 0o755
+        _mask = 0o600
+        dir_mask = 0o755
         for _file in [SERVER_KEY, CA_HOST_KEY]:
             os.chmod(_file, _mask)
         for _dir in [DIR_NAME, PDIR_NAME, PPDIR_NAME]:
             os.chmod(_dir, dir_mask)
 
     def make_config(self):
-        user = pwd.getpwuid(os.geteuid()).pw_name
+        user = getuser()
         with open(SSHD_CONFIG_TMPL) as fh:
             tmpl = fh.read()
         template = Template(tmpl)
@@ -74,7 +74,7 @@ class OpenSSHServer(object):
             fh.write(template.render(parent_dir=os.path.abspath(DIR_NAME),
                                      listen_ip=self.listen_ip,
                                      random_server=self.random_server,
-            ))
+                                     ))
             fh.write(os.linesep)
         with open(PRINCIPALS_TMPL) as fh:
             _princ_tmpl = fh.read()
@@ -88,14 +88,19 @@ class OpenSSHServer(object):
                '-h', SERVER_KEY, '-f', self.sshd_config]
         logger.debug("Starting server with %s" % (" ".join(cmd),))
         self.server_proc = Popen(cmd)
-        self.wait_for_port()
-
-    def wait_for_port(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        while sock.connect_ex((self.listen_ip, self.port)) != 0:
-            sleep(.1)
-        sleep(.5)
-        del sock
+        try:
+            with Timeout(seconds=5, exception=TimeoutError):
+                while True:
+                    try:
+                        self.server_proc.wait(.1)
+                    except TimeoutExpired:
+                        break
+        except TimeoutError:
+            if self.server_proc.stdout is not None:
+                logger.error(self.server_proc.stdout.read())
+            if self.server_proc.stderr is not None:
+                logger.error(self.server_proc.stderr.read())
+            raise OpenSSHServerError("Server could not start")
 
     def stop(self):
         if self.server_proc is not None and self.server_proc.returncode is None:

@@ -1,4 +1,9 @@
-conda:
-  file: .environment.yml
+version: 2
+build:
+  apt_packages:
+    - cmake
+    - openssl
 python:
-  pip_install: true
+  install:
+    - method: pip
+      path: .

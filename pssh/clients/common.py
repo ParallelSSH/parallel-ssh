@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis.
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -20,7 +20,7 @@ import os
 from ..exceptions import PKeyFileError
 
 
-def _validate_pkey_path(pkey, host=None):
+def _validate_pkey_path(pkey):
     if pkey is None:
         return
     pkey = os.path.normpath(os.path.expanduser(pkey))
@@ -29,6 +29,13 @@ def _validate_pkey_path(pkey, host=None):
               "Please use either absolute or relative to user directory " \
               "paths like '~/.ssh/my_key' for pkey parameter"
         ex = PKeyFileError(msg, pkey)
-        ex.host = host
         raise ex
+    return pkey
+
+
+def _validate_pkey(pkey):
+    if pkey is None:
+        return
+    if isinstance(pkey, str):
+        return _validate_pkey_path(pkey)
     return pkey

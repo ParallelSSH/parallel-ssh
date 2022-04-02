@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis.
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -19,19 +19,23 @@
 """Exceptions raised by parallel-ssh classes."""
 
 
+class NoIPv6AddressFoundError(Exception):
+    """Raised when an IPV6 only address was requested but none are
+     available for a host.
+
+     This exception is raised instead of UnknownHostError
+     in the case where only IPV4 addresses are available via DNS for a host,
+     or an IPV4 address was provided but IPV6 only was requested.
+     """
+
+
 class UnknownHostError(Exception):
     """Raised when a host is unknown (dns failure)"""
     pass
 
 
 UnknownHostException = UnknownHostError
-
-
-class ConnectionError(Exception):
-    """Raised on error connecting (connection refused/timed out)"""
-    pass
-
-
+ConnectionError = ConnectionError
 ConnectionErrorException = ConnectionError
 
 
@@ -92,3 +96,7 @@ class PKeyFileError(Exception):
 
 class ShellError(Exception):
     """Raised on errors running command on interactive shell"""
+
+
+class HostConfigError(Exception):
+    """Raised on invalid host configuration"""

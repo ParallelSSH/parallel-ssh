@@ -1,6 +1,84 @@
 Change Log
 ============
 
+2.10.0
+++++++
+
+Changes
+-------
+
+* All client configuration can now be provided via ``HostConfig`` on parallel clients.
+* ``proxy_pkey`` can now also be provided as bytes for proxy authentication from in-memory private key data - #338
+* Removed deprecated since ``2.0.0`` dictionary support for ``host_config`` entries.
+
+2.9.1
++++++
+
+Fixes
+------
+
+* Even more rare race condition would sometimes cause ``scp_send`` to write incomplete files - #337
+
+2.9.0
++++++
+
+Changes
+--------
+
+* ``pssh.exceptions.ConnectionError`` is now the same as built-in ``ConnectionError`` and deprecated - to be removed.
+* Clients now attempt to connect with all addresses in DNS list. In the case where an address refuses connection,
+  other available addresses are attempted without delay.
+  For example where a host resolves to both IPv4 and v6 addresses while only one address is
+  accepting connections, or multiple v4/v6 addresses where only some are accepting connections.
+* Connection actively refused error is no longer subject to retries.
+
+Fixes
+-----
+
+* ``scp_send`` in native clients would sometimes fail to send all data in a race condition with client going out of scope.
+
+
+2.8.0
++++++
+
+Changes
+--------
+
+* All clients now support private key data as bytes in ``pkey`` parameter for authentication from in-memory private key
+  data - #317. See `documentation <https://parallel-ssh.readthedocs.io/en/latest/advanced.html#in-memory-private-keys>`_
+  for examples.
+* Parallel clients now read a provided private key path only once and use in-memory data for authentication to avoid
+  reading same file multiple times, if a path is provided.
+
+
+2.7.1
++++++
+
+Fixes
+------
+
+* ``copy_file`` performance would be abnormally low when copying plain text files - 100x performance increase. Binary
+  file copying performance has also increased.
+
+
+2.7.0
++++++
+
+Changes
+-------
+
+* All clients now support IPv6 addresses for both DNS and IP entries in host list.
+* Added ``ipv6_only`` flag to ``ParallelSSHClient`` and ``SSHClient`` for choosing only IPv6 addresses when both v4 and
+  v6 are available.
+* Removed Python 2 from binary wheel compatibility as it is no longer supported and not guaranteed to work.
+* Host name is now an argument for all exceptions raised by single clients.
+
+Fixes
+-----
+
+* ``HostOutput`` would have empty host on some exceptions when ``stop_on_errors`` is ``False`` - #297
+* Race condition when forcefully closing channel via ``SSHClient.close_channel`` while channel data was left unread.
+
 2.6.0
 +++++
 
@@ -9,6 +87,14 @@ Changes
 
 * Performance and scaling improvements for all clients. Allow ``ssh-python`` (``libssh``) client to use multiple cores for authentication.
 * ``user`` keyword argument no longer required on Windows - exception is raised if user cannot be identified.
+* Removed deprecated since ``2.0.0`` functions and parameters.
+
+Fixes
+-----
+
+* ``copy_remote_file`` with recurse enabled would not use a provided encoding for sub-directories - #284
+* Reconnecting to the same proxy host when proxy is configured would sometimes cause segfauls - ##304
+
 
 Fixes
 -----

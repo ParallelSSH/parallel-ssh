@@ -24,6 +24,24 @@ A private key can also be provided programmatically.
 Where ``my_key`` is a private key file under `.ssh` in the user's home directory.
 
 
+In-Memory Private Keys
+========================
+
+Private key data can also be provided as bytes for authentication from in-memory private keys.
+
+.. code-block:: python
+
+   from pssh.clients import ParallelSSHClient
+
+   pkey_data = b"""-----BEGIN RSA PRIVATE KEY-----
+   <key data>
+   -----END RSA PRIVATE KEY-----
+   """
+   client = ParallelSSHClient(hosts, pkey=pkey_data)
+
+Private key data provided this way *must* be in bytes. This is supported by all parallel and single host clients.
+
+
 Native Clients
 ***************
 
@@ -334,7 +352,7 @@ In the above example, the client is configured to connect to hostname ``localhos
 
 When using ``host_config``, the number of ``HostConfig`` entries must match the number of hosts in ``client.hosts``. An exception is raised on client initialisation if not.
 
-As of `2.2.0`, proxy configuration can also be provided in ``HostConfig``.
+As of `2.10.0`, all client configuration can be provided in ``HostConfig``.
 
 .. _per-host-cmds:
 
@@ -378,7 +396,7 @@ This expands to the following per host commands:
 
 A list of dictionaries can also be used as ``host_args`` for named argument substitution.
 
-In the following example, first host in host list will use cmd ``echo command-1``, second host ``echo command-2`` and so on.
+In the following example, first host in host list will use cmd ``echo command-0``, second host ``echo command-1`` and so on.
 
 .. code-block:: python
 
@@ -528,7 +546,7 @@ SFTP and SCP are both supported by ``parallel-ssh`` and functions are provided b
 
 Neither SFTP nor SCP have a shell interface and no output is sent for any SFTP/SCP commands.
 
-As such, SFTP functions in ``ParallelSSHClient`` return greenlets that will need to be joined to raise any exceptions from them. :py:func:`gevent.joinall` may be used for that.
+As such, SFTP/SCP functions in ``ParallelSSHClient`` return greenlets that will need to be joined to raise any exceptions from them. :py:func:`gevent.joinall` may be used for that.
 
 
 Copying files to remote hosts in parallel
@@ -882,3 +900,40 @@ Clients for hosts that would be removed by a reassignment can be calculated with
 
    set(enumerate(client.hosts)).difference(
        set(enumerate(new_hosts)))
+
+
+IPv6 Addresses
+***************
+
+All clients support IPv6 addresses in both host list, and via DNS. Typically IPv4 addresses are preferred as they are
+the first entries in DNS resolution depending on DNS server configuration and entries.
+
+The ``ipv6_only`` flag may be used to override this behaviour and force the client(s) to only choose IPv6 addresses, or
+raise an error if none are available.
+
+Connecting to localhost via an IPv6 address.
+
+.. code-block:: python
+
+   client = ParallelSSHClient(['::1'])
+   <..>
+
+Asking client to only use IPv6 for DNS resolution.
+:py:class:`NoIPv6AddressFoundError <pssh.exceptions.NoIPv6AddressFoundError>` is raised if no IPv6 address is available
+for hosts.
+
+.. code-block:: python
+
+   client = ParallelSSHClient(['myhost.com'], ipv6_only=True)
+   output = client.run_command('echo me')
+
+Similarly for single clients.
+
+.. code-block:: python
+
+   client = SSHClient(['myhost.com'], ipv6_only=True)
+
+For choosing a mix of IPv4/IPv6 depending on the host name, developers can use `socket.getaddrinfo` directly and pick
+from available addresses.
+
+*New in 2.7.0*

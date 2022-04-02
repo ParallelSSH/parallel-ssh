@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis.
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -21,7 +21,8 @@ from gevent import sleep, spawn, Timeout as GTimeout, joinall, get_hub
 from gevent.lock import RLock
 from ssh import options
 from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
-from ssh.key import import_privkey_file, import_cert_file, copy_cert_to_privkey
+from ssh.key import import_privkey_file, import_cert_file, copy_cert_to_privkey,\
+    import_privkey_base64
 from ssh.exceptions import EOF
 from ssh.error_codes import SSH_AGAIN
 
@@ -51,6 +52,7 @@ class SSHClient(BaseSSHClient):
                  gssapi_server_identity=None,
                  gssapi_client_identity=None,
                  gssapi_delegate_credentials=False,
+                 ipv6_only=False,
                  _auth_thread_pool=True):
         """:param host: Host name or IP to connect to.
         :type host: str
@@ -63,7 +65,8 @@ class SSHClient(BaseSSHClient):
         :param pkey: Private key file path to use for authentication. Path must
           be either absolute path or relative to user home directory
           like ``~/<path>``.
-        :type pkey: str
+          Bytes type input is used as private key data for authentication.
+        :type pkey: str or bytes
         :param cert_file: Public key signed certificate file to use for
           authentication. The corresponding private key must also be provided
           via ``pkey`` parameter.
@@ -76,10 +79,10 @@ class SSHClient(BaseSSHClient):
         :type num_retries: int
         :param retry_delay: Number of seconds to wait between retries. Defaults
           to :py:class:`pssh.constants.RETRY_DELAY`
-        :type retry_delay: int
+        :type retry_delay: int or float
         :param timeout: (Optional) If provided, all commands will timeout after
           <timeout> number of seconds.
-        :type timeout: int
+        :type timeout: int or float
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent. Currently unused.
         :type allow_agent: bool
@@ -99,11 +102,15 @@ class SSHClient(BaseSSHClient):
         :param gssapi_delegate_credentials: Enable/disable server credentials
           delegation.
         :type gssapi_delegate_credentials: bool
+        :param ipv6_only: Choose IPv6 addresses only if multiple are available
+          for the host or raise NoIPv6AddressFoundError otherwise. Note this will
+          disable connecting to an IPv4 address if an IP address is provided instead.
+        :type ipv6_only: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
         """
-        self.cert_file = _validate_pkey_path(cert_file, host)
+        self.cert_file = _validate_pkey_path(cert_file)
         self.gssapi_auth = gssapi_auth
         self.gssapi_server_identity = gssapi_server_identity
         self.gssapi_client_identity = gssapi_client_identity
@@ -115,7 +122,9 @@ class SSHClient(BaseSSHClient):
             allow_agent=allow_agent,
             _auth_thread_pool=_auth_thread_pool,
             timeout=timeout,
-            identity_auth=identity_auth)
+            identity_auth=identity_auth,
+            ipv6_only=ipv6_only,
+        )
 
     def disconnect(self):
         """Close socket if needed."""
@@ -145,17 +154,15 @@ class SSHClient(BaseSSHClient):
         if self.gssapi_client_identity or self.gssapi_server_identity:
             self.session.options_set_gssapi_delegate_credentials(
                 self.gssapi_delegate_credentials)
-        self.session.set_socket(self.sock)
         logger.debug("Session started, connecting with existing socket")
         try:
+            self.session.set_socket(self.sock)
             self._session_connect()
         except Exception as ex:
             if retries < self.num_retries:
                 return self._connect_init_session_retry(retries=retries+1)
             msg = "Error connecting to host %s:%s - %s"
             logger.error(msg, self.host, self.port, ex)
-            ex.host = self.host
-            ex.port = self.port
             raise ex
 
     def _session_connect(self):
@@ -177,15 +184,27 @@ class SSHClient(BaseSSHClient):
         with self._lock:
             THREAD_POOL.apply(self.session.userauth_password, args=(self.user, self.password))
 
-    def _pkey_auth(self, pkey_file, password=None):
+    def _pkey_file_auth(self, pkey_file, password=None):
         passphrase = password if password is not None else ''
         pkey = THREAD_POOL.apply(
             import_privkey_file, args=(pkey_file,), kwds={'passphrase': passphrase})
+        return self._pkey_obj_auth(pkey)
+
+    def _pkey_obj_auth(self, pkey):
         if self.cert_file is not None:
             logger.debug("Certificate file set - trying certificate authentication")
             THREAD_POOL.apply(self._import_cert_file, args=(pkey,))
         with self._lock:
             THREAD_POOL.apply(self.session.userauth_publickey, args=(pkey,))
+
+    def _pkey_from_memory(self, pkey_data):
+        passphrase = self.password if self.password is not None else b''
+        _pkey = THREAD_POOL.apply(
+            import_privkey_base64,
+            args=(pkey_data,),
+            kwds={'passphrase': passphrase},
+        )
+        return self._pkey_obj_auth(_pkey)
 
     def _import_cert_file(self, pkey):
         cert_key = import_cert_file(self.cert_file)

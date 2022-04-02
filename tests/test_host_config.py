@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -19,24 +19,43 @@ import unittest
 
 from pssh.config import HostConfig
 
+
 class TestHostConfig(unittest.TestCase):
 
     def test_host_config_entries(self):
-        user='user'
-        port=22
-        password='password'
-        private_key='private key'
-        allow_agent=False
-        num_retries=1
-        retry_delay=1
-        timeout=1
-        identity_auth=False
-        proxy_host='proxy_host'
-        keepalive_seconds=1
+        user = 'user'
+        port = 22
+        password = 'password'
+        private_key = 'private key'
+        allow_agent = False
+        num_retries = 1
+        retry_delay = 1
+        timeout = 1
+        identity_auth = False
+        proxy_host = 'proxy_host'
+        keepalive_seconds = 1
+        ipv6_only = True
+        cert_file = 'file'
+        auth_thread_pool = True
+        forward_ssh_agent = False
+        gssapi_auth = True
+        gssapi_server_identity = 'some_id'
+        gssapi_client_identity = 'some_id'
+        gssapi_delegate_credentials = True
         cfg = HostConfig(
             user=user, port=port, password=password, private_key=private_key,
             allow_agent=allow_agent, num_retries=num_retries, retry_delay=retry_delay,
-            timeout=timeout, identity_auth=identity_auth, proxy_host=proxy_host)
+            timeout=timeout, identity_auth=identity_auth, proxy_host=proxy_host,
+            ipv6_only=ipv6_only,
+            keepalive_seconds=keepalive_seconds,
+            cert_file=cert_file,
+            auth_thread_pool=auth_thread_pool,
+            forward_ssh_agent=forward_ssh_agent,
+            gssapi_auth=gssapi_auth,
+            gssapi_server_identity=gssapi_server_identity,
+            gssapi_client_identity=gssapi_client_identity,
+            gssapi_delegate_credentials=gssapi_delegate_credentials,
+        )
         self.assertEqual(cfg.user, user)
         self.assertEqual(cfg.port, port)
         self.assertEqual(cfg.password, password)
@@ -47,6 +66,14 @@ class TestHostConfig(unittest.TestCase):
         self.assertEqual(cfg.timeout, timeout)
         self.assertEqual(cfg.identity_auth, identity_auth)
         self.assertEqual(cfg.proxy_host, proxy_host)
+        self.assertEqual(cfg.ipv6_only, ipv6_only)
+        self.assertEqual(cfg.keepalive_seconds, keepalive_seconds)
+        self.assertEqual(cfg.cert_file, cert_file)
+        self.assertEqual(cfg.forward_ssh_agent, forward_ssh_agent)
+        self.assertEqual(cfg.gssapi_auth, gssapi_auth)
+        self.assertEqual(cfg.gssapi_server_identity, gssapi_server_identity)
+        self.assertEqual(cfg.gssapi_client_identity, gssapi_client_identity)
+        self.assertEqual(cfg.gssapi_delegate_credentials, gssapi_delegate_credentials)
 
     def test_host_config_bad_entries(self):
         self.assertRaises(ValueError, HostConfig, user=22)
@@ -64,3 +91,11 @@ class TestHostConfig(unittest.TestCase):
         self.assertRaises(ValueError, HostConfig, proxy_password=1)
         self.assertRaises(ValueError, HostConfig, proxy_pkey=1)
         self.assertRaises(ValueError, HostConfig, keepalive_seconds='')
+        self.assertRaises(ValueError, HostConfig, ipv6_only='')
+        self.assertRaises(ValueError, HostConfig, keepalive_seconds='')
+        self.assertRaises(ValueError, HostConfig, cert_file=1)
+        self.assertRaises(ValueError, HostConfig, forward_ssh_agent='')
+        self.assertRaises(ValueError, HostConfig, gssapi_auth='')
+        self.assertRaises(ValueError, HostConfig, gssapi_server_identity=1)
+        self.assertRaises(ValueError, HostConfig, gssapi_client_identity=1)
+        self.assertRaises(ValueError, HostConfig, gssapi_delegate_credentials='')

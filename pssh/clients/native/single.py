@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis.
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -45,6 +45,8 @@ THREAD_POOL = get_hub().threadpool
 
 class SSHClient(BaseSSHClient):
     """ssh2-python (libssh2) based non-blocking SSH client."""
+    # 2MB buffer
+    _BUF_SIZE = 2048 * 1024
 
     def __init__(self, host,
                  user=None, password=None, port=None,
@@ -59,7 +61,9 @@ class SSHClient(BaseSSHClient):
                  proxy_user=None,
                  proxy_password=None,
                  _auth_thread_pool=True, keepalive_seconds=60,
-                 identity_auth=True,):
+                 identity_auth=True,
+                 ipv6_only=False,
+                 ):
         """:param host: Host name or IP to connect to.
         :type host: str
         :param user: User to connect as. Defaults to logged in user.
@@ -71,16 +75,17 @@ class SSHClient(BaseSSHClient):
         :param pkey: Private key file path to use for authentication. Path must
           be either absolute path or relative to user home directory
           like ``~/<path>``.
-        :type pkey: str
+          Bytes type input is used as private key data for authentication.
+        :type pkey: str or bytes
         :param num_retries: (Optional) Number of connection and authentication
           attempts before the client gives up. Defaults to 3.
         :type num_retries: int
         :param retry_delay: Number of seconds to wait between retries. Defaults
           to :py:class:`pssh.constants.RETRY_DELAY`
-        :type retry_delay: int
+        :type retry_delay: int or float
         :param timeout: SSH session timeout setting in seconds. This controls
           timeout setting of authenticated SSH sessions.
-        :type timeout: int
+        :type timeout: int or float
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent
         :type allow_agent: bool
@@ -96,6 +101,11 @@ class SSHClient(BaseSSHClient):
         :type proxy_port: int
         :param keepalive_seconds: Interval of keep alive messages being sent to
           server. Set to ``0`` or ``False`` to disable.
+        :type keepalive_seconds: int
+        :param ipv6_only: Choose IPv6 addresses only if multiple are available
+          for the host or raise NoIPv6AddressFoundError otherwise. Note this will
+          disable connecting to an IPv4 address if an IP address is provided instead.
+        :type ipv6_only: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
@@ -122,13 +132,16 @@ class SSHClient(BaseSSHClient):
                 identity_auth=identity_auth,
             )
             proxy_host = '127.0.0.1'
+        self._chan_lock = RLock()
         super(SSHClient, self).__init__(
             host, user=user, password=password, port=port, pkey=pkey,
             num_retries=num_retries, retry_delay=retry_delay,
             allow_agent=allow_agent, _auth_thread_pool=_auth_thread_pool,
             timeout=timeout,
             proxy_host=proxy_host, proxy_port=proxy_port,
-            identity_auth=identity_auth)
+            identity_auth=identity_auth,
+            ipv6_only=ipv6_only,
+        )
 
     def _shell(self, channel):
         return self._eagain(channel.shell)
@@ -175,9 +188,18 @@ class SSHClient(BaseSSHClient):
             except Exception:
                 pass
             self.session = None
-        self.sock = None
         if isinstance(self._proxy_client, SSHClient):
-            self._proxy_client.disconnect()
+            # Don't disconnect proxy client here - let the TunnelServer do it at the time that
+            # _wait_send_receive_lets ends. The cleanup_server call here triggers the TunnelServer
+            # to stop.
+            FORWARDER.cleanup_server(self._proxy_client)
+
+            # I wanted to clean up all the sockets here to avoid a ResourceWarning from unittest,
+            # but unfortunately closing this socket here causes a segfault, not sure why yet.
+            # self.sock.close()
+        else:
+            self.sock.close()
+        self.sock = None
 
     def spawn_send_keepalive(self):
         """Spawns a new greenlet that sends keep alive messages every
@@ -210,8 +232,6 @@ class SSHClient(BaseSSHClient):
             logger.error(msg, self.host, self.port, ex)
             if isinstance(ex, SSH2Timeout):
                 raise Timeout(msg, self.host, self.port, ex)
-            ex.host = self.host
-            ex.port = self.port
             raise
 
     def _keepalive(self):
@@ -222,12 +242,21 @@ class SSHClient(BaseSSHClient):
     def _agent_auth(self):
         self.session.agent_auth(self.user)
 
-    def _pkey_auth(self, pkey_file, password=None):
+    def _pkey_file_auth(self, pkey_file, password=None):
         passphrase = password if password is not None else b''
         with self._lock:
             THREAD_POOL.apply(
                 self.session.userauth_publickey_fromfile,
                 args=(self.user, pkey_file),
+                kwds={'passphrase': passphrase},
+            )
+
+    def _pkey_from_memory(self, pkey_data):
+        passphrase = self.password if self.password is not None else b''
+        with self._lock:
+            THREAD_POOL.apply(
+                self.session.userauth_publickey_frommemory,
+                args=(self.user, pkey_data),
                 kwds={'passphrase': passphrase},
             )
 
@@ -282,11 +311,12 @@ class SSHClient(BaseSSHClient):
     def _read_output_to_buffer(self, read_func, _buffer):
         try:
             while True:
-                size, data = read_func()
+                with self._chan_lock:
+                    size, data = read_func()
                 while size == LIBSSH2_ERROR_EAGAIN:
                     self.poll()
-                    size, data = read_func()
-                    sleep()
+                    with self._chan_lock:
+                        size, data = read_func()
                 if size <= 0:
                     break
                 _buffer.write(data)
@@ -317,8 +347,9 @@ class SSHClient(BaseSSHClient):
         self.close_channel(channel)
 
     def close_channel(self, channel):
-        logger.debug("Closing channel")
-        self._eagain(channel.close)
+        with self._chan_lock:
+            logger.debug("Closing channel")
+            self._eagain(channel.close)
 
     def _eagain(self, func, *args, **kwargs):
         return self._eagain_errcode(func, LIBSSH2_ERROR_EAGAIN, *args, **kwargs)
@@ -374,7 +405,7 @@ class SSHClient(BaseSSHClient):
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           ``local_file`` and ``recurse`` is not set
-        :raises: :py:class:`pss.exceptions.SFTPError` on SFTP initialisation
+        :raises: :py:class:`pssh.exceptions.SFTPError` on SFTP initialisation
           errors
         :raises: :py:class:`pssh.exceptions.SFTPIOError` on I/O errors writing
           via SFTP
@@ -398,9 +429,11 @@ class SSHClient(BaseSSHClient):
                     local_file, self.host, remote_file)
 
     def _sftp_put(self, remote_fh, local_file):
-        with open(local_file, 'rb', 2097152) as local_fh:
-            for data in local_fh:
+        with open(local_file, 'rb', self._BUF_SIZE) as local_fh:
+            data = local_fh.read(self._BUF_SIZE)
+            while data:
                 self.eagain_write(remote_fh.write, data)
+                data = local_fh.read(self._BUF_SIZE)
 
     def sftp_put(self, sftp, local_file, remote_file):
         mode = LIBSSH2_SFTP_S_IRUSR | \
@@ -462,7 +495,7 @@ class SSHClient(BaseSSHClient):
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           ``local_file`` and ``recurse`` is not set
-        :raises: :py:class:`pss.exceptions.SFTPError` on SFTP initialisation
+        :raises: :py:class:`pssh.exceptions.SFTPError` on SFTP initialisation
           errors
         :raises: :py:class:`pssh.exceptions.SFTPIOError` on I/O errors reading
           from SFTP
@@ -473,9 +506,9 @@ class SSHClient(BaseSSHClient):
         try:
             self._eagain(sftp.stat, remote_file)
         except (SFTPHandleError, SFTPProtocolError):
-            msg = "Remote file or directory %s does not exist"
-            logger.error(msg, remote_file)
-            raise SFTPIOError(msg, remote_file)
+            msg = "Remote file or directory %s on host %s does not exist"
+            logger.error(msg, remote_file, self.host)
+            raise SFTPIOError(msg, remote_file, self.host)
         try:
             dir_h = self._sftp_openfh(sftp.opendir, remote_file)
         except SFTPError:
@@ -573,6 +606,7 @@ class SSHClient(BaseSSHClient):
                 total += size
                 local_fh.write(data)
         finally:
+            local_fh.flush()
             local_fh.close()
             file_chan.close()
 
@@ -593,7 +627,7 @@ class SSHClient(BaseSSHClient):
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           ``local_file`` and ``recurse`` is not set
-        :raises: :py:class:`pss.exceptions.SFTPError` on SFTP initialisation
+        :raises: :py:class:`pssh.exceptions.SFTPError` on SFTP initialisation
           errors
         :raises: :py:class:`pssh.exceptions.SFTPIOError` on I/O errors writing
           via SFTP
@@ -634,14 +668,19 @@ class SSHClient(BaseSSHClient):
             raise SCPError(msg, remote_file, self.host, ex)
         try:
             with open(local_file, 'rb', 2097152) as local_fh:
-                for data in local_fh:
+                data = local_fh.read(self._BUF_SIZE)
+                while data:
                     self.eagain_write(chan.write, data)
+                    data = local_fh.read(self._BUF_SIZE)
         except Exception as ex:
             msg = "Error writing to remote file %s on host %s - %s"
             logger.error(msg, remote_file, self.host, ex)
             raise SCPError(msg, remote_file, self.host, ex)
         finally:
-            chan.close()
+            self._eagain(chan.flush)
+            self._eagain(chan.send_eof)
+            self._eagain(chan.wait_eof)
+            self._eagain(chan.wait_closed)
 
     def _sftp_openfh(self, open_func, remote_file, *args):
         try:

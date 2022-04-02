@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -15,15 +15,15 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import unittest
-import pwd
-import os
 import logging
+import os
 import subprocess
+import unittest
+from getpass import getuser
 from sys import version_info
 
+from pssh.clients.ssh.single import SSHClient
 from ..embedded_server.openssh import OpenSSHServer
-from pssh.clients.ssh.single import SSHClient, logger as ssh_logger
 
 
 def setup_root_logger():
@@ -44,7 +44,7 @@ USER_CERT_PRIV_KEY = os.path.sep.join([os.path.dirname(__file__), '..', 'unit_te
 USER_CERT_PUB_KEY = "%s.pub" % (USER_CERT_PRIV_KEY,)
 USER_CERT_FILE = "%s-cert.pub" % (USER_CERT_PRIV_KEY,)
 CA_USER_KEY = os.path.sep.join([os.path.dirname(__file__), '..', 'embedded_server', 'ca_user_key'])
-USER = pwd.getpwuid(os.geteuid()).pw_name
+USER = getuser()
 
 
 def sign_cert():

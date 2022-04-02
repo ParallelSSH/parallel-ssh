@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis.
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -20,15 +20,14 @@
 import logging
 
 import gevent.pool
-
-from warnings import warn
 from gevent import joinall, spawn, Timeout as GTimeout
 from gevent.hub import Hub
 
+from ..common import _validate_pkey_path
+from ...config import HostConfig
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-from ...exceptions import HostArgumentError, Timeout, ShellError
+from ...exceptions import HostArgumentError, Timeout, ShellError, HostConfigError
 from ...output import HostOutput
-
 
 Hub.NOT_ERROR = (Exception,)
 logger = logging.getLogger(__name__)
@@ -42,7 +41,22 @@ class BaseParallelSSHClient(object):
                  num_retries=DEFAULT_RETRIES,
                  timeout=120, pool_size=10,
                  host_config=None, retry_delay=RETRY_DELAY,
-                 identity_auth=True):
+                 identity_auth=True,
+                 ipv6_only=False,
+                 proxy_host=None,
+                 proxy_port=None,
+                 proxy_user=None,
+                 proxy_password=None,
+                 proxy_pkey=None,
+                 keepalive_seconds=None,
+                 cert_file=None,
+                 gssapi_auth=False,
+                 gssapi_server_identity=None,
+                 gssapi_client_identity=None,
+                 gssapi_delegate_credentials=False,
+                 forward_ssh_agent=False,
+                 _auth_thread_pool=True,
+                 ):
         self.allow_agent = allow_agent
         self.pool_size = pool_size
         self.pool = gevent.pool.Pool(size=self.pool_size)
@@ -58,6 +72,20 @@ class BaseParallelSSHClient(object):
         self.retry_delay = retry_delay
         self.cmds = None
         self.identity_auth = identity_auth
+        self.ipv6_only = ipv6_only
+        self.proxy_host = proxy_host
+        self.proxy_port = proxy_port
+        self.proxy_user = proxy_user
+        self.proxy_password = proxy_password
+        self.proxy_pkey = proxy_pkey
+        self.keepalive_seconds = keepalive_seconds
+        self.cert_file = cert_file
+        self.forward_ssh_agent = forward_ssh_agent
+        self.gssapi_auth = gssapi_auth
+        self.gssapi_server_identity = gssapi_server_identity
+        self.gssapi_client_identity = gssapi_client_identity
+        self.gssapi_delegate_credentials = gssapi_delegate_credentials
+        self._auth_thread_pool = _auth_thread_pool
         self._check_host_config()
 
     def _validate_hosts(self, _hosts):
@@ -98,12 +126,11 @@ class BaseParallelSSHClient(object):
     def _open_shell(self, host_i, host,
                     encoding='utf-8', read_timeout=None):
         try:
-            _client = self._make_ssh_client(host_i, host)
+            _client = self._get_ssh_client(host_i, host)
             shell = _client.open_shell(
                 encoding=encoding, read_timeout=read_timeout)
             return shell
         except (GTimeout, Exception) as ex:
-            host = ex.host if hasattr(ex, 'host') else None
             logger.error("Failed to run on host %s - %s", host, ex)
             raise ex
 
@@ -171,7 +198,7 @@ class BaseParallelSSHClient(object):
 
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
-                    encoding='utf-8', return_list=True,
+                    encoding='utf-8',
                     *args, **kwargs):
         if host_args:
             try:
@@ -194,22 +221,20 @@ class BaseParallelSSHClient(object):
                     for host_i, host in enumerate(self.hosts)]
         self.cmds = cmds
         joinall(cmds, timeout=self.timeout)
-        return self._get_output_from_cmds(cmds, raise_error=stop_on_errors,
-                                          return_list=return_list)
+        return self._get_output_from_cmds(cmds, raise_error=stop_on_errors)
 
-    def _get_output_from_cmds(self, cmds, raise_error=False,
-                              return_list=True):
-        _cmds = [spawn(self._get_output_from_greenlet, cmd, raise_error=raise_error)
-                 for cmd in cmds]
+    def _get_output_from_cmds(self, cmds, raise_error=False):
+        _cmds = [spawn(self._get_output_from_greenlet, cmd_i, cmd, raise_error=raise_error)
+                 for cmd_i, cmd in enumerate(cmds)]
         finished = joinall(_cmds, raise_error=True)
         return [f.get() for f in finished]
 
-    def _get_output_from_greenlet(self, cmd, raise_error=False):
+    def _get_output_from_greenlet(self, cmd_i, cmd, raise_error=False):
+        host = self.hosts[cmd_i]
         try:
             host_out = cmd.get()
             return host_out
         except (GTimeout, Exception) as ex:
-            host = ex.host if hasattr(ex, 'host') else None
             if isinstance(ex, GTimeout):
                 ex = Timeout()
             if raise_error:
@@ -217,17 +242,11 @@ class BaseParallelSSHClient(object):
             return HostOutput(host, None, None, None,
                               exception=ex)
 
-    def get_last_output(self, cmds=None, timeout=None,
-                        return_list=True):
+    def get_last_output(self, cmds=None):
         """Get output for last commands executed by ``run_command``.
 
         :param cmds: Commands to get output for. Defaults to ``client.cmds``
         :type cmds: list(:py:class:`gevent.Greenlet`)
-        :param timeout: No-op - to be removed.
-        :param return_list: No-op - list of ``HostOutput`` always returned.
-          Parameter kept for backwards compatibility - to be removed in future
-          releases.
-        :type return_list: bool
 
         :rtype: dict or list
         """
@@ -235,51 +254,43 @@ class BaseParallelSSHClient(object):
         if cmds is None:
             return
         return self._get_output_from_cmds(
-            cmds, return_list=return_list,
-            raise_error=False)
+            cmds, raise_error=False)
 
-    def reset_output_generators(self, host_out, timeout=None,
-                                client=None, channel=None,
-                                encoding='utf-8'):
-        """No-op - to be removed."""
-        warn("This function is a no-op and deprecated. "
-             "It will be removed in future releases")
-
-    def _get_host_config_values(self, host_i, host):
+    def _get_host_config(self, host_i, host):
         if self.host_config is None:
-            return self.user, self.port, self.password, self.pkey, \
-                getattr(self, 'proxy_host', None), \
-                getattr(self, 'proxy_port', None), getattr(self, 'proxy_user', None), \
-                getattr(self, 'proxy_password', None), getattr(self, 'proxy_pkey', None)
-        elif isinstance(self.host_config, list):
-            config = self.host_config[host_i]
-            return config.user or self.user, config.port or self.port, \
-                config.password or self.password, config.private_key or self.pkey, \
-                config.proxy_host or getattr(self, 'proxy_host', None), \
-                config.proxy_port or getattr(self, 'proxy_port', None), \
-                config.proxy_user or getattr(self, 'proxy_user', None), \
-                config.proxy_password or getattr(self, 'proxy_password', None), \
-                config.proxy_pkey or getattr(self, 'proxy_pkey', None)
-        elif isinstance(self.host_config, dict):
-            _user = self.host_config.get(host, {}).get('user', self.user)
-            _port = self.host_config.get(host, {}).get('port', self.port)
-            _password = self.host_config.get(host, {}).get(
-                'password', self.password)
-            _pkey = self.host_config.get(host, {}).get('private_key', self.pkey)
-            return _user, _port, _password, _pkey, None, None, None, None, None
+            config = HostConfig(
+                user=self.user, port=self.port, password=self.password, private_key=self.pkey,
+                allow_agent=self.allow_agent, num_retries=self.num_retries, retry_delay=self.retry_delay,
+                timeout=self.timeout, identity_auth=self.identity_auth, proxy_host=self.proxy_host,
+                proxy_port=self.proxy_port, proxy_user=self.proxy_user, proxy_password=self.proxy_password,
+                proxy_pkey=self.proxy_pkey,
+                keepalive_seconds=self.keepalive_seconds,
+                ipv6_only=self.ipv6_only,
+                cert_file=self.cert_file,
+                forward_ssh_agent=self.forward_ssh_agent,
+                gssapi_auth=self.gssapi_auth,
+                gssapi_server_identity=self.gssapi_server_identity,
+                gssapi_client_identity=self.gssapi_client_identity,
+                gssapi_delegate_credentials=self.gssapi_delegate_credentials,
+            )
+            return config
+        elif not isinstance(self.host_config, list):
+            raise HostConfigError("Host configuration of type %s is invalid - valid types are list[HostConfig]",
+                                  type(self.host_config))
+        config = self.host_config[host_i]
+        return config
 
     def _run_command(self, host_i, host, command, sudo=False, user=None,
                      shell=None, use_pty=False,
                      encoding='utf-8', read_timeout=None):
         """Make SSHClient if needed, run command on host"""
         try:
-            _client = self._make_ssh_client(host_i, host)
+            _client = self._get_ssh_client(host_i, host)
             host_out = _client.run_command(
                 command, sudo=sudo, user=user, shell=shell,
                 use_pty=use_pty, encoding=encoding, read_timeout=read_timeout)
             return host_out
         except (GTimeout, Exception) as ex:
-            host = ex.host if hasattr(ex, 'host') else None
             logger.error("Failed to run on host %s - %s", host, ex)
             raise ex
 
@@ -298,8 +309,7 @@ class BaseParallelSSHClient(object):
         :returns: list of greenlets to ``joinall`` with.
         :rtype: list(:py:mod:`gevent.greenlet.Greenlet`)
         """
-        cmds = [self.pool.spawn(self._make_ssh_client, i, host)
-                for i, host in enumerate(self.hosts)]
+        cmds = [self.pool.spawn(self._get_ssh_client, i, host) for i, host in enumerate(self.hosts)]
         return cmds
 
     def _consume_output(self, stdout, stderr):
@@ -308,8 +318,7 @@ class BaseParallelSSHClient(object):
         for line in stderr:
             pass
 
-    def join(self, output=None, consume_output=False, timeout=None,
-             encoding='utf-8'):
+    def join(self, output=None, consume_output=False, timeout=None):
         """Wait until all remote commands in output have finished.
         Does *not* block other commands from running in parallel.
 
@@ -327,10 +336,7 @@ class BaseParallelSSHClient(object):
           self.pool.
           Since self.timeout is passed onto each individual SSH session it is
           **not** used for any parallel functions like `run_command` or `join`.
-        :type timeout: int
-        :param encoding: Unused - encoding from each ``HostOutput`` is used instead.
-          To be removed in future releases.
-        :type encoding: str
+        :type timeout: float
 
         :raises: :py:class:`pssh.exceptions.Timeout` on timeout requested and
           reached with commands still running.
@@ -341,7 +347,7 @@ class BaseParallelSSHClient(object):
         elif not isinstance(output, list):
             raise ValueError("Unexpected output object type")
         cmds = [self.pool.spawn(self._join, host_out, timeout=timeout,
-                                consume_output=consume_output, encoding=encoding)
+                                consume_output=consume_output)
                 for host_i, host_out in enumerate(output)]
         # Errors raised by self._join should be propagated.
         finished_cmds = joinall(cmds, raise_error=True, timeout=timeout)
@@ -356,8 +362,7 @@ class BaseParallelSSHClient(object):
                 timeout, finished_output, unfinished_output,
             )
 
-    def _join(self, host_out, consume_output=False, timeout=None,
-              encoding="utf-8"):
+    def _join(self, host_out, consume_output=False, timeout=None):
         if host_out is None:
             return
         client = host_out.client
@@ -450,13 +455,9 @@ class BaseParallelSSHClient(object):
 
     def _copy_file(self, host_i, host, local_file, remote_file, recurse=False):
         """Make sftp client, copy file"""
-        try:
-            self._make_ssh_client(host_i, host)
-            return self._host_clients[(host_i, host)].copy_file(
-                local_file, remote_file, recurse=recurse)
-        except Exception as ex:
-            ex.host = host
-            raise ex
+        client = self._get_ssh_client(host_i, host)
+        return client.copy_file(
+            local_file, remote_file, recurse=recurse)
 
     def copy_remote_file(self, remote_file, local_file, recurse=False,
                          suffix_separator='_', copy_args=None, **kwargs):
@@ -537,20 +538,36 @@ class BaseParallelSSHClient(object):
     def _copy_remote_file(self, host_i, host, remote_file, local_file, recurse,
                           **kwargs):
         """Make sftp client, copy file to local"""
-        try:
-            self._make_ssh_client(host_i, host)
-            return self._host_clients[(host_i, host)].copy_remote_file(
-                remote_file, local_file, recurse=recurse, **kwargs)
-        except Exception as ex:
-            ex.host = host
-            raise ex
+        client = self._get_ssh_client(host_i, host)
+        return client.copy_remote_file(
+            remote_file, local_file, recurse=recurse, **kwargs)
 
     def _handle_greenlet_exc(self, func, host, *args, **kwargs):
         try:
             return func(*args, **kwargs)
         except Exception as ex:
-            ex.host = host
             raise ex
 
-    def _make_ssh_client(self, host_i, host):
+    def _get_ssh_client(self, host_i, host):
+        logger.debug("Make client request for host %s, (host_i, host) in clients: %s",
+                     host, (host_i, host) in self._host_clients)
+        _client = self._host_clients.get((host_i, host))
+        if _client is not None:
+            return _client
+        cfg = self._get_host_config(host_i, host)
+        _pkey = self.pkey if cfg.private_key is None else cfg.private_key
+        _pkey_data = self._load_pkey_data(_pkey)
+        _client = self._make_ssh_client(host, cfg, _pkey_data)
+        self._host_clients[(host_i, host)] = _client
+        return _client
+
+    def _load_pkey_data(self, _pkey):
+        if isinstance(_pkey, str):
+            _validate_pkey_path(_pkey)
+            with open(_pkey, 'rb') as fh:
+                _pkey_data = fh.read()
+            return _pkey_data
+        return _pkey
+
+    def _make_ssh_client(self, host, cfg, _pkey_data):
         raise NotImplementedError

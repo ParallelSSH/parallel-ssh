@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis.
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -18,7 +18,7 @@
 import logging
 
 from .single import SSHClient
-from ..common import _validate_pkey_path
+from ..common import _validate_pkey_path, _validate_pkey
 from ..base.parallel import BaseParallelSSHClient
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 
@@ -38,7 +38,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
                  gssapi_server_identity=None,
                  gssapi_client_identity=None,
                  gssapi_delegate_credentials=False,
-                 identity_auth=True):
+                 identity_auth=True,
+                 ipv6_only=False,
+                 ):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -52,7 +54,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type port: int
         :param pkey: Private key file path to use. Path must be either absolute
           path or relative to user home directory like ``~/<path>``.
-        :type pkey: str
+          Bytes type input is used as private key data for authentication.
+        :type pkey: str or bytes
         :param cert_file: Public key signed certificate file to use for
           authentication. The corresponding private key must also be provided
           via ``pkey`` parameter.
@@ -65,7 +68,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type num_retries: int
         :param retry_delay: Number of seconds to wait between retries. Defaults
           to :py:class:`pssh.constants.RETRY_DELAY`
-        :type retry_delay: int
+        :type retry_delay: int or float
         :param timeout: (Optional) Individual SSH client timeout setting in
           seconds passed on to each SSH client spawned by `ParallelSSHClient`.
 
@@ -78,7 +81,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           Parallel functions like `run_command` and `join` have a cummulative
           timeout setting that is separate to and
           not affected by `self.timeout`.
-        :type timeout: float
+        :type timeout: int or float
         :param pool_size: (Optional) Greenlet pool size. Controls
           concurrency, on how many hosts to execute tasks in parallel.
           Defaults to 100. Overhead in event
@@ -87,7 +90,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type pool_size: int
         :param host_config: (Optional) Per-host configuration for cases where
           not all hosts use the same configuration.
-        :type host_config: dict
+        :type host_config: list(:py:class:`pssh.config.HostConfig`)
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent. Currently unused - always off.
         :type allow_agent: bool
@@ -95,22 +98,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
           authenticate with default identity files from
           `pssh.clients.base_ssh_client.BaseSSHClient.IDENTITIES`
         :type identity_auth: bool
-        :param proxy_host: (Optional) SSH host to tunnel connection through
-          so that SSH clients connect to host via client -> proxy_host -> host
-        :type proxy_host: str
-        :param proxy_port: (Optional) SSH port to use to login to proxy host if
-          set. Defaults to 22.
-        :type proxy_port: int
-        :param proxy_user: (Optional) User to login to ``proxy_host`` as.
-          Defaults to logged in user.
-        :type proxy_user: str
-        :param proxy_password: (Optional) Password to login to ``proxy_host``
-          with. Defaults to no password.
-        :type proxy_password: str
-        :param proxy_pkey: (Optional) Private key file to be used for
-          authentication with ``proxy_host``. Defaults to available keys from
-          SSHAgent and user's SSH identities.
-        :type proxy_pkey: Private key file path to use.
         :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
           equivalent to `ssh -A` from the `ssh` command line utility.
           Defaults to False if not set.
@@ -123,6 +110,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param gssapi_delegate_credentials: Enable/disable server credentials
           delegation.
         :type gssapi_delegate_credentials: bool
+        :param ipv6_only: Choose IPv6 addresses only if multiple are available
+          for the host or raise NoIPv6AddressFoundError otherwise. Note this will
+          disable connecting to an IPv4 address if an IP address is provided instead.
+        :type ipv6_only: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
@@ -132,8 +123,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
             allow_agent=allow_agent, num_retries=num_retries,
             timeout=timeout, pool_size=pool_size,
             host_config=host_config, retry_delay=retry_delay,
-            identity_auth=identity_auth)
-        self.pkey = _validate_pkey_path(pkey)
+            identity_auth=identity_auth,
+            ipv6_only=ipv6_only,
+        )
+        self.pkey = _validate_pkey(pkey)
         self.cert_file = _validate_pkey_path(cert_file)
         self.forward_ssh_agent = forward_ssh_agent
         self.gssapi_auth = gssapi_auth
@@ -143,8 +136,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8', timeout=None, read_timeout=None,
-                    return_list=False):
+                    encoding='utf-8', read_timeout=None,
+                    ):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output.
 
@@ -193,14 +186,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
           raise :py:class:`pssh.exceptions.Timeout`
           after ``timeout`` number seconds if remote output is not ready.
         :type read_timeout: float
-        :param timeout: Deprecated - use read_timeout. Same as
-          read_timeout and kept for backwards compatibility - to be removed
-          in future release.
-        :type timeout: float
-        :param return_list: No-op - list of ``HostOutput`` always returned.
-          Parameter kept for backwards compatibility - to be removed in future
-          releases.
-        :type return_list: bool
         :rtype: list(:py:class:`pssh.output.HostOutput`)
 
         :raises: :py:class:`pssh.exceptions.AuthenticationError` on
@@ -225,32 +210,22 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, command, stop_on_errors=stop_on_errors, host_args=host_args,
             user=user, shell=shell, sudo=sudo,
             encoding=encoding, use_pty=use_pty,
-            return_list=return_list,
-            read_timeout=read_timeout if read_timeout else timeout,
+            read_timeout=read_timeout,
         )
 
-    def _make_ssh_client(self, host_i, host):
-        logger.debug("Make client request for host %s, (host_i, host) in clients: %s",
-                     host, (host_i, host) in self._host_clients)
-        if (host_i, host) not in self._host_clients \
-           or self._host_clients[(host_i, host)] is None:
-            _user, _port, _password, _pkey, _, _, _, _, _ = \
-                self._get_host_config_values(host_i, host)
-            _client = SSHClient(
-                host, user=_user, password=_password, port=_port,
-                pkey=_pkey,
-                cert_file=self.cert_file,
-                num_retries=self.num_retries,
-                timeout=self.timeout,
-                allow_agent=self.allow_agent, retry_delay=self.retry_delay,
-                gssapi_auth=self.gssapi_auth,
-                gssapi_server_identity=self.gssapi_server_identity,
-                gssapi_client_identity=self.gssapi_client_identity,
-                gssapi_delegate_credentials=self.gssapi_delegate_credentials,
-                identity_auth=self.identity_auth,
-            )
-            self._host_clients[(host_i, host)] = _client
-            # TODO - Add forward agent functionality
-            # forward_ssh_agent=self.forward_ssh_agent)
-            return _client
-        return self._host_clients[(host_i, host)]
+    def _make_ssh_client(self, host, cfg, _pkey_data):
+        _client = SSHClient(
+            host, user=cfg.user or self.user, password=cfg.password or self.password, port=cfg.port or self.port,
+            pkey=_pkey_data, num_retries=cfg.num_retries or self.num_retries,
+            timeout=cfg.timeout or self.timeout,
+            allow_agent=cfg.allow_agent or self.allow_agent, retry_delay=cfg.retry_delay or self.retry_delay,
+            _auth_thread_pool=cfg.auth_thread_pool or self._auth_thread_pool,
+            identity_auth=cfg.identity_auth or self.identity_auth,
+            ipv6_only=cfg.ipv6_only or self.ipv6_only,
+            gssapi_auth=self.gssapi_auth,
+            gssapi_server_identity=self.gssapi_server_identity,
+            gssapi_client_identity=self.gssapi_client_identity,
+            gssapi_delegate_credentials=self.gssapi_delegate_credentials,
+            cert_file=cfg.cert_file,
+        )
+        return _client

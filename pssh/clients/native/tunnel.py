@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis.
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -90,10 +90,8 @@ class LocalForwarder(Thread):
 
     def _cleanup_servers(self):
         for client in list(self._servers.keys()):
-            server = self._servers[client]
             if client.sock is None or client.sock.closed:
-                server.stop()
-                del self._servers[client]
+                self.cleanup_server(client)
 
     def run(self):
         """Thread runner ensures a non main hub has been created for all subsequent
@@ -114,9 +112,15 @@ class LocalForwarder(Thread):
                     continue
                 self._start_server()
         except Exception:
-            logger.error("Tunnel thread caught exception and will exit:",
-                         exc_info=1)
+            logger.exception("Tunnel thread caught exception and will exit:")
             self.shutdown()
+
+    def cleanup_server(self, client):
+        """The purpose of this function is for a proxied client to notify the LocalForwarder that it
+         is shutting down and its corresponding server can also be shut down."""
+        server = self._servers[client]
+        server.stop()
+        del self._servers[client]
 
 
 class TunnelServer(StreamServer):
@@ -136,6 +140,7 @@ class TunnelServer(StreamServer):
         self._client = client
         self._retries = num_retries
         self.bind_address = bind_address
+        self.exception = None
 
     @property
     def listen_port(self):
@@ -159,15 +164,18 @@ class TunnelServer(StreamServer):
         logger.debug("Waiting for read/write greenlets")
         self._source_let = source
         self._dest_let = dest
-        self._wait_send_receive_lets(source, dest, channel, socket)
+        self._wait_send_receive_lets(source, dest, channel)
 
-    def _wait_send_receive_lets(self, source, dest, channel, forward_sock):
+    def _wait_send_receive_lets(self, source, dest, channel):
         try:
             joinall((source, dest), raise_error=True)
         finally:
-            logger.debug("Closing channel and forward socket")
+            # Forward socket does not need to be closed here; StreamServer does it in do_close
+            logger.debug("Closing channel")
             self._client.close_channel(channel)
-            forward_sock.close()
+
+            # Disconnect client here to make sure it happens AFTER close_channel
+            self._client.disconnect()
 
     def _read_forward_sock(self, forward_sock, channel):
         while True:

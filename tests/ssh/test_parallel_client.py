@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -15,23 +15,20 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import unittest
 import os
-import subprocess
+import unittest
 from datetime import datetime
 from sys import version_info
+from unittest.mock import patch, MagicMock
 
-from gevent import joinall, spawn, socket, Greenlet, sleep
+from gevent import joinall, spawn, socket, sleep
+
 from pssh import logger as pssh_logger
-from pssh.output import HostOutput
-from pssh.exceptions import UnknownHostException, \
-    AuthenticationException, ConnectionErrorException, SessionError, \
-    HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
-    ProxyError, PKeyFileError
 from pssh.clients.ssh.parallel import ParallelSSHClient
-
+from pssh.exceptions import AuthenticationException, ConnectionErrorException, Timeout, PKeyFileError
+from pssh.output import HostOutput
 from .base_ssh_case import PKEY_FILENAME, PUB_FILE, USER_CERT_PRIV_KEY, \
-    USER_CERT_PUB_KEY, USER_CERT_FILE, CA_USER_KEY, USER, sign_cert
+    USER_CERT_FILE, CA_USER_KEY, USER, sign_cert
 from ..embedded_server.openssh import OpenSSHServer
 
 
@@ -82,17 +79,24 @@ class LibSSHParallelTest(unittest.TestCase):
         return listen_port
 
     def test_timeout_on_open_session(self):
-        timeout = 1
+        timeout = .1
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key,
                                    timeout=timeout,
                                    num_retries=1)
-        def _session(timeout=1):
-            sleep(timeout+1)
+
+        def _session(_=None):
+            sleep(.2)
         joinall(client.connect_auth())
         sleep(.01)
         client._host_clients[(0, self.host)].open_session = _session
         self.assertRaises(Timeout, client.run_command, self.cmd)
+
+    def test_pkey_from_memory(self):
+        with open(self.user_key, 'rb') as fh:
+            key = fh.read()
+        client = ParallelSSHClient([self.host], pkey=key, port=self.port, num_retries=1)
+        joinall(client.connect_auth(), raise_error=True)
 
     def test_join_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
@@ -231,14 +235,14 @@ class LibSSHParallelTest(unittest.TestCase):
         self.assertIsNotNone(output[1].exception,
                              msg="Failed host %s has no exception in output - %s" % (hosts[1], output,))
         self.assertTrue(output[1].exception is not None)
-        self.assertEqual(output[1].exception.host, hosts[1])
+        self.assertEqual(output[1].host, hosts[1])
+        self.assertEqual(output[1].exception.args[-2], hosts[1])
         try:
             raise output[1].exception
         except ConnectionErrorException:
             pass
         else:
-            raise Exception("Expected ConnectionError, got %s instead" % (
-                output[1].exception,))
+            raise Exception("Expected ConnectionError, got %s instead" % (output[1].exception,))
 
     def test_pssh_client_timeout(self):
         # 1ms timeout
@@ -260,7 +264,8 @@ class LibSSHParallelTest(unittest.TestCase):
         client = ParallelSSHClient([host], port=self.port,
                                    pkey=self.user_key,
                                    timeout=client_timeout,
-                                   num_retries=1)
+                                   num_retries=1,
+                                   retry_delay=.1)
         output = client.run_command('sleep 1', stop_on_errors=False)
         self.assertIsInstance(output[0].exception, ConnectionErrorException)
 
@@ -309,18 +314,13 @@ class LibSSHParallelTest(unittest.TestCase):
                                    num_retries=1)
         output = client.run_command(self.cmd, stop_on_errors=False)
         client.join(output)
-        self.assertIsNotNone(output[0].exception,
-                             msg="Got no exception for host %s - expected connection error" % (
-                                 host,))
+        self.assertIsInstance(output[0].exception, ConnectionErrorException)
+        self.assertEqual(output[0].host, host)
         try:
             raise output[0].exception
         except ConnectionErrorException as ex:
-            self.assertEqual(ex.host, host,
-                             msg="Exception host argument is %s, should be %s" % (
-                                 ex.host, host,))
-            self.assertEqual(ex.args[2], port,
-                             msg="Exception port argument is %s, should be %s" % (
-                                 ex.args[2], port,))
+            self.assertEqual(ex.args[-2], host)
+            self.assertEqual(ex.args[-1], port)
         else:
             raise Exception("Expected ConnectionErrorException")
 
@@ -370,7 +370,7 @@ class LibSSHParallelTest(unittest.TestCase):
     def test_read_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)
-        output = client.run_command('sleep .3; echo me; echo me; echo me', timeout=.2)
+        output = client.run_command('sleep .3; echo me; echo me; echo me', read_timeout=.2)
         for host_out in output:
             self.assertRaises(Timeout, list, host_out.stdout)
         self.assertFalse(output[0].channel.is_eof())
@@ -412,7 +412,7 @@ class LibSSHParallelTest(unittest.TestCase):
         with open(_file, 'wb') as fh:
             fh.writelines(contents)
         try:
-            output = self.client.run_command('cat %s' % (_file,), timeout=10)
+            output = self.client.run_command('cat %s' % (_file,), read_timeout=10)
             _out = list(output[0].stdout)
         finally:
             os.unlink(_file)
@@ -439,7 +439,7 @@ class LibSSHParallelTest(unittest.TestCase):
         self.assertRaises(AuthenticationException, client.run_command, self.cmd)
 
     def test_long_running_cmd_join_timeout(self):
-        output = self.client.run_command('sleep 1', return_list=True)
+        output = self.client.run_command('sleep 1')
         self.assertRaises(Timeout, self.client.join, output, timeout=0.2)
 
     def test_default_finished(self):
@@ -459,11 +459,11 @@ class LibSSHParallelTest(unittest.TestCase):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key)
         for _ in range(5):
-            output = client.run_command(self.cmd, return_list=True)
+            output = client.run_command(self.cmd)
             client.join(output, timeout=1, consume_output=True)
             for host_out in output:
                 self.assertTrue(host_out.client.finished(host_out.channel))
-        output = client.run_command('sleep .2', return_list=True)
+        output = client.run_command('sleep .2')
         self.assertRaises(Timeout, client.join, output, timeout=.1, consume_output=True)
         for host_out in output:
             self.assertFalse(host_out.client.finished(host_out.channel))
@@ -493,6 +493,26 @@ class LibSSHParallelTest(unittest.TestCase):
         self.assertIsNone(self.client._join(out))
         self.assertIsNone(self.client._join(None))
         self.assertIsNone(self.client.join([None]))
+
+    @patch('pssh.clients.base.single.socket')
+    def test_ipv6(self, gsocket):
+        hosts = ['::1']
+        client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key, num_retries=1)
+        addr_info = ('::1', self.port, 0, 0)
+        gsocket.IPPROTO_TCP = socket.IPPROTO_TCP
+        gsocket.socket = MagicMock()
+        _sock = MagicMock()
+        gsocket.socket.return_value = _sock
+        sock_con = MagicMock()
+        _sock.connect = sock_con
+        getaddrinfo = MagicMock()
+        gsocket.getaddrinfo = getaddrinfo
+        getaddrinfo.return_value = [(
+            socket.AF_INET6, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info)]
+        output = client.run_command(self.cmd, stop_on_errors=False)
+        for host_out in output:
+            self.assertEqual(hosts[0], host_out.host)
+            self.assertIsInstance(host_out.exception, TypeError)
 
     # def test_multiple_run_command_timeout(self):
     #     client = ParallelSSHClient([self.host], port=self.port,

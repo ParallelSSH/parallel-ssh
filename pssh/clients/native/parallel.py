@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis.
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -18,11 +18,10 @@
 import logging
 
 from .single import SSHClient
-from ..common import _validate_pkey_path
 from ..base.parallel import BaseParallelSSHClient
+from ..common import _validate_pkey
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import HostArgumentError
-
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +34,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
                  allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
                  proxy_host=None, proxy_port=None,
                  proxy_user=None, proxy_password=None, proxy_pkey=None,
-                 forward_ssh_agent=False, tunnel_timeout=None,
-                 keepalive_seconds=60, identity_auth=True):
+                 forward_ssh_agent=False,
+                 keepalive_seconds=60, identity_auth=True,
+                 ipv6_only=False,
+                 ):
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -48,15 +49,17 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param port: (Optional) Port number to use for SSH connection. Defaults
           to 22.
         :type port: int
-        :param pkey: Private key file path to use. Path must be either absolute
+        :param pkey: Private key file path or private key data to use.
+          Paths must be str type and either absolute
           path or relative to user home directory like ``~/<path>``.
-        :type pkey: str
+          Bytes type input is used as private key data for authentication.
+        :type pkey: str or bytes
         :param num_retries: (Optional) Number of connection and authentication
           attempts before the client gives up. Defaults to 3.
         :type num_retries: int
         :param retry_delay: Number of seconds to wait between retries. Defaults
           to :py:class:`pssh.constants.RETRY_DELAY`
-        :type retry_delay: int
+        :type retry_delay: int or float
         :param timeout: (Optional) Global timeout setting in seconds for all remote
           operations including all SSH client operations DNS, opening connections,
           reading output from remote servers,  et al.
@@ -71,7 +74,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           Host output read timeout can also be set separately via
           ``run_command(<..>, read_timeout=<seconds>)``
           Defaults to OS default - usually 60 seconds.
-        :type timeout: float
+        :type timeout: int or float
         :param pool_size: (Optional) Greenlet pool size. Controls
           concurrency, on how many hosts to execute tasks in parallel.
           Defaults to 100. Overhead in event
@@ -80,7 +83,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type pool_size: int
         :param host_config: (Optional) Per-host configuration for cases where
           not all hosts use the same configuration.
-        :type host_config: dict
+        :type host_config: list(:py:class:`pssh.config.HostConfig`)
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent.
         :type allow_agent: bool
@@ -103,13 +106,15 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param proxy_pkey: (Optional) Private key file to be used for
           authentication with ``proxy_host``. Defaults to available keys from
           SSHAgent and user's SSH identities.
-        :type proxy_pkey: str
-        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding -
-          equivalent to `ssh -A` from the `ssh` command line utility.
-          Defaults to False if not set.
-          Requires agent forwarding implementation in libssh2 version used.
+          Bytes type input is used as private key data for authentication.
+        :type proxy_pkey: str or bytes
+        :param forward_ssh_agent: (Optional) Turn on SSH agent forwarding.
+          Currently unused.
         :type forward_ssh_agent: bool
-        :param tunnel_timeout: No-op - to be removed.
+        :param ipv6_only: Choose IPv6 addresses only if multiple are available
+          for the host(s) or raise NoIPv6AddressFoundError otherwise. Note this will
+          disable connecting to an IPv4 address if an IP address is provided instead.
+        :type ipv6_only: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
@@ -119,11 +124,13 @@ class ParallelSSHClient(BaseParallelSSHClient):
             allow_agent=allow_agent, num_retries=num_retries,
             timeout=timeout, pool_size=pool_size,
             host_config=host_config, retry_delay=retry_delay,
-            identity_auth=identity_auth)
-        self.pkey = _validate_pkey_path(pkey)
+            identity_auth=identity_auth,
+            ipv6_only=ipv6_only,
+        )
+        self.pkey = _validate_pkey(pkey)
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
-        self.proxy_pkey = _validate_pkey_path(proxy_pkey)
+        self.proxy_pkey = _validate_pkey(proxy_pkey)
         self.proxy_user = proxy_user
         self.proxy_password = proxy_password
         self.forward_ssh_agent = forward_ssh_agent
@@ -131,8 +138,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8', timeout=None, read_timeout=None,
-                    return_list=False):
+                    encoding='utf-8', read_timeout=None,
+                    ):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output.
 
@@ -181,14 +188,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
           raise :py:class:`pssh.exceptions.Timeout`
           after ``timeout`` seconds when set if remote output is not ready.
         :type read_timeout: float
-        :param timeout: Deprecated - use read_timeout. Same as
-          read_timeout and kept for backwards compatibility - to be removed
-          in future release.
-        :type timeout: float
-        :param return_list: No-op - list of ``HostOutput`` always returned.
-          Parameter kept for backwards compatibility - to be removed in future
-          releases.
-        :type return_list: bool
         :rtype: list(:py:class:`pssh.output.HostOutput`)
 
         :raises: :py:class:`pssh.exceptions.AuthenticationError` on
@@ -214,7 +213,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, command, stop_on_errors=stop_on_errors, host_args=host_args,
             user=user, shell=shell, sudo=sudo,
             encoding=encoding, use_pty=use_pty,
-            return_list=return_list, read_timeout=read_timeout if read_timeout else timeout,
+            read_timeout=read_timeout,
         )
 
     def __del__(self):
@@ -228,32 +227,24 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 pass
             del s_client
 
-    def _make_ssh_client(self, host_i, host):
-        auth_thread_pool = True
-        logger.debug("Make client request for host %s, %s, (host_i, host) in clients: %s",
-                     host_i, host, (host_i, host) in self._host_clients)
-        if (host_i, host) not in self._host_clients \
-           or self._host_clients[(host_i, host)] is None:
-            _user, _port, _password, _pkey, proxy_host, proxy_port, proxy_user, \
-                proxy_password, proxy_pkey = self._get_host_config_values(host_i, host)
-            _client = SSHClient(
-                host, user=_user, password=_password, port=_port,
-                pkey=_pkey, num_retries=self.num_retries,
-                timeout=self.timeout,
-                allow_agent=self.allow_agent, retry_delay=self.retry_delay,
-                proxy_host=proxy_host,
-                proxy_port=proxy_port,
-                proxy_user=proxy_user,
-                proxy_password=proxy_password,
-                proxy_pkey=proxy_pkey,
-                _auth_thread_pool=auth_thread_pool,
-                forward_ssh_agent=self.forward_ssh_agent,
-                keepalive_seconds=self.keepalive_seconds,
-                identity_auth=self.identity_auth,
-            )
-            self._host_clients[(host_i, host)] = _client
-            return _client
-        return self._host_clients[(host_i, host)]
+    def _make_ssh_client(self, host, cfg, _pkey_data):
+        _client = SSHClient(
+            host, user=cfg.user or self.user, password=cfg.password or self.password, port=cfg.port or self.port,
+            pkey=_pkey_data, num_retries=cfg.num_retries or self.num_retries,
+            timeout=cfg.timeout or self.timeout,
+            allow_agent=cfg.allow_agent or self.allow_agent, retry_delay=cfg.retry_delay or self.retry_delay,
+            proxy_host=cfg.proxy_host or self.proxy_host,
+            proxy_port=cfg.proxy_port or self.proxy_port,
+            proxy_user=cfg.proxy_user or self.proxy_user,
+            proxy_password=cfg.proxy_password or self.proxy_password,
+            proxy_pkey=cfg.proxy_pkey or self.proxy_pkey,
+            _auth_thread_pool=cfg.auth_thread_pool or self._auth_thread_pool,
+            forward_ssh_agent=cfg.forward_ssh_agent or self.forward_ssh_agent,
+            keepalive_seconds=cfg.keepalive_seconds or self.keepalive_seconds,
+            identity_auth=cfg.identity_auth or self.identity_auth,
+            ipv6_only=cfg.ipv6_only or self.ipv6_only,
+        )
+        return _client
 
     def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel via SFTP.
@@ -291,7 +282,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           local_file and recurse is not set
         :raises: :py:class:`pssh.exceptions.HostArgumentError` on number of
           per-host copy arguments not equal to number of hosts
-        :raises: :py:class:`pss.exceptions.SFTPError` on SFTP initialisation
+        :raises: :py:class:`pssh.exceptions.SFTPError` on SFTP initialisation
           errors
         :raises: :py:class:`pssh.exceptions.SFTPIOError` on I/O errors writing
           via SFTP
@@ -358,7 +349,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           local_file and recurse is not set
         :raises: :py:class:`pssh.exceptions.HostArgumentError` on number of
           per-host copy arguments not equal to number of hosts
-        :raises: :py:class:`pss.exceptions.SFTPError` on SFTP initialisation
+        :raises: :py:class:`pssh.exceptions.SFTPError` on SFTP initialisation
           errors
         :raises: :py:class:`pssh.exceptions.SFTPIOError` on I/O errors reading
           from SFTP
@@ -379,13 +370,13 @@ class ParallelSSHClient(BaseParallelSSHClient):
             encoding=encoding)
 
     def _scp_send(self, host_i, host, local_file, remote_file, recurse=False):
-        self._make_ssh_client(host_i, host)
+        self._get_ssh_client(host_i, host)
         return self._handle_greenlet_exc(
             self._host_clients[(host_i, host)].scp_send, host,
             local_file, remote_file, recurse=recurse)
 
     def _scp_recv(self, host_i, host, remote_file, local_file, recurse=False):
-        self._make_ssh_client(host_i, host)
+        self._get_ssh_client(host_i, host)
         return self._handle_greenlet_exc(
             self._host_clients[(host_i, host)].scp_recv, host,
             remote_file, local_file, recurse=recurse)
@@ -419,7 +410,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :rtype: list(:py:class:`gevent.Greenlet`) of greenlets for remote copy
           commands.
 
-        :raises: :py:class:`pss.exceptions.SCPError` on errors copying file.
+        :raises: :py:class:`pssh.exceptions.SCPError` on errors copying file.
         :raises: :py:class:`OSError` on local OS errors like permission denied.
         """
         copy_args = [{'local_file': local_file,
@@ -491,7 +482,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           local_file and recurse is not set.
         :raises: :py:class:`pssh.exceptions.HostArgumentError` on number of
           per-host copy arguments not equal to number of hosts.
-        :raises: :py:class:`pss.exceptions.SCPError` on errors copying file.
+        :raises: :py:class:`pssh.exceptions.SCPError` on errors copying file.
         :raises: :py:class:`OSError` on local OS errors like permission denied.
 
         .. note ::

@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2020 Panos Kittenis
+# Copyright (C) 2014-2022 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -16,26 +16,29 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import os
-import subprocess
 import shutil
+import subprocess
 import tempfile
-from hashlib import sha256
 from datetime import datetime
+from hashlib import sha256
+from tempfile import NamedTemporaryFile
+from unittest.mock import MagicMock, call, patch
 
-from gevent import sleep, spawn, Timeout as GTimeout
-
-from pssh.clients.native import SSHClient
-from ssh2.session import Session
+import pytest
+from gevent import sleep, spawn, Timeout as GTimeout, socket
+from pytest import raises
 from ssh2.exceptions import (SocketDisconnectError, BannerRecvError, SocketRecvError,
                              AgentConnectionError, AgentListIdentitiesError,
                              AgentAuthenticationError, AgentGetIdentityError, SFTPProtocolError,
                              AuthenticationError as SSH2AuthenticationError,
                              )
+from ssh2.session import Session
+
+from pssh.clients.native import SSHClient
 from pssh.exceptions import (AuthenticationException, ConnectionErrorException,
                              SessionError, SFTPIOError, SFTPError, SCPError, PKeyFileError, Timeout,
-                             AuthenticationError,
+                             AuthenticationError, NoIPv6AddressFoundError, ConnectionError
                              )
-
 from .base_ssh2_case import SSH2TestCase
 
 
@@ -85,6 +88,73 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertRaises(
             SFTPIOError, client.copy_remote_file, 'fake_remote_file_not_exists', 'local')
 
+    def test_conn_refused(self):
+        with pytest.raises(ConnectionRefusedError):
+            SSHClient('127.0.0.99', port=self.port, num_retries=1, timeout=1)
+
+    @patch('pssh.clients.base.single.socket')
+    def test_ipv6(self, gsocket):
+        # As of Oct 2021, CircleCI does not support IPv6 in its containers.
+        # Rather than having to create and manage our own docker containers just for testing, we patch gevent.socket
+        # and test it unit test style.
+        # Not ideal, but managing our own containers for one test is worse.
+        host = '::1'
+        addr_info = ('::1', self.port, 0, 0)
+        gsocket.IPPROTO_TCP = socket.IPPROTO_TCP
+        gsocket.socket = MagicMock()
+        _sock = MagicMock()
+        gsocket.socket.return_value = _sock
+        sock_con = MagicMock()
+        sock_con.side_effect = ConnectionRefusedError
+        _sock.connect = sock_con
+        getaddrinfo = MagicMock()
+        gsocket.getaddrinfo = getaddrinfo
+        getaddrinfo.return_value = [(
+            socket.AF_INET6, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info)]
+        with raises(ConnectionError):
+            client = SSHClient(host, port=self.port, pkey=self.user_key,
+                               num_retries=1)
+        getaddrinfo.assert_called_once_with(host, self.port, proto=socket.IPPROTO_TCP)
+        sock_con.assert_called_once_with(addr_info)
+
+    @patch('pssh.clients.base.single.socket')
+    def test_multiple_available_addr(self, gsocket):
+        host = '127.0.0.1'
+        addr_info = (host, self.port)
+        gsocket.IPPROTO_TCP = socket.IPPROTO_TCP
+        gsocket.socket = MagicMock()
+        _sock = MagicMock()
+        gsocket.socket.return_value = _sock
+        sock_con = MagicMock()
+        sock_con.side_effect = ConnectionRefusedError
+        _sock.connect = sock_con
+        getaddrinfo = MagicMock()
+        gsocket.getaddrinfo = getaddrinfo
+        getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info),
+            (socket.AF_INET, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info),
+        ]
+        with raises(ConnectionError):
+            client = SSHClient(host, port=self.port, pkey=self.user_key,
+                               num_retries=1)
+        getaddrinfo.assert_called_with(host, self.port, proto=socket.IPPROTO_TCP)
+        assert sock_con.call_count == len(getaddrinfo.return_value)
+
+    def test_no_ipv6(self):
+        try:
+            SSHClient(self.host,
+                      port=self.port, pkey=self.user_key,
+                      num_retries=1, ipv6_only=True)
+        except NoIPv6AddressFoundError as ex:
+            self.assertEqual(len(ex.args), 3)
+            self.assertIsInstance(ex.args[2], list)
+            self.assertTrue(len(ex.args[2]) > 0)
+            _host, _port = ex.args[2][0]
+            self.assertEqual(_host, self.host)
+            self.assertEqual(_port, self.port)
+        else:
+            raise AssertionError
+
     def test_scp_fail(self):
         self.assertRaises(SCPError, self.client.scp_recv, 'fakey', 'fake')
         try:
@@ -95,6 +165,12 @@ class SSH2ClientTest(SSH2TestCase):
             self.assertRaises(ValueError, self.client.scp_send, 'adir', 'fake')
         finally:
             os.rmdir('adir')
+
+    def test_pkey_from_memory(self):
+        with open(self.user_key, 'rb') as fh:
+            key_data = fh.read()
+        SSHClient(self.host, port=self.port,
+                  pkey=key_data, num_retries=1, timeout=1)
 
     def test_execute(self):
         host_out = self.client.run_command(self.cmd)
@@ -307,7 +383,7 @@ class SSH2ClientTest(SSH2TestCase):
             raise AssertionError
 
     def test_retry_failure(self):
-        self.assertRaises(ConnectionErrorException,
+        self.assertRaises(ConnectionError,
                           SSHClient, self.host, port=12345,
                           num_retries=2, _auth_thread_pool=False,
                           retry_delay=.1,
@@ -326,10 +402,10 @@ class SSH2ClientTest(SSH2TestCase):
 
     def test_connection_timeout(self):
         cmd = spawn(SSHClient, 'fakehost.com', port=12345,
-                    num_retries=1, timeout=1, _auth_thread_pool=False)
+                    num_retries=1, timeout=.1, _auth_thread_pool=False)
         # Should fail within greenlet timeout, otherwise greenlet will
         # raise timeout which will fail the test
-        self.assertRaises(ConnectionErrorException, cmd.get, timeout=2)
+        self.assertRaises(ConnectionErrorException, cmd.get, timeout=1)
 
     def test_client_read_timeout(self):
         client = SSHClient(self.host, port=self.port,
@@ -519,6 +595,23 @@ class SSH2ClientTest(SSH2TestCase):
             except Exception:
                 pass
 
+    def test_copy_file_with_newlines(self):
+        with NamedTemporaryFile('wb') as temp_file:
+            # 2MB
+            for _ in range(200512):
+                temp_file.write(b'asdfartkj\n')
+            temp_file.flush()
+            now = datetime.now()
+            try:
+                self.client.copy_file(os.path.abspath(temp_file.name), 'write_file')
+                took = datetime.now() - now
+                assert took.total_seconds() < 1
+            finally:
+                try:
+                    os.unlink(os.path.expanduser('~/write_file'))
+                except OSError:
+                    pass
+
     def test_sftp_mkdir_abspath(self):
         remote_dir = '/tmp/dir_to_create/dir1/dir2/dir3'
         _sftp = self.client._make_sftp()
@@ -561,27 +654,22 @@ class SSH2ClientTest(SSH2TestCase):
                 os.unlink(_path)
             except OSError:
                 pass
+        sha = sha256()
         try:
             with open(file_path_from, 'wb') as fh:
-                # ~300MB
-                for _ in range(20000000):
-                    fh.write(b"adsfasldkfjabafj")
+                for _ in range(10000):
+                    data = os.urandom(1024)
+                    fh.write(data)
+                    sha.update(data)
+            source_file_sha = sha.hexdigest()
             self.client.scp_recv(file_path_from, file_copy_to_dirpath)
             self.assertTrue(os.path.isfile(file_copy_to_dirpath))
-            read_file_size = os.stat(file_path_from).st_size
-            written_file_size = os.stat(file_copy_to_dirpath).st_size
-            self.assertEqual(read_file_size, written_file_size)
-            sha = sha256()
-            with open(file_path_from, 'rb') as fh:
-                for block in fh:
-                    sha.update(block)
-            read_file_hash = sha.hexdigest()
             sha = sha256()
             with open(file_copy_to_dirpath, 'rb') as fh:
                 for block in fh:
                     sha.update(block)
             written_file_hash = sha.hexdigest()
-            self.assertEqual(read_file_hash, written_file_hash)
+            self.assertEqual(source_file_sha, written_file_hash)
         finally:
             for _path in (file_path_from, file_copy_to_dirpath):
                 try:
@@ -632,29 +720,22 @@ class SSH2ClientTest(SSH2TestCase):
                 os.unlink(_path)
             except OSError:
                 pass
+        sha = sha256()
         try:
             with open(file_path_from, 'wb') as fh:
-                # ~300MB
-                for _ in range(20000000):
-                    fh.write(b"adsfasldkfjabafj")
+                for _ in range(10000):
+                    data = os.urandom(1024)
+                    fh.write(data)
+                    sha.update(data)
+            source_file_sha = sha.hexdigest()
             self.client.scp_send(file_path_from, file_copy_to_dirpath)
             self.assertTrue(os.path.isfile(file_copy_to_dirpath))
-            # OS file flush race condition
-            sleep(.1)
-            read_file_size = os.stat(file_path_from).st_size
-            written_file_size = os.stat(file_copy_to_dirpath).st_size
-            self.assertEqual(read_file_size, written_file_size)
-            sha = sha256()
-            with open(file_path_from, 'rb') as fh:
-                for block in fh:
-                    sha.update(block)
-            read_file_hash = sha.hexdigest()
             sha = sha256()
             with open(file_copy_to_dirpath, 'rb') as fh:
                 for block in fh:
                     sha.update(block)
             written_file_hash = sha.hexdigest()
-            self.assertEqual(read_file_hash, written_file_hash)
+            self.assertEqual(source_file_sha, written_file_hash)
         finally:
             for _path in (file_path_from, file_copy_to_dirpath):
                 try:
@@ -934,6 +1015,29 @@ class SSH2ClientTest(SSH2TestCase):
         client._disconnect_eagain = _disc
         client._connect_init_session_retry(1)
         client.disconnect()
+
+    def test_copy_remote_dir_encoding(self):
+        client = SSHClient(self.host, port=self.port,
+                           pkey=self.user_key,
+                           num_retries=1)
+        remote_file_mock = MagicMock()
+        suffix = b"\xbc"
+        encoding = 'latin-1'
+        encoded_fn = suffix.decode(encoding)
+        file_list = [suffix + b"1", suffix + b"2"]
+        client.copy_remote_file = remote_file_mock
+        local_dir = (b"l_dir" + suffix).decode(encoding)
+        remote_dir = (b"r_dir" + suffix).decode(encoding)
+        client._copy_remote_dir(
+            file_list, local_dir, remote_dir, None, encoding=encoding)
+        call_args = [call(local_dir + "/" + file_list[0].decode(encoding),
+                          remote_dir + "/" + file_list[0].decode(encoding),
+                          recurse=True, sftp=None, encoding=encoding),
+                     call(local_dir + "/" + file_list[1].decode(encoding),
+                          remote_dir + "/" + file_list[1].decode(encoding),
+                          recurse=True, sftp=None, encoding=encoding)
+                     ]
+        self.assertListEqual(remote_file_mock.call_args_list, call_args)
 
 
     # TODO
