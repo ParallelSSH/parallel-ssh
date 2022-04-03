@@ -10,7 +10,7 @@ client = ParallelSSHClient(hosts)
 cmds = ['sleep 5; uname' for _ in range(10)]
 start = datetime.datetime.now()
 for cmd in cmds:
-    output.append(client.run_command(cmd, stop_on_errors=False, return_list=True))
+    output.append(client.run_command(cmd, stop_on_errors=False))
 end = datetime.datetime.now()
 print("Started %s 'sleep 5' commands on %s host(s) in %s" % (
     len(cmds), len(hosts), end-start,))
