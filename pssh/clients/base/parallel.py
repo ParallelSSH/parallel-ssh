@@ -23,7 +23,7 @@ import gevent.pool
 from gevent import joinall, spawn, Timeout as GTimeout
 from gevent.hub import Hub
 
-from ..common import _validate_pkey_path
+from ..common import _validate_pkey_path, _validate_pkey
 from ...config import HostConfig
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import HostArgumentError, Timeout, ShellError, HostConfigError
@@ -64,7 +64,7 @@ class BaseParallelSSHClient(object):
         self.user = user
         self.password = password
         self.port = port
-        self.pkey = pkey
+        self.pkey = _validate_pkey(pkey)
         self.__pkey_data = self._load_pkey_data(pkey) if pkey is not None else None
         self.num_retries = num_retries
         self.timeout = timeout
@@ -570,12 +570,12 @@ class BaseParallelSSHClient(object):
         return _client
 
     def _load_pkey_data(self, _pkey):
-        if isinstance(_pkey, str):
-            _validate_pkey_path(_pkey)
-            with open(_pkey, 'rb') as fh:
-                _pkey_data = fh.read()
-            return _pkey_data
-        return _pkey
+        if not isinstance(_pkey, str):
+            return _pkey
+        _pkey = _validate_pkey_path(_pkey)
+        with open(_pkey, 'rb') as fh:
+            _pkey_data = fh.read()
+        return _pkey_data
 
     def _make_ssh_client(self, host, cfg, _pkey_data):
         raise NotImplementedError

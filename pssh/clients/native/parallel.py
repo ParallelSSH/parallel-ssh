@@ -127,7 +127,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
             identity_auth=identity_auth,
             ipv6_only=ipv6_only,
         )
-        self.pkey = _validate_pkey(pkey)
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
         self.proxy_pkey = _validate_pkey(proxy_pkey)

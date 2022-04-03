@@ -18,10 +18,9 @@
 import logging
 
 from .single import SSHClient
-from ..common import _validate_pkey_path, _validate_pkey
 from ..base.parallel import BaseParallelSSHClient
+from ..common import _validate_pkey_path
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +125,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
             identity_auth=identity_auth,
             ipv6_only=ipv6_only,
         )
-        self.pkey = _validate_pkey(pkey)
         self.cert_file = _validate_pkey_path(cert_file)
         self.forward_ssh_agent = forward_ssh_agent
         self.gssapi_auth = gssapi_auth
