@@ -26,10 +26,10 @@ New users should start with `pssh.clients.ParallelSSHClient.run_command` and
 See also `pssh.clients.ParallelSSHClient` and pssh.clients.SSHClient`
 for class documentation.
 """
-
-
 from logging import getLogger, NullHandler
+
 from ._version import get_versions
+
 __version__ = get_versions()['version']
 del get_versions
 
