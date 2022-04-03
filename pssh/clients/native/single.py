@@ -569,6 +569,9 @@ class SSHClient(BaseSSHClient):
         :type local_file: str
         :param recurse: Whether or not to recursively copy directories
         :type recurse: bool
+        :param sftp: The SFTP channel to use instead of creating a new one.
+          Only used when ``recurse`` is ``True``.
+        :type sftp: :py:class:`ssh2.sftp.SFTP`
         :param encoding: Encoding to use for file paths when recursion is
           enabled.
         :type encoding: str
