@@ -389,6 +389,11 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type local_file: str
         :param remote_file: Remote filepath on remote host to copy file to
         :type remote_file: str
+        :param copy_args: (Optional) format local_file and remote_file strings
+          with per-host arguments in ``copy_args``.   ``copy_args`` length must
+          equal length of host list -
+          :py:class:`pssh.exceptions.HostArgumentError` is raised otherwise
+        :type copy_args: tuple or list
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
 
@@ -400,7 +405,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         """
         copy_args = [{'local_file': local_file,
                       'remote_file': remote_file}
-                     for i, host in enumerate(self.hosts)] \
+                     for _ in self.hosts] \
             if copy_args is None else copy_args
         local_file = "%(local_file)s"
         remote_file = "%(remote_file)s"

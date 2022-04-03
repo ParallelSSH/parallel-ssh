@@ -286,7 +286,7 @@ class BaseSSHClient(object):
             raise unknown_ex from ex
         for i, (family, _type, proto, _, sock_addr) in enumerate(addr_info):
             try:
-                return self._connect_socket(family, _type, proto, sock_addr, host, port, retries)
+                return self._connect_socket(family, _type, sock_addr, host, port, retries)
             except ConnectionRefusedError as ex:
                 if i+1 == len(addr_info):
                     logger.error("No available addresses from %s", [addr[4] for addr in addr_info])
@@ -294,7 +294,7 @@ class BaseSSHClient(object):
                     raise
                 continue
 
-    def _connect_socket(self, family, _type, proto, sock_addr, host, port, retries):
+    def _connect_socket(self, family, _type, sock_addr, host, port, retries):
         self.sock = socket.socket(family, _type)
         if self.timeout:
             self.sock.settimeout(self.timeout)
@@ -427,6 +427,9 @@ class BaseSSHClient(object):
 
         :param stderr_buffer: Buffer to read from.
         :type stderr_buffer: :py:class:`pssh.clients.reader.ConcurrentRWBuffer`
+        :param timeout: Timeout in seconds - defaults to no timeout.
+        :type timeout: int or float
+
         :rtype: generator
         """
         logger.debug("Reading from stderr buffer, timeout=%s", timeout)
@@ -438,6 +441,9 @@ class BaseSSHClient(object):
 
         :param stdout_buffer: Buffer to read from.
         :type stdout_buffer: :py:class:`pssh.clients.reader.ConcurrentRWBuffer`
+        :param timeout: Timeout in seconds - defaults to no timeout.
+        :type timeout: int or float
+
         :rtype: generator
         """
         logger.debug("Reading from stdout buffer, timeout=%s", timeout)
@@ -495,6 +501,8 @@ class BaseSSHClient(object):
         :type output_buffer: iterator
         :param prefix: String to prefix log output to ``host_logger`` with
         :type prefix: str
+        :param encoding: Output encoding to use for host logger.
+        :type encoding: str
         :param callback: Function to call back once buffer is depleted:
         :type callback: function
         :param callback_args: Arguments for call back function

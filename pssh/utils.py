@@ -46,5 +46,5 @@ def enable_host_logger():
 
 
 def enable_debug_logger():
-    """Enable debug logging for the library to sdout."""
+    """Enable debug logging for the library to stdout."""
     return enable_logger(logger, level=logging.DEBUG)

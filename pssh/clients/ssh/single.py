@@ -18,20 +18,18 @@
 import logging
 
 from gevent import sleep, spawn, Timeout as GTimeout, joinall, get_hub
-from gevent.lock import RLock
 from ssh import options
-from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
-from ssh.key import import_privkey_file, import_cert_file, copy_cert_to_privkey,\
-    import_privkey_base64
-from ssh.exceptions import EOF
 from ssh.error_codes import SSH_AGAIN
+from ssh.exceptions import EOF
+from ssh.key import import_privkey_file, import_cert_file, copy_cert_to_privkey, \
+    import_privkey_base64
+from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
 
 from ..base.single import BaseSSHClient
 from ..common import _validate_pkey_path
-from ...output import HostOutput
-from ...exceptions import SessionError, Timeout
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-
+from ...exceptions import SessionError, Timeout
+from ...output import HostOutput
 
 logger = logging.getLogger(__name__)
 THREAD_POOL = get_hub().threadpool

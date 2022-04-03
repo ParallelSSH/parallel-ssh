@@ -193,7 +193,7 @@ class TunnelServer(StreamServer):
                 sleep(.01)
                 continue
             try:
-                self._client._eagain_write(channel.write, data)
+                self._client.eagain_write(channel.write, data)
             except Exception as ex:
                 logger.error("Error writing data to channel - %s", ex)
                 raise
