@@ -117,7 +117,6 @@ class SSHClient(BaseSSHClient):
         self._proxy_client = None
         self.host = host
         self.port = port if port is not None else 22
-        self._lock = RLock()
         if proxy_host is not None:
             _port = port if proxy_port is None else proxy_port
             _pkey = pkey if proxy_pkey is None else proxy_pkey
@@ -132,7 +131,8 @@ class SSHClient(BaseSSHClient):
                 identity_auth=identity_auth,
             )
             proxy_host = '127.0.0.1'
-        self._chan_lock = RLock()
+        self._chan_stdout_lock = RLock()
+        self._chan_stderr_lock = RLock()
         super(SSHClient, self).__init__(
             host, user=user, password=password, port=port, pkey=pkey,
             num_retries=num_retries, retry_delay=retry_delay,
@@ -220,7 +220,7 @@ class SSHClient(BaseSSHClient):
             self.session.set_timeout(self.timeout * 1000)
         try:
             if self._auth_thread_pool:
-                with self._lock:
+                with self._sess_lock:
                     THREAD_POOL.apply(self.session.handshake, (self.sock,))
             else:
                 self.session.handshake(self.sock)
@@ -240,11 +240,12 @@ class SSHClient(BaseSSHClient):
             self._keepalive_greenlet = self.spawn_send_keepalive()
 
     def _agent_auth(self):
-        self.session.agent_auth(self.user)
+        with self._sess_lock:
+            THREAD_POOL.apply(self.session.agent_auth, args=(self.user,))
 
     def _pkey_file_auth(self, pkey_file, password=None):
         passphrase = password if password is not None else b''
-        with self._lock:
+        with self._sess_lock:
             THREAD_POOL.apply(
                 self.session.userauth_publickey_fromfile,
                 args=(self.user, pkey_file),
@@ -253,7 +254,7 @@ class SSHClient(BaseSSHClient):
 
     def _pkey_from_memory(self, pkey_data):
         passphrase = self.password if self.password is not None else b''
-        with self._lock:
+        with self._sess_lock:
             THREAD_POOL.apply(
                 self.session.userauth_publickey_frommemory,
                 args=(self.user, pkey_data),
@@ -261,7 +262,7 @@ class SSHClient(BaseSSHClient):
             )
 
     def _password_auth(self):
-        with self._lock:
+        with self._sess_lock:
             THREAD_POOL.apply(self.session.userauth_password, args=(self.user, self.password))
 
     def _open_session(self):
@@ -308,14 +309,15 @@ class SSHClient(BaseSSHClient):
         self._eagain(channel.execute, cmd)
         return channel
 
-    def _read_output_to_buffer(self, read_func, _buffer):
+    def _read_output_to_buffer(self, read_func, _buffer, is_stderr=False):
+        _lock = self._chan_stderr_lock if is_stderr else self._chan_stdout_lock
         try:
             while True:
-                with self._chan_lock:
+                with _lock:
                     size, data = read_func()
                 while size == LIBSSH2_ERROR_EAGAIN:
                     self.poll()
-                    with self._chan_lock:
+                    with _lock:
                         size, data = read_func()
                 if size <= 0:
                     break
@@ -347,7 +349,7 @@ class SSHClient(BaseSSHClient):
         self.close_channel(channel)
 
     def close_channel(self, channel):
-        with self._chan_lock:
+        with self._chan_stdout_lock, self._chan_stderr_lock:
             logger.debug("Closing channel")
             self._eagain(channel.close)
 

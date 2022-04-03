@@ -115,7 +115,6 @@ class SSHClient(BaseSSHClient):
         self.gssapi_server_identity = gssapi_server_identity
         self.gssapi_client_identity = gssapi_client_identity
         self.gssapi_delegate_credentials = gssapi_delegate_credentials
-        self._lock = RLock()
         super(SSHClient, self).__init__(
             host, user=user, password=password, port=port, pkey=pkey,
             num_retries=num_retries, retry_delay=retry_delay,
@@ -132,7 +131,7 @@ class SSHClient(BaseSSHClient):
             self.sock.close()
 
     def _agent_auth(self):
-        with self._lock:
+        with self._sess_lock:
             THREAD_POOL.apply(self.session.userauth_agent, args=(self.user,))
 
     def _keepalive(self):
@@ -166,22 +165,23 @@ class SSHClient(BaseSSHClient):
             raise ex
 
     def _session_connect(self):
-        with self._lock:
+        with self._sess_lock:
             THREAD_POOL.apply(self.session.connect)
 
     def auth(self):
         if self.gssapi_auth or (self.gssapi_server_identity or self.gssapi_client_identity):
             try:
-                with self._lock:
+                with self._sess_lock:
                     return THREAD_POOL.apply(self.session.userauth_gssapi)
             except Exception as ex:
                 logger.error(
                     "GSSAPI authentication with server id %s and client id %s failed - %s",
                     self.gssapi_server_identity, self.gssapi_client_identity, ex)
+                raise
         return super(SSHClient, self).auth()
 
     def _password_auth(self):
-        with self._lock:
+        with self._sess_lock:
             THREAD_POOL.apply(self.session.userauth_password, args=(self.user, self.password))
 
     def _pkey_file_auth(self, pkey_file, password=None):
@@ -194,7 +194,7 @@ class SSHClient(BaseSSHClient):
         if self.cert_file is not None:
             logger.debug("Certificate file set - trying certificate authentication")
             THREAD_POOL.apply(self._import_cert_file, args=(pkey,))
-        with self._lock:
+        with self._sess_lock:
             THREAD_POOL.apply(self.session.userauth_publickey, args=(pkey,))
 
     def _pkey_from_memory(self, pkey_data):
@@ -208,7 +208,7 @@ class SSHClient(BaseSSHClient):
 
     def _import_cert_file(self, pkey):
         cert_key = import_cert_file(self.cert_file)
-        with self._lock:
+        with self._sess_lock:
             self.session.userauth_try_publickey(cert_key)
         copy_cert_to_privkey(cert_key, pkey)
         logger.debug("Imported certificate file %s for pkey %s", self.cert_file, self.pkey)

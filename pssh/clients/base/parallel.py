@@ -65,6 +65,7 @@ class BaseParallelSSHClient(object):
         self.password = password
         self.port = port
         self.pkey = pkey
+        self.__pkey_data = self._load_pkey_data(pkey) if pkey is not None else None
         self.num_retries = num_retries
         self.timeout = timeout
         self._host_clients = {}
@@ -555,8 +556,7 @@ class BaseParallelSSHClient(object):
         if _client is not None:
             return _client
         cfg = self._get_host_config(host_i, host)
-        _pkey = self.pkey if cfg.private_key is None else cfg.private_key
-        _pkey_data = self._load_pkey_data(_pkey)
+        _pkey_data = self.__pkey_data if cfg.private_key is None else self._load_pkey_data(cfg.private_key)
         _client = self._make_ssh_client(host, cfg, _pkey_data)
         self._host_clients[(host_i, host)] = _client
         return _client
