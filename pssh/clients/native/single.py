@@ -444,8 +444,8 @@ class SSHClient(BaseSSHClient):
         f_flags = LIBSSH2_FXF_CREAT | LIBSSH2_FXF_WRITE | LIBSSH2_FXF_TRUNC
         with self._sftp_openfh(
                 sftp.open, remote_file, f_flags, mode) as remote_fh:
+            self._sess_lock.acquire()
             try:
-                self._sess_lock.acquire()
                 THREAD_POOL.apply(self._sftp_put, args=(remote_fh, local_file))
             except SFTPProtocolError as ex:
                 msg = "Error writing to remote file %s - %s"
@@ -708,8 +708,8 @@ class SSHClient(BaseSSHClient):
         with self._sftp_openfh(
                 sftp.open, remote_file,
                 LIBSSH2_FXF_READ, LIBSSH2_SFTP_S_IRUSR) as remote_fh:
+            self._sess_lock.acquire()
             try:
-                self._sess_lock.acquire()
                 THREAD_POOL.apply(self._sftp_get, args=(remote_fh, local_file))
             except SFTPProtocolError as ex:
                 msg = "Error reading from remote file %s - %s"
