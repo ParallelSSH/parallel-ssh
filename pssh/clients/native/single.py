@@ -446,11 +446,14 @@ class SSHClient(BaseSSHClient):
         with self._sftp_openfh(
                 sftp.open, remote_file, f_flags, mode) as remote_fh:
             try:
-                self._sftp_put(remote_fh, local_file)
+                self._sess_lock.acquire()
+                THREAD_POOL.apply(self._sftp_put, args=(remote_fh, local_file))
             except SFTPProtocolError as ex:
                 msg = "Error writing to remote file %s - %s"
                 logger.error(msg, remote_file, ex)
                 raise SFTPIOError(msg, remote_file, ex)
+            finally:
+                self._sess_lock.release()
 
     def mkdir(self, sftp, directory):
         """Make directory via SFTP channel.
@@ -626,6 +629,9 @@ class SSHClient(BaseSSHClient):
         :type remote_file: str
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
+        :param sftp: The SFTP channel to use instead of creating a new one.
+          Only used when ``recurse`` is ``True``.
+        :type sftp: :py:class:`ssh2.sftp.SFTP`
 
         :raises: :py:class:`ValueError` when a directory is supplied to
           ``local_file`` and ``recurse`` is not set
@@ -704,11 +710,14 @@ class SSHClient(BaseSSHClient):
                 sftp.open, remote_file,
                 LIBSSH2_FXF_READ, LIBSSH2_SFTP_S_IRUSR) as remote_fh:
             try:
-                self._sftp_get(remote_fh, local_file)
+                self._sess_lock.acquire()
+                THREAD_POOL.apply(self._sftp_get, args=(remote_fh, local_file))
             except SFTPProtocolError as ex:
                 msg = "Error reading from remote file %s - %s"
                 logger.error(msg, remote_file, ex)
                 raise SFTPIOError(msg, remote_file, ex)
+            finally:
+                self._sess_lock.release()
 
     def get_exit_status(self, channel):
         """Get exit status code for channel or ``None`` if not ready.
