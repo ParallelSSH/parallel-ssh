@@ -114,6 +114,20 @@ class BaseParallelSSHClient(object):
             self._host_clients.pop((i, host), None)
         self._hosts = _hosts
 
+    def __del__(self):
+        self.disconnect()
+
+    def disconnect(self):
+        if not hasattr(self, '_host_clients'):
+            return
+        for s_client in self._host_clients.values():
+            try:
+                s_client.disconnect()
+            except Exception as ex:
+                logger.debug("Client disconnect failed with %s", ex)
+                pass
+            del s_client
+
     def _check_host_config(self):
         if self.host_config is None:
             return
@@ -257,7 +271,7 @@ class BaseParallelSSHClient(object):
         return self._get_output_from_cmds(
             cmds, raise_error=False)
 
-    def _get_host_config(self, host_i, host):
+    def _get_host_config(self, host_i):
         if self.host_config is None:
             config = HostConfig(
                 user=self.user, port=self.port, password=self.password, private_key=self.pkey,
@@ -314,9 +328,9 @@ class BaseParallelSSHClient(object):
         return cmds
 
     def _consume_output(self, stdout, stderr):
-        for line in stdout:
+        for _ in stdout:
             pass
-        for line in stderr:
+        for _ in stderr:
             pass
 
     def join(self, output=None, consume_output=False, timeout=None):
@@ -543,19 +557,13 @@ class BaseParallelSSHClient(object):
         return client.copy_remote_file(
             remote_file, local_file, recurse=recurse, **kwargs)
 
-    def _handle_greenlet_exc(self, func, host, *args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as ex:
-            raise ex
-
     def _get_ssh_client(self, host_i, host):
         logger.debug("Make client request for host %s, (host_i, host) in clients: %s",
                      host, (host_i, host) in self._host_clients)
         _client = self._host_clients.get((host_i, host))
         if _client is not None:
             return _client
-        cfg = self._get_host_config(host_i, host)
+        cfg = self._get_host_config(host_i)
         _pkey_data = self.__pkey_data if cfg.private_key is None else self._load_pkey_data(cfg.private_key)
         _client = self._make_ssh_client(host, cfg, _pkey_data)
         self._host_clients[(host_i, host)] = _client

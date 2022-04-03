@@ -216,17 +216,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
             read_timeout=read_timeout,
         )
 
-    def __del__(self):
-        if not hasattr(self, '_host_clients'):
-            return
-        for s_client in self._host_clients.values():
-            try:
-                s_client.disconnect()
-            except Exception as ex:
-                logger.debug("Client disconnect failed with %s", ex)
-                pass
-            del s_client
-
     def _make_ssh_client(self, host, cfg, _pkey_data):
         _client = SSHClient(
             host, user=cfg.user or self.user, password=cfg.password or self.password, port=cfg.port or self.port,
@@ -370,16 +359,12 @@ class ParallelSSHClient(BaseParallelSSHClient):
             encoding=encoding)
 
     def _scp_send(self, host_i, host, local_file, remote_file, recurse=False):
-        self._get_ssh_client(host_i, host)
-        return self._handle_greenlet_exc(
-            self._host_clients[(host_i, host)].scp_send, host,
-            local_file, remote_file, recurse=recurse)
+        _client = self._get_ssh_client(host_i, host)
+        return _client.scp_send(local_file, remote_file, recurse=recurse)
 
     def _scp_recv(self, host_i, host, remote_file, local_file, recurse=False):
-        self._get_ssh_client(host_i, host)
-        return self._handle_greenlet_exc(
-            self._host_clients[(host_i, host)].scp_recv, host,
-            remote_file, local_file, recurse=recurse)
+        _client = self._get_ssh_client(host_i, host)
+        return _client.scp_recv(remote_file, local_file, recurse=recurse)
 
     def scp_send(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel via SCP.

@@ -1270,6 +1270,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                      ]
         client = ParallelSSHClient(hosts, port=self.port,
                                    pkey=self.user_key)
+        joinall(client.connect_auth(), raise_error=True)
         output = client.run_command(cmd, host_args=host_args)
         try:
             client.join(output, timeout=.2)
@@ -1320,6 +1321,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         except Timeout:
             pass
         self.assertTrue(len(stdout) > 0)
+        sleep(.15)
         output[0].client.close_channel(output[0].channel)
         self.client.join(output)
         # Should not timeout
@@ -1540,21 +1542,20 @@ class ParallelSSHClientTest(unittest.TestCase):
 
     def test_scp_send_exc(self):
         client = ParallelSSHClient([self.host], pkey=self.user_key, num_retries=1)
+
         def _scp_send(*args):
             raise Exception
-        def _client_send(*args):
-            return client._handle_greenlet_exc(_scp_send, 'fake')
-        client._scp_send = _client_send
+        client._scp_send = _scp_send
         cmds = client.scp_send('local_file', 'remote_file')
         self.assertRaises(Exception, joinall, cmds, raise_error=True)
 
     def test_scp_recv_exc(self):
         client = ParallelSSHClient([self.host], pkey=self.user_key, num_retries=1)
+
         def _scp_recv(*args):
             raise Exception
-        def _client_recv(*args):
-            return client._handle_greenlet_exc(_scp_recv, 'fake')
-        client._scp_recv = _client_recv
+
+        client._scp_recv = _scp_recv
         cmds = client.scp_recv('remote_file', 'local_file')
         self.assertRaises(Exception, joinall, cmds, raise_error=True)
 
@@ -1758,6 +1759,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         client.join(consume_output=True)
         single_client = list(client._host_clients.values())[0]
         del client
+        # client.disconnect()
         self.assertEqual(single_client.session, None)
 
     def test_client_disconnect_error(self):

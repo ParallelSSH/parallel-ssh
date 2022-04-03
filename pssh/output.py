@@ -44,7 +44,7 @@ class BufferData(object):
         """
         :param reader: Greenlet reading data from channel and writing to rw_buffer
         :type reader: :py:class:`gevent.Greenlet`
-        :param rw_bufffer: Read/write buffer
+        :param rw_buffer: Read/write buffer
         :type rw_buffer: :py:class:`pssh.clients.reader.ConcurrentRWBuffer`
         """
         self.reader = reader

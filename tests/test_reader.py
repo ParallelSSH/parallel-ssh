@@ -55,6 +55,7 @@ class TestReaderBuffer(unittest.TestCase):
 
     def test_concurrent_rw(self):
         written_data = Queue()
+
         def _writer(_buffer):
             while True:
                 data = b"".join([ascii_letters[m].encode() for m in [randrange(0, 8) for _ in range(8)]])
@@ -66,13 +67,13 @@ class TestReaderBuffer(unittest.TestCase):
         sleep(0.5)
         data = self.buffer.read()
         _data = b""
-        while written_data.qsize() !=0 :
+        while written_data.qsize() != 0:
             _data += written_data.get()
         self.assertEqual(data, _data)
         sleep(0.5)
         data = self.buffer.read()
         _data = b""
-        while written_data.qsize() !=0 :
+        while written_data.qsize() != 0:
             _data += written_data.get()
         self.assertEqual(data, _data)
         writer.kill()
