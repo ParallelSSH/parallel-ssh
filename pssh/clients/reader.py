@@ -39,10 +39,10 @@ class ConcurrentRWBuffer(object):
 
     Supports both concurrent reading and writing.
 
-    Iterate on buffer object to read data, yielding greenlet if no data exists
+    Iterate on buffer object to read data, yielding event loop if no data exists
     until self.eof has been set.
 
-    Writers should ``ConcurrentRWBuffer.eof.set()`` when finished writing data via ``write``.
+    Writers should call ``ConcurrentRWBuffer.eof.set()`` when finished writing data via ``write``.
 
     Readers can use ``read()`` to get any available data or ``None``.
     """
@@ -70,7 +70,7 @@ class ConcurrentRWBuffer(object):
                 self._unread_data.set()
 
     def read(self):
-        """Read available data, or return None
+        """Read available data, or return None.
 
         :rtype: bytes
         """
