@@ -15,14 +15,13 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import gc
 import os
-import time
 import unittest
 from datetime import datetime
 from getpass import getuser
-from sys import version_info
 
+import gc
+import time
 from gevent import sleep, spawn, Timeout as GTimeout
 from ssh2.exceptions import SocketSendError, SocketRecvError
 
@@ -39,7 +38,7 @@ class TunnelTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        _mask = int('0600') if version_info <= (2,) else 0o600
+        _mask = 0o600
         os.chmod(PKEY_FILENAME, _mask)
         cls.port = 2225
         cls.cmd = 'echo me'
