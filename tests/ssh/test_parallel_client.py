@@ -33,6 +33,8 @@ from ..embedded_server.openssh import OpenSSHServer
 
 
 class LibSSHParallelTest(unittest.TestCase):
+    server = None
+    client = None
 
     @classmethod
     def setUpClass(cls):
@@ -237,12 +239,7 @@ class LibSSHParallelTest(unittest.TestCase):
         self.assertTrue(output[1].exception is not None)
         self.assertEqual(output[1].host, hosts[1])
         self.assertEqual(output[1].exception.args[-2], hosts[1])
-        try:
-            raise output[1].exception
-        except ConnectionErrorException:
-            pass
-        else:
-            raise Exception("Expected ConnectionError, got %s instead" % (output[1].exception,))
+        self.assertIsInstance(output[1].exception, ConnectionErrorException)
 
     def test_pssh_client_timeout(self):
         # 1ms timeout
@@ -316,13 +313,12 @@ class LibSSHParallelTest(unittest.TestCase):
         client.join(output)
         self.assertIsInstance(output[0].exception, ConnectionErrorException)
         self.assertEqual(output[0].host, host)
+        self.assertIsInstance(output[0].exception, ConnectionErrorException)
         try:
             raise output[0].exception
         except ConnectionErrorException as ex:
             self.assertEqual(ex.args[-2], host)
             self.assertEqual(ex.args[-1], port)
-        else:
-            raise Exception("Expected ConnectionErrorException")
 
     def test_bad_pkey_path(self):
         self.assertRaises(PKeyFileError, ParallelSSHClient, [self.host], port=self.port,
@@ -334,12 +330,9 @@ class LibSSHParallelTest(unittest.TestCase):
         output = self.client.run_command("echo 'me' 'and me'")
         stdout = list(output[0].stdout)
         expected = 'me and me'
-        self.assertTrue(len(stdout)==1,
-                        msg="Got incorrect number of lines in output - %s" % (stdout,))
+        self.assertTrue(len(stdout) == 1)
         self.assertEqual(output[0].exit_code, 0)
-        self.assertEqual(expected, stdout[0],
-                         msg="Got unexpected output. Expected %s, got %s" % (
-                             expected, stdout[0],))
+        self.assertEqual(expected, stdout[0])
 
     def test_backtics_in_cmd(self):
         """Test running command with backtics in it"""
@@ -353,9 +346,7 @@ class LibSSHParallelTest(unittest.TestCase):
         stdout = list(output[0].stdout)
         expected = ["me", "and", "me"]
         self.assertEqual(output[0].exit_code, 0)
-        self.assertEqual(expected, stdout,
-                         msg="Got unexpected output. Expected %s, got %s" % (
-                             expected, stdout,))
+        self.assertEqual(expected, stdout)
 
     def test_escaped_quotes(self):
         """Test escaped quotes in shell variable are handled correctly"""
@@ -363,9 +354,7 @@ class LibSSHParallelTest(unittest.TestCase):
         stdout = list(output[0].stdout)
         expected = ['--flags="this"']
         self.assertEqual(output[0].exit_code, 0)
-        self.assertEqual(expected, stdout,
-                         msg="Got unexpected output. Expected %s, got %s" % (
-                             expected, stdout,))
+        self.assertEqual(expected, stdout)
 
     def test_read_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
@@ -392,7 +381,7 @@ class LibSSHParallelTest(unittest.TestCase):
             self.assertRaises(Timeout, self.client.join, output, timeout=.1)
             for host_out in output:
                 try:
-                    for line in host_out.stdout:
+                    for _ in host_out.stdout:
                         pass
                 except Timeout:
                     pass
