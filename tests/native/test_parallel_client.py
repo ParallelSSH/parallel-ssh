@@ -44,6 +44,8 @@ from ..embedded_server.openssh import OpenSSHServer
 
 
 class ParallelSSHClientTest(unittest.TestCase):
+    server = None
+    client = None
 
     @classmethod
     def setUpClass(cls):

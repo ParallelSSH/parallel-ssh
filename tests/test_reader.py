@@ -16,12 +16,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import unittest
-
-from random import random, randint, randrange
+from random import randrange
 from string import ascii_letters
 
-from gevent.queue import Queue
 from gevent import spawn, sleep
+from gevent.queue import Queue
+
 from pssh.clients.reader import ConcurrentRWBuffer
 
 
@@ -61,16 +61,16 @@ class TestReaderBuffer(unittest.TestCase):
                 data = b"".join([ascii_letters[m].encode() for m in [randrange(0, 8) for _ in range(8)]])
                 _buffer.write(data)
                 written_data.put(data)
-                sleep(0.2)
+                sleep(0.05)
         writer = spawn(_writer, self.buffer)
         writer.start()
-        sleep(0.5)
+        sleep(0.1)
         data = self.buffer.read()
         _data = b""
         while written_data.qsize() != 0:
             _data += written_data.get()
         self.assertEqual(data, _data)
-        sleep(0.5)
+        sleep(0.1)
         data = self.buffer.read()
         _data = b""
         while written_data.qsize() != 0:
