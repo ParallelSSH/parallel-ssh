@@ -22,7 +22,7 @@ import tempfile
 from datetime import datetime
 from hashlib import sha256
 from tempfile import NamedTemporaryFile
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, call, patch, call
 
 import pytest
 from gevent import sleep, spawn, Timeout as GTimeout, socket
@@ -101,6 +101,9 @@ class SSH2ClientTest(SSH2TestCase):
         host = '::1'
         addr_info = ('::1', self.port, 0, 0)
         gsocket.IPPROTO_TCP = socket.IPPROTO_TCP
+        gsocket.AF_INET6 = socket.AF_INET6
+        gsocket.AF_INET = socket.AF_INET
+        gsocket.SocketKind = socket.SocketKind
         gsocket.socket = MagicMock()
         _sock = MagicMock()
         gsocket.socket.return_value = _sock
@@ -112,16 +115,20 @@ class SSH2ClientTest(SSH2TestCase):
         getaddrinfo.return_value = [(
             socket.AF_INET6, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info)]
         with raises(ConnectionError):
-            client = SSHClient(host, port=self.port, pkey=self.user_key,
-                               num_retries=1)
+            SSHClient(host, port=self.port, pkey=self.user_key,
+                      num_retries=1)
         getaddrinfo.assert_called_once_with(host, self.port, proto=socket.IPPROTO_TCP)
         sock_con.assert_called_once_with(addr_info)
 
     @patch('pssh.clients.base.single.socket')
     def test_multiple_available_addr(self, gsocket):
-        host = '127.0.0.1'
-        addr_info = (host, self.port)
+        host = 'localhost'
+        ipv6_addr_info = ('::1', self.port, 0, 0)
+        ipv4_addr_info = ('127.0.0.1', self.port)
         gsocket.IPPROTO_TCP = socket.IPPROTO_TCP
+        gsocket.AF_INET6 = socket.AF_INET6
+        gsocket.AF_INET = socket.AF_INET
+        gsocket.SocketKind = socket.SocketKind
         gsocket.socket = MagicMock()
         _sock = MagicMock()
         gsocket.socket.return_value = _sock
@@ -131,14 +138,44 @@ class SSH2ClientTest(SSH2TestCase):
         getaddrinfo = MagicMock()
         gsocket.getaddrinfo = getaddrinfo
         getaddrinfo.return_value = [
-            (socket.AF_INET, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info),
-            (socket.AF_INET, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info),
+            (socket.AF_INET6, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', ipv6_addr_info),
+            (socket.AF_INET, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', ipv4_addr_info),
         ]
         with raises(ConnectionError):
-            client = SSHClient(host, port=self.port, pkey=self.user_key,
-                               num_retries=1)
+            SSHClient(host, port=self.port, pkey=self.user_key,
+                      num_retries=1)
+        expected_calls = [call(ipv6_addr_info), call(ipv4_addr_info)]
         getaddrinfo.assert_called_with(host, self.port, proto=socket.IPPROTO_TCP)
         assert sock_con.call_count == len(getaddrinfo.return_value)
+        assert sock_con.call_args_list == expected_calls
+
+    @patch('pssh.clients.base.single.socket')
+    def test_multiple_available_addr_ipv6(self, gsocket):
+        host = 'localhost'
+        ipv6_addr_info = ('::1', self.port, 0, 0)
+        ipv4_addr_info = ('127.0.0.1', self.port)
+        gsocket.IPPROTO_TCP = socket.IPPROTO_TCP
+        gsocket.AF_INET6 = socket.AF_INET6
+        gsocket.AF_INET = socket.AF_INET
+        gsocket.SocketKind = socket.SocketKind
+        gsocket.socket = MagicMock()
+        _sock = MagicMock()
+        gsocket.socket.return_value = _sock
+        sock_con = MagicMock()
+        sock_con.side_effect = ConnectionRefusedError
+        _sock.connect = sock_con
+        getaddrinfo = MagicMock()
+        gsocket.getaddrinfo = getaddrinfo
+        getaddrinfo.return_value = [
+            (socket.AF_INET6, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', ipv6_addr_info),
+            (socket.AF_INET, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', ipv4_addr_info),
+        ]
+        with raises(ConnectionError):
+            SSHClient(host, port=self.port, pkey=self.user_key,
+                      num_retries=1,
+                      ipv6_only=True)
+        getaddrinfo.assert_called_once_with(host, self.port, proto=socket.IPPROTO_TCP)
+        sock_con.assert_called_once_with(ipv6_addr_info)
 
     def test_no_ipv6(self):
         try:
