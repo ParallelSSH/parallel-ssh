@@ -131,6 +131,9 @@ class BaseParallelSSHClient(object):
     def _check_host_config(self):
         if self.host_config is None:
             return
+        if not isinstance(self.host_config, list):
+            raise HostConfigError("Host configuration of type %s is invalid - valid types are list[HostConfig]",
+                                  type(self.host_config))
         host_len = len(self.hosts)
         if host_len != len(self.host_config):
             raise ValueError(
@@ -289,9 +292,6 @@ class BaseParallelSSHClient(object):
                 gssapi_delegate_credentials=self.gssapi_delegate_credentials,
             )
             return config
-        elif not isinstance(self.host_config, list):
-            raise HostConfigError("Host configuration of type %s is invalid - valid types are list[HostConfig]",
-                                  type(self.host_config))
         config = self.host_config[host_i]
         return config
 

@@ -36,7 +36,7 @@ from pssh.exceptions import UnknownHostException, \
     AuthenticationException, ConnectionErrorException, \
     HostArgumentException, SFTPError, SFTPIOError, Timeout, SCPError, \
     PKeyFileError, ShellError, HostArgumentError, NoIPv6AddressFoundError, \
-    AuthenticationError
+    AuthenticationError, HostConfigError
 from pssh.output import HostOutput
 
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
@@ -962,6 +962,11 @@ class ParallelSSHClientTest(unittest.TestCase):
         host_config = [HostConfig()]
         self.assertRaises(ValueError, ParallelSSHClient, hosts, host_config=host_config)
         self.assertRaises(ValueError, ParallelSSHClient, iter(hosts), host_config=host_config)
+
+    def test_invalid_host_config(self):
+        hosts = ['localhost', 'localhost']
+        host_config = {'localhost': HostConfig(), 'localhost2': HostConfig()}
+        self.assertRaises(HostConfigError, ParallelSSHClient, hosts, host_config=host_config)
 
     def test_pssh_client_override_allow_agent_authentication(self):
         """Test running command with allow_agent set to False"""
