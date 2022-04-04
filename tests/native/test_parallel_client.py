@@ -1038,9 +1038,10 @@ class ParallelSSHClientTest(unittest.TestCase):
             server.start_server()
         hosts = [self.host, host2, host3]
         hosts_gen = (h for h in hosts)
-        host_args = [dict(zip(('host_arg1', 'host_arg2',),
-                              ('arg1-%s' % (i,), 'arg2-%s' % (i,),)))
-                     for i, _ in enumerate(hosts)]
+        host_args = [{'host_arg1': 'arg1-%s' % (i,),
+                      'host_arg2': 'arg2-%s' % (i,),
+                      }
+                     for i in range(len(hosts))]
         cmd = 'echo %(host_arg1)s %(host_arg2)s'
         client = ParallelSSHClient(hosts, port=self.port,
                                    pkey=self.user_key,
@@ -1266,14 +1267,14 @@ class ParallelSSHClientTest(unittest.TestCase):
         hosts = [self.host, self.host]
         cmd = 'sleep %(i)s; echo %(i)s'
         host_args = [{'i': '0.1'},
-                     {'i': '0.25'},
+                     {'i': '0.35'},
                      ]
         client = ParallelSSHClient(hosts, port=self.port,
                                    pkey=self.user_key)
         joinall(client.connect_auth(), raise_error=True)
         output = client.run_command(cmd, host_args=host_args)
         try:
-            client.join(output, timeout=.2)
+            client.join(output, timeout=.3)
         except Timeout as ex:
             finished_output = ex.args[2]
             unfinished_output = ex.args[3]
@@ -1286,7 +1287,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         # Should not timeout
         client.join(unfinished_output, timeout=2)
         rest_stdout = list(unfinished_output[0].stdout)
-        self.assertEqual(rest_stdout, ['0.25'])
+        self.assertEqual(rest_stdout, ['0.35'])
 
     def test_join_timeout_set_no_timeout(self):
         client = ParallelSSHClient([self.host], port=self.port,
