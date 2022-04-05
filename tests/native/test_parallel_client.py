@@ -148,12 +148,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         """
         self.client.run_shell_commands(shells, cmd)
         self.assertRaises(Timeout, self.client.join_shells, shells, timeout=.1)
-        try:
-            self.client.join_shells(shells, timeout=.1)
-        except Timeout:
-            pass
-        else:
-            raise AssertionError
+        self.assertRaises(Timeout, self.client.join_shells, shells, timeout=.1)
         self.client.join_shells(shells, timeout=1)
         stdout = list(shells[0].stdout)
         self.assertListEqual(stdout, [self.resp, self.resp])
@@ -1124,7 +1119,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         expected_stdout = []
         # With a PTY, stdout and stderr are combined into stdout
         self.assertEqual(expected_stderr, stdout)
-        self.assertEqual([], stderr)
+        self.assertEqual(expected_stdout, stderr)
         self.assertTrue(exit_code == 0)
 
     def test_output_attributes(self):
@@ -1175,7 +1170,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient(['127.0.0.100'], port=self.port,
                                    num_retries=2, retry_delay=.1)
         self.assertRaises(ConnectionErrorException, client.run_command, self.cmd)
-        host = ''.join([random.choice(string.ascii_letters) for n in range(8)])
+        host = ''.join([random.choice(string.ascii_letters) for _ in range(8)])
         client.hosts = [host]
         self.assertRaises(UnknownHostException, client.run_command, self.cmd)
 
@@ -1242,7 +1237,7 @@ class ParallelSSHClientTest(unittest.TestCase):
 
     def test_unknown_host_failure(self):
         """Test connection error failure case - ConnectionErrorException"""
-        host = ''.join([random.choice(string.ascii_letters) for n in range(8)])
+        host = ''.join([random.choice(string.ascii_letters) for _ in range(8)])
         client = ParallelSSHClient([host], port=self.port,
                                    num_retries=1)
         self.assertRaises(UnknownHostException, client.run_command, self.cmd)
@@ -1312,7 +1307,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertFalse(client.finished(output))
         client.join(output)
         # import ipdb; ipdb.set_trace()
-        for host_out in output:
+        for _ in output:
             stdout = list(output[0].stdout)
             self.assertEqual(len(stdout), 3)
         self.assertTrue(client.finished(output))
@@ -1399,7 +1394,7 @@ class ParallelSSHClientTest(unittest.TestCase):
             self.assertRaises(Timeout, self.client.join, output, timeout=.1)
             for host_out in output:
                 try:
-                    for line in host_out.stdout:
+                    for _ in host_out.stdout:
                         pass
                 except Timeout:
                     pass
@@ -1435,7 +1430,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         with open(local_filename, 'w') as file_h:
             file_h.writelines([test_file_data + os.linesep])
         remote_filename = os.path.sep.join([remote_test_dir, remote_filepath])
-        remote_file_abspath = os.path.expanduser('~/' + remote_filename)
         remote_test_dir_abspath = os.path.expanduser('~/' + remote_test_dir)
         try:
             cmds = self.client.scp_send(local_filename, remote_filename)
@@ -1551,7 +1545,7 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_scp_send_exc(self):
         client = ParallelSSHClient([self.host], pkey=self.user_key, num_retries=1)
 
-        def _scp_send(*args):
+        def _scp_send(*_):
             raise Exception
         client._scp_send = _scp_send
         cmds = client.scp_send('local_file', 'remote_file')
@@ -1560,7 +1554,7 @@ class ParallelSSHClientTest(unittest.TestCase):
     def test_scp_recv_exc(self):
         client = ParallelSSHClient([self.host], pkey=self.user_key, num_retries=1)
 
-        def _scp_recv(*args):
+        def _scp_recv(*_):
             raise Exception
 
         client._scp_recv = _scp_recv
@@ -1814,7 +1808,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         now = datetime.now()
         timed_out = False
         try:
-            for line in stream:
+            for _ in stream:
                 pass
         except Timeout:
             timed_out = True
@@ -1885,7 +1879,6 @@ class ParallelSSHClientTest(unittest.TestCase):
             self.assertTrue(dt.total_seconds() < read_timeout)
 
     def test_read_multi_same_hosts(self):
-        hosts = [self.host, self.host]
         outputs = [
             self.client.run_command(self.cmd),
             self.client.run_command(self.cmd),
