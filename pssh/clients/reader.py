@@ -16,7 +16,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from io import BytesIO
-from logging import getLogger
 
 from gevent import sleep
 from gevent.event import Event
