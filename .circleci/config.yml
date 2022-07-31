@@ -68,6 +68,7 @@ jobs:
       - run:
           name: Deps
           command: |
+            sudo apt-get update
             sudo apt-get install python3-pip
             pip install -U pip
             pip install -U twine
@@ -86,7 +87,7 @@ jobs:
             twine upload --skip-existing -u $PYPI_USER -p $PYPI_PASSWORD dist/*
 
 workflows:
-  version: 2.1
+  version: 2
   main:
     jobs:
       - python_test:
@@ -100,9 +101,9 @@ workflows:
           filters:
             tags:
               ignore: /.*/
-      - release:
-          filters:
-            tags:
-              only: /.*/
-            branches:
-              ignore: /.*/
+      - release
+#          filters:
+#            tags:
+#              only: /.*/
+#            branches:
+#              ignore: /.*/
