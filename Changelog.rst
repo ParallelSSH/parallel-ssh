@@ -1,6 +1,15 @@
 Change Log
 ============
 
+2.11.1
++++++++
+
+Fixes
+------
+
+* Using native clients under `pssh.clients.native` with very short lived commands would sometimes cause unexpected
+  stalls/delays in reading output from completed commands when a client ``timeout`` setting was used - #344.
+
 2.11.0
 +++++++
 

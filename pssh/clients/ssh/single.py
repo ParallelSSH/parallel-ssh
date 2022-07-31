@@ -243,7 +243,7 @@ class SSHClient(BaseSSHClient):
 
     def _read_output_to_buffer(self, channel, _buffer, is_stderr=False):
         while True:
-            self.poll(timeout=self.timeout)
+            self.poll()
             try:
                 size, data = channel.read_nonblocking(is_stderr=is_stderr)
             except EOF:
@@ -316,12 +316,13 @@ class SSHClient(BaseSSHClient):
         self._eagain(channel.close, timeout=self.timeout)
 
     def poll(self, timeout=None):
-        """ssh-python based co-operative gevent poll on session socket."""
+        """ssh-python based co-operative gevent poll on session socket.
+        :param timeout: Deprecated and unused - to be removed.
+        """
         self._poll_errcodes(
             self.session.get_poll_flags,
             SSH_READ_PENDING,
             SSH_WRITE_PENDING,
-            timeout=timeout,
         )
 
     def _eagain(self, func, *args, **kwargs):
