@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2020 Panos Kittenis.
+# Copyright (C) 2014-2022 Panos Kittenis.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -13,10 +13,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import os
-import platform
 from setuptools import setup, find_packages
-from platform import python_version
 
 import versioneer
 
@@ -38,7 +35,7 @@ setup(name='parallel-ssh',
                         '*.tests', '*.tests.*')
       ),
       install_requires=[
-          'gevent>=1.3.0', 'ssh2-python>=0.22.0', 'ssh-python>=0.9.0'],
+          'gevent>=1.3.0', 'ssh2-python', 'ssh-python'],
       classifiers=[
           'Development Status :: 5 - Production/Stable',
           'License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)',
@@ -46,12 +43,11 @@ setup(name='parallel-ssh',
           'Operating System :: OS Independent',
           'Programming Language :: Python',
           'Programming Language :: Python :: 3',
-          'Programming Language :: Python :: 3.4',
-          'Programming Language :: Python :: 3.5',
           'Programming Language :: Python :: 3.6',
           'Programming Language :: Python :: 3.7',
           'Programming Language :: Python :: 3.8',
           'Programming Language :: Python :: 3.9',
+          'Programming Language :: Python :: 3.10',
           'Topic :: System :: Networking',
           'Topic :: Software Development :: Libraries',
           'Topic :: Software Development :: Libraries :: Python Modules',
@@ -60,4 +56,4 @@ setup(name='parallel-ssh',
           'Operating System :: Microsoft :: Windows',
           'Operating System :: MacOS :: MacOS X',
       ],
-)
+      )
