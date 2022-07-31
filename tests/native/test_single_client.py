@@ -1039,6 +1039,20 @@ class SSH2ClientTest(SSH2TestCase):
                      ]
         self.assertListEqual(remote_file_mock.call_args_list, call_args)
 
+    def test_many_short_lived_commands(self):
+        for _ in range(20):
+            timeout = 2
+            start = datetime.now()
+            client = SSHClient(self.host, port=self.port,
+                               pkey=self.user_key,
+                               num_retries=1,
+                               allow_agent=False,
+                               timeout=timeout)
+            host_out = client.run_command(self.cmd)
+            _ = list(host_out.stdout)
+            end = datetime.now() - start
+            duration = end.total_seconds()
+            self.assertTrue(duration < timeout * 0.9, msg=f"Duration of instant cmd is {duration}")
 
     # TODO
     # * read output callback
