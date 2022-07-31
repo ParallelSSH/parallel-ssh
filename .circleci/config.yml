@@ -71,7 +71,6 @@ jobs:
             sudo apt-get install python3-pip
             pip install -U pip
             pip install -U twine
-            which twine
       - python/save-cache:
           key: releasedepsv1-{{ .Branch }}.{{ arch }}
           dependency-file: requirements.txt
@@ -79,7 +78,7 @@ jobs:
           name: Build Wheels/Source Dist
           command: |
             pip wheel --no-deps . -w dist
-            python setup.py sdist
+            python3 setup.py sdist
             ls -lh dist
       - run:
           name: PyPi Upload
