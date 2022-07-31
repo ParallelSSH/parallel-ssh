@@ -4,6 +4,11 @@ Change Log
 2.11.1
 +++++++
 
+Changes
+--------
+
+* Updated default log formatter set by `pssh.utils` enable logger functions.
+
 Fixes
 ------
 
