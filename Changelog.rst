@@ -1,6 +1,14 @@
 Change Log
 ============
 
+2.11.0
++++++++
+
+Changes
+--------
+
+* Updated minimum required versions for `ssh2-python` and `ssh-python`.
+
 2.10.0
 ++++++
 
