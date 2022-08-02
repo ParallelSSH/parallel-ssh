@@ -60,7 +60,7 @@ class HostOutput(object):
                  )
 
     def __init__(self, host, channel, stdin,
-                 client, alias, exception=None, encoding='utf-8', read_timeout=None,
+                 client, alias=None, exception=None, encoding='utf-8', read_timeout=None,
                  buffers=None):
         """
         :param host: Host name output is for
