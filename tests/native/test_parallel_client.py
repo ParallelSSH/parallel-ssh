@@ -930,7 +930,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         servers = []
         password = 'overriden_pass'
         fake_key = 'FAKE KEY'
-        alias = ["alias " + host for host in hosts]
+        alias = [f"alias {host}" for host in hosts]
         for host_i, (host, port) in enumerate(hosts):
             server = OpenSSHServer(listen_ip=host, port=port)
             server.start_server()
