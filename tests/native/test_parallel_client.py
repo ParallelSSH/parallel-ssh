@@ -957,8 +957,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(client._host_clients[0, hosts[0][0]].password, password)
         self.assertEqual(client._host_clients[0, hosts[0][0]].pkey, open(os.path.abspath(self.user_key), 'rb').read())
         for idx, alias_ in enumerate(alias):
-            print(client._host_clients[idx, hosts[0][0]])
-            self.assertEqual(client._host_clients[idx, hosts[0][0]].alias, alias_)
+            self.assertTrue(alias_ in output[idx])
         for server in servers:
             server.stop()
 
