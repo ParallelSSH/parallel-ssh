@@ -56,12 +56,12 @@ class HostOutput(object):
 
     __slots__ = ('host', 'channel', 'stdin',
                  'client', 'exception', 'encoding', 'read_timeout',
-                 'buffers',
+                 'buffers', 'alias',
                  )
 
     def __init__(self, host, channel, stdin,
                  client, exception=None, encoding='utf-8', read_timeout=None,
-                 buffers=None):
+                 buffers=None, alias):
         """
         :param host: Host name output is for
         :type host: str
@@ -77,6 +77,8 @@ class HostOutput(object):
         :type read_timeout: float
         :param buffers: Host buffer data.
         :type buffers: :py:class:`HostOutputBuffers`
+        :param alias: Host alias.
+        :type alias: str or int
         """
         self.host = host
         self.channel = channel
@@ -86,6 +88,7 @@ class HostOutput(object):
         self.encoding = encoding
         self.read_timeout = read_timeout
         self.buffers = buffers
+        self.alias = alias
 
     @property
     def stdout(self):
