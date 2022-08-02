@@ -225,7 +225,7 @@ class BaseSSHClient(object):
     def __exit__(self, *args):
         self.disconnect()
 
-    def open_shell(self, encoding='utf-8', read_timeout=None):
+    def open_shell(self, encoding='utf-8', read_timeout=None, alias=None):
         """Open interactive shell on new channel.
 
         Can be used as context manager - ``with open_shell() as shell``.
@@ -236,7 +236,7 @@ class BaseSSHClient(object):
         :type read_timeout: float
         """
         chan = self.open_session()
-        shell = InteractiveShell(chan, self, encoding=encoding, read_timeout=read_timeout)
+        shell = InteractiveShell(chan, self, encoding=encoding, read_timeout=read_timeout, alias=alias)
         return shell
 
     def _shell(self, channel):
