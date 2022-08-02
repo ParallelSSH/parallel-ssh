@@ -140,7 +140,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8', read_timeout=None,
+                    encoding='utf-8', read_timeout=None, alias=None,
                     ):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output.
@@ -215,7 +215,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, command, stop_on_errors=stop_on_errors, host_args=host_args,
             user=user, shell=shell, sudo=sudo,
             encoding=encoding, use_pty=use_pty,
-            read_timeout=read_timeout,
+            read_timeout=read_timeout, alias=alias,
         )
 
     def __del__(self):
