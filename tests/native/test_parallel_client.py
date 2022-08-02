@@ -930,6 +930,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         servers = []
         password = 'overriden_pass'
         fake_key = 'FAKE KEY'
+        alias = ["alias " + host for host in hosts]
         for host_i, (host, port) in enumerate(hosts):
             server = OpenSSHServer(listen_ip=host, port=port)
             server.start_server()
@@ -937,6 +938,7 @@ class ParallelSSHClientTest(unittest.TestCase):
             host_config[host_i].user = self.user
             host_config[host_i].password = password
             host_config[host_i].private_key = self.user_key
+            host_config[host_i].alias = alias[host_i]
             servers.append(server)
         host_config[1].private_key = fake_key
         client = ParallelSSHClient([h for h, _ in hosts],
@@ -954,6 +956,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(client._host_clients[0, hosts[0][0]].user, self.user)
         self.assertEqual(client._host_clients[0, hosts[0][0]].password, password)
         self.assertEqual(client._host_clients[0, hosts[0][0]].pkey, open(os.path.abspath(self.user_key), 'rb').read())
+        for idx, alias_ in enumerate(alias):
+            self.assertEqual(client._host_clients[idx, hosts[0][0]].alias, alias_)
         for server in servers:
             server.stop()
 
