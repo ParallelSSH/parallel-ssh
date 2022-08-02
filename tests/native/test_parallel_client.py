@@ -956,7 +956,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(client._host_clients[0, hosts[0][0]].user, self.user)
         self.assertEqual(client._host_clients[0, hosts[0][0]].password, password)
         self.assertEqual(client._host_clients[0, hosts[0][0]].pkey, open(os.path.abspath(self.user_key), 'rb').read())
-        self.assertTrue(any(aliases) in client._host_clients[0, hosts[0][0]].alias,
+        self.assertTrue(client._host_clients[0, hosts[0][0]].alias in aliases,
                        msg=f"Alias didn't pass through: {client._host_clients[0, hosts[0][0]].alias} did not contain any of {aliases}")
         for server in servers:
             server.stop()
