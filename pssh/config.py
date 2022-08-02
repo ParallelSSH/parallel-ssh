@@ -25,7 +25,7 @@ class HostConfig(object):
     Used to hold individual configuration for each host in ParallelSSHClient host list.
     """
     __slots__ = ('user', 'port', 'password', 'private_key', 'allow_agent',
-                 'num_retries', 'retry_delay', 'timeout', 'identity_auth',
+                 'alias', 'num_retries', 'retry_delay', 'timeout', 'identity_auth',
                  'proxy_host', 'proxy_port', 'proxy_user', 'proxy_password', 'proxy_pkey',
                  'keepalive_seconds', 'ipv6_only', 'cert_file', 'auth_thread_pool', 'gssapi_auth',
                  'gssapi_server_identity', 'gssapi_client_identity', 'gssapi_delegate_credentials',
@@ -33,7 +33,7 @@ class HostConfig(object):
                  )
 
     def __init__(self, user=None, port=None, password=None, private_key=None,
-                 allow_agent=None, num_retries=None, retry_delay=None, timeout=None,
+                 allow_agent=None, alias=None, num_retries=None, retry_delay=None, timeout=None,
                  identity_auth=None,
                  proxy_host=None, proxy_port=None, proxy_user=None, proxy_password=None,
                  proxy_pkey=None,
@@ -58,6 +58,8 @@ class HostConfig(object):
         :type private_key: str
         :param allow_agent: Enable/disable SSH agent authentication.
         :type allow_agent: bool
+        :param alias: Use an alias for this host.
+        :type alias: str or int
         :param num_retries: Number of retry attempts before giving up on connection
           and SSH operations.
         :type num_retries: int
@@ -130,6 +132,8 @@ class HostConfig(object):
             raise ValueError("Port %s is not an integer" % (self.port,))
         if self.password is not None and not isinstance(self.password, str):
             raise ValueError("Password %s is not a string" % (self.password,))
+        if self.alias is not None and not isinstance(self.alias, (str, int)):
+            raise ValueError("Alias %s is not a string or integer" % (self.alias,))
         if self.private_key is not None and not (
                 isinstance(self.private_key, str) or isinstance(self.private_key, bytes)
         ):
