@@ -26,6 +26,7 @@ class TestHostConfig(unittest.TestCase):
         user = 'user'
         port = 22
         password = 'password'
+        alias = 'alias'
         private_key = 'private key'
         allow_agent = False
         num_retries = 1
@@ -43,7 +44,7 @@ class TestHostConfig(unittest.TestCase):
         gssapi_client_identity = 'some_id'
         gssapi_delegate_credentials = True
         cfg = HostConfig(
-            user=user, port=port, password=password, private_key=private_key,
+            user=user, port=port, password=password, alias=alias, private_key=private_key,
             allow_agent=allow_agent, num_retries=num_retries, retry_delay=retry_delay,
             timeout=timeout, identity_auth=identity_auth, proxy_host=proxy_host,
             ipv6_only=ipv6_only,
@@ -59,6 +60,7 @@ class TestHostConfig(unittest.TestCase):
         self.assertEqual(cfg.user, user)
         self.assertEqual(cfg.port, port)
         self.assertEqual(cfg.password, password)
+        self.assertEqual(cfg.alias, alias)
         self.assertEqual(cfg.private_key, private_key)
         self.assertEqual(cfg.allow_agent, allow_agent)
         self.assertEqual(cfg.num_retries, num_retries)
@@ -79,6 +81,7 @@ class TestHostConfig(unittest.TestCase):
         self.assertRaises(ValueError, HostConfig, user=22)
         self.assertRaises(ValueError, HostConfig, password=22)
         self.assertRaises(ValueError, HostConfig, port='22')
+        self.assertRaises(ValueError, HostConfig, alias=2.2)
         self.assertRaises(ValueError, HostConfig, private_key=1)
         self.assertRaises(ValueError, HostConfig, allow_agent=1)
         self.assertRaises(ValueError, HostConfig, num_retries='')
