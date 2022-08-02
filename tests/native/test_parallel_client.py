@@ -959,7 +959,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue(client._host_clients[0, hosts[0][0]].alias in aliases,
                        msg=f"Alias didn't pass through: {client._host_clients[0, hosts[0][0]].alias} did not contain any of {aliases}")
         client_aliases = [client._host_clients[idx, hosts[0][0]].alias for idx in range(len(output))]
-        self.assertTrue(len(set(client_aliases)), len(aliases),
+        self.assertTrue(len(set(client_aliases)) == len(aliases),
                            msg=f"Alias passthrough problem: {client_aliases} contain duplicate values. Expected {aliases}")
         for server in servers:
             server.stop()
