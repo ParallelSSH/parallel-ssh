@@ -50,7 +50,7 @@ class SSHClient(BaseSSHClient):
 
     def __init__(self, host,
                  user=None, password=None, port=None,
-                 pkey=None,
+                 pkey=None, alias=None,
                  num_retries=DEFAULT_RETRIES,
                  retry_delay=RETRY_DELAY,
                  allow_agent=True, timeout=None,
@@ -70,6 +70,8 @@ class SSHClient(BaseSSHClient):
         :type user: str
         :param password: Password to use for password authentication.
         :type password: str
+        :param alias: Use an alias for this host.
+        :type alias: str or int
         :param port: SSH port to connect to. Defaults to SSH default (22)
         :type port: int
         :param pkey: Private key file path to use for authentication. Path must
@@ -133,7 +135,7 @@ class SSHClient(BaseSSHClient):
             proxy_host = '127.0.0.1'
         self._chan_lock = RLock()
         super(SSHClient, self).__init__(
-            host, user=user, password=password, port=port, pkey=pkey,
+            host, user=user, password=password, alias=alias, port=port, pkey=pkey,
             num_retries=num_retries, retry_delay=retry_delay,
             allow_agent=allow_agent, _auth_thread_pool=_auth_thread_pool,
             timeout=timeout,
@@ -146,7 +148,7 @@ class SSHClient(BaseSSHClient):
         return self._eagain(channel.shell)
 
     def _connect_proxy(self, proxy_host, proxy_port, proxy_pkey,
-                       user=None, password=None,
+                       user=None, password=None, alias=None,
                        num_retries=DEFAULT_RETRIES,
                        retry_delay=RETRY_DELAY,
                        allow_agent=True, timeout=None,
@@ -156,7 +158,7 @@ class SSHClient(BaseSSHClient):
         assert isinstance(self.port, int)
         try:
             self._proxy_client = SSHClient(
-                proxy_host, port=proxy_port, pkey=proxy_pkey,
+                proxy_host, port=proxy_port, pkey=proxy_pkey, alias=alias,
                 num_retries=num_retries, user=user, password=password,
                 retry_delay=retry_delay, allow_agent=allow_agent,
                 timeout=timeout, forward_ssh_agent=forward_ssh_agent,
