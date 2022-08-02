@@ -55,13 +55,13 @@ class HostOutput(object):
     """Host output"""
 
     __slots__ = ('host', 'channel', 'stdin',
-                 'client', 'exception', 'encoding', 'read_timeout',
-                 'buffers', 'alias',
+                 'client', 'alias', 'exception',
+                 'encoding', 'read_timeout', 'buffers',
                  )
 
     def __init__(self, host, channel, stdin,
-                 client, exception=None, encoding='utf-8', read_timeout=None,
-                 buffers=None, alias):
+                 client, alias, exception=None, encoding='utf-8', read_timeout=None,
+                 buffers=None):
         """
         :param host: Host name output is for
         :type host: str
@@ -71,24 +71,24 @@ class HostOutput(object):
         :type stdin: :py:func:`file`-like object
         :param client: `SSHClient` output is coming from.
         :type client: :py:class:`pssh.clients.base.single.BaseSSHClient`
+        :param alias: Host alias.
+        :type alias: str or int
         :param exception: Exception from host if any
         :type exception: :py:class:`Exception` or ``None``
         :param read_timeout: Timeout in seconds for reading from buffers.
         :type read_timeout: float
         :param buffers: Host buffer data.
         :type buffers: :py:class:`HostOutputBuffers`
-        :param alias: Host alias.
-        :type alias: str or int
         """
         self.host = host
         self.channel = channel
         self.stdin = stdin
         self.client = client
+        self.alias = alias
         self.exception = exception
         self.encoding = encoding
         self.read_timeout = read_timeout
         self.buffers = buffers
-        self.alias = alias
 
     @property
     def stdout(self):
