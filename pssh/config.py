@@ -105,6 +105,7 @@ class HostConfig(object):
         self.password = password
         self.private_key = private_key
         self.allow_agent = allow_agent
+        self.alias = alias
         self.num_retries = num_retries
         self.timeout = timeout
         self.retry_delay = retry_delay
