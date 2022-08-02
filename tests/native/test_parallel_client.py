@@ -945,6 +945,14 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    host_config=host_config,
                                    num_retries=1)
         output = client.run_command(self.cmd, stop_on_errors=False)
+        
+        # this needs to happen before client.join
+        client_aliases = [alias for alias in [client.alias for client in [client._host_clients[x] for x in client._host_clients]]]
+        self.assertTrue(client._host_clients[0, hosts[0][0]].alias in aliases,
+                        msg=f"Alias didn't pass through: {client._host_clients[0, hosts[0][0]].alias} did not contain any of {aliases}")
+        self.assertTrue(len(set(client_aliases)) == len(aliases),
+                        msg=f"Alias passthrough problem: client_aliases contain duplicate values. Expected {aliases} but got {client_aliases}")
+        
         client.join(output)
         self.assertEqual(len(hosts), len(output))
         try:
@@ -956,11 +964,6 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(client._host_clients[0, hosts[0][0]].user, self.user)
         self.assertEqual(client._host_clients[0, hosts[0][0]].password, password)
         self.assertEqual(client._host_clients[0, hosts[0][0]].pkey, open(os.path.abspath(self.user_key), 'rb').read())
-        self.assertTrue(client._host_clients[0, hosts[0][0]].alias in aliases,
-                       msg=f"Alias didn't pass through: {client._host_clients[0, hosts[0][0]].alias} did not contain any of {aliases}")
-        client_aliases = [alias for alias in [client.alias for client in [client._host_clients[x] for x in client._host_clients]]]
-        self.assertTrue(len(set(client_aliases)) == len(aliases),
-                           msg=f"Alias passthrough problem: {client_aliases} contain duplicate values. Expected {aliases}")
         for server in servers:
             server.stop()
 
