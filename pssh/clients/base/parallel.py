@@ -199,7 +199,7 @@ class BaseParallelSSHClient(object):
 
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
-                    encoding='utf-8',
+                    encoding='utf-8', alias=None,
                     *args, **kwargs):
         if host_args:
             try:
