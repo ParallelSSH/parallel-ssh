@@ -138,7 +138,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8', read_timeout=None,
+                    encoding='utf-8', read_timeout=None, alias=None,
                     ):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output.
@@ -163,6 +163,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param user: (Optional) User to run command as. Requires sudo access
           for that user from the logged in user account.
         :type user: str
+        :param alias: Use an alias for this host.
+        :type alias: str or int
         :param stop_on_errors: (Optional) Raise exception on errors running
           command. Defaults to True. With stop_on_errors set to False,
           exceptions are instead added to output of `run_command`. See example
@@ -212,7 +214,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, command, stop_on_errors=stop_on_errors, host_args=host_args,
             user=user, shell=shell, sudo=sudo,
             encoding=encoding, use_pty=use_pty,
-            read_timeout=read_timeout,
+            read_timeout=read_timeout, alias=alias,
         )
 
     def _make_ssh_client(self, host, cfg, _pkey_data):
