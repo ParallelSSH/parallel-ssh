@@ -30,7 +30,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
     """ssh-python based parallel client."""
 
     def __init__(self, hosts, user=None, password=None, port=22, pkey=None,
-                 cert_file=None,
+                 cert_file=None, alias=None,
                  num_retries=DEFAULT_RETRIES, timeout=None, pool_size=100,
                  allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
                  forward_ssh_agent=False,
@@ -49,6 +49,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param password: (Optional) Password to use for login. Defaults to
           no password
         :type password: str
+        :param alias: Use an alias for this host.
+        :type alias: str or int
         :param port: (Optional) Port number to use for SSH connection. Defaults
           to 22.
         :type port: int
@@ -119,7 +121,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           provided private key.
         """
         BaseParallelSSHClient.__init__(
-            self, hosts, user=user, password=password, port=port, pkey=pkey,
+            self, hosts, user=user, password=password, port=port, pkey=pkey, alias=alias,
             allow_agent=allow_agent, num_retries=num_retries,
             timeout=timeout, pool_size=pool_size,
             host_config=host_config, retry_delay=retry_delay,
@@ -217,6 +219,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         _client = SSHClient(
             host, user=cfg.user or self.user, password=cfg.password or self.password, port=cfg.port or self.port,
             pkey=_pkey_data, num_retries=cfg.num_retries or self.num_retries,
+            alias=cfg.alias or self.alias,
             timeout=cfg.timeout or self.timeout,
             allow_agent=cfg.allow_agent or self.allow_agent, retry_delay=cfg.retry_delay or self.retry_delay,
             _auth_thread_pool=cfg.auth_thread_pool or self._auth_thread_pool,
