@@ -117,6 +117,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
           for the host(s) or raise NoIPv6AddressFoundError otherwise. Note this will
           disable connecting to an IPv4 address if an IP address is provided instead.
         :type ipv6_only: bool
+        :param alias: Use an alias for this host.
+        :type alias: str or int
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
@@ -185,6 +187,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param encoding: Encoding to use for command string and output. Must be valid
           `Python codec <https://docs.python.org/library/codecs.html>`_
         :type encoding: str
+        :param alias: Use an alias for this host.
+        :type alias: str or int
         :param read_timeout: (Optional) Timeout in seconds for reading from stdout
           or stderr. Reading from stdout/stderr will
           raise :py:class:`pssh.exceptions.Timeout`
