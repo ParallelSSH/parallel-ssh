@@ -40,7 +40,7 @@ class SSHClient(BaseSSHClient):
 
     def __init__(self, host,
                  user=None, password=None, port=None,
-                 pkey=None,
+                 pkey=None, alias=None,
                  cert_file=None,
                  num_retries=DEFAULT_RETRIES,
                  retry_delay=RETRY_DELAY,
@@ -60,6 +60,8 @@ class SSHClient(BaseSSHClient):
         :type password: str
         :param port: SSH port to connect to. Defaults to SSH default (22)
         :type port: int
+        :param alias: Use an alias for this host.
+        :type alias: str or int
         :param pkey: Private key file path to use for authentication. Path must
           be either absolute path or relative to user home directory
           like ``~/<path>``.
@@ -114,7 +116,7 @@ class SSHClient(BaseSSHClient):
         self.gssapi_client_identity = gssapi_client_identity
         self.gssapi_delegate_credentials = gssapi_delegate_credentials
         super(SSHClient, self).__init__(
-            host, user=user, password=password, port=port, pkey=pkey,
+            host, user=user, password=password, port=port, pkey=pkey, alias=alias,
             num_retries=num_retries, retry_delay=retry_delay,
             allow_agent=allow_agent,
             _auth_thread_pool=_auth_thread_pool,
