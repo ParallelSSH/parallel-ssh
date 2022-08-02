@@ -567,7 +567,7 @@ class BaseSSHClient(object):
             rc, bytes_written = write_func(data[total_written:])
             total_written += bytes_written
             if rc == eagain:
-                self.poll(timeout=timeout)
+                self.poll()
             sleep()
 
     def _eagain_errcode(self, func, eagain, *args, **kwargs):
@@ -694,21 +694,17 @@ class BaseSSHClient(object):
         if _sep > 0:
             return file_path[:_sep]
 
-    def poll(self, timeout=None):
+    def poll(self):
         raise NotImplementedError
 
-    def _poll_socket(self, events, timeout=None):
+    def _poll_socket(self, events):
         if self.sock is None:
             return
-        # gevent.select.poll converts seconds to miliseconds to match python socket
-        # implementation
-        timeout = timeout * 1000 if timeout is not None else 100
         poller = poll()
         poller.register(self.sock, eventmask=events)
-        poller.poll(timeout=timeout)
+        poller.poll(timeout=1)
 
-    def _poll_errcodes(self, directions_func, inbound, outbound, timeout=None):
-        timeout = self.timeout if timeout is None else timeout
+    def _poll_errcodes(self, directions_func, inbound, outbound):
         directions = directions_func()
         if directions == 0:
             return
@@ -717,4 +713,4 @@ class BaseSSHClient(object):
             events = POLLIN
         if directions & outbound:
             events |= POLLOUT
-        self._poll_socket(events, timeout=timeout)
+        self._poll_socket(events)

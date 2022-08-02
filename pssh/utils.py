@@ -33,7 +33,7 @@ def enable_logger(_logger, level=logging.INFO):
         logger.warning("Logger already has a StreamHandler attached")
         return
     handler = logging.StreamHandler()
-    host_log_format = logging.Formatter('%(message)s')
+    host_log_format = logging.Formatter('%(asctime)s %(levelname)-8s %(name)-15s %(message)s')
     handler.setFormatter(host_log_format)
     _logger.addHandler(handler)
 

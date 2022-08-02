@@ -19,6 +19,7 @@ jobs:
       - run:
           name: Deps
           command: |
+            sudo apt-get update
             sudo apt-get install openssh-server --fix-missing
       - run:
           command: |
@@ -67,10 +68,10 @@ jobs:
       - run:
           name: Deps
           command: |
+            sudo apt-get update
             sudo apt-get install python3-pip
             pip install -U pip
             pip install -U twine
-            which twine
       - python/save-cache:
           key: releasedepsv1-{{ .Branch }}.{{ arch }}
           dependency-file: requirements.txt
@@ -78,7 +79,7 @@ jobs:
           name: Build Wheels/Source Dist
           command: |
             pip wheel --no-deps . -w dist
-            python setup.py sdist
+            python3 setup.py sdist
             ls -lh dist
       - run:
           name: PyPi Upload
@@ -86,7 +87,7 @@ jobs:
             twine upload --skip-existing -u $PYPI_USER -p $PYPI_PASSWORD dist/*
 
 workflows:
-  version: 2.1
+  version: 2
   main:
     jobs:
       - python_test:

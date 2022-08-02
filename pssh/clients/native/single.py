@@ -749,12 +749,12 @@ class SSHClient(BaseSSHClient):
 
         Blocks current greenlet only if socket has pending read or write operations
         in the appropriate direction.
+        :param timeout: Deprecated and unused - to be removed.
         """
         self._poll_errcodes(
             self.session.block_directions,
             LIBSSH2_SESSION_BLOCK_INBOUND,
             LIBSSH2_SESSION_BLOCK_OUTBOUND,
-            timeout=timeout,
         )
 
     def _eagain_write(self, write_func, data, timeout=None):
