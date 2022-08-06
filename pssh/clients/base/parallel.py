@@ -572,12 +572,12 @@ class BaseParallelSSHClient(object):
         return _client
 
     def _load_pkey_data(self, _pkey):
-        if isinstance(_pkey, str):
-            _validate_pkey_path(_pkey)
-            with open(_pkey, 'rb') as fh:
-                _pkey_data = fh.read()
-            return _pkey_data
-        return _pkey
+        if not isinstance(_pkey, str):
+            return _pkey
+        _pkey = _validate_pkey_path(_pkey)
+        with open(_pkey, 'rb') as fh:
+            _pkey_data = fh.read()
+        return _pkey_data
 
     def _make_ssh_client(self, host, cfg, _pkey_data):
         raise NotImplementedError
