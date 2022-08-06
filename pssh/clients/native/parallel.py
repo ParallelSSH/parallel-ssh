@@ -127,7 +127,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
             identity_auth=identity_auth,
             ipv6_only=ipv6_only,
         )
-        self.pkey = _validate_pkey(pkey)
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
         self.proxy_pkey = _validate_pkey(proxy_pkey)
@@ -215,17 +214,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
             encoding=encoding, use_pty=use_pty,
             read_timeout=read_timeout,
         )
-
-    def __del__(self):
-        if not hasattr(self, '_host_clients'):
-            return
-        for s_client in self._host_clients.values():
-            try:
-                s_client.disconnect()
-            except Exception as ex:
-                logger.debug("Client disconnect failed with %s", ex)
-                pass
-            del s_client
 
     def _make_ssh_client(self, host, cfg, _pkey_data):
         _client = SSHClient(
