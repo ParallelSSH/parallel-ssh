@@ -182,7 +182,7 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertEqual(expected, output)
         
     def test_alias(self):
-        client = _SSHClient(self.host, port=self.port,
+        client = SSHClient(self.host, port=self.port,
                            num_retries=1, alias='test')
         host_out = client.run_command(self.cmd)
         self.assertEqual(host_out.alias, 'test')
