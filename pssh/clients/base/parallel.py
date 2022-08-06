@@ -23,7 +23,7 @@ import gevent.pool
 from gevent import joinall, spawn, Timeout as GTimeout
 from gevent.hub import Hub
 
-from ..common import _validate_pkey_path
+from ..common import _validate_pkey_path, _validate_pkey
 from ...config import HostConfig
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import HostArgumentError, Timeout, ShellError, HostConfigError
