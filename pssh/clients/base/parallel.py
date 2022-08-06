@@ -326,7 +326,7 @@ class BaseParallelSSHClient(object):
         :returns: list of greenlets to ``joinall`` with.
         :rtype: list(:py:mod:`gevent.greenlet.Greenlet`)
         """
-        cmds = [spawn(self._get_ssh_client, i, host) for i, host in enumerate(self.hosts)]
+        cmds = [self.pool.spawn(self._get_ssh_client, i, host) for i, host in enumerate(self.hosts)]
         return cmds
 
     def _consume_output(self, stdout, stderr):
