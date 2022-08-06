@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 class ParallelSSHClient(BaseParallelSSHClient):
     """ssh2-python based parallel client."""
 
-    def __init__(self, hosts, user=None, password=None, port=22, alias=None, pkey=None,
+    def __init__(self, hosts, user=None, password=None, port=22, pkey=None,
                  num_retries=DEFAULT_RETRIES, timeout=None, pool_size=100,
                  allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
                  proxy_host=None, proxy_port=None,
@@ -46,8 +46,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param password: (Optional) Password to use for login. Defaults to
           no password
         :type password: str
-        :param alias: Use an alias for this host.
-        :type alias: str or int
         :param port: (Optional) Port number to use for SSH connection. Defaults
           to 22.
         :type port: int
@@ -117,15 +115,13 @@ class ParallelSSHClient(BaseParallelSSHClient):
           for the host(s) or raise NoIPv6AddressFoundError otherwise. Note this will
           disable connecting to an IPv4 address if an IP address is provided instead.
         :type ipv6_only: bool
-        :param alias: Use an alias for this host.
-        :type alias: str or int
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
         """
         BaseParallelSSHClient.__init__(
             self, hosts, user=user, password=password, port=port, pkey=pkey,
-            alias=alias, allow_agent=allow_agent, num_retries=num_retries,
+            allow_agent=allow_agent, num_retries=num_retries,
             timeout=timeout, pool_size=pool_size,
             host_config=host_config, retry_delay=retry_delay,
             identity_auth=identity_auth,
@@ -142,7 +138,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8', read_timeout=None, alias=None,
+                    encoding='utf-8', read_timeout=None,
                     ):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output.
@@ -187,8 +183,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param encoding: Encoding to use for command string and output. Must be valid
           `Python codec <https://docs.python.org/library/codecs.html>`_
         :type encoding: str
-        :param alias: Use an alias for this host.
-        :type alias: str or int
         :param read_timeout: (Optional) Timeout in seconds for reading from stdout
           or stderr. Reading from stdout/stderr will
           raise :py:class:`pssh.exceptions.Timeout`
@@ -219,7 +213,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, command, stop_on_errors=stop_on_errors, host_args=host_args,
             user=user, shell=shell, sudo=sudo,
             encoding=encoding, use_pty=use_pty,
-            read_timeout=read_timeout, alias=alias,
+            read_timeout=read_timeout,
         )
 
     def __del__(self):
@@ -237,7 +231,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         _client = SSHClient(
             host, user=cfg.user or self.user, password=cfg.password or self.password, port=cfg.port or self.port,
             pkey=_pkey_data, num_retries=cfg.num_retries or self.num_retries,
-            alias=cfg.alias or self.alias,
+            alias=cfg.alias,
             timeout=cfg.timeout or self.timeout,
             allow_agent=cfg.allow_agent or self.allow_agent, retry_delay=cfg.retry_delay or self.retry_delay,
             proxy_host=cfg.proxy_host or self.proxy_host,

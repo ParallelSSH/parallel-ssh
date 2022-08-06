@@ -410,7 +410,7 @@ class BaseSSHClient(object):
             stdout=BufferData(rw_buffer=_stdout_buffer, reader=_stdout_reader),
             stderr=BufferData(rw_buffer=_stderr_buffer, reader=_stderr_reader))
         host_out = HostOutput(
-            host=self.host, channel=channel, stdin=Stdin(channel, self),
+            host=self.host, alias=self.alias, channel=channel, stdin=Stdin(channel, self),
             client=self, encoding=encoding, read_timeout=read_timeout,
             buffers=_buffers,
         )

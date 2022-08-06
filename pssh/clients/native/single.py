@@ -117,6 +117,7 @@ class SSHClient(BaseSSHClient):
         self.keepalive_seconds = keepalive_seconds
         self._keepalive_greenlet = None
         self._proxy_client = None
+        self.alias = alias
         self.host = host
         self.port = port if port is not None else 22
         if proxy_host is not None:

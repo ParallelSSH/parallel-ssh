@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 class BaseParallelSSHClient(object):
     """Parallel client base class."""
 
-    def __init__(self, hosts, user=None, password=None, port=None, pkey=None, alias=None,
+    def __init__(self, hosts, user=None, password=None, port=None, pkey=None,
                  allow_agent=True,
                  num_retries=DEFAULT_RETRIES,
                  timeout=120, pool_size=10,
@@ -64,7 +64,6 @@ class BaseParallelSSHClient(object):
         self.user = user
         self.password = password
         self.port = port
-        self.alias = alias
         self.pkey = pkey
         self.num_retries = num_retries
         self.timeout = timeout
@@ -199,7 +198,7 @@ class BaseParallelSSHClient(object):
 
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
-                    encoding='utf-8', alias=None,
+                    encoding='utf-8',
                     *args, **kwargs):
         if host_args:
             try:
@@ -260,7 +259,7 @@ class BaseParallelSSHClient(object):
     def _get_host_config(self, host_i, host):
         if self.host_config is None:
             config = HostConfig(
-                user=self.user, port=self.port, password=self.password, private_key=self.pkey, alias=self.alias,
+                user=self.user, port=self.port, password=self.password, private_key=self.pkey,
                 allow_agent=self.allow_agent, num_retries=self.num_retries, retry_delay=self.retry_delay,
                 timeout=self.timeout, identity_auth=self.identity_auth, proxy_host=self.proxy_host,
                 proxy_port=self.proxy_port, proxy_user=self.proxy_user, proxy_password=self.proxy_password,

@@ -30,7 +30,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
     """ssh-python based parallel client."""
 
     def __init__(self, hosts, user=None, password=None, port=22, pkey=None,
-                 cert_file=None, alias=None,
+                 cert_file=None,
                  num_retries=DEFAULT_RETRIES, timeout=None, pool_size=100,
                  allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
                  forward_ssh_agent=False,
@@ -49,8 +49,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param password: (Optional) Password to use for login. Defaults to
           no password
         :type password: str
-        :param alias: Use an alias for this host.
-        :type alias: str or int
         :param port: (Optional) Port number to use for SSH connection. Defaults
           to 22.
         :type port: int
@@ -121,7 +119,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
           provided private key.
         """
         BaseParallelSSHClient.__init__(
-            self, hosts, user=user, password=password, port=port, pkey=pkey, alias=alias,
+            self, hosts, user=user, password=password, port=port, pkey=pkey,
             allow_agent=allow_agent, num_retries=num_retries,
             timeout=timeout, pool_size=pool_size,
             host_config=host_config, retry_delay=retry_delay,
@@ -138,7 +136,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
 
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8', read_timeout=None, alias=None,
+                    encoding='utf-8', read_timeout=None,
                     ):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output.
@@ -163,8 +161,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param user: (Optional) User to run command as. Requires sudo access
           for that user from the logged in user account.
         :type user: str
-        :param alias: Use an alias for this host.
-        :type alias: str or int
         :param stop_on_errors: (Optional) Raise exception on errors running
           command. Defaults to True. With stop_on_errors set to False,
           exceptions are instead added to output of `run_command`. See example
@@ -214,14 +210,14 @@ class ParallelSSHClient(BaseParallelSSHClient):
             self, command, stop_on_errors=stop_on_errors, host_args=host_args,
             user=user, shell=shell, sudo=sudo,
             encoding=encoding, use_pty=use_pty,
-            read_timeout=read_timeout, alias=alias,
+            read_timeout=read_timeout,
         )
 
     def _make_ssh_client(self, host, cfg, _pkey_data):
         _client = SSHClient(
             host, user=cfg.user or self.user, password=cfg.password or self.password, port=cfg.port or self.port,
             pkey=_pkey_data, num_retries=cfg.num_retries or self.num_retries,
-            alias=cfg.alias or self.alias,
+            alias=cfg.alias,
             timeout=cfg.timeout or self.timeout,
             allow_agent=cfg.allow_agent or self.allow_agent, retry_delay=cfg.retry_delay or self.retry_delay,
             _auth_thread_pool=cfg.auth_thread_pool or self._auth_thread_pool,

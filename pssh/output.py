@@ -120,12 +120,13 @@ class HostOutput(object):
 
     def __repr__(self):
         return "\thost={host}{linesep}" \
+            "\talias={alias}{linesep}" \
             "\texit_code={exit_code}{linesep}" \
             "\tchannel={channel}{linesep}" \
             "\texception={exception}{linesep}" \
             "\tencoding={encoding}{linesep}" \
             "\tread_timeout={read_timeout}".format(
-                host=self.host, channel=self.channel,
+                host=self.host, alias=self.alias, channel=self.channel,
                 exception=self.exception, linesep=linesep,
                 exit_code=self.exit_code, encoding=self.encoding, read_timeout=self.read_timeout,
             )
