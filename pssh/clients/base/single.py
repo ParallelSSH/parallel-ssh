@@ -23,18 +23,16 @@ from socket import gaierror as sock_gaierror, error as sock_error
 from gevent import sleep, socket, Timeout as GTimeout
 from gevent.hub import Hub
 from gevent.select import poll, POLLIN, POLLOUT
-
-from ssh2.utils import find_eol
 from ssh2.exceptions import AgentConnectionError, AgentListIdentitiesError, \
     AgentAuthenticationError, AgentGetIdentityError
+from ssh2.utils import find_eol
 
 from ..common import _validate_pkey
-from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ..reader import ConcurrentRWBuffer
+from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import UnknownHostError, AuthenticationError, \
     ConnectionError, Timeout, NoIPv6AddressFoundError
 from ...output import HostOutput, HostOutputBuffers, BufferData
-
 
 Hub.NOT_ERROR = (Exception,)
 host_logger = logging.getLogger('pssh.host_logger')
@@ -496,14 +494,16 @@ class BaseSSHClient(object):
                            encoding='utf-8'):
         """Read from output buffers and log to ``host_logger``.
 
-        :param output_buffer: Iterator containing buffer
+        :param output_buffer: Iterator containing buffer.
         :type output_buffer: iterator
-        :param prefix: String to prefix log output to ``host_logger`` with
+        :param prefix: String to prefix log output to ``host_logger`` with.
         :type prefix: str
-        :param callback: Function to call back once buffer is depleted:
+        :param callback: Function to call back once buffer is depleted.
         :type callback: function
-        :param callback_args: Arguments for call back function
+        :param callback_args: Arguments for call back function.
         :type callback_args: tuple
+        :param encoding: Encoding for output.
+        :type encoding: str
         """
         prefix = '' if prefix is None else prefix
         for line in output_buffer:
@@ -557,7 +557,7 @@ class BaseSSHClient(object):
         host_out = self._make_host_output(channel, encoding, _timeout)
         return host_out
 
-    def _eagain_write_errcode(self, write_func, data, eagain, timeout=None):
+    def _eagain_write_errcode(self, write_func, data, eagain):
         data_len = len(data)
         total_written = 0
         while total_written < data_len:

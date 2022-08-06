@@ -33,11 +33,10 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
 
 from .tunnel import FORWARDER
 from ..base.single import BaseSSHClient
-from ...output import HostOutput
+from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import SessionError, SFTPError, \
     SFTPIOError, Timeout, SCPError, ProxyError
-from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-
+from ...output import HostOutput
 
 logger = logging.getLogger(__name__)
 THREAD_POOL = get_hub().threadpool
