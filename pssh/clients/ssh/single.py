@@ -331,5 +331,5 @@ class SSHClient(BaseSSHClient):
         """Run function given and handle EAGAIN for an ssh-python session"""
         return self._eagain_errcode(func, SSH_AGAIN, *args, **kwargs)
 
-    def _eagain_write(self, write_func, data, timeout=None):
-        return self._eagain_write_errcode(write_func, data, SSH_AGAIN, timeout=timeout)
+    def _eagain_write(self, write_func, data):
+        return self._eagain_write_errcode(write_func, data, SSH_AGAIN)

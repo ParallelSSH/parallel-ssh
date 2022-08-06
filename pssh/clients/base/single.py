@@ -570,9 +570,10 @@ class BaseSSHClient(object):
             while ret == eagain:
                 self.poll()
                 ret = func(*args, **kwargs)
+                sleep()
             return ret
 
-    def _eagain_write(self, write_func, data, timeout=None):
+    def _eagain_write(self, write_func, data):
         raise NotImplementedError
 
     def _eagain(self, func, *args, **kwargs):

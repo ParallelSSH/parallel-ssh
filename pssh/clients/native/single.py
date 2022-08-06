@@ -737,12 +737,12 @@ class SSHClient(BaseSSHClient):
             LIBSSH2_SESSION_BLOCK_OUTBOUND,
         )
 
-    def _eagain_write(self, write_func, data, timeout=None):
+    def _eagain_write(self, write_func, data):
         """Write data with given write_func for an ssh2-python session while
         handling EAGAIN and resuming writes from last written byte on each call to
         write_func.
         """
-        return self._eagain_write_errcode(write_func, data, LIBSSH2_ERROR_EAGAIN, timeout=timeout)
+        return self._eagain_write_errcode(write_func, data, LIBSSH2_ERROR_EAGAIN)
 
-    def eagain_write(self, write_func, data, timeout=None):
-        return self._eagain_write(write_func, data, timeout=timeout)
+    def eagain_write(self, write_func, data):
+        return self._eagain_write(write_func, data)
