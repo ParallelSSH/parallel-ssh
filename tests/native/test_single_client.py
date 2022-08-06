@@ -185,8 +185,6 @@ class SSH2ClientTest(SSH2TestCase):
         client = _SSHClient(self.host, port=self.port,
                            num_retries=1, alias='test')
         host_out = client.run_command(self.cmd)
-        output = list(host_out.stdout)
-        stderr = list(host_out.stderr)
         self.assertEqual(host_out.alias, 'test')
 
     def test_open_session_timeout(self):
