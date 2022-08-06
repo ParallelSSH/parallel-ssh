@@ -39,7 +39,7 @@ class BaseParallelSSHClient(object):
     def __init__(self, hosts, user=None, password=None, port=None, pkey=None,
                  allow_agent=True,
                  num_retries=DEFAULT_RETRIES,
-                 timeout=120, pool_size=10,
+                 timeout=120, pool_size=100,
                  host_config=None, retry_delay=RETRY_DELAY,
                  identity_auth=True,
                  ipv6_only=False,
