@@ -272,6 +272,7 @@ class BaseParallelSSHClient(object):
                 gssapi_server_identity=self.gssapi_server_identity,
                 gssapi_client_identity=self.gssapi_client_identity,
                 gssapi_delegate_credentials=self.gssapi_delegate_credentials,
+                alias=None,
             )
             return config
         elif not isinstance(self.host_config, list):
