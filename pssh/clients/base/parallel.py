@@ -240,7 +240,7 @@ class BaseParallelSSHClient(object):
                 ex = Timeout()
             if raise_error:
                 raise ex
-            return HostOutput(host=host, exception=ex, alias=alias)
+            return HostOutput(host, None, None, None, exception=ex, alias=alias)
 
     def get_last_output(self, cmds=None):
         """Get output for last commands executed by ``run_command``.
