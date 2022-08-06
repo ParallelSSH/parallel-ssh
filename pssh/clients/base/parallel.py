@@ -300,7 +300,6 @@ class BaseParallelSSHClient(object):
                      shell=None, use_pty=False,
                      encoding='utf-8', read_timeout=None):
         """Make SSHClient if needed, run command on host"""
-        logger.debug("_run_command with read timeout %s", read_timeout)
         try:
             _client = self._get_ssh_client(host_i, host)
             host_out = _client.run_command(
@@ -330,9 +329,9 @@ class BaseParallelSSHClient(object):
         return cmds
 
     def _consume_output(self, stdout, stderr):
-        for line in stdout:
+        for _ in stdout:
             pass
-        for line in stderr:
+        for _ in stderr:
             pass
 
     def join(self, output=None, consume_output=False, timeout=None):
@@ -558,12 +557,6 @@ class BaseParallelSSHClient(object):
         client = self._get_ssh_client(host_i, host)
         return client.copy_remote_file(
             remote_file, local_file, recurse=recurse, **kwargs)
-
-    def _handle_greenlet_exc(self, func, host, *args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as ex:
-            raise ex
 
     def _get_ssh_client(self, host_i, host):
         logger.debug("Make client request for host %s, (host_i, host) in clients: %s",
