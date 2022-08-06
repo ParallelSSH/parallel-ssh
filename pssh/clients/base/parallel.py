@@ -114,9 +114,26 @@ class BaseParallelSSHClient(object):
             self._host_clients.pop((i, host), None)
         self._hosts = _hosts
 
+    def __del__(self):
+        self.disconnect()
+
+    def disconnect(self):
+        if not hasattr(self, '_host_clients'):
+            return
+        for s_client in self._host_clients.values():
+            try:
+                s_client.disconnect()
+            except Exception as ex:
+                logger.debug("Client disconnect failed with %s", ex)
+                pass
+            del s_client
+
     def _check_host_config(self):
         if self.host_config is None:
             return
+        if not isinstance(self.host_config, list):
+            raise HostConfigError("Host configuration of type %s is invalid - valid types are List[HostConfig]",
+                                  type(self.host_config))
         host_len = len(self.hosts)
         if host_len != len(self.host_config):
             raise ValueError(
@@ -257,7 +274,7 @@ class BaseParallelSSHClient(object):
         return self._get_output_from_cmds(
             cmds, raise_error=False)
 
-    def _get_host_config(self, host_i, host):
+    def _get_host_config(self, host_i):
         if self.host_config is None:
             config = HostConfig(
                 user=self.user, port=self.port, password=self.password, private_key=self.pkey,
@@ -276,9 +293,6 @@ class BaseParallelSSHClient(object):
                 alias=None,
             )
             return config
-        elif not isinstance(self.host_config, list):
-            raise HostConfigError("Host configuration of type %s is invalid - valid types are list[HostConfig]",
-                                  type(self.host_config))
         config = self.host_config[host_i]
         return config
 
@@ -557,7 +571,7 @@ class BaseParallelSSHClient(object):
         _client = self._host_clients.get((host_i, host))
         if _client is not None:
             return _client
-        cfg = self._get_host_config(host_i, host)
+        cfg = self._get_host_config(host_i)
         _pkey = self.pkey if cfg.private_key is None else cfg.private_key
         _pkey_data = self._load_pkey_data(_pkey)
         _client = self._make_ssh_client(host, cfg, _pkey_data)
