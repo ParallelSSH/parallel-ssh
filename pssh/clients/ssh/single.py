@@ -240,25 +240,22 @@ class SSHClient(BaseSSHClient):
         if use_pty:
             self._eagain(channel.request_pty, timeout=self.timeout)
         logger.debug("Executing command '%s'", cmd)
-        self._eagain(channel.request_exec, cmd, timeout=self.timeout)
+        self._eagain(channel.request_exec, cmd)
         return channel
 
     def _read_output_to_buffer(self, channel, _buffer, is_stderr=False):
-        while True:
-            self.poll()
-            try:
-                size, data = channel.read_nonblocking(is_stderr=is_stderr)
-            except EOF:
-                _buffer.eof.set()
-                sleep(.1)
-                return
-            if size > 0:
-                _buffer.write(data)
-            else:
-                # Yield event loop to other greenlets if we have no data to
-                # send back, meaning the generator does not yield and can there
-                # for block other generators/greenlets from running.
-                sleep(.1)
+        try:
+            while True:
+                self.poll()
+                try:
+                    size, data = channel.read_nonblocking(is_stderr=is_stderr)
+                except EOF:
+                    return
+                if size > 0:
+                    _buffer.write(data)
+                sleep()
+        finally:
+            _buffer.eof.set()
 
     def wait_finished(self, host_output, timeout=None):
         """Wait for EOF from channel and close channel.
@@ -315,7 +312,7 @@ class SSHClient(BaseSSHClient):
         :type channel: :py:class:`ssh.channel.Channel`
         """
         logger.debug("Closing channel")
-        self._eagain(channel.close, timeout=self.timeout)
+        self._eagain(channel.close)
 
     def poll(self, timeout=None):
         """ssh-python based co-operative gevent poll on session socket.
