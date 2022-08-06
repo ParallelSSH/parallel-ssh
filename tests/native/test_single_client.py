@@ -180,6 +180,14 @@ class SSH2ClientTest(SSH2TestCase):
         exit_code = host_out.channel.get_exit_status()
         self.assertEqual(host_out.exit_code, 0)
         self.assertEqual(expected, output)
+        
+    def test_alias(self):
+        client = _SSHClient(self.host, port=self.port,
+                           num_retries=1, alias='test')
+        host_out = client.run_command(self.cmd)
+        output = list(host_out.stdout)
+        stderr = list(host_out.stderr)
+        self.assertEqual(host_out.alias, 'test')
 
     def test_open_session_timeout(self):
         client = SSHClient(self.host, port=self.port,
