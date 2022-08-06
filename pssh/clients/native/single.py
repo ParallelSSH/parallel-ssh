@@ -232,6 +232,8 @@ class SSHClient(BaseSSHClient):
                 return self._connect_init_session_retry(retries=retries+1)
             msg = "Error connecting to host %s:%s - %s"
             logger.error(msg, self.host, self.port, ex)
+            if not self.sock.closed:
+                self.sock.close()
             if isinstance(ex, SSH2Timeout):
                 raise Timeout(msg, self.host, self.port, ex)
             raise
