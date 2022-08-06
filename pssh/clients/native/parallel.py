@@ -405,7 +405,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         """
         copy_args = [{'local_file': local_file,
                       'remote_file': remote_file}
-                     for i, host in enumerate(self.hosts)] \
+                     for _ in self.hosts] \
             if copy_args is None else copy_args
         local_file = "%(local_file)s"
         remote_file = "%(remote_file)s"
