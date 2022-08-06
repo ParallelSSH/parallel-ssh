@@ -134,7 +134,8 @@ class SSHClient(BaseSSHClient):
                 identity_auth=identity_auth,
             )
             proxy_host = '127.0.0.1'
-        self._chan_lock = RLock()
+        self._chan_stdout_lock = RLock()
+        self._chan_stderr_lock = RLock()
         super(SSHClient, self).__init__(
             host, user=user, password=password, alias=alias, port=port, pkey=pkey,
             num_retries=num_retries, retry_delay=retry_delay,
@@ -303,18 +304,19 @@ class SSHClient(BaseSSHClient):
         self._eagain(channel.execute, cmd)
         return channel
 
-    def _read_output_to_buffer(self, read_func, _buffer):
+    def _read_output_to_buffer(self, read_func, _buffer, is_stderr=False):
+        _lock = self._chan_stderr_lock if is_stderr else self._chan_stdout_lock
         try:
             while True:
-                with self._chan_lock:
+                with _lock:
                     size, data = read_func()
-                while size == LIBSSH2_ERROR_EAGAIN:
+                if size == LIBSSH2_ERROR_EAGAIN:
                     self.poll()
-                    with self._chan_lock:
-                        size, data = read_func()
+                    continue
                 if size <= 0:
                     break
                 _buffer.write(data)
+                sleep()
         finally:
             _buffer.eof.set()
 
@@ -342,7 +344,7 @@ class SSHClient(BaseSSHClient):
         self.close_channel(channel)
 
     def close_channel(self, channel):
-        with self._chan_lock:
+        with self._chan_stdout_lock, self._chan_stderr_lock:
             logger.debug("Closing channel")
             self._eagain(channel.close)
 
@@ -560,6 +562,9 @@ class SSHClient(BaseSSHClient):
         :type local_file: str
         :param recurse: Whether or not to recursively copy directories
         :type recurse: bool
+        :param sftp: The SFTP channel to use instead of creating a new one.
+          Only used when ``recurse`` is ``True``.
+        :type sftp: :py:class:`ssh2.sftp.SFTP`
         :param encoding: Encoding to use for file paths when recursion is
           enabled.
         :type encoding: str
@@ -617,6 +622,9 @@ class SSHClient(BaseSSHClient):
         :type local_file: str
         :param remote_file: Remote filepath on remote host to copy file to
         :type remote_file: str
+        :param sftp: The SFTP channel to use instead of creating a new one.
+          Only used when ``recurse`` is ``True``.
+        :type sftp: :py:class:`ssh2.sftp.SFTP`
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
 
