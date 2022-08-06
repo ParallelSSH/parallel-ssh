@@ -231,6 +231,7 @@ class BaseParallelSSHClient(object):
 
     def _get_output_from_greenlet(self, cmd_i, cmd, raise_error=False):
         host = self.hosts[cmd_i]
+        alias = self._get_host_config(host_i, _).alias
         try:
             host_out = cmd.get()
             return host_out
@@ -239,8 +240,7 @@ class BaseParallelSSHClient(object):
                 ex = Timeout()
             if raise_error:
                 raise ex
-            return HostOutput(host, None, None, None,
-                              exception=ex)
+            return HostOutput(host=host,exception=ex, alias=alias)
 
     def get_last_output(self, cmds=None):
         """Get output for last commands executed by ``run_command``.
