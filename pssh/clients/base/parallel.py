@@ -64,7 +64,8 @@ class BaseParallelSSHClient(object):
         self.user = user
         self.password = password
         self.port = port
-        self.pkey = pkey
+        self.pkey = _validate_pkey(pkey)
+        self.__pkey_data = self._load_pkey_data(pkey) if pkey is not None else None
         self.num_retries = num_retries
         self.timeout = timeout
         self._host_clients = {}
