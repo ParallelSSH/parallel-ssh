@@ -428,6 +428,8 @@ class BaseSSHClient(object):
 
         :param stderr_buffer: Buffer to read from.
         :type stderr_buffer: :py:class:`pssh.clients.reader.ConcurrentRWBuffer`
+        :param timeout: Timeout in seconds - defaults to no timeout.
+        :type timeout: int or float
         :rtype: generator
         """
         logger.debug("Reading from stderr buffer, timeout=%s", timeout)
@@ -439,6 +441,8 @@ class BaseSSHClient(object):
 
         :param stdout_buffer: Buffer to read from.
         :type stdout_buffer: :py:class:`pssh.clients.reader.ConcurrentRWBuffer`
+        :param timeout: Timeout in seconds - defaults to no timeout.
+        :type timeout: int or float
         :rtype: generator
         """
         logger.debug("Reading from stdout buffer, timeout=%s", timeout)
