@@ -231,7 +231,7 @@ class BaseParallelSSHClient(object):
 
     def _get_output_from_greenlet(self, cmd_i, cmd, raise_error=False):
         host = self.hosts[cmd_i]
-        alias = self._get_host_config(host_i, _).alias
+        alias = self._get_host_config(cmd_i, _).alias
         try:
             host_out = cmd.get()
             return host_out
