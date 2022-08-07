@@ -18,7 +18,6 @@
 import logging
 import os
 from collections import deque
-from warnings import warn
 
 from gevent import sleep, spawn, get_hub
 from gevent.lock import RLock
@@ -63,7 +62,8 @@ class SSHClient(BaseSSHClient):
                  identity_auth=True,
                  ipv6_only=False,
                  ):
-        """:param host: Host name or IP to connect to.
+        """
+        :param host: Host name or IP to connect to.
         :type host: str
         :param user: User to connect as. Defaults to logged in user.
         :type user: str
@@ -352,7 +352,6 @@ class SSHClient(BaseSSHClient):
         return self._eagain(self.session.sftp_init)
 
     def _make_sftp(self):
-        """Make SFTP client from open transport"""
         try:
             sftp = self._make_sftp_eagain()
         except Exception as ex:
@@ -360,7 +359,7 @@ class SSHClient(BaseSSHClient):
         return sftp
 
     def _mkdir(self, sftp, directory):
-        """Make directory via SFTP channel
+        """Make directory via SFTP channel.
 
         :param sftp: SFTP client object
         :type sftp: :py:class:`ssh2.sftp.SFTP`
@@ -430,10 +429,22 @@ class SSHClient(BaseSSHClient):
                 data = local_fh.read(self._BUF_SIZE)
 
     def sftp_put(self, sftp, local_file, remote_file):
+        """Perform an SFTP put - copy local file path to remote via SFTP.
+
+        :param sftp: SFTP client object.
+        :type sftp: :py:class:`ssh2.sftp.SFTP`
+        :param local_file: Local filepath to copy to remote host.
+        :type local_file: str
+        :param remote_file: Remote filepath on remote host to copy file to.
+        :type remote_file: str
+
+        :raises: :py:class:`pssh.exceptions.SFTPIOError` on I/O errors writing
+          via SFTP.
+        """
         mode = LIBSSH2_SFTP_S_IRUSR | \
-               LIBSSH2_SFTP_S_IWUSR | \
-               LIBSSH2_SFTP_S_IRGRP | \
-               LIBSSH2_SFTP_S_IROTH
+            LIBSSH2_SFTP_S_IWUSR | \
+            LIBSSH2_SFTP_S_IRGRP | \
+            LIBSSH2_SFTP_S_IROTH
         f_flags = LIBSSH2_FXF_CREAT | LIBSSH2_FXF_WRITE | LIBSSH2_FXF_TRUNC
         with self._sftp_openfh(
                 sftp.open, remote_file, f_flags, mode) as remote_fh:
