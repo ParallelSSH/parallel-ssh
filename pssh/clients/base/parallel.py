@@ -361,7 +361,7 @@ class BaseParallelSSHClient(object):
         if output is None:
             output = self.get_last_output()
             if output is None:
-                logger.info("No last output to join on - ``run_command`` has never been run.")
+                logger.info("No last output to join on - run_command has never been run.")
                 return
         elif not isinstance(output, list):
             raise ValueError("Unexpected output object type")
