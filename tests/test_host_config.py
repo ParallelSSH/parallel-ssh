@@ -81,7 +81,7 @@ class TestHostConfig(unittest.TestCase):
         self.assertRaises(ValueError, HostConfig, user=22)
         self.assertRaises(ValueError, HostConfig, password=22)
         self.assertRaises(ValueError, HostConfig, port='22')
-        self.assertRaises(ValueError, HostConfig, alias=2.2)
+        self.assertRaises(ValueError, HostConfig, alias=2)
         self.assertRaises(ValueError, HostConfig, private_key=1)
         self.assertRaises(ValueError, HostConfig, allow_agent=1)
         self.assertRaises(ValueError, HostConfig, num_retries='')
