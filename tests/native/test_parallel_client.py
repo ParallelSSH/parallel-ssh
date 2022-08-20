@@ -1317,11 +1317,11 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key, num_retries=1)
         self.assertTrue(client.finished())
-        output = client.run_command('while true; do echo a line; sleep .1; done',
+        output = client.run_command('while true; do echo a line; sleep .05; done',
                                     use_pty=True, read_timeout=.2)
         stdout = []
         try:
-            with GTimeout(seconds=.25):
+            with GTimeout(seconds=.3):
                 for line in output[0].stdout:
                     stdout.append(line)
         except Timeout:
