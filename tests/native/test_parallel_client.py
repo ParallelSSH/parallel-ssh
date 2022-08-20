@@ -1312,6 +1312,12 @@ class ParallelSSHClientTest(unittest.TestCase):
             self.assertEqual(len(stdout), 3)
         self.assertTrue(client.finished(output))
 
+    def test_finished_no_run_command(self):
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.user_key, num_retries=1)
+        client.join()
+        self.assertTrue(client.finished())
+
     def test_partial_read_timeout_close_cmd(self):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key, num_retries=1)

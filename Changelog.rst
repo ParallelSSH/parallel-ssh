@@ -15,6 +15,11 @@ Changes
 * Performance improvements for all clients when reading output.
 * Output reading for all clients has been changed to be less prone to race conditions.
 
+Fixes
+------
+
+* Calling ``ParallelSSHClient.join`` without ever running ``run_command`` would raise exception. Is now a no-op.
+
 
 2.11.1
 +++++++
