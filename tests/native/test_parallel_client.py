@@ -1307,9 +1307,8 @@ class ParallelSSHClientTest(unittest.TestCase):
             self.assertRaises(Timeout, list, host_out.stdout)
         self.assertFalse(client.finished(output))
         client.join(output)
-        # import ipdb; ipdb.set_trace()
         for host_out in output:
-            stdout = list(output[0].stdout)
+            stdout = list(host_out.stdout)
             self.assertEqual(len(stdout), 3)
         self.assertTrue(client.finished(output))
 
@@ -1317,7 +1316,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key, num_retries=1)
         self.assertTrue(client.finished())
-        output = client.run_command('while true; do echo a line; sleep .05; done',
+        output = client.run_command('while true; do echo a line; sleep .01; done',
                                     use_pty=True, read_timeout=.2)
         stdout = []
         try:
@@ -1327,6 +1326,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         except Timeout:
             pass
         self.assertTrue(len(stdout) > 0)
+        # Allow some more output to be generated
+        sleep(.1)
         output[0].client.close_channel(output[0].channel)
         client.join(output)
         # Should not timeout
@@ -1338,7 +1339,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         client = ParallelSSHClient([self.host], port=self.port,
                                    pkey=self.user_key, num_retries=1)
         self.assertTrue(client.finished())
-        client.run_command('while true; do echo a line; sleep .1; done')
+        client.run_command('while true; do echo a line; sleep .01; done')
         try:
             with GTimeout(seconds=.1):
                 client.join()
@@ -1379,6 +1380,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         else:
             raise Exception("Should have timed out")
         self.assertTrue(len(stdout) > 0)
+        # Allow some more output to be generated
+        sleep(.1)
         output[0].client.close_channel(output[0].channel)
         client.join()
         self.assertTrue(client.finished())
