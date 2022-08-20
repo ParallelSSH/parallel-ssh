@@ -55,12 +55,12 @@ class HostOutput(object):
     """Host output"""
 
     __slots__ = ('host', 'channel', 'stdin',
-                 'client', 'exception', 'encoding', 'read_timeout',
-                 'buffers',
+                 'client', 'alias', 'exception',
+                 'encoding', 'read_timeout', 'buffers',
                  )
 
     def __init__(self, host, channel, stdin,
-                 client, exception=None, encoding='utf-8', read_timeout=None,
+                 client, alias=None, exception=None, encoding='utf-8', read_timeout=None,
                  buffers=None):
         """
         :param host: Host name output is for
@@ -71,6 +71,8 @@ class HostOutput(object):
         :type stdin: :py:func:`file`-like object
         :param client: `SSHClient` output is coming from.
         :type client: :py:class:`pssh.clients.base.single.BaseSSHClient`
+        :param alias: Host alias.
+        :type alias: str
         :param exception: Exception from host if any
         :type exception: :py:class:`Exception` or ``None``
         :param read_timeout: Timeout in seconds for reading from buffers.
@@ -82,6 +84,7 @@ class HostOutput(object):
         self.channel = channel
         self.stdin = stdin
         self.client = client
+        self.alias = alias
         self.exception = exception
         self.encoding = encoding
         self.read_timeout = read_timeout
@@ -117,12 +120,13 @@ class HostOutput(object):
 
     def __repr__(self):
         return "\thost={host}{linesep}" \
+            "\talias={alias}{linesep}" \
             "\texit_code={exit_code}{linesep}" \
             "\tchannel={channel}{linesep}" \
             "\texception={exception}{linesep}" \
             "\tencoding={encoding}{linesep}" \
             "\tread_timeout={read_timeout}".format(
-                host=self.host, channel=self.channel,
+                host=self.host, alias=self.alias, channel=self.channel,
                 exception=self.exception, linesep=linesep,
                 exit_code=self.exit_code, encoding=self.encoding, read_timeout=self.read_timeout,
             )

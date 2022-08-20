@@ -159,7 +159,7 @@ class BaseSSHClient(object):
 
     def __init__(self, host,
                  user=None, password=None, port=None,
-                 pkey=None,
+                 pkey=None, alias=None,
                  num_retries=DEFAULT_RETRIES,
                  retry_delay=RETRY_DELAY,
                  allow_agent=True, timeout=None,
@@ -171,6 +171,7 @@ class BaseSSHClient(object):
                  ):
         self._auth_thread_pool = _auth_thread_pool
         self.host = host
+        self.alias = alias
         self.user = user if user else getuser()
         self.password = password
         self.port = port if port else 22
@@ -409,7 +410,7 @@ class BaseSSHClient(object):
             stdout=BufferData(rw_buffer=_stdout_buffer, reader=_stdout_reader),
             stderr=BufferData(rw_buffer=_stderr_buffer, reader=_stderr_reader))
         host_out = HostOutput(
-            host=self.host, channel=channel, stdin=Stdin(channel, self),
+            host=self.host, alias=self.alias, channel=channel, stdin=Stdin(channel, self),
             client=self, encoding=encoding, read_timeout=read_timeout,
             buffers=_buffers,
         )

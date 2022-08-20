@@ -217,6 +217,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         _client = SSHClient(
             host, user=cfg.user or self.user, password=cfg.password or self.password, port=cfg.port or self.port,
             pkey=_pkey_data, num_retries=cfg.num_retries or self.num_retries,
+            alias=cfg.alias,
             timeout=cfg.timeout or self.timeout,
             allow_agent=cfg.allow_agent or self.allow_agent, retry_delay=cfg.retry_delay or self.retry_delay,
             _auth_thread_pool=cfg.auth_thread_pool or self._auth_thread_pool,
