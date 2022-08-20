@@ -71,7 +71,7 @@ class SSHClient(BaseSSHClient):
         :param password: Password to use for password authentication.
         :type password: str
         :param alias: Use an alias for this host.
-        :type alias: str or int
+        :type alias: str
         :param port: SSH port to connect to. Defaults to SSH default (22)
         :type port: int
         :param pkey: Private key file path to use for authentication. Path must
