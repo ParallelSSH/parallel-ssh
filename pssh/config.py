@@ -134,7 +134,7 @@ class HostConfig(object):
         if self.password is not None and not isinstance(self.password, str):
             raise ValueError("Password %s is not a string" % (self.password,))
         if self.alias is not None and not isinstance(self.alias, (str, int)):
-            raise ValueError("Alias %s is not a string or integer" % (self.alias,))
+            raise ValueError("Alias %s is not a string" % (self.alias,))
         if self.private_key is not None and not (
                 isinstance(self.private_key, str) or isinstance(self.private_key, bytes)
         ):
