@@ -1,6 +1,19 @@
 Change Log
 ============
 
+2.12.0
++++++++
+
+Changes
+--------
+
+* Added ``alias`` optional parameter to ``SSHClient`` and ``HostConfig`` for passing through from parallel clients.
+  Used to set an SSH host name alias, for cases where the real host name is the same and there is a need to
+  differentiate output from otherwise identical host names - #355. Thank you @simonfelding.
+* Performance improvements for all clients when reading output.
+* Output reading for all clients has been changed to be less prone to race conditions.
+
+
 2.11.1
 +++++++
 
