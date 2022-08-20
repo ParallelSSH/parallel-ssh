@@ -18,7 +18,6 @@
 import logging
 import os
 from collections import deque
-from warnings import warn
 
 from gevent import sleep, spawn, get_hub
 from gevent.lock import RLock
@@ -33,11 +32,10 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
 
 from .tunnel import FORWARDER
 from ..base.single import BaseSSHClient
-from ...output import HostOutput
+from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import SessionError, SFTPError, \
     SFTPIOError, Timeout, SCPError, ProxyError
-from ...constants import DEFAULT_RETRIES, RETRY_DELAY
-
+from ...output import HostOutput
 
 logger = logging.getLogger(__name__)
 THREAD_POOL = get_hub().threadpool
@@ -64,7 +62,8 @@ class SSHClient(BaseSSHClient):
                  identity_auth=True,
                  ipv6_only=False,
                  ):
-        """:param host: Host name or IP to connect to.
+        """
+        :param host: Host name or IP to connect to.
         :type host: str
         :param user: User to connect as. Defaults to logged in user.
         :type user: str
@@ -134,7 +133,8 @@ class SSHClient(BaseSSHClient):
                 identity_auth=identity_auth,
             )
             proxy_host = '127.0.0.1'
-        self._chan_lock = RLock()
+        self._chan_stdout_lock = RLock()
+        self._chan_stderr_lock = RLock()
         super(SSHClient, self).__init__(
             host, user=user, password=password, alias=alias, port=port, pkey=pkey,
             num_retries=num_retries, retry_delay=retry_delay,
@@ -231,6 +231,8 @@ class SSHClient(BaseSSHClient):
                 return self._connect_init_session_retry(retries=retries+1)
             msg = "Error connecting to host %s:%s - %s"
             logger.error(msg, self.host, self.port, ex)
+            if not self.sock.closed:
+                self.sock.close()
             if isinstance(ex, SSH2Timeout):
                 raise Timeout(msg, self.host, self.port, ex)
             raise
@@ -269,11 +271,7 @@ class SSHClient(BaseSSHClient):
             chan = self._open_session()
         except Exception as ex:
             raise SessionError(ex)
-        if self.forward_ssh_agent and not self._forward_requested:
-            if not hasattr(chan, 'request_auth_agent'):
-                warn("Requested SSH Agent forwarding but libssh2 version used "
-                     "does not support it - ignoring")
-                return chan
+        # if self.forward_ssh_agent and not self._forward_requested:
             # self._eagain(chan.request_auth_agent)
             # self._forward_requested = True
         return chan
@@ -303,18 +301,19 @@ class SSHClient(BaseSSHClient):
         self._eagain(channel.execute, cmd)
         return channel
 
-    def _read_output_to_buffer(self, read_func, _buffer):
+    def _read_output_to_buffer(self, read_func, _buffer, is_stderr=False):
+        _lock = self._chan_stderr_lock if is_stderr else self._chan_stdout_lock
         try:
             while True:
-                with self._chan_lock:
+                with _lock:
                     size, data = read_func()
-                while size == LIBSSH2_ERROR_EAGAIN:
+                if size == LIBSSH2_ERROR_EAGAIN:
                     self.poll()
-                    with self._chan_lock:
-                        size, data = read_func()
+                    continue
                 if size <= 0:
                     break
                 _buffer.write(data)
+                sleep()
         finally:
             _buffer.eof.set()
 
@@ -342,7 +341,7 @@ class SSHClient(BaseSSHClient):
         self.close_channel(channel)
 
     def close_channel(self, channel):
-        with self._chan_lock:
+        with self._chan_stdout_lock, self._chan_stderr_lock:
             logger.debug("Closing channel")
             self._eagain(channel.close)
 
@@ -353,7 +352,6 @@ class SSHClient(BaseSSHClient):
         return self._eagain(self.session.sftp_init)
 
     def _make_sftp(self):
-        """Make SFTP client from open transport"""
         try:
             sftp = self._make_sftp_eagain()
         except Exception as ex:
@@ -361,7 +359,7 @@ class SSHClient(BaseSSHClient):
         return sftp
 
     def _mkdir(self, sftp, directory):
-        """Make directory via SFTP channel
+        """Make directory via SFTP channel.
 
         :param sftp: SFTP client object
         :type sftp: :py:class:`ssh2.sftp.SFTP`
@@ -431,10 +429,22 @@ class SSHClient(BaseSSHClient):
                 data = local_fh.read(self._BUF_SIZE)
 
     def sftp_put(self, sftp, local_file, remote_file):
+        """Perform an SFTP put - copy local file path to remote via SFTP.
+
+        :param sftp: SFTP client object.
+        :type sftp: :py:class:`ssh2.sftp.SFTP`
+        :param local_file: Local filepath to copy to remote host.
+        :type local_file: str
+        :param remote_file: Remote filepath on remote host to copy file to.
+        :type remote_file: str
+
+        :raises: :py:class:`pssh.exceptions.SFTPIOError` on I/O errors writing
+          via SFTP.
+        """
         mode = LIBSSH2_SFTP_S_IRUSR | \
-               LIBSSH2_SFTP_S_IWUSR | \
-               LIBSSH2_SFTP_S_IRGRP | \
-               LIBSSH2_SFTP_S_IROTH
+            LIBSSH2_SFTP_S_IWUSR | \
+            LIBSSH2_SFTP_S_IRGRP | \
+            LIBSSH2_SFTP_S_IROTH
         f_flags = LIBSSH2_FXF_CREAT | LIBSSH2_FXF_WRITE | LIBSSH2_FXF_TRUNC
         with self._sftp_openfh(
                 sftp.open, remote_file, f_flags, mode) as remote_fh:
@@ -560,6 +570,9 @@ class SSHClient(BaseSSHClient):
         :type local_file: str
         :param recurse: Whether or not to recursively copy directories
         :type recurse: bool
+        :param sftp: The SFTP channel to use instead of creating a new one.
+          Only used when ``recurse`` is ``True``.
+        :type sftp: :py:class:`ssh2.sftp.SFTP`
         :param encoding: Encoding to use for file paths when recursion is
           enabled.
         :type encoding: str
@@ -617,6 +630,9 @@ class SSHClient(BaseSSHClient):
         :type local_file: str
         :param remote_file: Remote filepath on remote host to copy file to
         :type remote_file: str
+        :param sftp: The SFTP channel to use instead of creating a new one.
+          Only used when ``recurse`` is ``True``.
+        :type sftp: :py:class:`ssh2.sftp.SFTP`
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
 
@@ -737,12 +753,12 @@ class SSHClient(BaseSSHClient):
             LIBSSH2_SESSION_BLOCK_OUTBOUND,
         )
 
-    def _eagain_write(self, write_func, data, timeout=None):
+    def _eagain_write(self, write_func, data):
         """Write data with given write_func for an ssh2-python session while
         handling EAGAIN and resuming writes from last written byte on each call to
         write_func.
         """
-        return self._eagain_write_errcode(write_func, data, LIBSSH2_ERROR_EAGAIN, timeout=timeout)
+        return self._eagain_write_errcode(write_func, data, LIBSSH2_ERROR_EAGAIN)
 
-    def eagain_write(self, write_func, data, timeout=None):
-        return self._eagain_write(write_func, data, timeout=timeout)
+    def eagain_write(self, write_func, data):
+        return self._eagain_write(write_func, data)

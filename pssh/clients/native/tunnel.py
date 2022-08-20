@@ -18,10 +18,7 @@
 import logging
 
 from threading import Thread, Event
-try:
-    from queue import Queue
-except ImportError:
-    from Queue import Queue
+from queue import Queue
 
 from gevent import spawn, joinall, get_hub, sleep
 from gevent.server import StreamServer
@@ -193,7 +190,7 @@ class TunnelServer(StreamServer):
                 sleep(.01)
                 continue
             try:
-                self._client._eagain_write(channel.write, data)
+                self._client.eagain_write(channel.write, data)
             except Exception as ex:
                 logger.error("Error writing data to channel - %s", ex)
                 raise

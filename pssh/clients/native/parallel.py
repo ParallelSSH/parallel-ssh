@@ -127,7 +127,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
             identity_auth=identity_auth,
             ipv6_only=ipv6_only,
         )
-        self.pkey = _validate_pkey(pkey)
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
         self.proxy_pkey = _validate_pkey(proxy_pkey)
@@ -215,17 +214,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
             encoding=encoding, use_pty=use_pty,
             read_timeout=read_timeout,
         )
-
-    def __del__(self):
-        if not hasattr(self, '_host_clients'):
-            return
-        for s_client in self._host_clients.values():
-            try:
-                s_client.disconnect()
-            except Exception as ex:
-                logger.debug("Client disconnect failed with %s", ex)
-                pass
-            del s_client
 
     def _make_ssh_client(self, host, cfg, _pkey_data):
         _client = SSHClient(
@@ -371,16 +359,12 @@ class ParallelSSHClient(BaseParallelSSHClient):
             encoding=encoding)
 
     def _scp_send(self, host_i, host, local_file, remote_file, recurse=False):
-        self._get_ssh_client(host_i, host)
-        return self._handle_greenlet_exc(
-            self._host_clients[(host_i, host)].scp_send, host,
-            local_file, remote_file, recurse=recurse)
+        _client = self._get_ssh_client(host_i, host)
+        return _client.scp_send(local_file, remote_file, recurse=recurse)
 
     def _scp_recv(self, host_i, host, remote_file, local_file, recurse=False):
-        self._get_ssh_client(host_i, host)
-        return self._handle_greenlet_exc(
-            self._host_clients[(host_i, host)].scp_recv, host,
-            remote_file, local_file, recurse=recurse)
+        _client = self._get_ssh_client(host_i, host)
+        return _client.scp_recv(remote_file, local_file, recurse=recurse)
 
     def scp_send(self, local_file, remote_file, recurse=False, copy_args=None):
         """Copy local file to remote file in parallel via SCP.
@@ -405,6 +389,11 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type local_file: str
         :param remote_file: Remote filepath on remote host to copy file to
         :type remote_file: str
+        :param copy_args: (Optional) format local_file and remote_file strings
+          with per-host arguments in ``copy_args``.   ``copy_args`` length must
+          equal length of host list -
+          :py:class:`pssh.exceptions.HostArgumentError` is raised otherwise
+        :type copy_args: tuple or list
         :param recurse: Whether or not to descend into directories recursively.
         :type recurse: bool
 
@@ -416,7 +405,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
         """
         copy_args = [{'local_file': local_file,
                       'remote_file': remote_file}
-                     for i, host in enumerate(self.hosts)] \
+                     for _ in self.hosts] \
             if copy_args is None else copy_args
         local_file = "%(local_file)s"
         remote_file = "%(remote_file)s"

@@ -23,7 +23,7 @@ import gevent.pool
 from gevent import joinall, spawn, Timeout as GTimeout
 from gevent.hub import Hub
 
-from ..common import _validate_pkey_path
+from ..common import _validate_pkey_path, _validate_pkey
 from ...config import HostConfig
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import HostArgumentError, Timeout, ShellError, HostConfigError
@@ -39,7 +39,7 @@ class BaseParallelSSHClient(object):
     def __init__(self, hosts, user=None, password=None, port=None, pkey=None,
                  allow_agent=True,
                  num_retries=DEFAULT_RETRIES,
-                 timeout=120, pool_size=10,
+                 timeout=120, pool_size=100,
                  host_config=None, retry_delay=RETRY_DELAY,
                  identity_auth=True,
                  ipv6_only=False,
@@ -64,7 +64,8 @@ class BaseParallelSSHClient(object):
         self.user = user
         self.password = password
         self.port = port
-        self.pkey = pkey
+        self.pkey = _validate_pkey(pkey)
+        self.__pkey_data = self._load_pkey_data(pkey) if pkey is not None else None
         self.num_retries = num_retries
         self.timeout = timeout
         self._host_clients = {}
@@ -113,9 +114,26 @@ class BaseParallelSSHClient(object):
             self._host_clients.pop((i, host), None)
         self._hosts = _hosts
 
+    def __del__(self):
+        self.disconnect()
+
+    def disconnect(self):
+        if not hasattr(self, '_host_clients'):
+            return
+        for s_client in self._host_clients.values():
+            try:
+                s_client.disconnect()
+            except Exception as ex:
+                logger.debug("Client disconnect failed with %s", ex)
+                pass
+            del s_client
+
     def _check_host_config(self):
         if self.host_config is None:
             return
+        if not isinstance(self.host_config, list):
+            raise HostConfigError("Host configuration of type %s is invalid - valid types are List[HostConfig]",
+                                  type(self.host_config))
         host_len = len(self.hosts)
         if host_len != len(self.host_config):
             raise ValueError(
@@ -231,7 +249,7 @@ class BaseParallelSSHClient(object):
 
     def _get_output_from_greenlet(self, cmd_i, cmd, raise_error=False):
         host = self.hosts[cmd_i]
-        alias = self._get_host_config(cmd_i, host).alias
+        alias = self._get_host_config(cmd_i).alias
         try:
             host_out = cmd.get()
             return host_out
@@ -256,7 +274,7 @@ class BaseParallelSSHClient(object):
         return self._get_output_from_cmds(
             cmds, raise_error=False)
 
-    def _get_host_config(self, host_i, host):
+    def _get_host_config(self, host_i):
         if self.host_config is None:
             config = HostConfig(
                 user=self.user, port=self.port, password=self.password, private_key=self.pkey,
@@ -275,9 +293,6 @@ class BaseParallelSSHClient(object):
                 alias=None,
             )
             return config
-        elif not isinstance(self.host_config, list):
-            raise HostConfigError("Host configuration of type %s is invalid - valid types are list[HostConfig]",
-                                  type(self.host_config))
         config = self.host_config[host_i]
         return config
 
@@ -285,7 +300,6 @@ class BaseParallelSSHClient(object):
                      shell=None, use_pty=False,
                      encoding='utf-8', read_timeout=None):
         """Make SSHClient if needed, run command on host"""
-        logger.debug("_run_command with read timeout %s", read_timeout)
         try:
             _client = self._get_ssh_client(host_i, host)
             host_out = _client.run_command(
@@ -311,13 +325,13 @@ class BaseParallelSSHClient(object):
         :returns: list of greenlets to ``joinall`` with.
         :rtype: list(:py:mod:`gevent.greenlet.Greenlet`)
         """
-        cmds = [spawn(self._get_ssh_client, i, host) for i, host in enumerate(self.hosts)]
+        cmds = [self.pool.spawn(self._get_ssh_client, i, host) for i, host in enumerate(self.hosts)]
         return cmds
 
     def _consume_output(self, stdout, stderr):
-        for line in stdout:
+        for _ in stdout:
             pass
-        for line in stderr:
+        for _ in stderr:
             pass
 
     def join(self, output=None, consume_output=False, timeout=None):
@@ -346,6 +360,9 @@ class BaseParallelSSHClient(object):
         :rtype: ``None``"""
         if output is None:
             output = self.get_last_output()
+            if output is None:
+                logger.info("No last output to join on - run_command has never been run.")
+                return
         elif not isinstance(output, list):
             raise ValueError("Unexpected output object type")
         cmds = [self.pool.spawn(self._join, host_out, timeout=timeout,
@@ -544,19 +561,13 @@ class BaseParallelSSHClient(object):
         return client.copy_remote_file(
             remote_file, local_file, recurse=recurse, **kwargs)
 
-    def _handle_greenlet_exc(self, func, host, *args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as ex:
-            raise ex
-
     def _get_ssh_client(self, host_i, host):
         logger.debug("Make client request for host %s, (host_i, host) in clients: %s",
                      host, (host_i, host) in self._host_clients)
         _client = self._host_clients.get((host_i, host))
         if _client is not None:
             return _client
-        cfg = self._get_host_config(host_i, host)
+        cfg = self._get_host_config(host_i)
         _pkey = self.pkey if cfg.private_key is None else cfg.private_key
         _pkey_data = self._load_pkey_data(_pkey)
         _client = self._make_ssh_client(host, cfg, _pkey_data)
@@ -564,12 +575,12 @@ class BaseParallelSSHClient(object):
         return _client
 
     def _load_pkey_data(self, _pkey):
-        if isinstance(_pkey, str):
-            _validate_pkey_path(_pkey)
-            with open(_pkey, 'rb') as fh:
-                _pkey_data = fh.read()
-            return _pkey_data
-        return _pkey
+        if not isinstance(_pkey, str):
+            return _pkey
+        _pkey = _validate_pkey_path(_pkey)
+        with open(_pkey, 'rb') as fh:
+            _pkey_data = fh.read()
+        return _pkey_data
 
     def _make_ssh_client(self, host, cfg, _pkey_data):
         raise NotImplementedError
