@@ -72,7 +72,7 @@ class HostOutput(object):
         :param client: `SSHClient` output is coming from.
         :type client: :py:class:`pssh.clients.base.single.BaseSSHClient`
         :param alias: Host alias.
-        :type alias: str or int
+        :type alias: str
         :param exception: Exception from host if any
         :type exception: :py:class:`Exception` or ``None``
         :param read_timeout: Timeout in seconds for reading from buffers.
