@@ -1314,9 +1314,11 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertTrue(client.finished(output))
 
     def test_partial_read_timeout_close_cmd(self):
-        self.assertTrue(self.client.finished())
-        output = self.client.run_command('while true; do echo a line; sleep .1; done',
-                                         use_pty=True, read_timeout=.2)
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.user_key, num_retries=1)
+        self.assertTrue(client.finished())
+        output = client.run_command('while true; do echo a line; sleep .1; done',
+                                    use_pty=True, read_timeout=.2)
         stdout = []
         try:
             with GTimeout(seconds=.25):
@@ -1326,23 +1328,25 @@ class ParallelSSHClientTest(unittest.TestCase):
             pass
         self.assertTrue(len(stdout) > 0)
         output[0].client.close_channel(output[0].channel)
-        self.client.join(output)
+        client.join(output)
         # Should not timeout
         with GTimeout(seconds=.5):
             stdout = list(output[0].stdout)
         self.assertTrue(len(stdout) > 0)
 
     def test_partial_read_timeout_join_no_output(self):
-        self.assertTrue(self.client.finished())
-        self.client.run_command('while true; do echo a line; sleep .1; done')
+        client = ParallelSSHClient([self.host], port=self.port,
+                                   pkey=self.user_key, num_retries=1)
+        self.assertTrue(client.finished())
+        client.run_command('while true; do echo a line; sleep .1; done')
         try:
             with GTimeout(seconds=.1):
-                self.client.join()
+                client.join()
         except GTimeout:
             pass
         else:
             raise Exception("Should have timed out")
-        output = self.client.get_last_output()
+        output = client.get_last_output()
         stdout = []
         try:
             with GTimeout(seconds=.1):
@@ -1353,7 +1357,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         else:
             raise Exception("Should have timed out")
         self.assertTrue(len(stdout) > 0)
-        self.assertRaises(Timeout, self.client.join, timeout=.1)
+        self.assertRaises(Timeout, client.join, timeout=.1)
         stdout = []
         try:
             with GTimeout(seconds=.2):
@@ -1376,8 +1380,8 @@ class ParallelSSHClientTest(unittest.TestCase):
             raise Exception("Should have timed out")
         self.assertTrue(len(stdout) > 0)
         output[0].client.close_channel(output[0].channel)
-        self.client.join()
-        self.assertTrue(self.client.finished())
+        client.join()
+        self.assertTrue(client.finished())
         stdout = list(output[0].stdout)
         self.assertTrue(len(stdout) > 0)
 
