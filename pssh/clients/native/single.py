@@ -213,6 +213,7 @@ class SSHClient(BaseSSHClient):
             sleep(self._eagain(self.session.keepalive_send))
 
     def configure_keepalive(self):
+        """Configures keepalive on the server for `self.keepalive_seconds`."""
         self.session.keepalive_config(False, self.keepalive_seconds)
 
     def _init_session(self, retries=1):
@@ -266,7 +267,10 @@ class SSHClient(BaseSSHClient):
         return chan
 
     def open_session(self):
-        """Open new channel from session"""
+        """Open new channel from session.
+
+        :rtype: :py:class:`ssh2.channel.Channel`
+        """
         try:
             chan = self._open_session()
         except Exception as ex:

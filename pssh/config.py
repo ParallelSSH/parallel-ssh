@@ -59,7 +59,7 @@ class HostConfig(object):
         :param allow_agent: Enable/disable SSH agent authentication.
         :type allow_agent: bool
         :param alias: Use an alias for this host.
-        :type alias: str or int
+        :type alias: str
         :param num_retries: Number of retry attempts before giving up on connection
           and SSH operations.
         :type num_retries: int

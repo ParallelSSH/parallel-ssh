@@ -70,7 +70,7 @@ class HostOutput(object):
         :param stdin: Standard input buffer
         :type stdin: :py:func:`file`-like object
         :param client: `SSHClient` output is coming from.
-        :type client: :py:class:`pssh.clients.base.single.BaseSSHClient`
+        :type client: :py:class:`pssh.clients.base.single.BaseSSHClient` or `None`.
         :param alias: Host alias.
         :type alias: str
         :param exception: Exception from host if any
