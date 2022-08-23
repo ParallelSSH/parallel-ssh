@@ -540,22 +540,25 @@ class BaseSSHClient(object):
         :rtype: :py:class:`pssh.output.HostOutput`
         """
         # Fast path for no command substitution needed
-        if not sudo and not user and not shell:
-            _command = command
-        else:
-            _command = ''
-            if sudo and not user:
-                _command = 'sudo -S '
-            elif user:
-                _command = 'sudo -u %s -S ' % (user,)
-            _shell = shell if shell else '$SHELL -c'
-            _command += "%s '%s'" % (_shell, command,)
-        _command = _command.encode(encoding)
+        _command = self._make_command(command, encoding, user, shell, sudo)
         with GTimeout(seconds=self.timeout):
             channel = self.execute(_command, use_pty=use_pty)
         _timeout = read_timeout if read_timeout else timeout
         host_out = self._make_host_output(channel, encoding, _timeout)
         return host_out
+
+    def _make_command(self, command, encoding, user, shell, sudo):
+        if not sudo and not user and not shell:
+            return command
+        _command = ''
+        if sudo and not user:
+            _command = 'sudo -S '
+        elif user:
+            _command = 'sudo -u %s -S ' % (user,)
+        _shell = shell if shell else '$SHELL -c'
+        _command += "%s '%s'" % (_shell, command,)
+        _command = _command.encode(encoding)
+        return _command
 
     def _eagain_write_errcode(self, write_func, data, eagain):
         data_len = len(data)
@@ -671,7 +674,7 @@ class BaseSSHClient(object):
             file_name = file_name.decode(encoding)
             if file_name in ('.', '..'):
                 continue
-            remote_path = os.path.join(remote_dir, file_name)
+            remote_path = "/".join((remote_dir, file_name))
             local_path = os.path.join(local_dir, file_name)
             self.copy_remote_file(remote_path, local_path, sftp=sftp,
                                   recurse=True, encoding=encoding)
