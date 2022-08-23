@@ -118,6 +118,7 @@ class BaseParallelSSHClient(object):
         self.disconnect()
 
     def disconnect(self):
+        """Disconnect all clients."""
         if not hasattr(self, '_host_clients'):
             return
         for s_client in self._host_clients.values():
@@ -126,7 +127,6 @@ class BaseParallelSSHClient(object):
             except Exception as ex:
                 logger.debug("Client disconnect failed with %s", ex)
                 pass
-            del s_client
 
     def _check_host_config(self):
         if self.host_config is None:
@@ -266,7 +266,7 @@ class BaseParallelSSHClient(object):
         :param cmds: Commands to get output for. Defaults to ``client.cmds``
         :type cmds: list(:py:class:`gevent.Greenlet`)
 
-        :rtype: dict or list
+        :rtype: list(:py:class:`pssh.output.HostOutput`)
         """
         cmds = self.cmds if cmds is None else cmds
         if cmds is None:
@@ -290,7 +290,6 @@ class BaseParallelSSHClient(object):
                 gssapi_server_identity=self.gssapi_server_identity,
                 gssapi_client_identity=self.gssapi_client_identity,
                 gssapi_delegate_credentials=self.gssapi_delegate_credentials,
-                alias=None,
             )
             return config
         config = self.host_config[host_i]
