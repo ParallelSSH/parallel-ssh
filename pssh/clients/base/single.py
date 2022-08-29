@@ -539,7 +539,6 @@ class BaseSSHClient(object):
 
         :rtype: :py:class:`pssh.output.HostOutput`
         """
-        # Fast path for no command substitution needed
         _command = self._make_command(command, encoding, user, shell, sudo)
         with GTimeout(seconds=self.timeout):
             channel = self.execute(_command, use_pty=use_pty)
@@ -548,8 +547,9 @@ class BaseSSHClient(object):
         return host_out
 
     def _make_command(self, command, encoding, user, shell, sudo):
+        # Fast path for no command substitution needed
         if not sudo and not user and not shell:
-            return command
+            return command if isinstance(command, bytes) else command.encode(encoding)
         _command = ''
         if sudo and not user:
             _command = 'sudo -S '

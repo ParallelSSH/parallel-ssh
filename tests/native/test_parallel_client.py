@@ -402,9 +402,8 @@ class ParallelSSHClientTest(unittest.TestCase):
         remote_filename = os.path.sep.join([remote_test_dir, remote_filepath])
         remote_file_abspath = os.path.expanduser('~/' + remote_filename)
         remote_test_dir_abspath = os.path.expanduser('~/' + remote_test_dir)
-        test_file = open(local_filename, 'w')
-        test_file.writelines([test_file_data + os.linesep])
-        test_file.close()
+        with open(local_filename, 'w') as test_file_fh:
+            test_file_fh.writelines([test_file_data + os.linesep])
         cmds = client.copy_file(local_filename, remote_filename)
         cmds[0].get()
         try:
