@@ -68,6 +68,8 @@ class Stdin(object):
 
     def flush(self):
         """Flush pending data written to stdin."""
+        if not hasattr(self._channel, "flush"):
+            return
         return self._client._eagain(self._channel.flush)
 
 
