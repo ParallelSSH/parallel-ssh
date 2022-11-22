@@ -1,6 +1,14 @@
 Change Log
 ============
 
+2.12.1
++++++++
+
+Fixes
+------
+
+* Calling ``HostOutput.stdin.flush`` with a ``pssh.clients.ssh`` client would raise exception - #.
+
 2.12.0
 +++++++
 
