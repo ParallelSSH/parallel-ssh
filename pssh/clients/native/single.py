@@ -61,6 +61,7 @@ class SSHClient(BaseSSHClient):
                  _auth_thread_pool=True, keepalive_seconds=60,
                  identity_auth=True,
                  ipv6_only=False,
+                 keyboard_interactive=False,
                  ):
         """
         :param host: Host name or IP to connect to.
@@ -107,6 +108,8 @@ class SSHClient(BaseSSHClient):
           for the host or raise NoIPv6AddressFoundError otherwise. Note this will
           disable connecting to an IPv4 address if an IP address is provided instead.
         :type ipv6_only: bool
+        :param keyboard_interactive: (Optional) Set to True to enable authentication as keyboard-interactive
+        :type keyboard_interactive: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
@@ -119,6 +122,7 @@ class SSHClient(BaseSSHClient):
         self.alias = alias
         self.host = host
         self.port = port if port is not None else 22
+        self.keyboard_interactive = keyboard_interactive
         if proxy_host is not None:
             _port = port if proxy_port is None else proxy_port
             _pkey = pkey if proxy_pkey is None else proxy_pkey
@@ -260,7 +264,10 @@ class SSHClient(BaseSSHClient):
         )
 
     def _password_auth(self):
-        self.session.userauth_password(self.user, self.password)
+        if self.keyboard_interactive:
+            self.session.userauth_keyboardinteractive(self.user, self.password)
+        else:
+            self.session.userauth_password(self.user, self.password)
 
     def _open_session(self):
         chan = self._eagain(self.session.open_session)
