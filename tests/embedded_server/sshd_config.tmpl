@@ -8,8 +8,13 @@ HostCertificate {{parent_dir}}/ca_host_key-cert.pub
 TrustedUserCAKeys {{parent_dir}}/ca_user_key.pub
 AuthorizedPrincipalsFile {{parent_dir}}/principals
 
+MaxAuthTries 99999
+MaxSessions 99999
+MaxStartups 99999
+PerSourceMaxStartups 99999
+PerSourcePenaltyExemptList *.*.*.*
+
 AcceptEnv LANG LC_*
 Subsystem sftp internal-sftp
 AuthorizedKeysFile {{parent_dir}}/authorized_keys
-MaxSessions 100
 PidFile {{parent_dir}}/{{random_server}}.pid
