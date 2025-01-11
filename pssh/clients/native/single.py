@@ -666,9 +666,9 @@ class SSHClient(BaseSSHClient):
         elif remote_file.endswith('/'):
             local_filename = local_file.rsplit('/')[-1]
             remote_file += local_filename
-        self._scp_send(local_file, remote_file)
         logger.info("SCP local file %s to remote destination %s:%s",
                     local_file, self.host, remote_file)
+        self._scp_send(local_file, remote_file)
 
     def _scp_send(self, local_file, remote_file):
         fileinfo = os.stat(local_file)
