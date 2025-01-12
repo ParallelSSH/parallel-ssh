@@ -44,6 +44,7 @@ class TestHostOutput(unittest.TestCase):
     def test_excepting_client_exit_code(self):
         class ChannelError(Exception):
             pass
+
         class ExcSSHClient(object):
             def get_exit_status(self, channel):
                 raise ChannelError

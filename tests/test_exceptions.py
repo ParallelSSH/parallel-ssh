@@ -16,7 +16,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import unittest
-from logging import NullHandler
 
 from pssh.exceptions import AuthenticationError, AuthenticationException, UnknownHostError, \
     UnknownHostException, ConnectionError, ConnectionErrorException, SSHError, SSHException, \
@@ -68,4 +67,3 @@ class ParallelSSHUtilsTest(unittest.TestCase):
             raise HostArgumentError
         except HostArgumentException:
             pass
-        

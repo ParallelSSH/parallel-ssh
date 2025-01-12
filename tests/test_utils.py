@@ -20,6 +20,7 @@ from logging import NullHandler, DEBUG
 
 from pssh import utils
 
+
 class ParallelSSHUtilsTest(unittest.TestCase):
 
     def test_enabling_host_logger(self):
