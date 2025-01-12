@@ -35,6 +35,7 @@ jobs:
       - run:
           command: |
             flake8 pssh
+            flake8 tests ci/integration_tests
           name: flake
       - run:
           command: |
