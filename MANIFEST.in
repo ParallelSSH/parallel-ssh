@@ -3,4 +3,12 @@ include pssh/_version.py
 include LICENSE
 include COPYING
 include COPYING.LESSER
+exclude .codecov.yml
+exclude .coveragerc
+exclude .git*
+exclude .pre-commit*
+exclude .readthedocs.yml
 recursive-exclude tests *
+recursive-exclude ci *
+recursive-exclude .circleci *
+recursive-exclude .github *
