@@ -34,10 +34,12 @@ class _Eof(Event):
 class ConcurrentRWBuffer(object):
     """Concurrent reader/writer of bytes for use from multiple greenlets.
 
-    Supports both concurrent reading and writing.
+    Supports both concurrent reading and writing and combinations there of.
 
     Iterate on buffer object to read data, yielding event loop if no data exists
     until self.eof has been set.
+
+    Check if end-of-file without blocking with ``ConcurrentRWBuffer.eof.is_set()``.
 
     Writers should call ``ConcurrentRWBuffer.eof.set()`` when finished writing data via ``write``.
 
