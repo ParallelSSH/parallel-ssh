@@ -50,7 +50,9 @@ class SSHClientTest(SSHTestCase):
         output = list(host_out.stdout)
         stderr = list(host_out.stderr)
         expected = [self.resp]
+        expected_stderr = []
         self.assertEqual(expected, output)
+        self.assertEqual(expected_stderr, stderr)
         exit_code = host_out.channel.get_exit_status()
         self.assertEqual(exit_code, 0)
 
@@ -186,11 +188,10 @@ class SSHClientTest(SSHTestCase):
 
     def test_password_auth_failure(self):
         try:
-            client = SSHClient(self.host, port=self.port, num_retries=1,
-                               allow_agent=False,
-                               identity_auth=False,
-                               password='blah blah blah',
-                               )
+            SSHClient(self.host, port=self.port, num_retries=1, allow_agent=False,
+                      identity_auth=False,
+                      password='blah blah blah',
+                      )
         except AuthenticationException as ex:
             self.assertIsInstance(ex.args[3], AuthenticationDenied)
         else:
@@ -244,6 +245,7 @@ class SSHClientTest(SSHTestCase):
     def test_open_session_exc(self):
         class Error(Exception):
             pass
+
         def _session():
             raise Error
         client = SSHClient(self.host, port=self.port,
@@ -255,6 +257,7 @@ class SSHClientTest(SSHTestCase):
     def test_session_connect_exc(self):
         class Error(Exception):
             pass
+
         def _con():
             raise Error
         client = SSHClient(self.host, port=self.port,
@@ -282,8 +285,10 @@ class SSHClientTest(SSHTestCase):
     def test_agent_auth_failure(self):
         class UnknownError(Exception):
             pass
+
         def _agent_auth_unk():
             raise UnknownError
+
         def _agent_auth_agent_err():
             raise AuthenticationDenied
         client = SSHClient(self.host, port=self.port,
@@ -316,6 +321,7 @@ class SSHClientTest(SSHTestCase):
     def test_disconnect_exc(self):
         class DiscError(Exception):
             pass
+
         def _disc():
             raise DiscError
         client = SSHClient(self.host, port=self.port,

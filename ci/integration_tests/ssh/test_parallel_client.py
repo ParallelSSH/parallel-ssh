@@ -334,7 +334,7 @@ class LibSSHParallelTest(unittest.TestCase):
         output = self.client.run_command("echo 'me' 'and me'")
         stdout = list(output[0].stdout)
         expected = 'me and me'
-        self.assertTrue(len(stdout)==1,
+        self.assertTrue(len(stdout) == 1,
                         msg="Got incorrect number of lines in output - %s" % (stdout,))
         self.assertEqual(output[0].exit_code, 0)
         self.assertEqual(expected, stdout[0],
@@ -484,8 +484,9 @@ class LibSSHParallelTest(unittest.TestCase):
             self.client.run_command(self.cmd),
         ]
         for output in outputs:
-            for host_out in output:
+            for i, host_out in enumerate(output):
                 stdout = list(host_out.stdout)
+                self.assertEqual(host_out.client.host, hosts[i])
                 self.assertListEqual(stdout, [self.resp])
 
     def test_join_bad_host_out(self):
