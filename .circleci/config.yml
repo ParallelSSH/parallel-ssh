@@ -41,6 +41,7 @@ jobs:
             set -x
             eval "$(ssh-agent -s)"
             pytest
+            pytest ci/integration_tests
           name: Integration tests
       - run:
           command: |
