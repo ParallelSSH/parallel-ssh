@@ -1,13 +1,22 @@
 Change Log
 ============
 
-2.12.1
+
+2.13.0
 +++++++
+
+Changes
+-------
+
+* Minimum version updates for ``ssh2-python`` and `ssh-python``.
+* Support for Python 3.12+, removed support for Python <3.8.
+
 
 Fixes
 ------
 
-* Calling ``HostOutput.stdin.flush`` with a ``pssh.clients.ssh`` client would raise exception - #.
+* Calling ``HostOutput.stdin.flush`` with a ``pssh.clients.ssh`` client would raise exception.
+
 
 2.12.0
 +++++++
