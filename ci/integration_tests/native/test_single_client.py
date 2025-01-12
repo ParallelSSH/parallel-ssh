@@ -16,16 +16,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import os
+import pytest
 import shutil
 import subprocess
 import tempfile
 from datetime import datetime
-from hashlib import sha256
-from tempfile import NamedTemporaryFile
-from unittest.mock import MagicMock, call, patch
-
-import pytest
 from gevent import sleep, spawn, Timeout as GTimeout, socket
+from hashlib import sha256
 from pytest import raises
 from ssh2.exceptions import (SocketDisconnectError, BannerRecvError, SocketRecvError,
                              AgentConnectionError, AgentListIdentitiesError,
@@ -33,6 +30,8 @@ from ssh2.exceptions import (SocketDisconnectError, BannerRecvError, SocketRecvE
                              AuthenticationError as SSH2AuthenticationError,
                              )
 from ssh2.session import Session
+from tempfile import NamedTemporaryFile
+from unittest.mock import MagicMock, call, patch
 
 from pssh.clients.native import SSHClient
 from pssh.exceptions import (AuthenticationException, ConnectionErrorException,
@@ -363,11 +362,12 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertEqual(len(dir_list), len(output) - 3)
 
     def test_file_output_parsing(self):
+        abs_file = os.sep.join([
+            os.path.dirname(__file__), '..', '..', '..', 'setup.py',
+        ])
         lines = int(subprocess.check_output(
-            ['wc', '-l', 'README.rst']).split()[0])
-        dir_name = os.path.dirname(__file__)
-        _file = os.sep.join((dir_name, '..', '..', 'README.rst'))
-        cmd = 'cat %s' % _file
+            ['wc', '-l', abs_file]).split()[0])
+        cmd = 'cat %s' % abs_file
         host_out = self.client.run_command(cmd)
         output = list(host_out.stdout)
         self.assertEqual(lines, len(output))

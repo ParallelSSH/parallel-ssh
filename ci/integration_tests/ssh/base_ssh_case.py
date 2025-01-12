@@ -23,7 +23,7 @@ from getpass import getuser
 from sys import version_info
 
 from pssh.clients.ssh.single import SSHClient
-from ..embedded_server.openssh import OpenSSHServer
+from ci.integration_tests.embedded_server import OpenSSHServer
 
 
 def setup_root_logger():
@@ -40,7 +40,7 @@ setup_root_logger()
 
 PKEY_FILENAME = os.path.sep.join([os.path.dirname(__file__), '..', 'client_pkey'])
 PUB_FILE = "%s.pub" % (PKEY_FILENAME,)
-USER_CERT_PRIV_KEY = os.path.sep.join([os.path.dirname(__file__), '..', 'unit_test_cert_key'])
+USER_CERT_PRIV_KEY = os.path.sep.join([os.path.dirname(__file__), '..', 'int_test_cert_key'])
 USER_CERT_PUB_KEY = "%s.pub" % (USER_CERT_PRIV_KEY,)
 USER_CERT_FILE = "%s-cert.pub" % (USER_CERT_PRIV_KEY,)
 CA_USER_KEY = os.path.sep.join([os.path.dirname(__file__), '..', 'embedded_server', 'ca_user_key'])

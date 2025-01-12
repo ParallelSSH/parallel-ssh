@@ -29,7 +29,7 @@ from pssh.exceptions import AuthenticationException, ConnectionErrorException, T
 from pssh.output import HostOutput
 from .base_ssh_case import PKEY_FILENAME, PUB_FILE, USER_CERT_PRIV_KEY, \
     USER_CERT_FILE, CA_USER_KEY, USER, sign_cert
-from ..embedded_server.openssh import OpenSSHServer
+from ci.integration_tests.embedded_server import OpenSSHServer
 
 
 class LibSSHParallelTest(unittest.TestCase):

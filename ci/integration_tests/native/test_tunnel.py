@@ -31,7 +31,7 @@ from pssh.clients.native.tunnel import LocalForwarder, TunnelServer, FORWARDER
 from pssh.config import HostConfig
 from pssh.exceptions import ProxyError
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
-from ..embedded_server.openssh import OpenSSHServer
+from ci.integration_tests.embedded_server import OpenSSHServer
 
 
 class TunnelTest(unittest.TestCase):
