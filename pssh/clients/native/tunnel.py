@@ -16,16 +16,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import logging
-
-from threading import Thread, Event
 from queue import Queue
+from threading import Thread, Event
 
 from gevent import spawn, joinall, get_hub, sleep
 from gevent.server import StreamServer
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 
 from ...constants import DEFAULT_RETRIES
-
 
 logger = logging.getLogger(__name__)
 
