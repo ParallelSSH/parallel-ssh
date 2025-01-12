@@ -16,13 +16,16 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import os
-import pytest
 import shutil
 import subprocess
 import tempfile
 from datetime import datetime
-from gevent import sleep, spawn, Timeout as GTimeout, socket
 from hashlib import sha256
+from tempfile import NamedTemporaryFile
+from unittest.mock import MagicMock, call, patch
+
+import pytest
+from gevent import sleep, spawn, Timeout as GTimeout, socket
 from pytest import raises
 from ssh2.exceptions import (SocketDisconnectError, BannerRecvError, SocketRecvError,
                              AgentConnectionError, AgentListIdentitiesError,
@@ -30,8 +33,6 @@ from ssh2.exceptions import (SocketDisconnectError, BannerRecvError, SocketRecvE
                              AuthenticationError as SSH2AuthenticationError,
                              )
 from ssh2.session import Session
-from tempfile import NamedTemporaryFile
-from unittest.mock import MagicMock, call, patch
 
 from pssh.clients.native import SSHClient
 from pssh.exceptions import (AuthenticationException, ConnectionErrorException,

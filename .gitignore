@@ -45,7 +45,7 @@ pypy
 # Documentation builds
 doc/_build
 
-tests/unit_test_cert_key-cert.pub
+ci/integration_tests/int_test_cert_key-cert.pub
 ci/integration_tests/embedded_server/principals
 ci/integration_tests/embedded_server/sshd_config_*
 ci/integration_tests/embedded_server/*.pid

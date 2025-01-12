@@ -15,23 +15,23 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import gc
 import os
-import time
 import unittest
 from datetime import datetime
 from getpass import getuser
-from sys import version_info
 
+import gc
+import time
 from gevent import sleep, spawn, Timeout as GTimeout
 from ssh2.exceptions import SocketSendError, SocketRecvError
+from sys import version_info
 
 from pssh.clients.native import SSHClient, ParallelSSHClient
 from pssh.clients.native.tunnel import LocalForwarder, TunnelServer, FORWARDER
 from pssh.config import HostConfig
 from pssh.exceptions import ProxyError
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
-from ci.integration_tests.embedded_server import OpenSSHServer
+from ..embedded_server.openssh import OpenSSHServer
 
 
 class TunnelTest(unittest.TestCase):
