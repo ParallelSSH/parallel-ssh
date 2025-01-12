@@ -247,8 +247,9 @@ class SSH2ClientTest(SSH2TestCase):
     def test_manual_auth(self):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
-                           num_retries=1,
-                           allow_agent=False)
+                           num_retries=2,
+                           allow_agent=False,
+                           timeout=.1)
         client.session.disconnect()
         del client.session
         del client.sock
@@ -475,6 +476,23 @@ class SSH2ClientTest(SSH2TestCase):
                           client.session.agent_auth, client.user)
         self.assertRaises(AuthenticationException,
                           client.auth)
+
+    @patch('pssh.clients.native.single.Session')
+    def test_handshake_retries(self, mock_sess):
+        sess = MagicMock()
+        mock_sess.return_value = sess
+
+        hand_mock = MagicMock()
+        hand_mock.side_effect = SSH2AuthenticationError
+        sess.handshake = hand_mock
+
+        with raises(SSH2AuthenticationError):
+            SSHClient(self.host, port=self.port,
+                      num_retries=2,
+                      timeout=.1,
+                      retry_delay=.1,
+                      _auth_thread_pool=False,
+                      )
 
     def test_finished(self):
         self.assertFalse(self.client.finished(None))

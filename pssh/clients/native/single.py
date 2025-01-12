@@ -218,6 +218,7 @@ class SSHClient(BaseSSHClient):
 
     def _init_session(self, retries=1):
         self.session = Session()
+
         if self.timeout:
             # libssh2 timeout is in ms
             self.session.set_timeout(self.timeout * 1000)
