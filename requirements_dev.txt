@@ -1,12 +1,11 @@
 coverage
 codecov
 flake8
-sphinx
-sphinx_rtd_theme
 pytest
 pytest-cov
 pytest-rerunfailures
 jinja2
 pre-commit
+-r doc/requirements.txt
 -r requirements.txt
 -e .
