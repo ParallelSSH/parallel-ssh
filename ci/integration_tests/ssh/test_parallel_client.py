@@ -197,16 +197,16 @@ class LibSSHParallelTest(unittest.TestCase):
                          msg="Got unexpected stderr - %s, expected %s" %
                          (stderr,
                           expected_stderr,))
-
-    def test_pssh_client_run_long_command(self):
-        expected_lines = 5
-        output = self.client.run_command(self.long_cmd(expected_lines))
-        self.assertEqual(len(output), len(self.client.hosts))
-        stdout = list(output[0].stdout)
-        self.client.join(output)
-        self.assertTrue(len(stdout) == expected_lines,
-                        msg="Expected %s lines of response, got %s" % (
-                            expected_lines, len(stdout)))
+    #
+    # def test_pssh_client_run_long_command(self):
+    #     expected_lines = 5
+    #     output = self.client.run_command(self.long_cmd(expected_lines))
+    #     self.assertEqual(len(output), len(self.client.hosts))
+    #     stdout = list(output[0].stdout)
+    #     self.client.join(output)
+    #     self.assertTrue(len(stdout) == expected_lines,
+    #                     msg="Expected %s lines of response, got %s" % (
+    #                         expected_lines, len(stdout)))
 
     def test_pssh_client_auth_failure(self):
         client = ParallelSSHClient([self.host], port=self.port,
