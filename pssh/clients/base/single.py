@@ -303,8 +303,14 @@ class BaseSSHClient(object):
         try:
             self.sock.connect(sock_addr)
         except ConnectionRefusedError:
+            if not self.sock.closed:
+                self.sock.shutdown(socket.SHUT_RDWR)
+                self.sock.close()
             raise
         except sock_error as ex:
+            if not self.sock.closed:
+                self.sock.shutdown(socket.SHUT_RDWR)
+                self.sock.close()
             logger.error("Error connecting to host '%s:%s' - retry %s/%s",
                          host, port, retries, self.num_retries)
             while retries < self.num_retries:
