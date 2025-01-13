@@ -19,10 +19,9 @@ jobs:
       - run:
           command: |
             pip install -U -r requirements_dev.txt
+            set -x
+            eval "$(ssh-agent -s)"
           name: Build
-      - python/save-cache:
-          dependency-file: requirements_dev.txt
-          key: depsv3-{{ .Branch }}.{{ arch }}-PY<< parameters.python_ver >>
       - run:
           command: |
             python setup.py check --restructuredtext
@@ -34,9 +33,10 @@ jobs:
           name: flake
       - run:
           command: |
-            set -x
-            eval "$(ssh-agent -s)"
             pytest
+          name: Test
+      - run:
+          command: |
             pytest ci/integration_tests
           name: Integration tests
       - run:
