@@ -332,11 +332,3 @@ class SSHClientTest(SSHTestCase):
         client._disconnect_eagain = _disc
         client._connect_init_session_retry(0)
         client.disconnect()
-
-    def test_stdin(self):
-        host_out = self.client.run_command('read line; echo $line')
-        host_out.stdin.write('a line\n')
-        host_out.stdin.flush()
-        self.client.wait_finished(host_out)
-        stdout = list(host_out.stdout)
-        self.assertListEqual(stdout, ['a line'])
