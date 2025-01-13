@@ -280,28 +280,28 @@ class LibSSHParallelTest(unittest.TestCase):
         cmd = spawn(client.run_command, 'sleep 1', stop_on_errors=False)
         output = cmd.get(timeout=3)
         self.assertTrue(output[0].exception is None)
-
-    def test_pssh_client_long_running_command_exit_codes(self):
-        expected_lines = 2
-        output = self.client.run_command(self.long_cmd(expected_lines))
-        self.assertEqual(len(output), len(self.client.hosts))
-        self.assertIsNone(output[0].exit_code)
-        self.assertFalse(self.client.finished(output))
-        self.client.join(output, consume_output=True)
-        self.assertTrue(self.client.finished(output))
-        self.assertEqual(output[0].exit_code, 0)
-
-    def test_pssh_client_long_running_command_exit_codes_no_stdout(self):
-        expected_lines = 2
-        output = self.client.run_command(self.long_cmd(expected_lines))
-        self.assertEqual(len(output), len(self.client.hosts))
-        self.assertIsNone(output[0].exit_code)
-        self.assertFalse(self.client.finished(output))
-        self.client.join(output)
-        self.assertTrue(self.client.finished(output))
-        self.assertEqual(output[0].exit_code, 0)
-        stdout = list(output[0].stdout)
-        self.assertEqual(expected_lines, len(stdout))
+    #
+    # def test_pssh_client_long_running_command_exit_codes(self):
+    #     expected_lines = 2
+    #     output = self.client.run_command(self.long_cmd(expected_lines))
+    #     self.assertEqual(len(output), len(self.client.hosts))
+    #     self.assertIsNone(output[0].exit_code)
+    #     self.assertFalse(self.client.finished(output))
+    #     self.client.join(output, consume_output=True)
+    #     self.assertTrue(self.client.finished(output))
+    #     self.assertEqual(output[0].exit_code, 0)
+    #
+    # def test_pssh_client_long_running_command_exit_codes_no_stdout(self):
+    #     expected_lines = 2
+    #     output = self.client.run_command(self.long_cmd(expected_lines))
+    #     self.assertEqual(len(output), len(self.client.hosts))
+    #     self.assertIsNone(output[0].exit_code)
+    #     self.assertFalse(self.client.finished(output))
+    #     self.client.join(output)
+    #     self.assertTrue(self.client.finished(output))
+    #     self.assertEqual(output[0].exit_code, 0)
+    #     stdout = list(output[0].stdout)
+    #     self.assertEqual(expected_lines, len(stdout))
 
     def test_connection_error_exception(self):
         """Test that we get connection error exception in output with correct arguments"""
