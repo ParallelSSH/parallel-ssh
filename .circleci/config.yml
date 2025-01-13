@@ -1,21 +1,16 @@
 version: 2.1
 
-orbs:
-  python: circleci/python@0.3.2
 
 jobs:
   python_test:
     parameters:
       python_ver:
         type: string
-        default: "3.6"
+        default: "3.10"
     docker:
-      - image: circleci/python:<< parameters.python_ver >>
+      - image: cimg/python:<< parameters.python_ver >>
     steps:
       - checkout
-      - python/load-cache:
-          dependency-file: requirements_dev.txt
-          key: depsv3-{{ .Branch }}.{{ arch }}-PY<< parameters.python_ver >>
       - run:
           name: Deps
           command: |
@@ -61,12 +56,9 @@ jobs:
 
   release:
     docker:
-      - image: circleci/python:3.8
+      - image: cimg/python:3.10
     steps:
       - checkout
-      - python/load-cache:
-          key: releasedepsv1-{{ .Branch }}.{{ arch }}
-          dependency-file: requirements.txt
       - run:
           name: Deps
           command: |
@@ -74,9 +66,6 @@ jobs:
             sudo apt-get install python3-pip
             pip install -U pip
             pip install -U twine
-      - python/save-cache:
-          key: releasedepsv1-{{ .Branch }}.{{ arch }}
-          dependency-file: requirements.txt
       - run:
           name: Build Wheels/Source Dist
           command: |
@@ -96,10 +85,10 @@ workflows:
           matrix:
             parameters:
               python_ver:
-                - "3.6"
                 - "3.8"
-                - "3.9"
                 - "3.10"
+                - "3.11"
+                - "3.12"
           filters:
             tags:
               ignore: /.*/
