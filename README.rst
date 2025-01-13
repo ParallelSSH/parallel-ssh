@@ -25,6 +25,7 @@ Native code based clients with extremely high performance, making use of C libra
   :alt: Latest documentation
 
 .. _`read the docs`: https://parallel-ssh.readthedocs.org/en/latest/
+.. _`SFTP and SCP documentation`: https://parallel-ssh.readthedocs.io/en/latest/advanced.html#sftp-scp
 
 ************
 Installation
@@ -239,7 +240,7 @@ To copy a local file to remote hosts in parallel with SCP:
   cmds = client.scp_send('../test', 'test_dir/test')
   joinall(cmds, raise_error=True)
 
-See `SFTP and SCP documentation <https://parallel-ssh.readthedocs.io/en/latest/advanced.html#sftp-scp>`_ for more examples.
+See `SFTP and SCP documentation`_ for more examples.
 
 
 *****
@@ -275,8 +276,4 @@ In addition, per-host configurable file name functionality is provided for both 
 
 Directory recursion is supported in both cases via the ``recurse`` parameter - defaults to off.
 
-See `SFTP and SCP documentation <https://parallel-ssh.readthedocs.io/en/latest/advanced.html#sftp-scp>`_ for more examples.
-
-
-.. image:: https://ga-beacon.appspot.com/UA-9132694-7/parallel-ssh/README.rst?pixel
-  :target: https://github.com/igrigorik/ga-beacon
+See `SFTP and SCP documentation`_ for more examples.

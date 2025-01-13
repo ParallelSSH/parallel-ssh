@@ -56,7 +56,8 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertRaises(SFTPError, self.client.sftp_put, sftp, 'a file', '/blah')
 
     def test_sftp_exc(self):
-        def _sftp_exc(local_file, remote_file):
+
+        def _sftp_exc(_, __):
             raise SFTPProtocolError
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
@@ -112,8 +113,8 @@ class SSH2ClientTest(SSH2TestCase):
         getaddrinfo.return_value = [(
             socket.AF_INET6, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info)]
         with raises(ConnectionError):
-            client = SSHClient(host, port=self.port, pkey=self.user_key,
-                               num_retries=1)
+            SSHClient(host, port=self.port, pkey=self.user_key,
+                      num_retries=1)
         getaddrinfo.assert_called_once_with(host, self.port, proto=socket.IPPROTO_TCP)
         sock_con.assert_called_once_with(addr_info)
 
@@ -135,8 +136,8 @@ class SSH2ClientTest(SSH2TestCase):
             (socket.AF_INET, socket.SocketKind.SOCK_STREAM, socket.IPPROTO_TCP, '', addr_info),
         ]
         with raises(ConnectionError):
-            client = SSHClient(host, port=self.port, pkey=self.user_key,
-                               num_retries=1)
+            SSHClient(host, port=self.port, pkey=self.user_key,
+                      num_retries=1)
         getaddrinfo.assert_called_with(host, self.port, proto=socket.IPPROTO_TCP)
         assert sock_con.call_count == len(getaddrinfo.return_value)
 
@@ -177,12 +178,15 @@ class SSH2ClientTest(SSH2TestCase):
         output = list(host_out.stdout)
         stderr = list(host_out.stderr)
         expected = [self.resp]
+        expected_stderr = []
         exit_code = host_out.channel.get_exit_status()
         self.assertEqual(host_out.exit_code, 0)
+        self.assertEqual(host_out.exit_code, exit_code)
         self.assertEqual(expected, output)
-        
+        self.assertEqual(expected_stderr, stderr)
+
     def test_alias(self):
-        client = SSHClient(self.host, port=self.port, 
+        client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key, num_retries=1,
                            alias='test')
         host_out = client.run_command(self.cmd)
@@ -194,7 +198,8 @@ class SSH2ClientTest(SSH2TestCase):
                            num_retries=1,
                            retry_delay=.1,
                            timeout=.1)
-        def _session(timeout=None):
+
+        def _session(_=None):
             sleep(.2)
         client.open_session = _session
         self.assertRaises(GTimeout, client.run_command, self.cmd)
@@ -202,6 +207,7 @@ class SSH2ClientTest(SSH2TestCase):
     def test_open_session_exc(self):
         class Error(Exception):
             pass
+
         def _session():
             raise Error
         client = SSHClient(self.host, port=self.port,
@@ -241,8 +247,9 @@ class SSH2ClientTest(SSH2TestCase):
     def test_manual_auth(self):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
-                           num_retries=1,
-                           allow_agent=False)
+                           num_retries=2,
+                           allow_agent=False,
+                           timeout=.1)
         client.session.disconnect()
         del client.session
         del client.sock
@@ -299,8 +306,10 @@ class SSH2ClientTest(SSH2TestCase):
     def test_agent_auth_failure(self):
         class UnknownError(Exception):
             pass
+
         def _agent_auth_unk():
             raise UnknownError
+
         def _agent_auth_agent_err():
             raise AgentConnectionError
         client = SSHClient(self.host, port=self.port,
@@ -363,11 +372,12 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertEqual(len(dir_list), len(output) - 3)
 
     def test_file_output_parsing(self):
+        abs_file = os.sep.join([
+            os.path.dirname(__file__), '..', '..', '..', 'setup.py',
+        ])
         lines = int(subprocess.check_output(
-            ['wc', '-l', 'README.rst']).split()[0])
-        dir_name = os.path.dirname(__file__)
-        _file = os.sep.join((dir_name, '..', '..', 'README.rst'))
-        cmd = 'cat %s' % _file
+            ['wc', '-l', abs_file]).split()[0])
+        cmd = 'cat %s' % abs_file
         host_out = self.client.run_command(cmd)
         output = list(host_out.stdout)
         self.assertEqual(lines, len(output))
@@ -379,11 +389,12 @@ class SSH2ClientTest(SSH2TestCase):
 
     def test_password_auth_failure(self):
         try:
-            client = SSHClient(self.host, port=self.port, num_retries=1,
-                               allow_agent=False,
-                               identity_auth=False,
-                               password='blah blah blah',
-                               )
+            SSHClient(
+                self.host, port=self.port, num_retries=1,
+                allow_agent=False,
+                identity_auth=False,
+                password='blah blah blah',
+            )
         except AuthenticationException as ex:
             self.assertIsInstance(ex.args[3], SSH2AuthenticationError)
         else:
@@ -443,29 +454,45 @@ class SSH2ClientTest(SSH2TestCase):
         does not do auth at class init.
         """
         class _SSHClient(SSHClient):
-            def __init__(self, host, port, num_retries):
+            def __init__(self, host, port):
                 self.keepalive_seconds = None
                 super(SSHClient, self).__init__(
                     host, port=port, num_retries=2,
                     allow_agent=True)
                 self.IDENTITIES = set()
 
-            def _init_session(self):
+            def _init_session(self, retries=1):
                 self.session = Session()
                 if self.timeout:
                     self.session.set_timeout(self.timeout * 1000)
                 self.session.handshake(self.sock)
 
-            def _auth_retry(self):
+            def _auth_retry(self, retries=1):
                 pass
 
-        client = _SSHClient(self.host, port=self.port,
-                           num_retries=1)
-        self.assertRaises((AgentConnectionError, AgentListIdentitiesError, \
+        client = _SSHClient(self.host, port=self.port)
+        self.assertRaises((AgentConnectionError, AgentListIdentitiesError,
                            AgentAuthenticationError, AgentGetIdentityError),
                           client.session.agent_auth, client.user)
         self.assertRaises(AuthenticationException,
                           client.auth)
+
+    @patch('pssh.clients.native.single.Session')
+    def test_handshake_retries(self, mock_sess):
+        sess = MagicMock()
+        mock_sess.return_value = sess
+
+        hand_mock = MagicMock()
+        hand_mock.side_effect = SSH2AuthenticationError
+        sess.handshake = hand_mock
+
+        with raises(SSH2AuthenticationError):
+            SSHClient(self.host, port=self.port,
+                      num_retries=2,
+                      timeout=.1,
+                      retry_delay=.1,
+                      _auth_thread_pool=False,
+                      )
 
     def test_finished(self):
         self.assertFalse(self.client.finished(None))
@@ -687,7 +714,8 @@ class SSH2ClientTest(SSH2TestCase):
     def test_scp_send_write_exc(self):
         class WriteError(Exception):
             pass
-        def write_exc(func, data):
+
+        def write_exc(_, __):
             raise WriteError
         cur_dir = os.path.dirname(__file__)
         file_name = 'file1'
@@ -1011,6 +1039,7 @@ class SSH2ClientTest(SSH2TestCase):
     def test_disconnect_exc(self):
         class DiscError(Exception):
             pass
+
         def _disc():
             raise DiscError
         client = SSHClient(self.host, port=self.port,
@@ -1031,6 +1060,7 @@ class SSH2ClientTest(SSH2TestCase):
         suffix = b"\xbc"
         encoding = 'latin-1'
         encoded_fn = suffix.decode(encoding)
+        self.assertIsInstance(encoded_fn, str)
         file_list = [suffix + b"1", suffix + b"2"]
         client.copy_remote_file = remote_file_mock
         local_dir = (b"l_dir" + suffix).decode(encoding)

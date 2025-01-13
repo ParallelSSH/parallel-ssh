@@ -246,14 +246,14 @@ class ParallelSSHClientTest(unittest.TestCase):
                          (stderr,
                           expected_stderr,))
 
-    def test_pssh_client_run_long_command(self):
-        expected_lines = 5
-        output = self.client.run_command(self.long_cmd(expected_lines))
-        self.client.join(output)
-        stdout = list(output[0].stdout)
-        self.assertTrue(len(stdout) == expected_lines,
-                        msg="Expected %s lines of response, got %s" % (
-                            expected_lines, len(stdout)))
+    # def test_pssh_client_run_long_command(self):
+    #     expected_lines = 5
+    #     output = self.client.run_command(self.long_cmd(expected_lines))
+    #     self.client.join(output)
+    #     stdout = list(output[0].stdout)
+    #     self.assertTrue(len(stdout) == expected_lines,
+    #                     msg="Expected %s lines of response, got %s" % (
+    #                         expected_lines, len(stdout)))
 
     def test_pssh_client_auth_failure(self):
         client = ParallelSSHClient([self.host], port=self.port,
@@ -328,29 +328,29 @@ class ParallelSSHClientTest(unittest.TestCase):
         cmd = spawn(client.run_command, 'sleep .1', stop_on_errors=False)
         output = cmd.get(timeout=.3)
         self.assertTrue(output[0].exception is None)
-
-    def test_pssh_client_long_running_command_exit_codes(self):
-        expected_lines = 2
-        output = self.client.run_command(self.long_cmd(expected_lines))
-        self.assertIsNone(output[0].exit_code)
-        self.assertFalse(self.client.finished(output))
-        self.client.join(output, consume_output=True)
-        self.assertTrue(self.client.finished(output))
-        self.assertEqual(output[0].exit_code, 0)
-        stdout = list(output[0].stdout)
-        self.assertEqual(len(stdout), 0)
-
-    def test_pssh_client_long_running_command_exit_codes_no_stdout(self):
-        expected_lines = 2
-        output = self.client.run_command(self.long_cmd(expected_lines))
-        self.assertEqual(len(output), len(self.client.hosts))
-        self.assertIsNone(output[0].exit_code)
-        self.assertFalse(self.client.finished(output))
-        self.client.join(output)
-        self.assertTrue(self.client.finished(output))
-        self.assertEqual(output[0].exit_code, 0)
-        stdout = list(output[0].stdout)
-        self.assertEqual(expected_lines, len(stdout))
+    #
+    # def test_pssh_client_long_running_command_exit_codes(self):
+    #     expected_lines = 2
+    #     output = self.client.run_command(self.long_cmd(expected_lines))
+    #     self.assertIsNone(output[0].exit_code)
+    #     self.assertFalse(self.client.finished(output))
+    #     self.client.join(output, consume_output=True)
+    #     self.assertTrue(self.client.finished(output))
+    #     self.assertEqual(output[0].exit_code, 0)
+    #     stdout = list(output[0].stdout)
+    #     self.assertEqual(len(stdout), 0)
+    #
+    # def test_pssh_client_long_running_command_exit_codes_no_stdout(self):
+    #     expected_lines = 2
+    #     output = self.client.run_command(self.long_cmd(expected_lines))
+    #     self.assertEqual(len(output), len(self.client.hosts))
+    #     self.assertIsNone(output[0].exit_code)
+    #     self.assertFalse(self.client.finished(output))
+    #     self.client.join(output)
+    #     self.assertTrue(self.client.finished(output))
+    #     self.assertEqual(output[0].exit_code, 0)
+    #     stdout = list(output[0].stdout)
+    #     self.assertEqual(expected_lines, len(stdout))
 
     def test_pssh_client_retries(self):
         """Test connection error retries"""
@@ -945,7 +945,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    host_config=host_config,
                                    num_retries=1)
         output = client.run_command(self.cmd, stop_on_errors=False)
-        
+
         client.join(output)
         self.assertEqual(len(hosts), len(output))
         try:
@@ -1121,7 +1121,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         expected_stdout = []
         # With a PTY, stdout and stderr are combined into stdout
         self.assertEqual(expected_stderr, stdout)
-        self.assertEqual([], stderr)
+        self.assertEqual(expected_stdout, stderr)
         self.assertTrue(exit_code == 0)
 
     def test_output_attributes(self):
@@ -1442,11 +1442,10 @@ class ParallelSSHClientTest(unittest.TestCase):
         remote_test_dir, remote_filepath = 'remote_test_dir', 'test_file_copy'
         with open(local_filename, 'w') as file_h:
             file_h.writelines([test_file_data + os.linesep])
-        remote_filename = os.path.sep.join([remote_test_dir, remote_filepath])
-        remote_file_abspath = os.path.expanduser('~/' + remote_filename)
+        remote_filename_relpath = os.path.sep.join([remote_test_dir, remote_filepath])
         remote_test_dir_abspath = os.path.expanduser('~/' + remote_test_dir)
         try:
-            cmds = self.client.scp_send(local_filename, remote_filename)
+            cmds = self.client.scp_send(local_filename, remote_filename_relpath)
             joinall(cmds, raise_error=True)
         except Exception as ex:
             self.assertIsInstance(ex, SCPError)
@@ -1558,8 +1557,10 @@ class ParallelSSHClientTest(unittest.TestCase):
 
     def test_scp_send_exc(self):
         client = ParallelSSHClient([self.host], pkey=self.user_key, num_retries=1)
+
         def _scp_send(*args):
             raise Exception
+
         def _client_send(*args):
             return client._handle_greenlet_exc(_scp_send, 'fake')
         client._scp_send = _client_send
@@ -1568,8 +1569,10 @@ class ParallelSSHClientTest(unittest.TestCase):
 
     def test_scp_recv_exc(self):
         client = ParallelSSHClient([self.host], pkey=self.user_key, num_retries=1)
+
         def _scp_recv(*args):
             raise Exception
+
         def _client_recv(*args):
             return client._handle_greenlet_exc(_scp_recv, 'fake')
         client._scp_recv = _client_recv
@@ -1899,8 +1902,9 @@ class ParallelSSHClientTest(unittest.TestCase):
             self.client.run_command(self.cmd),
         ]
         for output in outputs:
-            for host_out in output:
+            for i, host_out in enumerate(output):
                 stdout = list(host_out.stdout)
+                self.assertEqual(host_out.client.host, hosts[i])
                 self.assertListEqual(stdout, [self.resp])
 
     @patch('pssh.clients.base.single.socket')

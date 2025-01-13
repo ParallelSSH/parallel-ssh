@@ -29,9 +29,9 @@ for class documentation.
 
 
 from logging import getLogger, NullHandler
-from ._version import get_versions
-__version__ = get_versions()['version']
-del get_versions
+from . import _version
+__version__ = _version.get_versions()['version']
+del _version
 
 host_logger = getLogger('pssh.host_logger')
 logger = getLogger('pssh')

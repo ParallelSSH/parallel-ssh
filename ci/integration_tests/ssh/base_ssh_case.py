@@ -40,9 +40,18 @@ setup_root_logger()
 
 PKEY_FILENAME = os.path.sep.join([os.path.dirname(__file__), '..', 'client_pkey'])
 PUB_FILE = "%s.pub" % (PKEY_FILENAME,)
-USER_CERT_PRIV_KEY = os.path.sep.join([os.path.dirname(__file__), '..', 'unit_test_cert_key'])
-USER_CERT_PUB_KEY = "%s.pub" % (USER_CERT_PRIV_KEY,)
-USER_CERT_FILE = "%s-cert.pub" % (USER_CERT_PRIV_KEY,)
+USER_CERT_PRIV_KEY_NAME = 'int_test_cert_key'
+USER_CERT_PRIV_KEY = os.path.sep.join([os.path.dirname(__file__), '..', USER_CERT_PRIV_KEY_NAME])
+USER_CERT_PUB_KEY = os.path.sep.join([
+    os.path.dirname(__file__),
+    '..',
+    "%s.pub" % (USER_CERT_PRIV_KEY_NAME,),
+])
+USER_CERT_FILE = os.path.sep.join([
+    os.path.dirname(__file__),
+    '..',
+    "%s-cert.pub" % (USER_CERT_PRIV_KEY_NAME,),
+])
 CA_USER_KEY = os.path.sep.join([os.path.dirname(__file__), '..', 'embedded_server', 'ca_user_key'])
 USER = getuser()
 
@@ -62,6 +71,7 @@ class SSHTestCase(unittest.TestCase):
         for _file in [PKEY_FILENAME, USER_CERT_PRIV_KEY, CA_USER_KEY]:
             os.chmod(_file, _mask)
         sign_cert()
+        # import ipdb; ipdb.set_trace()
         cls.host = '127.0.0.1'
         cls.port = 2322
         cls.server = OpenSSHServer(listen_ip=cls.host, port=cls.port)

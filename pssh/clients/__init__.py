@@ -1,6 +1,6 @@
 # This file is part of parallel-ssh.
 #
-# Copyright (C) 2014-2022 Panos Kittenis and contributors.
+# Copyright (C) 2014-2025 Panos Kittenis and contributors.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -16,5 +16,4 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 # flake8: noqa: F401
-from .native.parallel import ParallelSSHClient
-from .native.single import SSHClient
+from .native import ParallelSSHClient, SSHClient

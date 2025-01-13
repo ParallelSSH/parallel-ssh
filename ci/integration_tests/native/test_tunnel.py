@@ -15,16 +15,15 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import gc
 import os
-import time
 import unittest
-from datetime import datetime
 from getpass import getuser
-from sys import version_info
 
+import gc
+import time
 from gevent import sleep, spawn, Timeout as GTimeout
 from ssh2.exceptions import SocketSendError, SocketRecvError
+from sys import version_info
 
 from pssh.clients.native import SSHClient, ParallelSSHClient
 from pssh.clients.native.tunnel import LocalForwarder, TunnelServer, FORWARDER
@@ -40,15 +39,16 @@ class TunnelTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         _mask = int('0600') if version_info <= (2,) else 0o600
+        port = 2225
         os.chmod(PKEY_FILENAME, _mask)
-        cls.port = 2225
+        cls.port = port
         cls.cmd = 'echo me'
         cls.resp = u'me'
         cls.user_key = PKEY_FILENAME
         cls.user_pub_key = PUB_FILE
         cls.user = getuser()
         cls.proxy_host = '127.0.0.9'
-        cls.proxy_port = cls.port + 1
+        cls.proxy_port = port + 1
         cls.server = OpenSSHServer(listen_ip=cls.proxy_host, port=cls.proxy_port)
         cls.server.start_server()
 
@@ -110,8 +110,8 @@ class TunnelTest(unittest.TestCase):
         finally:
             remote_server.stop()
 
-    # The purpose of this test is to exercise 
-    # https://github.com/ParallelSSH/parallel-ssh/issues/304 
+    # The purpose of this test is to exercise
+    # https://github.com/ParallelSSH/parallel-ssh/issues/304
     def test_tunnel_server_reconn(self):
         remote_host = '127.0.0.8'
         remote_server = OpenSSHServer(listen_ip=remote_host, port=self.port)
@@ -171,22 +171,14 @@ class TunnelTest(unittest.TestCase):
                                        proxy_port=self.proxy_port,
                                        num_retries=1,
                                        )
-            start = datetime.now()
-            output = client.run_command(self.cmd)
-            end = datetime.now()
-            dt_5 = end - start
+            client.run_command(self.cmd)
             client = ParallelSSHClient(hosts, port=self.port, pkey=self.user_key,
                                        proxy_host=self.proxy_host,
                                        proxy_pkey=self.user_key,
                                        proxy_port=self.proxy_port,
                                        num_retries=1,
                                        )
-            start = datetime.now()
             output = client.run_command(self.cmd)
-            end = datetime.now()
-            dt_10 = end - start
-            dt = dt_10.total_seconds() / dt_5.total_seconds()
-            # self.assertTrue(dt < 2)
             client.join(output)
             self.assertEqual(len(hosts), len(output))
             for i, host_out in enumerate(output):
@@ -311,41 +303,57 @@ class TunnelTest(unittest.TestCase):
     def test_socket_channel_error(self):
         class SocketError(Exception):
             pass
+
         class ChannelFailure(object):
             def read(self):
                 raise SocketRecvError
+
             def write(self, data):
                 raise SocketSendError
+
             def eof(self):
                 return False
+
             def close(self):
                 return
+
         class Channel(object):
             def __init__(self):
                 self._eof = False
+
             def read(self):
                 return 5, b"asdfa"
+
             def write(self, data):
                 return 0, len(data)
+
             def eof(self):
                 return self._eof
+
             def close(self):
                 return
+
         class Socket(object):
             def recv(self, num):
                 return b"asdfaf"
+
             def close(self):
                 return
+
         class SocketFailure(object):
             def sendall(self, data):
                 raise SocketError
+
             def recv(self, num):
                 raise SocketError
+
             def close(self):
                 return
+
         class SocketEmpty(object):
             def recv(self, num):
                 return b""
+
             def close(self):
                 return
         client = SSHClient(
@@ -368,6 +376,7 @@ class TunnelTest(unittest.TestCase):
 
     def test_server_start(self):
         _port = 1234
+
         class Server(object):
             def __init__(self):
                 self.started = False

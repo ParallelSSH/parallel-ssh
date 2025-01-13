@@ -1,6 +1,25 @@
 Change Log
 ============
 
+
+2.13.0
++++++++
+
+Changes
+-------
+
+* Minimum version updates for ``ssh2-python`` and `ssh-python``.
+* Added support for Python 3.12+, removed support for Python <3.8.
+* Package tests under top level ``tests`` directory are now cross platform and may be run by vendors.
+  Project CI specific ntegration tests moved into their own space.
+
+
+Fixes
+------
+
+* Calling ``HostOutput.stdin.flush`` with a ``pssh.clients.ssh`` client would raise exception.
+
+
 2.12.0
 +++++++
 
