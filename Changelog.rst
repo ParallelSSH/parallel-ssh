@@ -18,7 +18,6 @@ Fixes
 ------
 
 * Calling ``HostOutput.stdin.flush`` with a ``pssh.clients.ssh`` client would raise exception.
-* Cleanup sockets on connection errors.
 
 
 2.12.0
