@@ -126,7 +126,10 @@ class SSHClient(BaseSSHClient):
         )
 
     def disconnect(self):
-        """Close socket if needed."""
+        """Close socket if needed.
+
+        Does not need to be called directly - called when client object is de-allocated.
+        """
         if self.sock is not None and not self.sock.closed:
             self.sock.shutdown(SHUT_RDWR)
 
