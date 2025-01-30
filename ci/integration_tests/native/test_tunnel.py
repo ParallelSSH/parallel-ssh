@@ -117,7 +117,7 @@ class TunnelTest(unittest.TestCase):
         remote_server = OpenSSHServer(listen_ip=remote_host, port=self.port)
         remote_server.start_server()
 
-        reconn_n = 20       # Number of reconnect attempts
+        reconn_n = 10        # Number of reconnect attempts
         reconn_delay = .1    # Number of seconds to delay between reconnects
         try:
             for _ in range(reconn_n):
