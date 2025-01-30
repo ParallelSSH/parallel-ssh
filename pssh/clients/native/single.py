@@ -232,7 +232,10 @@ class SSHClient(BaseSSHClient):
             msg = "Error connecting to host %s:%s - %s"
             logger.error(msg, self.host, self.port, ex)
             if not self.sock.closed:
-                self.sock.shutdown(SHUT_RDWR)
+                try:
+                    self.sock.shutdown(SHUT_RDWR)
+                except Exception:
+                    pass
             if isinstance(ex, SSH2Timeout):
                 raise Timeout(msg, self.host, self.port, ex)
             raise

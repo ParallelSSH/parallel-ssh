@@ -1,6 +1,14 @@
 Change Log
 ============
 
+2.14.0
+++++++
+
+Changes
+-------
+
+* Handle disconnects better to allow for file descriptor reuse for both clients.
+
 
 2.13.0
 +++++++
