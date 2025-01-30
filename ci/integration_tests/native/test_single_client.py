@@ -1051,7 +1051,8 @@ class SSH2ClientTest(SSH2TestCase):
         client._make_sftp_eagain = _make_sftp
         self.assertRaises(SFTPError, client._make_sftp)
 
-    def test_disconnect_exc(self):
+    @patch('pssh.clients.native.single.Session')
+    def test_disconnect_exc(self, mock_sess):
         class DiscError(Exception):
             pass
 

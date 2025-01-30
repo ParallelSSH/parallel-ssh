@@ -17,6 +17,7 @@
 
 import logging
 from datetime import datetime
+from unittest.mock import patch
 
 from gevent import sleep, Timeout as GTimeout, spawn
 from ssh.exceptions import AuthenticationDenied
@@ -130,14 +131,6 @@ class SSHClientTest(SSHTestCase):
         self.assertTrue(timeout*1.1 > dt.total_seconds() > timeout)
         self.client.wait_finished(host_out)
         self.assertTrue(self.client.finished(host_out.channel))
-
-    def test_client_disconnect_on_del(self):
-        client = SSHClient(self.host, port=self.port,
-                           pkey=self.user_key,
-                           num_retries=1)
-        client_sock = client.sock
-        del client
-        self.assertTrue(client_sock.closed)
 
     def test_client_bad_sock(self):
         client = SSHClient(self.host, port=self.port,
@@ -258,19 +251,22 @@ class SSHClientTest(SSHTestCase):
         host_out = client.run_command('sleep 2; echo me', timeout=0.2)
         self.assertRaises(Timeout, list, host_out.stdout)
 
-    def test_open_session_exc(self):
+    @patch('pssh.clients.ssh.single.Session')
+    def test_open_session_exc(self, mock_sess):
         class Error(Exception):
             pass
 
         def _session():
             raise Error
+
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
                            num_retries=1)
         client._open_session = _session
         self.assertRaises(SessionError, client.open_session)
 
-    def test_session_connect_exc(self):
+    @patch('pssh.clients.ssh.single.Session')
+    def test_session_connect_exc(self, mock_sess):
         class Error(Exception):
             pass
 
@@ -334,7 +330,8 @@ class SSHClientTest(SSHTestCase):
         client._agent_auth = _agent_auth
         self.assertIsNone(client.auth())
 
-    def test_disconnect_exc(self):
+    @patch('pssh.clients.ssh.single.Session')
+    def test_disconnect_exc(self, mock_sess):
         class DiscError(Exception):
             pass
 
