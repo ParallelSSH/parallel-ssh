@@ -23,6 +23,7 @@ from socket import gaierror as sock_gaierror, error as sock_error
 from gevent import sleep, socket, Timeout as GTimeout
 from gevent.hub import Hub
 from gevent.select import poll, POLLIN, POLLOUT
+from gevent.socket import SHUT_RDWR
 from ssh2.exceptions import AgentConnectionError, AgentListIdentitiesError, \
     AgentAuthenticationError, AgentGetIdentityError
 from ssh2.utils import find_eol
@@ -254,7 +255,7 @@ class BaseSSHClient(object):
         self.session = None
         if not self.sock.closed:
             try:
-                self.sock.close()
+                self.sock.shutdown(SHUT_RDWR)
             except Exception:
                 pass
         sleep(self.retry_delay)

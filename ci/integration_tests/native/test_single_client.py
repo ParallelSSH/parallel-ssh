@@ -438,7 +438,21 @@ class SSH2ClientTest(SSH2TestCase):
         # and break subsequent sessions even on different socket and
         # session
         def scope_killer():
-            for _ in range(5):
+            for _ in range(20):
+                client = SSHClient(self.host, port=self.port,
+                                   pkey=self.user_key,
+                                   num_retries=1,
+                                   allow_agent=False)
+                host_out = client.run_command(self.cmd)
+                output = list(host_out.stdout)
+                self.assertListEqual(output, [self.resp])
+
+        scope_killer()
+
+    def test_multiple_clients_exec_terminates_channels_explicit_disc(self):
+        # Explicit disconnects should not affect subsequent connections
+        def scope_killer():
+            for _ in range(20):
                 client = SSHClient(self.host, port=self.port,
                                    pkey=self.user_key,
                                    num_retries=1,
@@ -447,6 +461,7 @@ class SSH2ClientTest(SSH2TestCase):
                 output = list(host_out.stdout)
                 self.assertListEqual(output, [self.resp])
                 client.disconnect()
+
         scope_killer()
 
     def test_agent_auth_exceptions(self):

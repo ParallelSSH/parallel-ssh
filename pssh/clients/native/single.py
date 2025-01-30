@@ -21,6 +21,7 @@ from collections import deque
 
 from gevent import sleep, spawn, get_hub
 from gevent.lock import RLock
+from gevent.socket import SHUT_RDWR
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
     Timeout as SSH2Timeout
@@ -182,6 +183,8 @@ class SSHClient(BaseSSHClient):
         """Attempt to disconnect session.
 
         Any errors on calling disconnect are suppressed by this function.
+
+        Does not need to be called directly - called when client object is de-allocated.
         """
         self._keepalive_greenlet = None
         if self.session is not None:
@@ -195,13 +198,8 @@ class SSHClient(BaseSSHClient):
             # _wait_send_receive_lets ends. The cleanup_server call here triggers the TunnelServer
             # to stop.
             FORWARDER.cleanup_server(self._proxy_client)
-
-            # I wanted to clean up all the sockets here to avoid a ResourceWarning from unittest,
-            # but unfortunately closing this socket here causes a segfault, not sure why yet.
-            # self.sock.close()
-        else:
-            self.sock.close()
-        self.sock = None
+        if self.sock is not None and not self.sock.closed:
+            self.sock.shutdown(SHUT_RDWR)
 
     def spawn_send_keepalive(self):
         """Spawns a new greenlet that sends keep alive messages every

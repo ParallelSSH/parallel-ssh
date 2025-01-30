@@ -18,6 +18,7 @@
 import logging
 
 from gevent import sleep, spawn, Timeout as GTimeout, joinall
+from gevent.socket import SHUT_RDWR
 from ssh import options
 from ssh.error_codes import SSH_AGAIN
 from ssh.exceptions import EOF
@@ -127,7 +128,7 @@ class SSHClient(BaseSSHClient):
     def disconnect(self):
         """Close socket if needed."""
         if self.sock is not None and not self.sock.closed:
-            self.sock.close()
+            self.sock.shutdown(SHUT_RDWR)
 
     def _agent_auth(self):
         self.session.userauth_agent(self.user)
