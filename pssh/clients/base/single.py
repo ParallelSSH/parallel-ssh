@@ -213,11 +213,15 @@ class BaseSSHClient(object):
             raise AuthenticationError(msg, self.host, self.port, ex, retries, self.num_retries)
 
     def disconnect(self):
+        """No-op. Disconnections handled by client de-allocation."""
+        pass
+
+    def _disconnect(self):
         raise NotImplementedError
 
     def __del__(self):
         try:
-            self.disconnect()
+            self._disconnect()
         except Exception:
             pass
 
@@ -225,7 +229,7 @@ class BaseSSHClient(object):
         return self
 
     def __exit__(self, *args):
-        self.disconnect()
+        self._disconnect()
 
     def open_shell(self, encoding='utf-8', read_timeout=None):
         """Open interactive shell on new channel.

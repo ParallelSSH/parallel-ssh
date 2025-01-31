@@ -125,7 +125,7 @@ class SSHClient(BaseSSHClient):
             ipv6_only=ipv6_only,
         )
 
-    def disconnect(self):
+    def _disconnect(self):
         """Close socket if needed.
 
         Does not need to be called directly - called when client object is de-allocated.

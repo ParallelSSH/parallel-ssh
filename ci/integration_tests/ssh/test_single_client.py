@@ -353,3 +353,36 @@ class SSHClientTest(SSHTestCase):
         self.client.wait_finished(host_out)
         stdout = list(host_out.stdout)
         self.assertListEqual(stdout, ['a line'])
+
+    def test_output_client_scope(self):
+        """Output objects should keep client alive while they are in scope even if client is not."""
+        def make_client_run():
+            client = SSHClient(self.host, port=self.port,
+                               pkey=self.user_key,
+                               num_retries=1,
+                               allow_agent=False,
+                               )
+            host_out = client.run_command("%s; exit 1" % (self.cmd,))
+            return host_out
+
+        output = make_client_run()
+        stdout = list(output.stdout)
+        self.assertListEqual(stdout, [self.resp])
+        self.assertEqual(output.exit_code, 1)
+
+    def test_output_client_scope_disconnect(self):
+        """Forcibly disconnecting client that also goes out of scope should not break reading any unread output."""
+        def make_client_run():
+            client = SSHClient(self.host, port=self.port,
+                               pkey=self.user_key,
+                               num_retries=1,
+                               allow_agent=False,
+                               )
+            host_out = client.run_command("%s; exit 1" % (self.cmd,))
+            client.disconnect()
+            return host_out
+
+        output = make_client_run()
+        stdout = list(output.stdout)
+        self.assertListEqual(stdout, [self.resp])
+        self.assertEqual(output.exit_code, 1)
