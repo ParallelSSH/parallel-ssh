@@ -130,6 +130,7 @@ class SSHClient(BaseSSHClient):
 
         Does not need to be called directly - called when client object is de-allocated.
         """
+        logger.debug("Disconnect called")
         if self.sock is not None and not self.sock.closed:
             self.sock.shutdown(SHUT_RDWR)
 

@@ -249,6 +249,7 @@ class BaseSSHClient(object):
         raise NotImplementedError
 
     def _disconnect_eagain(self):
+        logger.debug("Calling session disconnect")
         self._eagain(self.session.disconnect)
 
     def _connect_init_session_retry(self, retries):

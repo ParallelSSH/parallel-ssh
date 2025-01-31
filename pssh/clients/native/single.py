@@ -22,6 +22,7 @@ from collections import deque
 from gevent import sleep, spawn, get_hub
 from gevent.lock import RLock
 from gevent.socket import SHUT_RDWR
+from gevent.select import poll, POLLIN, POLLOUT
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
     Timeout as SSH2Timeout
@@ -42,6 +43,64 @@ logger = logging.getLogger(__name__)
 THREAD_POOL = get_hub().threadpool
 
 
+class KeepAlive(object):
+    __slots__ = ('sock', 'session', '_let')
+
+    def __init__(self, sock, session):
+        self.sock = sock
+        self.session = session
+        self._let = None
+
+    def _send_keepalive(self):
+        while True:
+            sleep(self._eagain(self.session.keepalive_send))
+
+    def start(self):
+        self._let = spawn(self._send_keepalive)
+
+    def poll(self, timeout=None):
+        """Perform co-operative gevent poll on ssh2 session socket.
+
+        Blocks current greenlet only if socket has pending read or write operations
+        in the appropriate direction.
+        :param timeout: Deprecated and unused - to be removed.
+        """
+        self._poll_errcodes(
+            self.session.block_directions,
+            LIBSSH2_SESSION_BLOCK_INBOUND,
+            LIBSSH2_SESSION_BLOCK_OUTBOUND,
+        )
+
+    def _poll_errcodes(self, directions_func, inbound, outbound):
+        directions = directions_func()
+        if directions == 0:
+            return
+        events = 0
+        if directions & inbound:
+            events = POLLIN
+        if directions & outbound:
+            events |= POLLOUT
+        self._poll_socket(events)
+
+    def _poll_socket(self, events):
+        if self.sock is None:
+            return
+        poller = poll()
+        poller.register(self.sock, eventmask=events)
+        poller.poll(timeout=1)
+
+    def _eagain(self, func, *args, **kwargs):
+        return self._eagain_errcode(func, LIBSSH2_ERROR_EAGAIN, *args, **kwargs)
+
+    def _eagain_errcode(self, func, eagain, *args, **kwargs):
+        ret = func(*args, **kwargs)
+        while ret == eagain:
+            self.poll()
+            ret = func(*args, **kwargs)
+            sleep()
+        return ret
+
+
 class SSHClient(BaseSSHClient):
     """ssh2-python (libssh2) based non-blocking SSH client."""
     # 2MB buffer
@@ -59,7 +118,8 @@ class SSHClient(BaseSSHClient):
                  proxy_pkey=None,
                  proxy_user=None,
                  proxy_password=None,
-                 _auth_thread_pool=True, keepalive_seconds=60,
+                 _auth_thread_pool=True,
+                 keepalive_seconds=60,
                  identity_auth=True,
                  ipv6_only=False,
                  ):
@@ -186,7 +246,10 @@ class SSHClient(BaseSSHClient):
 
         Does not need to be called directly - called when client object is de-allocated.
         """
-        self._keepalive_greenlet = None
+        logger.debug("Disconnect called")
+        # if self._keepalive_greenlet:
+        #     self._keepalive_greenlet.kill()
+        # self._keepalive_greenlet = None
         if self.session is not None:
             try:
                 self._disconnect_eagain()
@@ -243,7 +306,9 @@ class SSHClient(BaseSSHClient):
     def _keepalive(self):
         if self.keepalive_seconds:
             self.configure_keepalive()
-            self._keepalive_greenlet = self.spawn_send_keepalive()
+            self._keepalive_greenlet = KeepAlive(self.sock, self.session)
+            self._keepalive_greenlet.start()
+            # self._keepalive_greenlet = self.spawn_send_keepalive()
 
     def _agent_auth(self):
         self.session.agent_auth(self.user)
