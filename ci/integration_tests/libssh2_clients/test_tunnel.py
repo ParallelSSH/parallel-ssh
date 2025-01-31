@@ -229,8 +229,8 @@ class TunnelTest(unittest.TestCase):
             for server in (servers[1], servers[2]):
                 server.stop()
                 server.server_proc.communicate()
-            client._host_clients[(1, hosts[1])].disconnect()
-            client._host_clients[(2, hosts[2])].disconnect()
+            client._host_clients[(1, hosts[1])].sock.close()
+            client._host_clients[(2, hosts[2])].sock.close()
             output = client.run_command(self.cmd, stop_on_errors=False)
             client.join(output)
             self.assertEqual(len(hosts), len(output))

@@ -19,6 +19,7 @@ import logging
 import os
 from getpass import getuser
 from socket import gaierror as sock_gaierror, error as sock_error
+from warnings import warn
 
 from gevent import sleep, socket, Timeout as GTimeout
 from gevent.hub import Hub
@@ -38,6 +39,61 @@ from ...output import HostOutput, HostOutputBuffers, BufferData
 Hub.NOT_ERROR = (Exception,)
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
+
+
+class PollMixIn(object):
+    """MixIn for co-operative socket polling functionality.
+
+    """
+    __slots__ = ('sock',)
+
+    def __init__(self, sock=None):
+        self.sock = sock
+
+    def poll(self, timeout=None):
+        raise NotImplementedError
+
+    def eagain(self, func, *args, **kwargs):
+        raise NotImplementedError
+
+    def eagain_write(self, write_func, data):
+        raise NotImplementedError
+
+    def _poll_errcodes(self, directions_func, inbound, outbound):
+        directions = directions_func()
+        if directions == 0:
+            return
+        events = 0
+        if directions & inbound:
+            events = POLLIN
+        if directions & outbound:
+            events |= POLLOUT
+        self._poll_socket(events)
+
+    def _poll_socket(self, events):
+        if self.sock is None:
+            return
+        poller = poll()
+        poller.register(self.sock, eventmask=events)
+        poller.poll(timeout=1)
+
+    def _eagain_errcode(self, func, eagain, *args, **kwargs):
+        ret = func(*args, **kwargs)
+        while ret == eagain:
+            self.poll()
+            ret = func(*args, **kwargs)
+            sleep()
+        return ret
+
+    def _eagain_write_errcode(self, write_func, data, eagain):
+        data_len = len(data)
+        total_written = 0
+        while total_written < data_len:
+            rc, bytes_written = write_func(data[total_written:])
+            total_written += bytes_written
+            if rc == eagain:
+                self.poll()
+            sleep()
 
 
 class Stdin(object):
@@ -65,13 +121,13 @@ class Stdin(object):
         :param data: Data to write.
         :type data: str
         """
-        return self._client._eagain(self._channel.write, data)
+        return self._client.eagain(self._channel.write, data)
 
     def flush(self):
         """Flush pending data written to stdin."""
         if not hasattr(self._channel, "flush"):
             return
-        return self._client._eagain(self._channel.flush)
+        return self._client.eagain(self._channel.flush)
 
 
 class InteractiveShell(object):
@@ -133,7 +189,7 @@ class InteractiveShell(object):
         """Wait for shell to finish executing and close channel."""
         if self._chan is None:
             return
-        self._client._eagain(self._chan.send_eof)
+        self._client.eagain(self._chan.send_eof)
         self._client.wait_finished(self.output)
         return self
 
@@ -145,10 +201,10 @@ class InteractiveShell(object):
         :type cmd: str
         """
         cmd = cmd.encode(self._encoding) + self._EOL
-        self._client._eagain_write(self._chan.write, cmd)
+        self._client.eagain_write(self._chan.write, cmd)
 
 
-class BaseSSHClient(object):
+class BaseSSHClient(PollMixIn):
 
     IDENTITIES = (
         os.path.expanduser('~/.ssh/id_rsa'),
@@ -170,6 +226,7 @@ class BaseSSHClient(object):
                  identity_auth=True,
                  ipv6_only=False,
                  ):
+        super(PollMixIn, self).__init__()
         self._auth_thread_pool = _auth_thread_pool
         self.host = host
         self.alias = alias
@@ -177,7 +234,6 @@ class BaseSSHClient(object):
         self.password = password
         self.port = port if port else 22
         self.num_retries = num_retries
-        self.sock = None
         self.timeout = timeout if timeout else None
         self.retry_delay = retry_delay
         self.allow_agent = allow_agent
@@ -213,8 +269,8 @@ class BaseSSHClient(object):
             raise AuthenticationError(msg, self.host, self.port, ex, retries, self.num_retries)
 
     def disconnect(self):
-        """No-op. Disconnections handled by client de-allocation."""
-        pass
+        """Deprecated and a no-op. Disconnections handled by client de-allocation."""
+        warn("Deprecated and a no-op - to be removed in future releases.", DeprecationWarning)
 
     def _disconnect(self):
         raise NotImplementedError
@@ -249,8 +305,9 @@ class BaseSSHClient(object):
         raise NotImplementedError
 
     def _disconnect_eagain(self):
-        logger.debug("Calling session disconnect")
-        self._eagain(self.session.disconnect)
+        if self.session is not None and self.sock is not None and not self.sock.closed:
+            logger.debug("Calling session disconnect")
+            self.eagain(self.session.disconnect)
 
     def _connect_init_session_retry(self, retries):
         try:
@@ -565,32 +622,6 @@ class BaseSSHClient(object):
         host_out = self._make_host_output(channel, encoding, _timeout)
         return host_out
 
-    def _eagain_write_errcode(self, write_func, data, eagain):
-        data_len = len(data)
-        total_written = 0
-        while total_written < data_len:
-            rc, bytes_written = write_func(data[total_written:])
-            total_written += bytes_written
-            if rc == eagain:
-                self.poll()
-            sleep()
-
-    def _eagain_errcode(self, func, eagain, *args, **kwargs):
-        timeout = kwargs.pop('timeout', self.timeout)
-        with GTimeout(seconds=timeout, exception=Timeout):
-            ret = func(*args, **kwargs)
-            while ret == eagain:
-                self.poll()
-                ret = func(*args, **kwargs)
-                sleep()
-            return ret
-
-    def _eagain_write(self, write_func, data):
-        raise NotImplementedError
-
-    def _eagain(self, func, *args, **kwargs):
-        raise NotImplementedError
-
     def _make_sftp(self):
         raise NotImplementedError
 
@@ -698,24 +729,3 @@ class BaseSSHClient(object):
         _sep = file_path.rfind('/')
         if _sep > 0:
             return file_path[:_sep]
-
-    def poll(self):
-        raise NotImplementedError
-
-    def _poll_socket(self, events):
-        if self.sock is None:
-            return
-        poller = poll()
-        poller.register(self.sock, eventmask=events)
-        poller.poll(timeout=1)
-
-    def _poll_errcodes(self, directions_func, inbound, outbound):
-        directions = directions_func()
-        if directions == 0:
-            return
-        events = 0
-        if directions & inbound:
-            events = POLLIN
-        if directions & outbound:
-            events |= POLLOUT
-        self._poll_socket(events)

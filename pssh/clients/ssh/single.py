@@ -130,7 +130,6 @@ class SSHClient(BaseSSHClient):
 
         Does not need to be called directly - called when client object is de-allocated.
         """
-        logger.debug("Disconnect called")
         if self.sock is not None and not self.sock.closed:
             self.sock.shutdown(SHUT_RDWR)
 
@@ -206,12 +205,12 @@ class SSHClient(BaseSSHClient):
         logger.debug("Imported certificate file %s for pkey %s", self.cert_file, self.pkey)
 
     def _shell(self, channel):
-        return self._eagain(channel.request_shell)
+        return self.eagain(channel.request_shell)
 
     def _open_session(self):
         channel = self.session.channel_new()
         channel.set_blocking(0)
-        self._eagain(channel.open_session)
+        self.eagain(channel.open_session)
         return channel
 
     def open_session(self):
@@ -240,12 +239,13 @@ class SSHClient(BaseSSHClient):
         :type use_pty: bool
         :param channel: Channel to use. New channel is created if not provided.
         :type channel: :py:class:`ssh.channel.Channel`"""
-        channel = self.open_session() if not channel else channel
-        if use_pty:
-            self._eagain(channel.request_pty, timeout=self.timeout)
-        logger.debug("Executing command '%s'", cmd)
-        self._eagain(channel.request_exec, cmd)
-        return channel
+        with GTimeout(seconds=self.timeout, exception=Timeout):
+            channel = self.open_session() if not channel else channel
+            if use_pty:
+                self.eagain(channel.request_pty)
+            logger.debug("Executing command '%s'", cmd)
+            self.eagain(channel.request_exec, cmd)
+            return channel
 
     def _read_output_to_buffer(self, channel, _buffer, is_stderr=False):
         try:
@@ -281,7 +281,7 @@ class SSHClient(BaseSSHClient):
         if channel is None:
             return
         logger.debug("Sending EOF on channel %s", channel)
-        self._eagain(channel.send_eof, timeout=self.timeout)
+        self.eagain(channel.send_eof)
         logger.debug("Waiting for readers, timeout %s", timeout)
         with GTimeout(seconds=timeout, exception=Timeout):
             joinall((host_output.buffers.stdout.reader, host_output.buffers.stderr.reader))
@@ -316,7 +316,7 @@ class SSHClient(BaseSSHClient):
         :type channel: :py:class:`ssh.channel.Channel`
         """
         logger.debug("Closing channel")
-        self._eagain(channel.close)
+        self.eagain(channel.close)
 
     def poll(self, timeout=None):
         """ssh-python based co-operative gevent poll on session socket.
@@ -328,9 +328,9 @@ class SSHClient(BaseSSHClient):
             SSH_WRITE_PENDING,
         )
 
-    def _eagain(self, func, *args, **kwargs):
+    def eagain(self, func, *args, **kwargs):
         """Run function given and handle EAGAIN for an ssh-python session"""
         return self._eagain_errcode(func, SSH_AGAIN, *args, **kwargs)
 
-    def _eagain_write(self, write_func, data):
+    def eagain_write(self, write_func, data):
         return self._eagain_write_errcode(write_func, data, SSH_AGAIN)

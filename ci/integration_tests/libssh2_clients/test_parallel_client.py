@@ -1779,7 +1779,7 @@ class ParallelSSHClientTest(unittest.TestCase):
         client.join(consume_output=True)
         single_client = list(client._host_clients.values())[0]
         del client
-        self.assertEqual(single_client.session, None)
+        self.assertIsNotNone(single_client.session)
 
     def test_client_disconnect_error(self):
         def disc():
@@ -1788,7 +1788,7 @@ class ParallelSSHClientTest(unittest.TestCase):
                                    pkey=self.user_key, num_retries=1)
         output = client.run_command(self.cmd)
         client.join(output)
-        client._host_clients[(0, self.host)].disconnect = disc
+        client._host_clients[(0, self.host)]._disconnect = disc
         del client
 
     def test_multiple_join_timeout(self):

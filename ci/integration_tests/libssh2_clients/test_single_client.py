@@ -19,6 +19,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+from gc import collect
 from datetime import datetime
 from hashlib import sha256
 from tempfile import NamedTemporaryFile
@@ -1139,6 +1140,3 @@ class SSH2ClientTest(SSH2TestCase):
         stdout = list(output.stdout)
         self.assertListEqual(stdout, [self.resp])
         self.assertEqual(output.exit_code, 1)
-
-    # TODO
-    # * read output callback
