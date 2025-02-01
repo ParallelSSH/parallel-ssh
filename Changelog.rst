@@ -9,11 +9,13 @@ Changes
 
 * Handle disconnects better to allow for file descriptor reuse for both clients.
 * Parallel clients no longer forcefully disconnect their clients at de-allocation -
-  now done by each individual client instead when that client goes out of scope.
+  now done by each individual ``SSHClient`` instead when that ``SSHClient`` goes out of scope.
   This allows reading of output and anything associated with output, exit codes et al,
   to work as long as output object is alive.
 * ``SSHClient.disconnect`` is now a no-op and deprecated - handled by object de-allocation.
 * ``SSHClient.eagain`` is now a public function - wrapper for polling socket and calling a given socket using function.
+* Removed now unecessary ``TunnelServer`` cleanup greenlet.
+* ``TunnelServer`` now uses its own gevent pool for incoming connections so they are terminated correctly at shutdown.
 
 Fixes
 ------
@@ -21,7 +23,7 @@ Fixes
 * Forwarder threads used for proxies would not exit gracefully at interpreter shutdown, sometimes causing segfaults.
 * Client, both parallel and single, going out of scope would cause reading output from existing output objects
   to break.
-*
+* Explicitly calling ``SSHClient.disconnect`` could cause segfaults at interpreter shutdown.
 
 
 2.13.0

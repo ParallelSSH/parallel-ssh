@@ -128,9 +128,6 @@ class LocalForwarder(Thread):
         server = self._servers[client]
         server.stop()
         del self._servers[client]
-        # if not self._servers:
-        #     logger.debug("Forwarder has no active servers remaining - shutting down forwarder thread")
-        #     self.shutdown_triggered.set()
 
 
 class TunnelServer(StreamServer):
@@ -146,7 +143,6 @@ class TunnelServer(StreamServer):
                  num_retries=DEFAULT_RETRIES):
         self._pool = Pool()
         StreamServer.__init__(self, (bind_address, 0), self._read_rw, spawn=self._pool)
-        self.client = client
         self.host = host
         self.port = port
         self.session = client.session
@@ -184,7 +180,7 @@ class TunnelServer(StreamServer):
         finally:
             logger.debug("Read/Write greenlets for tunnel server %s:%s finished, closing forwarding channel",
                          self.host, self.port)
-            self._client.eagain(channel.close)
+            self._client.close_channel()
 
     def _read_forward_sock(self, forward_sock, channel):
         while True:
@@ -200,10 +196,7 @@ class TunnelServer(StreamServer):
                 logger.error("Forward socket read error: %s", ex)
                 raise
             data_len = len(data)
-            logger.debug("Read %s data from forward socket, socket is closed: %s", data_len, forward_sock.closed)
-            # logger.debug("Data from socket: %s", data.decode('utf-8'))
-            # if data_len == 36:
-            #     print("=========================== Data from socket: %s", data.decode('utf-8'))
+            # logger.debug("Read %s data from forward socket", data_len)
             if data_len == 0:
                 sleep(.01)
                 continue
@@ -224,6 +217,7 @@ class TunnelServer(StreamServer):
             except Exception as ex:
                 logger.error("Error reading from channel - %s", ex)
                 raise
+            # logger.debug("Read %s data from channel", size)
             if size == LIBSSH2_ERROR_EAGAIN:
                 self._client.poll()
                 continue
