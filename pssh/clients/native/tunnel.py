@@ -165,12 +165,8 @@ class TunnelServer(StreamServer):
         try:
             joinall((source, dest), raise_error=True)
         finally:
-            # Forward socket does not need to be closed here; StreamServer does it in do_close
             logger.debug("Closing channel")
             self._client.close_channel(channel)
-
-            # Disconnect client here to make sure it happens AFTER close_channel
-            self._client.disconnect()
 
     def _read_forward_sock(self, forward_sock, channel):
         while True:
@@ -204,7 +200,6 @@ class TunnelServer(StreamServer):
             except Exception as ex:
                 logger.error("Error reading from channel - %s", ex)
                 raise
-            # logger.debug("Read %s data from channel" % (size,))
             if size == LIBSSH2_ERROR_EAGAIN:
                 self._client.poll()
                 continue

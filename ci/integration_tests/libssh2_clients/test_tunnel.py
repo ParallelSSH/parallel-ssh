@@ -132,7 +132,6 @@ class TunnelTest(unittest.TestCase):
                 client.wait_finished(output)
                 self.assertEqual(remote_host, client.host)
                 self.assertEqual(self.port, client.port)
-                client.disconnect()
                 FORWARDER._cleanup_servers()
                 time.sleep(reconn_delay)
                 gc.collect()
@@ -293,7 +292,6 @@ class TunnelTest(unittest.TestCase):
         forwarder.out_q.get()
         self.assertTrue(len(forwarder._servers) > 0)
         client.sock.close()
-        client.disconnect()
         forwarder._cleanup_servers()
         self.assertEqual(len(forwarder._servers), 0)
         forwarder._start_server = _start_server

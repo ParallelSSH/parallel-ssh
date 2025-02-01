@@ -273,7 +273,6 @@ class SSH2ClientTest(SSH2TestCase):
                            pkey=self.user_key,
                            num_retries=1,
                            allow_agent=False)
-        client.disconnect()
         client.pkey = None
         del client.session
         del client.sock
@@ -282,7 +281,6 @@ class SSH2ClientTest(SSH2TestCase):
         client.IDENTITIES = (self.user_key,)
         # Default identities auth only should succeed
         client._identity_auth()
-        client.disconnect()
         client._connect(self.host, self.port)
         client._init_session()
         # Auth should succeed
@@ -461,7 +459,7 @@ class SSH2ClientTest(SSH2TestCase):
                 host_out = client.run_command(self.cmd)
                 output = list(host_out.stdout)
                 self.assertListEqual(output, [self.resp])
-                client.disconnect()
+                client._disconnect()
 
         scope_killer()
 
@@ -1125,7 +1123,8 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertEqual(output.exit_code, 1)
 
     def test_output_client_scope_disconnect(self):
-        """Forcibly disconnecting client that also goes out of scope should not break reading any unread output."""
+        """Calling deprecated .disconnect on client that also goes out of scope should not break reading
+        any unread output."""
         def make_client_run():
             client = SSHClient(self.host, port=self.port,
                                pkey=self.user_key,

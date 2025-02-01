@@ -92,7 +92,7 @@ class SSHClientTest(SSHTestCase):
                            num_retries=1,
                            timeout=1,
                            allow_agent=False)
-        client.disconnect()
+        client._disconnect()
         client.pkey = None
         del client.session
         del client.sock
@@ -101,7 +101,7 @@ class SSHClientTest(SSHTestCase):
         client.IDENTITIES = (self.user_key,)
         # Default identities auth only should succeed
         client._identity_auth()
-        client.disconnect()
+        client._disconnect()
         del client.session
         del client.sock
         client._connect(self.host, self.port)
@@ -136,7 +136,6 @@ class SSHClientTest(SSHTestCase):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
                            num_retries=1)
-        client.disconnect()
         client.sock = None
         self.assertIsNone(client.poll())
 
@@ -154,21 +153,6 @@ class SSHClientTest(SSHTestCase):
                 host_out = client.run_command(self.cmd)
                 output = list(host_out.stdout)
                 self.assertListEqual(output, [self.resp])
-
-        scope_killer()
-
-    def test_multiple_clients_exec_terminates_channels_explicit_disc(self):
-        # Explicit disconnects should not affect subsequent connections
-        def scope_killer():
-            for _ in range(20):
-                client = SSHClient(self.host, port=self.port,
-                                   pkey=self.user_key,
-                                   num_retries=1,
-                                   allow_agent=False)
-                host_out = client.run_command(self.cmd)
-                output = list(host_out.stdout)
-                self.assertListEqual(output, [self.resp])
-                client.disconnect()
 
         scope_killer()
 
@@ -308,7 +292,7 @@ class SSHClientTest(SSHTestCase):
                            num_retries=1,
                            allow_agent=True,
                            identity_auth=False)
-        client.session.disconnect()
+        client.eagain(client.session.disconnect)
         client.pkey = None
         client._connect(self.host, self.port)
         client._agent_auth = _agent_auth_unk
@@ -344,7 +328,7 @@ class SSHClientTest(SSHTestCase):
                            )
         client._disconnect_eagain = _disc
         client._connect_init_session_retry(0)
-        client.disconnect()
+        client._disconnect()
 
     def test_stdin(self):
         host_out = self.client.run_command('read line; echo $line')
@@ -379,7 +363,6 @@ class SSHClientTest(SSHTestCase):
                                allow_agent=False,
                                )
             host_out = client.run_command("%s; exit 1" % (self.cmd,))
-            client.disconnect()
             return host_out
 
         output = make_client_run()

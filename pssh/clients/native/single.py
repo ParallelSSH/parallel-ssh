@@ -223,7 +223,7 @@ class SSHClient(BaseSSHClient):
         Does not need to be called directly - called when client object is de-allocated.
         """
         self._keepalive_greenlet = None
-        if self.session is not None:
+        if self.session is not None and self.sock is not None and not self.sock.closed:
             try:
                 self._disconnect_eagain()
             except Exception:
@@ -235,7 +235,11 @@ class SSHClient(BaseSSHClient):
             # to stop.
             FORWARDER.cleanup_server(self._proxy_client)
         if self.sock is not None and not self.sock.closed:
-            self.sock.shutdown(SHUT_RDWR)
+            try:
+                self.sock.shutdown(SHUT_RDWR)
+            except Exception:
+                pass
+        self.sock = None
 
     def spawn_send_keepalive(self):
         """Spawns a new greenlet that sends keep alive messages every

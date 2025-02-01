@@ -320,6 +320,7 @@ class BaseSSHClient(PollMixIn):
                 self.sock.shutdown(SHUT_RDWR)
             except Exception:
                 pass
+        self.sock = None
         sleep(self.retry_delay)
         self._connect(self._host, self._port, retries=retries)
         return self._init_session(retries=retries)
