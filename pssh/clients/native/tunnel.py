@@ -89,21 +89,25 @@ class LocalForwarder(Thread):
     def shutdown(self):
         """Stop all tunnel servers and shutdown LocalForwarder thread.
 
-        This function will join the current thread and wait for it to shutdown.
+        This function will join the current thread and wait for it to shutdown if needed.
         """
         for client, server in self._servers.items():
             server.stop()
         self._servers = {}
         if self.started:
             self.shutdown_triggered.set()
-            self.join()
+            try:
+                self.join()
+            except RuntimeError:
+                # Re-entry protection
+                pass
 
     def run(self):
-        """Thread runner ensures a non main hub has been created for all subsequent
+        """Thread runner ensures a non-main hub has been created for all subsequent
         greenlets and waits for (client, host, port) tuples to be put into self.in_q.
 
-        A server is created once something is in the queue and the port to connect to
-        is put into self.out_q.
+        A server is created once something is in the queue and only then is the port to connect to
+        put into self.out_q.
         """
         self._hub = get_hub()
         assert self._hub.main_hub is False
@@ -178,9 +182,9 @@ class TunnelServer(StreamServer):
         try:
             joinall((source, dest), raise_error=True)
         finally:
-            logger.debug("Read/Write greenlets for tunnel server %s:%s finished, closing forwarding channel",
+            logger.debug("Read/Write greenlets for tunnel target %s:%s finished, closing forwarding channel",
                          self.host, self.port)
-            self._client.close_channel()
+            self._client.close_channel(channel)
 
     def _read_forward_sock(self, forward_sock, channel):
         while True:
