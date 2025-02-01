@@ -45,9 +45,16 @@ THREAD_POOL = get_hub().threadpool
 
 
 class KeepAlive(PollMixIn):
+    """Class for handling SSHClient keepalive functionality."""
     __slots__ = ('sock', 'session', '_let', '_pool')
 
     def __init__(self, sock, session):
+        """
+        :param sock: The socket session is using to communicate.
+        :type sock: :py:class:`gevent.socket.socket`
+        :param session: The session keepalive is configured on.
+        :type session: :py:class:`ssh2.session.Session`
+        """
         super(PollMixIn, self).__init__()
         self._pool = Pool(1)
         self.sock = sock
@@ -244,6 +251,7 @@ class SSHClient(BaseSSHClient):
 
     def configure_keepalive(self):
         """Configures keepalive on the server for `self.keepalive_seconds`."""
+        # Configure keepalives without a reply.
         self.session.keepalive_config(False, self.keepalive_seconds)
 
     def _init_session(self, retries=1):
