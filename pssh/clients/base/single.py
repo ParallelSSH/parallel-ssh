@@ -76,6 +76,7 @@ class PollMixIn(object):
         poller = poll()
         poller.register(self.sock, eventmask=events)
         poller.poll(timeout=1)
+        # poller.unregister(self.sock)
 
     def _eagain_errcode(self, func, eagain, *args, **kwargs):
         ret = func(*args, **kwargs)
