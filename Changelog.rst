@@ -11,13 +11,15 @@ Changes
 * Parallel clients no longer forcefully disconnect their clients at de-allocation -
   now done by each individual ``SSHClient`` instead when that ``SSHClient`` goes out of scope.
   This allows reading of output and anything associated with output, exit codes et al,
-  to work as long as output object is alive.
+  to work as long as one of either the client or an associated output object is alive.
 * ``SSHClient.disconnect`` is now a no-op and deprecated - handled by object de-allocation.
 * ``SSHClient.eagain`` is now a public function - wrapper for polling socket and calling a given socket using function.
+* ``SSHClient.eagain_write`` is now a public function - wrapper for polling socket and calling a given socket using
+  write function.
 * Removed now unecessary ``TunnelServer`` cleanup greenlet.
 * ``TunnelServer`` now uses its own gevent pool for incoming connections so they are terminated correctly at shutdown.
-* Greenlets spawned by clients are now bound to a client specific ``gevent.pool.Pool`` rather than gevent's global hub.
-
+* Greenlets spawned by clients are now bound to a client specific ``gevent.pool.Pool`` rather than gevent's global hub
+  so they are cleaned up when client goes out of scope.
 
 Fixes
 ------
