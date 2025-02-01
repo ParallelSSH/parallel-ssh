@@ -15,15 +15,14 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+import atexit
 import logging
-from queue import Queue
-from threading import Thread, Event
-
-from gevent import spawn, joinall, get_hub, sleep
-from gevent.server import StreamServer
-from gevent.event import Event as GEvent
+from gevent import joinall, get_hub, sleep
 from gevent.pool import Pool
+from gevent.server import StreamServer
+from queue import Queue
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
+from threading import Thread, Event
 
 from ...constants import DEFAULT_RETRIES
 
@@ -44,22 +43,22 @@ class LocalForwarder(Thread):
 
         There can be as many LocalForwarder(s) as needed to scale.
 
-        Relationship of clients to forwarders to servers is
+        Relationship of clients to forwarders to servers is:
 
         One client -> One Forwarder -> Many Servers <-> Many proxy hosts -> one target host per proxy host
 
         A Forwarder starts servers. Servers communicate with clients directly via Forwarder thread.
 
-        Multiple forwarder threads can be used to scale clients to more threads.
+        Multiple forwarder threads can be used to scale clients to more threads as number of clients increases causing
+        contention in forwarder threads handling proxy connections.
         """
-        Thread.__init__(self)
+        Thread.__init__(self, daemon=True)
         self.in_q = Queue(1)
         self.out_q = Queue(1)
         self._servers = {}
         self._hub = None
         self.started = Event()
         self.shutdown_triggered = Event()
-        self._cleanup_let = None
 
     def _start_server(self):
         client, host, port = self.in_q.get()
@@ -88,24 +87,16 @@ class LocalForwarder(Thread):
         self.in_q.put((client, host, port))
 
     def shutdown(self):
-        """Stop all tunnel servers."""
-        pass
-        # if self._cleanup_let is not None and self._cleanup_let.started:
-        #     self._cleanup_let.kill()
-        # for client, server in self._servers.items():
-        #     server.stop()
-        # client.session = None
-        # client.sock = None
+        """Stop all tunnel servers and shutdown LocalForwarder thread.
 
-    def _cleanup_servers_let(self):
-        while True:
-            self._cleanup_servers()
-            sleep(60)
-
-    def _cleanup_servers(self):
-        for client in list(self._servers.keys()):
-            if client.sock is None or client.sock.closed:
-                self.cleanup_server(client)
+        This function will join the current thread and wait for it to shutdown.
+        """
+        for client, server in self._servers.items():
+            server.stop()
+        self._servers = {}
+        if self.started:
+            self.shutdown_triggered.set()
+            self.join()
 
     def run(self):
         """Thread runner ensures a non main hub has been created for all subsequent
@@ -117,13 +108,10 @@ class LocalForwarder(Thread):
         self._hub = get_hub()
         assert self._hub.main_hub is False
         self.started.set()
-        # self._cleanup_let = spawn(self._cleanup_servers_let)
         logger.debug("Hub in server runner is main hub: %s", self._hub.main_hub)
         try:
             while True:
                 if self.shutdown_triggered.is_set():
-                    logger.debug("Forwarder shutdown triggered - exiting forwarder thread")
-                    # self.shutdown()
                     return
                 if self.in_q.empty():
                     sleep(.01)
@@ -134,14 +122,15 @@ class LocalForwarder(Thread):
             self.shutdown()
 
     def cleanup_server(self, client):
-        """The purpose of this function is for a proxied client to notify the LocalForwarder that it
-         is shutting down and its corresponding server can also be shut down."""
+        """
+        Stop server for given proxy client.
+        """
         server = self._servers[client]
         server.stop()
         del self._servers[client]
-        if not self._servers:
-            logger.debug("Forwarder has no active servers remaining - shutting down forwarder thread")
-            self.shutdown_triggered.set()
+        # if not self._servers:
+        #     logger.debug("Forwarder has no active servers remaining - shutting down forwarder thread")
+        #     self.shutdown_triggered.set()
 
 
 class TunnelServer(StreamServer):
@@ -149,6 +138,8 @@ class TunnelServer(StreamServer):
 
     Accepts connections on an available bind_address port once started and tunnels data
     to/from remote SSH host for each connection.
+
+    TunnelServer.listen_port will return listening port for server on given host once TunnelServer.started is True.
     """
 
     def __init__(self, client, host, port, bind_address='127.0.0.1',
@@ -163,8 +154,6 @@ class TunnelServer(StreamServer):
         self._retries = num_retries
         self.bind_address = bind_address
         self.exception = None
-        self._server_shutdown = Event()
-        # self._channel = None
 
     @property
     def listen_port(self):
@@ -183,25 +172,19 @@ class TunnelServer(StreamServer):
                          self.host, self.port, ex)
             self.exception = ex
             return
-        # Keep channel alive while server is running
+        # Channel remains alive while this handler function is alive
         source = self._pool.spawn(self._read_forward_sock, socket, channel)
         dest = self._pool.spawn(self._read_channel, socket, channel)
         logger.debug("Waiting for read/write greenlets")
-        self._source_let = source
-        self._dest_let = dest
         self._wait_send_receive_lets(source, dest, channel)
-        # self._client.eagain(channel.close)
 
     def _wait_send_receive_lets(self, source, dest, channel):
-        joinall((source, dest), raise_error=True)
-        # self._channel = None
-        # self.client.sock.close()
-        # try:
-        #     joinall((source, dest), raise_error=True)
-        # finally:
-        #     logger.debug("Closing channel")
-        #     self._client.close_channel(channel)
-        # # self.client.sock.close()
+        try:
+            joinall((source, dest), raise_error=True)
+        finally:
+            logger.debug("Read/Write greenlets for tunnel server %s:%s finished, closing forwarding channel",
+                         self.host, self.port)
+            self._client.eagain(channel.close)
 
     def _read_forward_sock(self, forward_sock, channel):
         while True:
@@ -210,9 +193,6 @@ class TunnelServer(StreamServer):
                 return
             if not forward_sock or forward_sock.closed:
                 logger.debug("Forward socket closed, tunnel forward socket reader exiting")
-                return
-            if self._server_shutdown.is_set():
-                logger.debug("Server shutdown initiated, tunnel forward socket reader exiting")
                 return
             try:
                 data = forward_sock.recv(1024)
@@ -225,27 +205,19 @@ class TunnelServer(StreamServer):
             # if data_len == 36:
             #     print("=========================== Data from socket: %s", data.decode('utf-8'))
             if data_len == 0:
-                if self._server_shutdown.is_set():
-                    return
                 sleep(.01)
                 continue
-            # if channel is None or channel.eof() or self.client.sock is None or self.client.sock.closed:
-            #     return
             try:
                 self._client.eagain_write(channel.write, data)
             except Exception as ex:
                 logger.error("Error writing data to channel - %s", ex)
                 raise
             logger.debug("Wrote all data to channel")
-            # logger.debug("Data from socket: %s", data.decode('utf-8'))
 
     def _read_channel(self, forward_sock, channel):
         while True:
             if channel is None or channel.eof():
                 logger.debug("Channel closed, tunnel reader exiting")
-                return
-            if self._server_shutdown.is_set():
-                logger.debug("Server shutdown initiated, tunnel reader exiting")
                 return
             try:
                 size, data = channel.read()
@@ -296,4 +268,4 @@ class TunnelServer(StreamServer):
 
 
 FORWARDER = LocalForwarder()
-FORWARDER.daemon = True
+atexit.register(FORWARDER.shutdown)

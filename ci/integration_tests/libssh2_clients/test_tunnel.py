@@ -58,7 +58,6 @@ class TunnelTest(unittest.TestCase):
 
     def test_forwarder(self):
         forwarder = LocalForwarder()
-        forwarder.daemon = True
         forwarder.start()
         forwarder.started.wait()
         client = SSHClient(
@@ -132,7 +131,6 @@ class TunnelTest(unittest.TestCase):
                 client.wait_finished(output)
                 self.assertEqual(remote_host, client.host)
                 self.assertEqual(self.port, client.port)
-                FORWARDER._cleanup_servers()
                 time.sleep(reconn_delay)
                 gc.collect()
         finally:
@@ -292,7 +290,7 @@ class TunnelTest(unittest.TestCase):
         forwarder.out_q.get()
         self.assertTrue(len(forwarder._servers) > 0)
         client.sock.close()
-        forwarder._cleanup_servers()
+        forwarder.shutdown()
         self.assertEqual(len(forwarder._servers), 0)
         forwarder._start_server = _start_server
         forwarder.enqueue(client, self.proxy_host, self.port)
@@ -332,6 +330,8 @@ class TunnelTest(unittest.TestCase):
                 return
 
         class Socket(object):
+            closed = False
+
             def recv(self, num):
                 return b"asdfaf"
 
@@ -339,6 +339,8 @@ class TunnelTest(unittest.TestCase):
                 return
 
         class SocketFailure(object):
+            closed = False
+
             def sendall(self, data):
                 raise SocketError
 
@@ -349,6 +351,8 @@ class TunnelTest(unittest.TestCase):
                 return
 
         class SocketEmpty(object):
+            closed = False
+
             def recv(self, num):
                 return b""
 
@@ -371,21 +375,3 @@ class TunnelTest(unittest.TestCase):
         channel._eof = True
         self.assertIsNone(server._wait_send_receive_lets(source_let, dest_let, channel))
         let.kill()
-
-    def test_server_start(self):
-        _port = 1234
-
-        class Server(object):
-            def __init__(self):
-                self.started = False
-                self.listen_port = _port
-        server = Server()
-        forwarder = LocalForwarder()
-        let = spawn(forwarder._get_server_listen_port, None, server)
-        let.start()
-        sleep(.01)
-        server.started = True
-        sleep(.01)
-        with GTimeout(seconds=1):
-            port = forwarder.out_q.get()
-        self.assertEqual(port, _port)

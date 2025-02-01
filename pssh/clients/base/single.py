@@ -307,7 +307,6 @@ class BaseSSHClient(PollMixIn):
 
     def _disconnect_eagain(self):
         if self.session is not None and self.sock is not None and not self.sock.closed:
-            logger.debug("Calling session disconnect")
             self.eagain(self.session.disconnect)
 
     def _connect_init_session_retry(self, retries):
