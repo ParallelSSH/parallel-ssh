@@ -16,6 +16,8 @@ Changes
 * ``SSHClient.eagain`` is now a public function - wrapper for polling socket and calling a given socket using function.
 * Removed now unecessary ``TunnelServer`` cleanup greenlet.
 * ``TunnelServer`` now uses its own gevent pool for incoming connections so they are terminated correctly at shutdown.
+* Greenlets spawned by clients are now bound to a client specific ``gevent.pool.Pool`` rather than gevent's global hub.
+
 
 Fixes
 ------
@@ -23,7 +25,8 @@ Fixes
 * Forwarder threads used for proxies would not exit gracefully at interpreter shutdown, sometimes causing segfaults.
 * Client, both parallel and single, going out of scope would cause reading output from existing output objects
   to break.
-* Explicitly calling ``SSHClient.disconnect`` could cause segfaults at interpreter shutdown.
+* Explicitly calling ``SSHClient.disconnect`` would sometimes cause segfaults at interpreter shutdown.
+* Keepalives being configured on native client would keep client in scope forever.
 
 
 2.13.0

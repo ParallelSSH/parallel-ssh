@@ -15,12 +15,13 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import logging
-import os
 from collections import deque
 
-from gevent import sleep, spawn, get_hub
+import logging
+import os
+from gevent import sleep, get_hub
 from gevent.lock import RLock
+from gevent.pool import Pool
 from gevent.socket import SHUT_RDWR
 from gevent.timeout import Timeout as GTimeout
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
@@ -44,13 +45,14 @@ THREAD_POOL = get_hub().threadpool
 
 
 class KeepAlive(PollMixIn):
-    __slots__ = ('sock', 'session', '_let')
+    __slots__ = ('sock', 'session', '_let', '_pool')
 
     def __init__(self, sock, session):
         super(PollMixIn, self).__init__()
+        self._pool = Pool(1)
         self.sock = sock
         self.session = session
-        self._let = spawn(self._send_keepalive)
+        self._let = self._pool.spawn(self._send_keepalive)
         self._let.start()
 
     def _send_keepalive(self):
@@ -227,24 +229,18 @@ class SSHClient(BaseSSHClient):
                 self._disconnect_eagain()
             except Exception:
                 pass
-            self.session = None
+        self.session = None
+        # To allow for file descriptor reuse, which is part of gevent, shutdown but do not close socket here.
+        # Done by gevent when file descriptor is closed.
         if self.sock is not None and not self.sock.closed:
             try:
                 self.sock.shutdown(SHUT_RDWR)
             except Exception:
                 pass
         self.sock = None
+        # Notify forwarder that proxy tunnel server can be shutdown
         if isinstance(self._proxy_client, SSHClient):
             FORWARDER.cleanup_server(self._proxy_client)
-
-    def spawn_send_keepalive(self):
-        """Spawns a new greenlet that sends keep alive messages every
-        self.keepalive_seconds"""
-        return spawn(self._send_keepalive)
-
-    def _send_keepalive(self):
-        while True:
-            sleep(self.eagain(self.session.keepalive_send))
 
     def configure_keepalive(self):
         """Configures keepalive on the server for `self.keepalive_seconds`."""
@@ -319,14 +315,18 @@ class SSHClient(BaseSSHClient):
         return chan
 
     def _make_output_readers(self, channel, stdout_buffer, stderr_buffer):
-        _stdout_reader = spawn(
+        # TODO: These greenlets need to be outside client scope or we create a reader <-> client cyclical reference
+        _stdout_reader = self._pool.spawn(
             self._read_output_to_buffer, channel.read, stdout_buffer)
-        _stderr_reader = spawn(
+        _stderr_reader = self._pool.spawn(
             self._read_output_to_buffer, channel.read_stderr, stderr_buffer)
         return _stdout_reader, _stderr_reader
 
     def execute(self, cmd, use_pty=False, channel=None):
-        """Execute command on remote server.
+        """
+        Use ``run_command`` which returns a ``HostOutput`` object rather than this function directly.
+
+        Execute command on remote server.
 
         :param cmd: Command to execute.
         :type cmd: str
@@ -335,6 +335,8 @@ class SSHClient(BaseSSHClient):
         :param channel: Use provided channel for execute rather than creating
           a new one.
         :type channel: :py:class:`ssh2.channel.Channel`
+
+        :rtype: :py:class:`ssh2.channel.Channel`
         """
         channel = self.open_session() if channel is None else channel
         if use_pty:

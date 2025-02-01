@@ -127,7 +127,7 @@ class LocalForwarder(Thread):
 
     def cleanup_server(self, client):
         """
-        Stop server for given proxy client.
+        Stop server for given proxy client and remove client from this forwarder.
         """
         server = self._servers[client]
         server.stop()

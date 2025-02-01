@@ -25,6 +25,7 @@ from gevent import sleep, socket, Timeout as GTimeout
 from gevent.hub import Hub
 from gevent.select import poll, POLLIN, POLLOUT
 from gevent.socket import SHUT_RDWR
+from gevent.pool import Pool
 from ssh2.exceptions import AgentConnectionError, AgentListIdentitiesError, \
     AgentAuthenticationError, AgentGetIdentityError
 from ssh2.utils import find_eol
@@ -245,6 +246,7 @@ class BaseSSHClient(PollMixIn):
         self.identity_auth = identity_auth
         self._keepalive_greenlet = None
         self.ipv6_only = ipv6_only
+        self._pool = Pool()
         self._init()
 
     def _pkey_from_memory(self, pkey_data):
