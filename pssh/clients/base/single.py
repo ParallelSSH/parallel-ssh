@@ -486,6 +486,13 @@ class BaseSSHClient(PollMixIn):
         raise NotImplementedError
 
     def execute(self, cmd, use_pty=False, channel=None):
+        """
+        Deprecated - use ``run_command`` instead which returns a ``HostOutput`` object.
+        """
+        warn("Deprecated - use run_command instead.", DeprecationWarning)
+        return self._execute(cmd, use_pty=use_pty, channel=channel)
+
+    def _execute(self, cmd, use_pty=False, channel=None):
         raise NotImplementedError
 
     def read_stderr(self, stderr_buffer, timeout=None):
@@ -620,7 +627,7 @@ class BaseSSHClient(PollMixIn):
             _command += "%s '%s'" % (_shell, command,)
         _command = _command.encode(encoding)
         with GTimeout(seconds=self.timeout):
-            channel = self.execute(_command, use_pty=use_pty)
+            channel = self._execute(_command, use_pty=use_pty)
         _timeout = read_timeout if read_timeout else timeout
         host_out = self._make_host_output(channel, encoding, _timeout)
         return host_out

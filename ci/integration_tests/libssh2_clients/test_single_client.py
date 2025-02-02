@@ -184,6 +184,10 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertEqual(expected, output)
         self.assertEqual(expected_stderr, stderr)
 
+    def test_execute_depr(self):
+        chan = self.client.execute(self.cmd)
+        self.assertIsNotNone(chan)
+
     def test_alias(self):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key, num_retries=1,

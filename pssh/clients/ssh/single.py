@@ -16,7 +16,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import logging
-
 from gevent import sleep, spawn, Timeout as GTimeout, joinall
 from gevent.socket import SHUT_RDWR
 from ssh import options
@@ -236,7 +235,7 @@ class SSHClient(BaseSSHClient):
             self._read_output_to_buffer, channel, stderr_buffer, is_stderr=True)
         return _stdout_reader, _stderr_reader
 
-    def execute(self, cmd, use_pty=False, channel=None):
+    def _execute(self, cmd, use_pty=False, channel=None):
         """Execute command on remote host.
 
         :param cmd: The command string to execute.
