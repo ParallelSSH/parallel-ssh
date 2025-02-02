@@ -17,6 +17,7 @@
 
 import logging
 from datetime import datetime
+from unittest.mock import patch, MagicMock
 
 from gevent import sleep, Timeout as GTimeout, spawn
 from ssh.exceptions import AuthenticationDenied
@@ -91,7 +92,7 @@ class SSHClientTest(SSHTestCase):
                            num_retries=1,
                            timeout=1,
                            allow_agent=False)
-        client.disconnect()
+        client._disconnect()
         client.pkey = None
         del client.session
         del client.sock
@@ -100,7 +101,7 @@ class SSHClientTest(SSHTestCase):
         client.IDENTITIES = (self.user_key,)
         # Default identities auth only should succeed
         client._identity_auth()
-        client.disconnect()
+        client._disconnect()
         del client.session
         del client.sock
         client._connect(self.host, self.port)
@@ -131,19 +132,10 @@ class SSHClientTest(SSHTestCase):
         self.client.wait_finished(host_out)
         self.assertTrue(self.client.finished(host_out.channel))
 
-    def test_client_disconnect_on_del(self):
-        client = SSHClient(self.host, port=self.port,
-                           pkey=self.user_key,
-                           num_retries=1)
-        client_sock = client.sock
-        del client
-        self.assertTrue(client_sock.closed)
-
     def test_client_bad_sock(self):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
                            num_retries=1)
-        client.disconnect()
         client.sock = None
         self.assertIsNone(client.poll())
 
@@ -153,7 +145,7 @@ class SSHClientTest(SSHTestCase):
         # and break subsequent sessions even on different socket and
         # session
         def scope_killer():
-            for _ in range(5):
+            for _ in range(20):
                 client = SSHClient(self.host, port=self.port,
                                    pkey=self.user_key,
                                    num_retries=1,
@@ -161,6 +153,7 @@ class SSHClientTest(SSHTestCase):
                 host_out = client.run_command(self.cmd)
                 output = list(host_out.stdout)
                 self.assertListEqual(output, [self.resp])
+
         scope_killer()
 
     def test_interactive_shell(self):
@@ -242,19 +235,22 @@ class SSHClientTest(SSHTestCase):
         host_out = client.run_command('sleep 2; echo me', timeout=0.2)
         self.assertRaises(Timeout, list, host_out.stdout)
 
-    def test_open_session_exc(self):
+    @patch('pssh.clients.ssh.single.Session')
+    def test_open_session_exc(self, mock_sess):
         class Error(Exception):
             pass
 
         def _session():
             raise Error
+
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
                            num_retries=1)
         client._open_session = _session
         self.assertRaises(SessionError, client.open_session)
 
-    def test_session_connect_exc(self):
+    @patch('pssh.clients.ssh.single.Session')
+    def test_session_connect_exc(self, mock_sess):
         class Error(Exception):
             pass
 
@@ -296,7 +292,7 @@ class SSHClientTest(SSHTestCase):
                            num_retries=1,
                            allow_agent=True,
                            identity_auth=False)
-        client.session.disconnect()
+        client.eagain(client.session.disconnect)
         client.pkey = None
         client._connect(self.host, self.port)
         client._agent_auth = _agent_auth_unk
@@ -318,7 +314,8 @@ class SSHClientTest(SSHTestCase):
         client._agent_auth = _agent_auth
         self.assertIsNone(client.auth())
 
-    def test_disconnect_exc(self):
+    @patch('pssh.clients.ssh.single.Session')
+    def test_disconnect_exc(self, mock_sess):
         class DiscError(Exception):
             pass
 
@@ -331,7 +328,7 @@ class SSHClientTest(SSHTestCase):
                            )
         client._disconnect_eagain = _disc
         client._connect_init_session_retry(0)
-        client.disconnect()
+        client._disconnect()
 
     def test_stdin(self):
         host_out = self.client.run_command('read line; echo $line')
@@ -340,3 +337,55 @@ class SSHClientTest(SSHTestCase):
         self.client.wait_finished(host_out)
         stdout = list(host_out.stdout)
         self.assertListEqual(stdout, ['a line'])
+
+    def test_output_client_scope(self):
+        """Output objects should keep client alive while they are in scope even if client is not."""
+        def make_client_run():
+            client = SSHClient(self.host, port=self.port,
+                               pkey=self.user_key,
+                               num_retries=1,
+                               allow_agent=False,
+                               )
+            host_out = client.run_command("%s; exit 1" % (self.cmd,))
+            return host_out
+
+        output = make_client_run()
+        stdout = list(output.stdout)
+        self.assertListEqual(stdout, [self.resp])
+        self.assertEqual(output.exit_code, 1)
+
+    def test_output_client_scope_disconnect(self):
+        """Forcibly disconnecting client that also goes out of scope should not break reading any unread output."""
+        def make_client_run():
+            client = SSHClient(self.host, port=self.port,
+                               pkey=self.user_key,
+                               num_retries=1,
+                               allow_agent=False,
+                               )
+            host_out = client.run_command("%s; exit 1" % (self.cmd,))
+            return host_out
+
+        output = make_client_run()
+        stdout = list(output.stdout)
+        self.assertListEqual(stdout, [self.resp])
+        self.assertEqual(output.exit_code, 1)
+
+    @patch('gevent.socket.socket')
+    @patch('pssh.clients.ssh.single.Session')
+    def test_sock_shutdown_fail(self, mock_sess, mock_sock):
+        sock = MagicMock()
+        mock_sock.return_value = sock
+        client = SSHClient(self.host, port=self.port,
+                           num_retries=2,
+                           timeout=.1,
+                           retry_delay=.1,
+                           _auth_thread_pool=False,
+                           allow_agent=False,
+                           )
+        self.assertIsInstance(client, SSHClient)
+        sock.closed = False
+        sock.detach = MagicMock()
+        sock.detach.side_effect = Exception
+        self.assertIsNone(client._disconnect())
+        sock.detach.assert_called_once()
+        self.assertIsNone(client.sock)

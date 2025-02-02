@@ -15,13 +15,14 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+import atexit
 import logging
-from queue import Queue
-from threading import Thread, Event
-
-from gevent import spawn, joinall, get_hub, sleep
+from gevent import joinall, get_hub, sleep
+from gevent.pool import Pool
 from gevent.server import StreamServer
+from queue import Queue
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
+from threading import Thread, Event
 
 from ...constants import DEFAULT_RETRIES
 
@@ -39,25 +40,39 @@ class LocalForwarder(Thread):
         and get port to connect to via ``out_q`` once a target has been put into the input queue.
 
         ``SSHClient`` is the client for the SSH host that will be proxying.
+
+        There can be as many LocalForwarder(s) as needed to scale.
+
+        Relationship of clients to forwarders to servers is:
+
+        One client -> One Forwarder -> Many Servers <-> Many proxy hosts -> one target host per proxy host
+
+        A Forwarder starts servers. Servers communicate with clients directly via Forwarder thread.
+
+        Multiple forwarder threads can be used to scale clients to more threads as number of clients increases causing
+        contention in forwarder threads handling proxy connections.
         """
-        Thread.__init__(self)
+        Thread.__init__(self, daemon=True)
         self.in_q = Queue(1)
         self.out_q = Queue(1)
+        self._pool = None
         self._servers = {}
         self._hub = None
         self.started = Event()
         self._cleanup_let = None
+        self.shutdown_triggered = Event()
 
     def _start_server(self):
         client, host, port = self.in_q.get()
+        logger.debug("Starting server for %s:%s", host, port)
         server = TunnelServer(client, host, port)
+        self._servers[client] = server
         server.start()
-        self._get_server_listen_port(client, server)
+        self._get_server_listen_port(server)
 
-    def _get_server_listen_port(self, client, server):
+    def _get_server_listen_port(self, server):
         while not server.started:
             sleep(0.01)
-        self._servers[client] = server
         local_port = server.listen_port
         self.out_q.put(local_port)
 
@@ -74,9 +89,20 @@ class LocalForwarder(Thread):
         self.in_q.put((client, host, port))
 
     def shutdown(self):
-        """Stop all tunnel servers."""
+        """Stop all tunnel servers and shutdown LocalForwarder thread.
+
+        This function will join the current thread and wait for it to shutdown if needed.
+        """
         for client, server in self._servers.items():
             server.stop()
+        self._servers = {}
+        if self.started:
+            self.shutdown_triggered.set()
+            try:
+                self.join()
+            except RuntimeError:
+                # Re-entry protection
+                pass
 
     def _cleanup_servers_let(self):
         while True:
@@ -89,19 +115,22 @@ class LocalForwarder(Thread):
                 self.cleanup_server(client)
 
     def run(self):
-        """Thread runner ensures a non main hub has been created for all subsequent
+        """Thread runner ensures a non-main hub has been created for all subsequent
         greenlets and waits for (client, host, port) tuples to be put into self.in_q.
 
-        A server is created once something is in the queue and the port to connect to
-        is put into self.out_q.
+        A server is created once something is in the queue and only then is the port to connect to
+        put into self.out_q.
         """
         self._hub = get_hub()
         assert self._hub.main_hub is False
+        self._pool = Pool(1)
         self.started.set()
-        self._cleanup_let = spawn(self._cleanup_servers_let)
+        self._cleanup_let = self._pool.spawn(self._cleanup_servers_let)
         logger.debug("Hub in server runner is main hub: %s", self._hub.main_hub)
         try:
             while True:
+                if self.shutdown_triggered.is_set():
+                    return
                 if self.in_q.empty():
                     sleep(.01)
                     continue
@@ -111,8 +140,9 @@ class LocalForwarder(Thread):
             self.shutdown()
 
     def cleanup_server(self, client):
-        """The purpose of this function is for a proxied client to notify the LocalForwarder that it
-         is shutting down and its corresponding server can also be shut down."""
+        """
+        Stop server for given proxy client and remove client from this forwarder.
+        """
         server = self._servers[client]
         server.stop()
         del self._servers[client]
@@ -123,16 +153,18 @@ class TunnelServer(StreamServer):
 
     Accepts connections on an available bind_address port once started and tunnels data
     to/from remote SSH host for each connection.
+
+    TunnelServer.listen_port will return listening port for server on given host once TunnelServer.started is True.
     """
 
     def __init__(self, client, host, port, bind_address='127.0.0.1',
                  num_retries=DEFAULT_RETRIES):
-        StreamServer.__init__(self, (bind_address, 0), self._read_rw)
         self.client = client
+        self._pool = Pool()
+        StreamServer.__init__(self, (bind_address, 0), self._read_rw, spawn=self._pool)
         self.host = host
         self.port = port
         self.session = client.session
-        self._client = client
         self._retries = num_retries
         self.bind_address = bind_address
         self.exception = None
@@ -154,28 +186,27 @@ class TunnelServer(StreamServer):
                          self.host, self.port, ex)
             self.exception = ex
             return
-        source = spawn(self._read_forward_sock, socket, channel)
-        dest = spawn(self._read_channel, socket, channel)
+        # Channel remains alive while this handler function is alive
+        source = self._pool.spawn(self._read_forward_sock, socket, channel)
+        dest = self._pool.spawn(self._read_channel, socket, channel)
         logger.debug("Waiting for read/write greenlets")
-        self._source_let = source
-        self._dest_let = dest
         self._wait_send_receive_lets(source, dest, channel)
 
     def _wait_send_receive_lets(self, source, dest, channel):
         try:
             joinall((source, dest), raise_error=True)
         finally:
-            # Forward socket does not need to be closed here; StreamServer does it in do_close
-            logger.debug("Closing channel")
-            self._client.close_channel(channel)
-
-            # Disconnect client here to make sure it happens AFTER close_channel
-            self._client.disconnect()
+            logger.debug("Read/Write greenlets for tunnel target %s:%s finished, closing forwarding channel",
+                         self.host, self.port)
+            self.client.close_channel(channel)
 
     def _read_forward_sock(self, forward_sock, channel):
         while True:
             if channel is None or channel.eof():
                 logger.debug("Channel closed, tunnel forward socket reader exiting")
+                return
+            if not forward_sock or forward_sock.closed:
+                logger.debug("Forward socket closed, tunnel forward socket reader exiting")
                 return
             try:
                 data = forward_sock.recv(1024)
@@ -183,12 +214,12 @@ class TunnelServer(StreamServer):
                 logger.error("Forward socket read error: %s", ex)
                 raise
             data_len = len(data)
-            # logger.debug("Read %s data from forward socket", data_len,)
+            # logger.debug("Read %s data from forward socket", data_len)
             if data_len == 0:
                 sleep(.01)
                 continue
             try:
-                self._client.eagain_write(channel.write, data)
+                self.client.eagain_write(channel.write, data)
             except Exception as ex:
                 logger.error("Error writing data to channel - %s", ex)
                 raise
@@ -204,9 +235,9 @@ class TunnelServer(StreamServer):
             except Exception as ex:
                 logger.error("Error reading from channel - %s", ex)
                 raise
-            # logger.debug("Read %s data from channel" % (size,))
+            # logger.debug("Read %s data from channel", size)
             if size == LIBSSH2_ERROR_EAGAIN:
-                self._client.poll()
+                self.client.poll()
                 continue
             elif size == 0:
                 sleep(.01)
@@ -224,7 +255,7 @@ class TunnelServer(StreamServer):
             fw_host, fw_port, self.bind_address,
             local_port)
         while channel == LIBSSH2_ERROR_EAGAIN:
-            self._client.poll()
+            self.client.poll()
             channel = self.session.direct_tcpip_ex(
                 fw_host, fw_port, self.bind_address,
                 local_port)
@@ -249,4 +280,4 @@ class TunnelServer(StreamServer):
 
 
 FORWARDER = LocalForwarder()
-FORWARDER.daemon = True
+atexit.register(FORWARDER.shutdown)

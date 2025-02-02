@@ -114,20 +114,6 @@ class BaseParallelSSHClient(object):
             self._host_clients.pop((i, host), None)
         self._hosts = _hosts
 
-    def __del__(self):
-        self.disconnect()
-
-    def disconnect(self):
-        """Disconnect all clients."""
-        if not hasattr(self, '_host_clients'):
-            return
-        for s_client in self._host_clients.values():
-            try:
-                s_client.disconnect()
-            except Exception as ex:
-                logger.debug("Client disconnect failed with %s", ex)
-                pass
-
     def _check_host_config(self):
         if self.host_config is None:
             return

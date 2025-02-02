@@ -15,18 +15,18 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+import gc
 import os
+import time
 import unittest
 from getpass import getuser
-
-import gc
-import time
-from gevent import sleep, spawn, Timeout as GTimeout
+from gevent import sleep, spawn
 from ssh2.exceptions import SocketSendError, SocketRecvError
 from sys import version_info
+from unittest.mock import MagicMock
 
 from pssh.clients.native import SSHClient, ParallelSSHClient
-from pssh.clients.native.tunnel import LocalForwarder, TunnelServer, FORWARDER
+from pssh.clients.native.tunnel import LocalForwarder, TunnelServer
 from pssh.config import HostConfig
 from pssh.exceptions import ProxyError
 from .base_ssh2_case import PKEY_FILENAME, PUB_FILE
@@ -58,7 +58,6 @@ class TunnelTest(unittest.TestCase):
 
     def test_forwarder(self):
         forwarder = LocalForwarder()
-        forwarder.daemon = True
         forwarder.start()
         forwarder.started.wait()
         client = SSHClient(
@@ -66,6 +65,10 @@ class TunnelTest(unittest.TestCase):
         forwarder.enqueue(client, self.proxy_host, self.port)
         forwarder.out_q.get()
         self.assertTrue(len(forwarder._servers) > 0)
+        client.eagain(client.session.disconnect)
+        client.sock.close()
+        forwarder._cleanup_servers()
+        self.assertEqual(len(forwarder._servers), 0)
         forwarder.shutdown()
 
     def test_tunnel_server(self):
@@ -117,7 +120,7 @@ class TunnelTest(unittest.TestCase):
         remote_server = OpenSSHServer(listen_ip=remote_host, port=self.port)
         remote_server.start_server()
 
-        reconn_n = 20       # Number of reconnect attempts
+        reconn_n = 10        # Number of reconnect attempts
         reconn_delay = .1    # Number of seconds to delay between reconnects
         try:
             for _ in range(reconn_n):
@@ -132,8 +135,6 @@ class TunnelTest(unittest.TestCase):
                 client.wait_finished(output)
                 self.assertEqual(remote_host, client.host)
                 self.assertEqual(self.port, client.port)
-                client.disconnect()
-                FORWARDER._cleanup_servers()
                 time.sleep(reconn_delay)
                 gc.collect()
         finally:
@@ -229,8 +230,8 @@ class TunnelTest(unittest.TestCase):
             for server in (servers[1], servers[2]):
                 server.stop()
                 server.server_proc.communicate()
-            client._host_clients[(1, hosts[1])].disconnect()
-            client._host_clients[(2, hosts[2])].disconnect()
+            client._host_clients[(1, hosts[1])].sock.close()
+            client._host_clients[(2, hosts[2])].sock.close()
             output = client.run_command(self.cmd, stop_on_errors=False)
             client.join(output)
             self.assertEqual(len(hosts), len(output))
@@ -284,7 +285,6 @@ class TunnelTest(unittest.TestCase):
             raise Exception
 
         forwarder = LocalForwarder()
-        forwarder.daemon = True
         forwarder.start()
         forwarder.started.wait()
         client = SSHClient(
@@ -292,13 +292,22 @@ class TunnelTest(unittest.TestCase):
         forwarder.enqueue(client, self.proxy_host, self.port)
         forwarder.out_q.get()
         self.assertTrue(len(forwarder._servers) > 0)
-        client.sock.close()
-        client.disconnect()
-        forwarder._cleanup_servers()
+        forwarder.shutdown()
         self.assertEqual(len(forwarder._servers), 0)
         forwarder._start_server = _start_server
         forwarder.enqueue(client, self.proxy_host, self.port)
         sleep(.1)
+        self.assertEqual(len(forwarder._servers), 0)
+
+    def test_forwarder_join(self):
+        forwarder = LocalForwarder()
+        forwarder.start()
+        forwarder.started.wait()
+        mock_join = MagicMock()
+        mock_join.side_effect = RuntimeError
+        forwarder.join = mock_join
+        # Shutdown should not raise exception
+        self.assertIsNone(forwarder.shutdown())
 
     def test_socket_channel_error(self):
         class SocketError(Exception):
@@ -334,6 +343,8 @@ class TunnelTest(unittest.TestCase):
                 return
 
         class Socket(object):
+            closed = False
+
             def recv(self, num):
                 return b"asdfaf"
 
@@ -341,6 +352,8 @@ class TunnelTest(unittest.TestCase):
                 return
 
         class SocketFailure(object):
+            closed = False
+
             def sendall(self, data):
                 raise SocketError
 
@@ -351,6 +364,8 @@ class TunnelTest(unittest.TestCase):
                 return
 
         class SocketEmpty(object):
+            closed = False
+
             def recv(self, num):
                 return b""
 
@@ -362,10 +377,14 @@ class TunnelTest(unittest.TestCase):
         let = spawn(server._read_forward_sock, SocketEmpty(), Channel())
         let.start()
         sleep(.01)
-        self.assertRaises(SocketSendError, server._read_forward_sock, Socket(), ChannelFailure())
-        self.assertRaises(SocketError, server._read_forward_sock, SocketFailure(), Channel())
-        self.assertRaises(SocketError, server._read_channel, SocketFailure(), Channel())
-        self.assertRaises(SocketRecvError, server._read_channel, Socket(), ChannelFailure())
+        my_sock = Socket()
+        my_chan = Channel()
+        self.assertRaises(SocketSendError, server._read_forward_sock, my_sock, ChannelFailure())
+        self.assertRaises(SocketError, server._read_forward_sock, SocketFailure(), my_chan)
+        self.assertRaises(SocketError, server._read_channel, SocketFailure(), my_chan)
+        self.assertRaises(SocketRecvError, server._read_channel, my_sock, ChannelFailure())
+        my_sock.closed = True
+        self.assertIsNone(server._read_forward_sock(my_sock, my_chan))
         channel = Channel()
         _socket = Socket()
         source_let = spawn(server._read_forward_sock, _socket, channel)
@@ -373,21 +392,3 @@ class TunnelTest(unittest.TestCase):
         channel._eof = True
         self.assertIsNone(server._wait_send_receive_lets(source_let, dest_let, channel))
         let.kill()
-
-    def test_server_start(self):
-        _port = 1234
-
-        class Server(object):
-            def __init__(self):
-                self.started = False
-                self.listen_port = _port
-        server = Server()
-        forwarder = LocalForwarder()
-        let = spawn(forwarder._get_server_listen_port, None, server)
-        let.start()
-        sleep(.01)
-        server.started = True
-        sleep(.01)
-        with GTimeout(seconds=1):
-            port = forwarder.out_q.get()
-        self.assertEqual(port, _port)

@@ -15,12 +15,15 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import logging
-import os
 from collections import deque
 
-from gevent import sleep, spawn, get_hub
+import logging
+import os
+from gevent import sleep, get_hub
 from gevent.lock import RLock
+from gevent.pool import Pool
+from gevent.socket import SHUT_RDWR
+from gevent.timeout import Timeout as GTimeout
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
     Timeout as SSH2Timeout
@@ -31,7 +34,7 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_SFTP_S_IXGRP, LIBSSH2_SFTP_S_IXOTH
 
 from .tunnel import FORWARDER
-from ..base.single import BaseSSHClient
+from ..base.single import BaseSSHClient, PollMixIn
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import SessionError, SFTPError, \
     SFTPIOError, Timeout, SCPError, ProxyError
@@ -39,6 +42,51 @@ from ...output import HostOutput
 
 logger = logging.getLogger(__name__)
 THREAD_POOL = get_hub().threadpool
+
+
+class KeepAlive(PollMixIn):
+    """Class for handling SSHClient keepalive functionality.
+
+    Spawns a greenlet in its own pool for sending keepalives to a given session.
+    """
+    __slots__ = ('sock', 'session', '_let', '_pool')
+
+    def __init__(self, sock, session):
+        """
+        :param sock: The socket session is using to communicate.
+        :type sock: :py:class:`gevent.socket.socket`
+        :param session: The session keepalive is configured on.
+        :type session: :py:class:`ssh2.session.Session`
+        """
+        super(PollMixIn, self).__init__()
+        self._pool = Pool(1)
+        self.sock = sock
+        self.session = session
+        self._let = self._pool.spawn(self._send_keepalive)
+        self._let.start()
+
+    def _send_keepalive(self):
+        while True:
+            if self.session is None or self.sock is None or self.sock.closed:
+                return
+            sleep_for = self.eagain(self.session.keepalive_send)
+            sleep(sleep_for)
+
+    def poll(self, timeout=None):
+        """Perform co-operative gevent poll on ssh2 session socket.
+
+        Blocks current greenlet only if socket has pending read or write operations
+        in the appropriate direction.
+        :param timeout: Deprecated and unused - to be removed.
+        """
+        self._poll_errcodes(
+            self.session.block_directions,
+            LIBSSH2_SESSION_BLOCK_INBOUND,
+            LIBSSH2_SESSION_BLOCK_OUTBOUND,
+        )
+
+    def eagain(self, func, *args, **kwargs):
+        return self._eagain_errcode(func, LIBSSH2_ERROR_EAGAIN, *args, **kwargs)
 
 
 class SSHClient(BaseSSHClient):
@@ -58,7 +106,8 @@ class SSHClient(BaseSSHClient):
                  proxy_pkey=None,
                  proxy_user=None,
                  proxy_password=None,
-                 _auth_thread_pool=True, keepalive_seconds=60,
+                 _auth_thread_pool=True,
+                 keepalive_seconds=60,
                  identity_auth=True,
                  ipv6_only=False,
                  ):
@@ -85,7 +134,9 @@ class SSHClient(BaseSSHClient):
           to :py:class:`pssh.constants.RETRY_DELAY`
         :type retry_delay: int or float
         :param timeout: SSH session timeout setting in seconds. This controls
-          timeout setting of authenticated SSH sessions.
+          timeout setting of authenticated SSH sessions for each individual SSH operation.
+          Also currently sets socket as well as per function timeout in some cases, see
+          function descriptions.
         :type timeout: int or float
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent
@@ -146,7 +197,7 @@ class SSHClient(BaseSSHClient):
         )
 
     def _shell(self, channel):
-        return self._eagain(channel.shell)
+        return self.eagain(channel.shell)
 
     def _connect_proxy(self, proxy_host, proxy_port, proxy_pkey,
                        user=None, password=None, alias=None,
@@ -178,42 +229,36 @@ class SSHClient(BaseSSHClient):
         proxy_local_port = FORWARDER.out_q.get()
         return proxy_local_port
 
-    def disconnect(self):
+    def _disconnect(self):
         """Attempt to disconnect session.
 
         Any errors on calling disconnect are suppressed by this function.
+
+        Does not need to be called directly - called when client object is de-allocated.
         """
         self._keepalive_greenlet = None
-        if self.session is not None:
+        if self.session is not None and self.sock is not None and not self.sock.closed:
             try:
                 self._disconnect_eagain()
             except Exception:
                 pass
-            self.session = None
-        if isinstance(self._proxy_client, SSHClient):
-            # Don't disconnect proxy client here - let the TunnelServer do it at the time that
-            # _wait_send_receive_lets ends. The cleanup_server call here triggers the TunnelServer
-            # to stop.
-            FORWARDER.cleanup_server(self._proxy_client)
-
-            # I wanted to clean up all the sockets here to avoid a ResourceWarning from unittest,
-            # but unfortunately closing this socket here causes a segfault, not sure why yet.
-            # self.sock.close()
-        else:
-            self.sock.close()
+        self.session = None
+        # To allow for file descriptor reuse, which is part of gevent, shutdown but do not close socket here.
+        # Done by gevent when file descriptor is closed.
+        if self.sock is not None and not self.sock.closed:
+            try:
+                self.sock.shutdown(SHUT_RDWR)
+                self.sock.detach()
+            except Exception:
+                pass
         self.sock = None
-
-    def spawn_send_keepalive(self):
-        """Spawns a new greenlet that sends keep alive messages every
-        self.keepalive_seconds"""
-        return spawn(self._send_keepalive)
-
-    def _send_keepalive(self):
-        while True:
-            sleep(self._eagain(self.session.keepalive_send))
+        # Notify forwarder that proxy tunnel server can be shutdown
+        if isinstance(self._proxy_client, SSHClient):
+            FORWARDER.cleanup_server(self._proxy_client)
 
     def configure_keepalive(self):
         """Configures keepalive on the server for `self.keepalive_seconds`."""
+        # Configure keepalives without a reply.
         self.session.keepalive_config(False, self.keepalive_seconds)
 
     def _init_session(self, retries=1):
@@ -234,7 +279,11 @@ class SSHClient(BaseSSHClient):
             msg = "Error connecting to host %s:%s - %s"
             logger.error(msg, self.host, self.port, ex)
             if not self.sock.closed:
-                self.sock.close()
+                try:
+                    self.sock.shutdown(SHUT_RDWR)
+                    self.sock.detach()
+                except Exception:
+                    pass
             if isinstance(ex, SSH2Timeout):
                 raise Timeout(msg, self.host, self.port, ex)
             raise
@@ -242,7 +291,7 @@ class SSHClient(BaseSSHClient):
     def _keepalive(self):
         if self.keepalive_seconds:
             self.configure_keepalive()
-            self._keepalive_greenlet = self.spawn_send_keepalive()
+            self._keepalive_greenlet = KeepAlive(self.sock, self.session)
 
     def _agent_auth(self):
         self.session.agent_auth(self.user)
@@ -264,7 +313,7 @@ class SSHClient(BaseSSHClient):
         self.session.userauth_password(self.user, self.password)
 
     def _open_session(self):
-        chan = self._eagain(self.session.open_session)
+        chan = self.eagain(self.session.open_session)
         return chan
 
     def open_session(self):
@@ -282,14 +331,18 @@ class SSHClient(BaseSSHClient):
         return chan
 
     def _make_output_readers(self, channel, stdout_buffer, stderr_buffer):
-        _stdout_reader = spawn(
+        # TODO: These greenlets need to be outside client scope or we create a reader <-> client cyclical reference
+        _stdout_reader = self._pool.spawn(
             self._read_output_to_buffer, channel.read, stdout_buffer)
-        _stderr_reader = spawn(
+        _stderr_reader = self._pool.spawn(
             self._read_output_to_buffer, channel.read_stderr, stderr_buffer)
         return _stdout_reader, _stderr_reader
 
     def execute(self, cmd, use_pty=False, channel=None):
-        """Execute command on remote server.
+        """
+        Use ``run_command`` which returns a ``HostOutput`` object rather than this function directly.
+
+        Execute command on remote server.
 
         :param cmd: Command to execute.
         :type cmd: str
@@ -298,12 +351,14 @@ class SSHClient(BaseSSHClient):
         :param channel: Use provided channel for execute rather than creating
           a new one.
         :type channel: :py:class:`ssh2.channel.Channel`
+
+        :rtype: :py:class:`ssh2.channel.Channel`
         """
         channel = self.open_session() if channel is None else channel
         if use_pty:
-            self._eagain(channel.pty)
+            self.eagain(channel.pty)
         logger.debug("Executing command '%s'", cmd)
-        self._eagain(channel.execute, cmd)
+        self.eagain(channel.execute, cmd)
         return channel
 
     def _read_output_to_buffer(self, read_func, _buffer, is_stderr=False):
@@ -341,20 +396,23 @@ class SSHClient(BaseSSHClient):
         channel = host_output.channel
         if channel is None:
             return
-        self._eagain(channel.wait_eof, timeout=timeout)
-        # Close channel to indicate no more commands will be sent over it
-        self.close_channel(channel)
+        with GTimeout(seconds=timeout, exception=Timeout):
+            self.eagain(channel.wait_eof)
+            # Close channel to indicate no more commands will be sent over it
+            self.close_channel(channel)
 
     def close_channel(self, channel):
+        """Close given channel, handling EAGAIN."""
         with self._chan_stdout_lock, self._chan_stderr_lock:
             logger.debug("Closing channel")
-            self._eagain(channel.close)
+            self.eagain(channel.close)
 
-    def _eagain(self, func, *args, **kwargs):
+    def eagain(self, func, *args, **kwargs):
+        """Handle EAGAIN and call given function with any args, polling for as long as there is data to receive."""
         return self._eagain_errcode(func, LIBSSH2_ERROR_EAGAIN, *args, **kwargs)
 
     def _make_sftp_eagain(self):
-        return self._eagain(self.session.sftp_init)
+        return self.eagain(self.session.sftp_init)
 
     def _make_sftp(self):
         try:
@@ -381,7 +439,7 @@ class SSHClient(BaseSSHClient):
             LIBSSH2_SFTP_S_IXGRP | \
             LIBSSH2_SFTP_S_IXOTH
         try:
-            self._eagain(sftp.mkdir, directory, mode)
+            self.eagain(sftp.mkdir, directory, mode)
         except SFTPProtocolError as error:
             msg = "Error occured creating directory %s on host %s - %s"
             logger.error(msg, directory, self.host, error)
@@ -419,7 +477,7 @@ class SSHClient(BaseSSHClient):
         destination = self._remote_paths_split(remote_file)
         if destination is not None:
             try:
-                self._eagain(sftp.stat, destination)
+                self.eagain(sftp.stat, destination)
             except (SFTPHandleError, SFTPProtocolError):
                 self.mkdir(sftp, destination)
         self.sftp_put(sftp, local_file, remote_file)
@@ -482,7 +540,7 @@ class SSHClient(BaseSSHClient):
             cur_dir = _paths_to_create.popleft()
             cwd = '/'.join([cwd, cur_dir])
             try:
-                self._eagain(sftp.stat, cwd)
+                self.eagain(sftp.stat, cwd)
             except (SFTPHandleError, SFTPProtocolError) as ex:
                 logger.debug("Stat for %s failed with %s", cwd, ex)
                 self._mkdir(sftp, cwd)
@@ -514,7 +572,7 @@ class SSHClient(BaseSSHClient):
         """
         sftp = self._make_sftp() if sftp is None else sftp
         try:
-            self._eagain(sftp.stat, remote_file)
+            self.eagain(sftp.stat, remote_file)
         except (SFTPHandleError, SFTPProtocolError):
             msg = "Remote file or directory %s on host %s does not exist"
             logger.error(msg, remote_file, self.host)
@@ -541,7 +599,7 @@ class SSHClient(BaseSSHClient):
 
     def _scp_recv_recursive(self, remote_file, local_file, sftp, encoding='utf-8'):
         try:
-            self._eagain(sftp.stat, remote_file)
+            self.eagain(sftp.stat, remote_file)
         except (SFTPHandleError, SFTPProtocolError):
             msg = "Remote file or directory %s does not exist"
             logger.error(msg, remote_file)
@@ -602,7 +660,7 @@ class SSHClient(BaseSSHClient):
 
     def _scp_recv(self, remote_file, local_file):
         try:
-            (file_chan, fileinfo) = self._eagain(
+            (file_chan, fileinfo) = self.eagain(
                 self.session.scp_recv2, remote_file)
         except Exception as ex:
             msg = "Error copying file %s from host %s - %s"
@@ -661,7 +719,7 @@ class SSHClient(BaseSSHClient):
             if destination is not None:
                 sftp = self._make_sftp() if sftp is None else sftp
                 try:
-                    self._eagain(sftp.stat, destination)
+                    self.eagain(sftp.stat, destination)
                 except (SFTPHandleError, SFTPProtocolError):
                     self.mkdir(sftp, destination)
         elif remote_file.endswith('/'):
@@ -674,7 +732,7 @@ class SSHClient(BaseSSHClient):
     def _scp_send(self, local_file, remote_file):
         fileinfo = os.stat(local_file)
         try:
-            chan = self._eagain(
+            chan = self.eagain(
                 self.session.scp_send64,
                 remote_file, fileinfo.st_mode & 0o777, fileinfo.st_size,
                 fileinfo.st_mtime, fileinfo.st_atime)
@@ -693,14 +751,14 @@ class SSHClient(BaseSSHClient):
             logger.error(msg, remote_file, self.host, ex)
             raise SCPError(msg, remote_file, self.host, ex)
         finally:
-            self._eagain(chan.flush)
-            self._eagain(chan.send_eof)
-            self._eagain(chan.wait_eof)
-            self._eagain(chan.wait_closed)
+            self.eagain(chan.flush)
+            self.eagain(chan.send_eof)
+            self.eagain(chan.wait_eof)
+            self.eagain(chan.wait_closed)
 
     def _sftp_openfh(self, open_func, remote_file, *args):
         try:
-            fh = self._eagain(open_func, remote_file, *args)
+            fh = self.eagain(open_func, remote_file, *args)
         except Exception as ex:
             raise SFTPError(ex)
         return fh
@@ -758,12 +816,9 @@ class SSHClient(BaseSSHClient):
             LIBSSH2_SESSION_BLOCK_OUTBOUND,
         )
 
-    def _eagain_write(self, write_func, data):
+    def eagain_write(self, write_func, data):
         """Write data with given write_func for an ssh2-python session while
         handling EAGAIN and resuming writes from last written byte on each call to
         write_func.
         """
         return self._eagain_write_errcode(write_func, data, LIBSSH2_ERROR_EAGAIN)
-
-    def eagain_write(self, write_func, data):
-        return self._eagain_write(write_func, data)

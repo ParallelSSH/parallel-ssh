@@ -18,6 +18,7 @@
 import logging
 
 from gevent import sleep, spawn, Timeout as GTimeout, joinall
+from gevent.socket import SHUT_RDWR
 from ssh import options
 from ssh.error_codes import SSH_AGAIN
 from ssh.exceptions import EOF
@@ -81,9 +82,11 @@ class SSHClient(BaseSSHClient):
         :type retry_delay: int or float
         :param timeout: (Optional) If provided, all commands will timeout after
           <timeout> number of seconds.
+          Also currently sets socket as well as per function timeout in some cases, see
+          function descriptions.
         :type timeout: int or float
         :param allow_agent: (Optional) set to False to disable connecting to
-          the system's SSH agent. Currently unused.
+          the system's SSH agent.
         :type allow_agent: bool
         :param identity_auth: (Optional) set to False to disable attempting to
           authenticate with default identity files from
@@ -124,10 +127,18 @@ class SSHClient(BaseSSHClient):
             ipv6_only=ipv6_only,
         )
 
-    def disconnect(self):
-        """Close socket if needed."""
-        if self.sock is not None and not self.sock.closed:
-            self.sock.close()
+    def _disconnect(self):
+        """Shutdown socket if needed.
+
+        Does not need to be called directly - called when client object is de-allocated.
+        """
+        if self.session is not None and self.sock is not None and not self.sock.closed:
+            try:
+                self.sock.shutdown(SHUT_RDWR)
+                self.sock.detach()
+            except Exception:
+                pass
+        self.sock = None
 
     def _agent_auth(self):
         self.session.userauth_agent(self.user)
@@ -201,12 +212,12 @@ class SSHClient(BaseSSHClient):
         logger.debug("Imported certificate file %s for pkey %s", self.cert_file, self.pkey)
 
     def _shell(self, channel):
-        return self._eagain(channel.request_shell)
+        return self.eagain(channel.request_shell)
 
     def _open_session(self):
         channel = self.session.channel_new()
         channel.set_blocking(0)
-        self._eagain(channel.open_session)
+        self.eagain(channel.open_session)
         return channel
 
     def open_session(self):
@@ -235,12 +246,13 @@ class SSHClient(BaseSSHClient):
         :type use_pty: bool
         :param channel: Channel to use. New channel is created if not provided.
         :type channel: :py:class:`ssh.channel.Channel`"""
-        channel = self.open_session() if not channel else channel
-        if use_pty:
-            self._eagain(channel.request_pty, timeout=self.timeout)
-        logger.debug("Executing command '%s'", cmd)
-        self._eagain(channel.request_exec, cmd)
-        return channel
+        with GTimeout(seconds=self.timeout, exception=Timeout):
+            channel = self.open_session() if not channel else channel
+            if use_pty:
+                self.eagain(channel.request_pty)
+            logger.debug("Executing command '%s'", cmd)
+            self.eagain(channel.request_exec, cmd)
+            return channel
 
     def _read_output_to_buffer(self, channel, _buffer, is_stderr=False):
         try:
@@ -276,7 +288,7 @@ class SSHClient(BaseSSHClient):
         if channel is None:
             return
         logger.debug("Sending EOF on channel %s", channel)
-        self._eagain(channel.send_eof, timeout=self.timeout)
+        self.eagain(channel.send_eof)
         logger.debug("Waiting for readers, timeout %s", timeout)
         with GTimeout(seconds=timeout, exception=Timeout):
             joinall((host_output.buffers.stdout.reader, host_output.buffers.stderr.reader))
@@ -311,7 +323,7 @@ class SSHClient(BaseSSHClient):
         :type channel: :py:class:`ssh.channel.Channel`
         """
         logger.debug("Closing channel")
-        self._eagain(channel.close)
+        self.eagain(channel.close)
 
     def poll(self, timeout=None):
         """ssh-python based co-operative gevent poll on session socket.
@@ -323,9 +335,9 @@ class SSHClient(BaseSSHClient):
             SSH_WRITE_PENDING,
         )
 
-    def _eagain(self, func, *args, **kwargs):
+    def eagain(self, func, *args, **kwargs):
         """Run function given and handle EAGAIN for an ssh-python session"""
         return self._eagain_errcode(func, SSH_AGAIN, *args, **kwargs)
 
-    def _eagain_write(self, write_func, data):
+    def eagain_write(self, write_func, data):
         return self._eagain_write_errcode(write_func, data, SSH_AGAIN)

@@ -1,5 +1,32 @@
 Change Log
-============
+==========
+
+2.14.0
+++++++
+
+Changes
+-------
+
+* Handle disconnects better to allow for file descriptor reuse for both clients.
+* Parallel clients no longer forcefully disconnect their clients at de-allocation -
+  now done by each individual ``SSHClient`` instead when that ``SSHClient`` goes out of scope.
+  This allows reading of output and anything associated with output, exit codes et al,
+  to work as long as one of either the client or an associated output object is alive.
+* ``SSHClient.disconnect`` is now a no-op and deprecated - handled by object de-allocation.
+* ``SSHClient.eagain`` is now a public function - wrapper for polling socket and calling a given socket using function.
+* ``SSHClient.eagain_write`` is now a public function - wrapper for polling socket and calling a given socket using
+  write function.
+* ``SSHClient``, ``TunnelServer`` and ``LocalForwarder`` now use their own gevent pools for greenlets spawned so they
+  are cleaned up correctly at shutdown.
+
+Fixes
+------
+
+* Forwarder threads used for proxies would not exit gracefully at interpreter shutdown, sometimes causing segfaults.
+* Client, both parallel and single, going out of scope would cause reading output from existing output objects
+  to break.
+* Explicitly calling ``SSHClient.disconnect`` would sometimes cause segfaults at interpreter shutdown.
+* Keepalives being configured on native client would keep client in scope forever.
 
 
 2.13.0
@@ -418,7 +445,7 @@ Fixes
 ------
 
 * Reading from output streams with timeout via `run_command(<..>, timeout=<timeout>)` would raise timeout early when
-trying to read from a stream with no data written to it while other streams have pending data - #180.
+  trying to read from a stream with no data written to it while other streams have pending data - #180.
 
 
 1.12.0

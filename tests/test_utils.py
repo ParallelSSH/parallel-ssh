@@ -16,9 +16,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import unittest
+
+from unittest.mock import MagicMock
 from logging import NullHandler, DEBUG
 
 from pssh import utils
+from pssh.clients.base.single import PollMixIn
 
 
 class ParallelSSHUtilsTest(unittest.TestCase):
@@ -43,3 +46,11 @@ class ParallelSSHUtilsTest(unittest.TestCase):
         utils.enable_debug_logger()
         self.assertEqual(utils.logger.level, DEBUG)
         utils.logger.handlers = [NullHandler()]
+
+    def test_poll_mixin(self):
+        my_sock = MagicMock()
+        mixin = PollMixIn(my_sock)
+        directions_func = MagicMock()
+        directions_func.return_value = 0
+        self.assertEqual(mixin.sock, my_sock)
+        self.assertIsNone(mixin._poll_errcodes(directions_func, 1, 1))

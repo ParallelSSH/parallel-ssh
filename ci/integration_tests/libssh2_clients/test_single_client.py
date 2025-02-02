@@ -16,16 +16,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import os
+import pytest
 import shutil
 import subprocess
 import tempfile
 from datetime import datetime
-from hashlib import sha256
-from tempfile import NamedTemporaryFile
-from unittest.mock import MagicMock, call, patch
-
-import pytest
 from gevent import sleep, spawn, Timeout as GTimeout, socket
+from hashlib import sha256
 from pytest import raises
 from ssh2.exceptions import (SocketDisconnectError, BannerRecvError, SocketRecvError,
                              AgentConnectionError, AgentListIdentitiesError,
@@ -33,6 +30,8 @@ from ssh2.exceptions import (SocketDisconnectError, BannerRecvError, SocketRecvE
                              AuthenticationError as SSH2AuthenticationError,
                              )
 from ssh2.session import Session
+from tempfile import NamedTemporaryFile
+from unittest.mock import MagicMock, call, patch
 
 from pssh.clients.native import SSHClient
 from pssh.exceptions import (AuthenticationException, ConnectionErrorException,
@@ -272,16 +271,14 @@ class SSH2ClientTest(SSH2TestCase):
                            pkey=self.user_key,
                            num_retries=1,
                            allow_agent=False)
-        client.disconnect()
         client.pkey = None
-        del client.session
-        del client.sock
+        client._disconnect()
         client._connect(self.host, self.port)
         client._init_session()
         client.IDENTITIES = (self.user_key,)
         # Default identities auth only should succeed
         client._identity_auth()
-        client.disconnect()
+        client._disconnect()
         client._connect(self.host, self.port)
         client._init_session()
         # Auth should succeed
@@ -360,8 +357,36 @@ class SSH2ClientTest(SSH2TestCase):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
                            num_retries=1)
-        client.session.disconnect()
+        client.eagain(client.session.disconnect)
         self.assertRaises((SocketDisconnectError, BannerRecvError, SocketRecvError), client._init_session)
+
+    @patch('gevent.socket.socket')
+    @patch('pssh.clients.native.single.Session')
+    def test_sock_shutdown_fail(self, mock_sess, mock_sock):
+        sess = MagicMock()
+        sock = MagicMock()
+        mock_sess.return_value = sess
+        mock_sock.return_value = sock
+
+        hand_mock = MagicMock()
+        sess.handshake = hand_mock
+        retries = 2
+        client = SSHClient(self.host, port=self.port,
+                           num_retries=retries,
+                           timeout=.1,
+                           retry_delay=.1,
+                           _auth_thread_pool=False,
+                           allow_agent=False,
+                           )
+        self.assertIsInstance(client, SSHClient)
+        hand_mock.side_effect = AuthenticationError
+        sock.closed = False
+        sock.detach = MagicMock()
+        sock.detach.side_effect = Exception
+        self.assertRaises(AuthenticationError, client._init_session)
+        self.assertEqual(sock.detach.call_count, retries)
+        client._disconnect()
+        self.assertIsNone(client.sock)
 
     def test_stdout_parsing(self):
         dir_list = os.listdir(os.path.expanduser('~'))
@@ -438,7 +463,7 @@ class SSH2ClientTest(SSH2TestCase):
         # and break subsequent sessions even on different socket and
         # session
         def scope_killer():
-            for _ in range(5):
+            for _ in range(20):
                 client = SSHClient(self.host, port=self.port,
                                    pkey=self.user_key,
                                    num_retries=1,
@@ -446,7 +471,22 @@ class SSH2ClientTest(SSH2TestCase):
                 host_out = client.run_command(self.cmd)
                 output = list(host_out.stdout)
                 self.assertListEqual(output, [self.resp])
-                client.disconnect()
+
+        scope_killer()
+
+    def test_multiple_clients_exec_terminates_channels_explicit_disc(self):
+        # Explicit disconnects should not affect subsequent connections
+        def scope_killer():
+            for _ in range(20):
+                client = SSHClient(self.host, port=self.port,
+                                   pkey=self.user_key,
+                                   num_retries=1,
+                                   allow_agent=False)
+                host_out = client.run_command(self.cmd)
+                output = list(host_out.stdout)
+                self.assertListEqual(output, [self.resp])
+                client._disconnect()
+
         scope_killer()
 
     def test_agent_auth_exceptions(self):
@@ -1036,7 +1076,8 @@ class SSH2ClientTest(SSH2TestCase):
         client._make_sftp_eagain = _make_sftp
         self.assertRaises(SFTPError, client._make_sftp)
 
-    def test_disconnect_exc(self):
+    @patch('pssh.clients.native.single.Session')
+    def test_disconnect_exc(self, mock_sess):
         class DiscError(Exception):
             pass
 
@@ -1091,5 +1132,36 @@ class SSH2ClientTest(SSH2TestCase):
             duration = end.total_seconds()
             self.assertTrue(duration < timeout * 0.9, msg=f"Duration of instant cmd is {duration}")
 
-    # TODO
-    # * read output callback
+    def test_output_client_scope(self):
+        """Output objects should keep client alive while they are in scope even if client is not."""
+        def make_client_run():
+            client = SSHClient(self.host, port=self.port,
+                               pkey=self.user_key,
+                               num_retries=1,
+                               allow_agent=False,
+                               )
+            host_out = client.run_command("%s; exit 1" % (self.cmd,))
+            return host_out
+
+        output = make_client_run()
+        stdout = list(output.stdout)
+        self.assertListEqual(stdout, [self.resp])
+        self.assertEqual(output.exit_code, 1)
+
+    def test_output_client_scope_disconnect(self):
+        """Calling deprecated .disconnect on client that also goes out of scope should not break reading
+        any unread output."""
+        def make_client_run():
+            client = SSHClient(self.host, port=self.port,
+                               pkey=self.user_key,
+                               num_retries=1,
+                               allow_agent=False,
+                               )
+            host_out = client.run_command("%s; exit 1" % (self.cmd,))
+            client.disconnect()
+            return host_out
+
+        output = make_client_run()
+        stdout = list(output.stdout)
+        self.assertListEqual(stdout, [self.resp])
+        self.assertEqual(output.exit_code, 1)
