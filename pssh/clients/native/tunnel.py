@@ -145,12 +145,12 @@ class TunnelServer(StreamServer):
 
     def __init__(self, client, host, port, bind_address='127.0.0.1',
                  num_retries=DEFAULT_RETRIES):
+        self.client = client
         self._pool = Pool()
         StreamServer.__init__(self, (bind_address, 0), self._read_rw, spawn=self._pool)
         self.host = host
         self.port = port
         self.session = client.session
-        self._client = client
         self._retries = num_retries
         self.bind_address = bind_address
         self.exception = None
@@ -184,7 +184,7 @@ class TunnelServer(StreamServer):
         finally:
             logger.debug("Read/Write greenlets for tunnel target %s:%s finished, closing forwarding channel",
                          self.host, self.port)
-            self._client.close_channel(channel)
+            self.client.close_channel(channel)
 
     def _read_forward_sock(self, forward_sock, channel):
         while True:
@@ -205,7 +205,7 @@ class TunnelServer(StreamServer):
                 sleep(.01)
                 continue
             try:
-                self._client.eagain_write(channel.write, data)
+                self.client.eagain_write(channel.write, data)
             except Exception as ex:
                 logger.error("Error writing data to channel - %s", ex)
                 raise
@@ -223,7 +223,7 @@ class TunnelServer(StreamServer):
                 raise
             # logger.debug("Read %s data from channel", size)
             if size == LIBSSH2_ERROR_EAGAIN:
-                self._client.poll()
+                self.client.poll()
                 continue
             elif size == 0:
                 sleep(.01)
@@ -241,7 +241,7 @@ class TunnelServer(StreamServer):
             fw_host, fw_port, self.bind_address,
             local_port)
         while channel == LIBSSH2_ERROR_EAGAIN:
-            self._client.poll()
+            self.client.poll()
             channel = self.session.direct_tcpip_ex(
                 fw_host, fw_port, self.bind_address,
                 local_port)
