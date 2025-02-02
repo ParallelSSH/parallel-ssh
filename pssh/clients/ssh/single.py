@@ -82,6 +82,8 @@ class SSHClient(BaseSSHClient):
         :type retry_delay: int or float
         :param timeout: (Optional) If provided, all commands will timeout after
           <timeout> number of seconds.
+          Also currently sets socket as well as per function timeout in some cases, see
+          function descriptions.
         :type timeout: int or float
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent. Currently unused.
@@ -126,7 +128,7 @@ class SSHClient(BaseSSHClient):
         )
 
     def _disconnect(self):
-        """Close socket if needed.
+        """Shutdown socket if needed.
 
         Does not need to be called directly - called when client object is de-allocated.
         """

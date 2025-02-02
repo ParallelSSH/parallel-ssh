@@ -131,7 +131,9 @@ class SSHClient(BaseSSHClient):
           to :py:class:`pssh.constants.RETRY_DELAY`
         :type retry_delay: int or float
         :param timeout: SSH session timeout setting in seconds. This controls
-          timeout setting of authenticated SSH sessions.
+          timeout setting of authenticated SSH sessions for each individual SSH operation.
+          Also currently sets socket as well as per function timeout in some cases, see
+          function descriptions.
         :type timeout: int or float
         :param allow_agent: (Optional) set to False to disable connecting to
           the system's SSH agent
@@ -231,6 +233,7 @@ class SSHClient(BaseSSHClient):
 
         Does not need to be called directly - called when client object is de-allocated.
         """
+        self._keepalive_greenlet = None
         if self.session is not None and self.sock is not None and not self.sock.closed:
             try:
                 self._disconnect_eagain()
