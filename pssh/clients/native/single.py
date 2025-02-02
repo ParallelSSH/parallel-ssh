@@ -245,6 +245,7 @@ class SSHClient(BaseSSHClient):
         if self.sock is not None and not self.sock.closed:
             try:
                 self.sock.shutdown(SHUT_RDWR)
+                self.sock.detach()
             except Exception:
                 pass
         self.sock = None
@@ -277,6 +278,7 @@ class SSHClient(BaseSSHClient):
             if not self.sock.closed:
                 try:
                     self.sock.shutdown(SHUT_RDWR)
+                    self.sock.detach()
                 except Exception:
                     pass
             if isinstance(ex, SSH2Timeout):

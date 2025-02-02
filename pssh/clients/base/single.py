@@ -319,6 +319,7 @@ class BaseSSHClient(PollMixIn):
         if not self.sock.closed:
             try:
                 self.sock.shutdown(SHUT_RDWR)
+                self.sock.detach()
             except Exception:
                 pass
         self.sock = None

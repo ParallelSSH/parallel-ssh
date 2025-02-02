@@ -272,13 +272,13 @@ class SSH2ClientTest(SSH2TestCase):
                            num_retries=1,
                            allow_agent=False)
         client.pkey = None
-        del client.session
-        del client.sock
+        client._disconnect()
         client._connect(self.host, self.port)
         client._init_session()
         client.IDENTITIES = (self.user_key,)
         # Default identities auth only should succeed
         client._identity_auth()
+        client._disconnect()
         client._connect(self.host, self.port)
         client._init_session()
         # Auth should succeed

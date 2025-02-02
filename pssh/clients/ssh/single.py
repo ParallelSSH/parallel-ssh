@@ -135,6 +135,7 @@ class SSHClient(BaseSSHClient):
         if self.session is not None and self.sock is not None and not self.sock.closed:
             try:
                 self.sock.shutdown(SHUT_RDWR)
+                self.sock.detach()
             except Exception:
                 pass
         self.sock = None
