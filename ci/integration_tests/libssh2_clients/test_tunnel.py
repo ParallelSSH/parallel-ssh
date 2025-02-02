@@ -19,12 +19,11 @@ import gc
 import os
 import time
 import unittest
-
-from unittest.mock import MagicMock
 from getpass import getuser
 from gevent import sleep, spawn
 from ssh2.exceptions import SocketSendError, SocketRecvError
 from sys import version_info
+from unittest.mock import MagicMock
 
 from pssh.clients.native import SSHClient, ParallelSSHClient
 from pssh.clients.native.tunnel import LocalForwarder, TunnelServer
