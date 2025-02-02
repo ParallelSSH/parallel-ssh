@@ -364,15 +364,15 @@ class SSH2ClientTest(SSH2TestCase):
     @patch('pssh.clients.native.single.Session')
     def test_sock_shutdown_fail(self, mock_sess, mock_sock):
         sess = MagicMock()
+        sock = MagicMock()
         mock_sess.return_value = sess
+        mock_sock.return_value = sock
 
         hand_mock = MagicMock()
-
         sess.handshake = hand_mock
-        sess.sock = MagicMock()
-
+        retries = 2
         client = SSHClient(self.host, port=self.port,
-                           num_retries=2,
+                           num_retries=retries,
                            timeout=.1,
                            retry_delay=.1,
                            _auth_thread_pool=False,
@@ -380,13 +380,13 @@ class SSH2ClientTest(SSH2TestCase):
                            )
         self.assertIsInstance(client, SSHClient)
         hand_mock.side_effect = AuthenticationError
-        my_sock = mock_sock
-        my_sock.closed = False
-        client.sock = my_sock
-        my_sock.shutdown = MagicMock()
-        my_sock.shutdown.side_effect = Exception
+        sock.closed = False
+        sock.detach = MagicMock()
+        sock.detach.side_effect = Exception
         self.assertRaises(AuthenticationError, client._init_session)
-        my_sock.shutdown.assert_called_once()
+        self.assertEqual(sock.detach.call_count, retries)
+        client._disconnect()
+        self.assertIsNone(client.sock)
 
     def test_stdout_parsing(self):
         dir_list = os.listdir(os.path.expanduser('~'))

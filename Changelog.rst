@@ -1,5 +1,5 @@
 Change Log
-============
+==========
 
 2.14.0
 ++++++
@@ -19,8 +19,6 @@ Changes
 * Removed now unecessary ``TunnelServer`` cleanup greenlet.
 * ``SSHClient`` now uses its own gevent pool for greenlets spawned so they are cleaned up correctly at shutdown.
 * ``TunnelServer`` now uses its own gevent pool for incoming connections so they are terminated correctly at shutdown.
-* Greenlets spawned by clients are now bound to a client specific ``gevent.pool.Pool`` rather than gevent's global hub
-  so they are cleaned up when client goes out of scope.
 
 Fixes
 ------
@@ -448,7 +446,7 @@ Fixes
 ------
 
 * Reading from output streams with timeout via `run_command(<..>, timeout=<timeout>)` would raise timeout early when
-trying to read from a stream with no data written to it while other streams have pending data - #180.
+  trying to read from a stream with no data written to it while other streams have pending data - #180.
 
 
 1.12.0

@@ -373,6 +373,8 @@ class SSHClientTest(SSHTestCase):
     @patch('gevent.socket.socket')
     @patch('pssh.clients.ssh.single.Session')
     def test_sock_shutdown_fail(self, mock_sess, mock_sock):
+        sock = MagicMock()
+        mock_sock.return_value = sock
         client = SSHClient(self.host, port=self.port,
                            num_retries=2,
                            timeout=.1,
@@ -381,11 +383,9 @@ class SSHClientTest(SSHTestCase):
                            allow_agent=False,
                            )
         self.assertIsInstance(client, SSHClient)
-        my_sock = mock_sock
-        my_sock.closed = False
-        client.sock = my_sock
-        my_sock.shutdown = MagicMock()
-        my_sock.shutdown.side_effect = Exception
+        sock.closed = False
+        sock.detach = MagicMock()
+        sock.detach.side_effect = Exception
         self.assertIsNone(client._disconnect())
-        my_sock.shutdown.assert_called_once()
+        sock.detach.assert_called_once()
         self.assertIsNone(client.sock)
