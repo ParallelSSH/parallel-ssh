@@ -338,7 +338,7 @@ class SSHClient(BaseSSHClient):
             self._read_output_to_buffer, channel.read_stderr, stderr_buffer)
         return _stdout_reader, _stderr_reader
 
-    def execute(self, cmd, use_pty=False, channel=None):
+    def _execute(self, cmd, use_pty=False, channel=None):
         """
         Use ``run_command`` which returns a ``HostOutput`` object rather than this function directly.
 

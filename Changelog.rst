@@ -18,6 +18,7 @@ Changes
   write function.
 * ``SSHClient``, ``TunnelServer`` and ``LocalForwarder`` now use their own gevent pools for greenlets spawned so they
   are cleaned up correctly at shutdown.
+* ``SSHClient.execute`` is now deprecated in favour of ``SSHClient.run_command``.
 
 Fixes
 ------
