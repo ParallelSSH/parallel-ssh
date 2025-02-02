@@ -50,4 +50,7 @@ class ParallelSSHUtilsTest(unittest.TestCase):
     def test_poll_mixin(self):
         my_sock = MagicMock()
         mixin = PollMixIn(my_sock)
+        directions_func = MagicMock()
+        directions_func.return_value = 0
         self.assertEqual(mixin.sock, my_sock)
+        self.assertIsNone(mixin._poll_errcodes(directions_func, 1, 1))
