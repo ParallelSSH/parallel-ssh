@@ -65,6 +65,10 @@ class TunnelTest(unittest.TestCase):
         forwarder.enqueue(client, self.proxy_host, self.port)
         forwarder.out_q.get()
         self.assertTrue(len(forwarder._servers) > 0)
+        client.eagain(client.session.disconnect)
+        client.sock.close()
+        forwarder._cleanup_servers()
+        self.assertEqual(len(forwarder._servers), 0)
         forwarder.shutdown()
 
     def test_tunnel_server(self):

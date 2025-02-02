@@ -55,9 +55,11 @@ class LocalForwarder(Thread):
         Thread.__init__(self, daemon=True)
         self.in_q = Queue(1)
         self.out_q = Queue(1)
+        self._pool = None
         self._servers = {}
         self._hub = None
         self.started = Event()
+        self._cleanup_let = None
         self.shutdown_triggered = Event()
 
     def _start_server(self):
@@ -102,6 +104,16 @@ class LocalForwarder(Thread):
                 # Re-entry protection
                 pass
 
+    def _cleanup_servers_let(self):
+        while True:
+            self._cleanup_servers()
+            sleep(60)
+
+    def _cleanup_servers(self):
+        for client in list(self._servers.keys()):
+            if client.sock is None or client.sock.closed:
+                self.cleanup_server(client)
+
     def run(self):
         """Thread runner ensures a non-main hub has been created for all subsequent
         greenlets and waits for (client, host, port) tuples to be put into self.in_q.
@@ -111,7 +123,9 @@ class LocalForwarder(Thread):
         """
         self._hub = get_hub()
         assert self._hub.main_hub is False
+        self._pool = Pool(1)
         self.started.set()
+        self._cleanup_let = self._pool.spawn(self._cleanup_servers_let)
         logger.debug("Hub in server runner is main hub: %s", self._hub.main_hub)
         try:
             while True:

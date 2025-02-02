@@ -16,9 +16,8 @@ Changes
 * ``SSHClient.eagain`` is now a public function - wrapper for polling socket and calling a given socket using function.
 * ``SSHClient.eagain_write`` is now a public function - wrapper for polling socket and calling a given socket using
   write function.
-* Removed now unecessary ``TunnelServer`` cleanup greenlet.
-* ``SSHClient`` now uses its own gevent pool for greenlets spawned so they are cleaned up correctly at shutdown.
-* ``TunnelServer`` now uses its own gevent pool for incoming connections so they are terminated correctly at shutdown.
+* ``SSHClient``, ``TunnelServer`` and ``LocalForwarder`` now use their own gevent pools for greenlets spawned so they
+  are cleaned up correctly at shutdown.
 
 Fixes
 ------
