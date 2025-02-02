@@ -19,6 +19,8 @@ import gc
 import os
 import time
 import unittest
+
+from unittest.mock import MagicMock
 from getpass import getuser
 from gevent import sleep, spawn
 from ssh2.exceptions import SocketSendError, SocketRecvError
@@ -280,7 +282,6 @@ class TunnelTest(unittest.TestCase):
             raise Exception
 
         forwarder = LocalForwarder()
-        forwarder.daemon = True
         forwarder.start()
         forwarder.started.wait()
         client = SSHClient(
@@ -288,12 +289,22 @@ class TunnelTest(unittest.TestCase):
         forwarder.enqueue(client, self.proxy_host, self.port)
         forwarder.out_q.get()
         self.assertTrue(len(forwarder._servers) > 0)
-        client.sock.close()
         forwarder.shutdown()
         self.assertEqual(len(forwarder._servers), 0)
         forwarder._start_server = _start_server
         forwarder.enqueue(client, self.proxy_host, self.port)
         sleep(.1)
+        self.assertEqual(len(forwarder._servers), 0)
+
+    def test_forwarder_join(self):
+        forwarder = LocalForwarder()
+        forwarder.start()
+        forwarder.started.wait()
+        mock_join = MagicMock()
+        mock_join.side_effect = RuntimeError
+        forwarder.join = mock_join
+        # Shutdown should not raise exception
+        self.assertIsNone(forwarder.shutdown())
 
     def test_socket_channel_error(self):
         class SocketError(Exception):
@@ -363,10 +374,14 @@ class TunnelTest(unittest.TestCase):
         let = spawn(server._read_forward_sock, SocketEmpty(), Channel())
         let.start()
         sleep(.01)
-        self.assertRaises(SocketSendError, server._read_forward_sock, Socket(), ChannelFailure())
-        self.assertRaises(SocketError, server._read_forward_sock, SocketFailure(), Channel())
-        self.assertRaises(SocketError, server._read_channel, SocketFailure(), Channel())
-        self.assertRaises(SocketRecvError, server._read_channel, Socket(), ChannelFailure())
+        my_sock = Socket()
+        my_chan = Channel()
+        self.assertRaises(SocketSendError, server._read_forward_sock, my_sock, ChannelFailure())
+        self.assertRaises(SocketError, server._read_forward_sock, SocketFailure(), my_chan)
+        self.assertRaises(SocketError, server._read_channel, SocketFailure(), my_chan)
+        self.assertRaises(SocketRecvError, server._read_channel, my_sock, ChannelFailure())
+        my_sock.closed = True
+        self.assertIsNone(server._read_forward_sock(my_sock, my_chan))
         channel = Channel()
         _socket = Socket()
         source_let = spawn(server._read_forward_sock, _socket, channel)

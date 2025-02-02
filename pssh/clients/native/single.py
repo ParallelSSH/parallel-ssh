@@ -45,7 +45,10 @@ THREAD_POOL = get_hub().threadpool
 
 
 class KeepAlive(PollMixIn):
-    """Class for handling SSHClient keepalive functionality."""
+    """Class for handling SSHClient keepalive functionality.
+
+    Spawns a greenlet in its own pool for sending keepalives to a given session.
+    """
     __slots__ = ('sock', 'session', '_let', '_pool')
 
     def __init__(self, sock, session):
