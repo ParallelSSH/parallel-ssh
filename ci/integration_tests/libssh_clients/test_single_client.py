@@ -17,7 +17,7 @@
 
 import logging
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from gevent import sleep, Timeout as GTimeout, spawn
 from ssh.exceptions import AuthenticationDenied
@@ -369,3 +369,23 @@ class SSHClientTest(SSHTestCase):
         stdout = list(output.stdout)
         self.assertListEqual(stdout, [self.resp])
         self.assertEqual(output.exit_code, 1)
+
+    @patch('gevent.socket.socket')
+    @patch('pssh.clients.ssh.single.Session')
+    def test_sock_shutdown_fail(self, mock_sess, mock_sock):
+        client = SSHClient(self.host, port=self.port,
+                           num_retries=2,
+                           timeout=.1,
+                           retry_delay=.1,
+                           _auth_thread_pool=False,
+                           allow_agent=False,
+                           )
+        self.assertIsInstance(client, SSHClient)
+        my_sock = mock_sock
+        my_sock.closed = False
+        client.sock = my_sock
+        my_sock.shutdown = MagicMock()
+        my_sock.shutdown.side_effect = Exception
+        self.assertIsNone(client._disconnect())
+        my_sock.shutdown.assert_called_once()
+        self.assertIsNone(client.sock)

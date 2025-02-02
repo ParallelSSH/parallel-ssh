@@ -357,8 +357,36 @@ class SSH2ClientTest(SSH2TestCase):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
                            num_retries=1)
-        client.session.disconnect()
+        client.eagain(client.session.disconnect)
         self.assertRaises((SocketDisconnectError, BannerRecvError, SocketRecvError), client._init_session)
+
+    @patch('gevent.socket.socket')
+    @patch('pssh.clients.native.single.Session')
+    def test_sock_shutdown_fail(self, mock_sess, mock_sock):
+        sess = MagicMock()
+        mock_sess.return_value = sess
+
+        hand_mock = MagicMock()
+
+        sess.handshake = hand_mock
+        sess.sock = MagicMock()
+
+        client = SSHClient(self.host, port=self.port,
+                           num_retries=2,
+                           timeout=.1,
+                           retry_delay=.1,
+                           _auth_thread_pool=False,
+                           allow_agent=False,
+                           )
+        self.assertIsInstance(client, SSHClient)
+        hand_mock.side_effect = AuthenticationError
+        my_sock = mock_sock
+        my_sock.closed = False
+        client.sock = my_sock
+        my_sock.shutdown = MagicMock()
+        my_sock.shutdown.side_effect = Exception
+        self.assertRaises(AuthenticationError, client._init_session)
+        my_sock.shutdown.assert_called_once()
 
     def test_stdout_parsing(self):
         dir_list = os.listdir(os.path.expanduser('~'))
