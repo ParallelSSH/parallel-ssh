@@ -86,7 +86,7 @@ class SSHClient(BaseSSHClient):
           function descriptions.
         :type timeout: int or float
         :param allow_agent: (Optional) set to False to disable connecting to
-          the system's SSH agent. Currently unused.
+          the system's SSH agent.
         :type allow_agent: bool
         :param identity_auth: (Optional) set to False to disable attempting to
           authenticate with default identity files from
