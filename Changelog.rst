@@ -1,6 +1,15 @@
 Change Log
 ==========
 
+2.14.1
+++++++
+
+Fixes
+------
+
+* Forwarder thread would be joined at interpreter shutdown even if it was not ever started.
+
+
 2.14.0
 ++++++
 

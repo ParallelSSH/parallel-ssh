@@ -96,7 +96,7 @@ class LocalForwarder(Thread):
         for client, server in self._servers.items():
             server.stop()
         self._servers = {}
-        if self.started:
+        if self.started.is_set():
             self.shutdown_triggered.set()
             try:
                 self.join()
