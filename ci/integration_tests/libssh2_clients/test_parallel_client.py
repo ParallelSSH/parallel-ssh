@@ -1934,5 +1934,17 @@ class ParallelSSHClientTest(unittest.TestCase):
             self.assertEqual(self.host, host_out.host)
             self.assertIsInstance(host_out.exception, NoIPv6AddressFoundError)
 
+    def test_host_cmd_output_per_host_args(self):
+        client = ParallelSSHClient([self.host, self.host], port=self.port, pkey=self.user_key, num_retries=1)
+        host_args = ('cmd1', 'cmd2')
+        cmd = 'echo %s'
+        output = client.run_command(cmd, host_args=host_args)
+        expected_cmd_host1 = f"echo {host_args[0]}"
+        expected_cmd_host2 = f"echo {host_args[1]}"
+        host1_out = output[0]
+        host2_out = output[1]
+        self.assertEqual(host1_out.cmd, expected_cmd_host1)
+        self.assertEqual(host2_out.cmd, expected_cmd_host2)
+
     # TODO:
     # * password auth

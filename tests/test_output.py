@@ -61,3 +61,4 @@ class TestHostOutput(unittest.TestCase):
         self.assertEqual(exit_code, None)
         self.assertIsNone(host_out.stdout)
         self.assertIsNone(host_out.stderr)
+        self.assertIsNone(host_out.cmd)

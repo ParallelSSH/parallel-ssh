@@ -57,10 +57,16 @@ class HostOutput(object):
     __slots__ = ('host', 'channel', 'stdin',
                  'client', 'alias', 'exception',
                  'encoding', 'read_timeout', 'buffers',
+                 'cmd',
                  )
 
     def __init__(self, host, channel, stdin,
-                 client, alias=None, exception=None, encoding='utf-8', read_timeout=None,
+                 client,
+                 cmd=None,
+                 alias=None,
+                 exception=None,
+                 encoding='utf-8',
+                 read_timeout=None,
                  buffers=None):
         """
         :param host: Host name output is for
@@ -71,6 +77,13 @@ class HostOutput(object):
         :type stdin: :py:func:`file`-like object
         :param client: `SSHClient` output is coming from.
         :type client: :py:class:`pssh.clients.base.single.BaseSSHClient` or `None`.
+        :param cmd: The fully qualified command that was run on this host.
+          This is the generated command run on the host taking into account things like sudo, shell, user and
+          any per-host command arguments if any were specified.
+          For example a `run_command(<..>, user='my_user', shell='my_shell')` will have a
+          "sudo -u my_user -S my_shell '<..>'" cmd generated.
+          Only populated if a command was run via `run_command`.
+        :type cmd: str
         :param alias: Host alias.
         :type alias: str
         :param exception: Exception from host if any
@@ -84,6 +97,7 @@ class HostOutput(object):
         self.channel = channel
         self.stdin = stdin
         self.client = client
+        self.cmd = cmd
         self.alias = alias
         self.exception = exception
         self.encoding = encoding
