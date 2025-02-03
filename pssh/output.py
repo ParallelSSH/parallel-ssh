@@ -80,8 +80,8 @@ class HostOutput(object):
         :param cmd: The fully qualified command that was run on this host.
           This is the generated command run on the host taking into account things like sudo, shell, user and
           any per-host command arguments if any were specified.
-          For example a `run_command(<..>, user='my_user', shell='my_shell')` will have a
-          "sudo -u my_user -S my_shell '<..>'" cmd generated.
+          For example a `run_command(<..>, user='my_user', shell='my_shell -c')` will have a
+          "sudo -u my_user -S my_shell -c '<..>'" cmd generated.
           Only populated if a command was run via `run_command`.
         :type cmd: str
         :param alias: Host alias.

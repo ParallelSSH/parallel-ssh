@@ -1171,8 +1171,8 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertEqual(output.exit_code, 1)
 
     def test_output_cmd(self):
-        output = self.client.run_command(self.cmd, user='my_user', shell='my_shell')
+        output = self.client.run_command(self.cmd, user='my_user', shell='my_shell -c')
         self.assertIsInstance(output.cmd, str)
         self.assertTrue("sudo -u my_user" in output.cmd)
-        self.assertTrue("-S my_shell" in output.cmd)
+        self.assertTrue("-S my_shell -c" in output.cmd)
         self.assertTrue(output.cmd.endswith(f"'{self.cmd}'"))
