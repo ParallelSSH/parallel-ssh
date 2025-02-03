@@ -626,11 +626,12 @@ class BaseSSHClient(PollMixIn):
                 _command = 'sudo -u %s -S ' % (user,)
             _shell = shell if shell else '$SHELL -c'
             _command += "%s '%s'" % (_shell, command,)
+        _command_str = _command
         _command = _command.encode(encoding)
         with GTimeout(seconds=self.timeout):
             channel = self._execute(_command, use_pty=use_pty)
         _timeout = read_timeout if read_timeout else timeout
-        host_out = self._make_host_output(channel, encoding, _timeout, _command.decode(encoding))
+        host_out = self._make_host_output(channel, encoding, _timeout, _command_str)
         return host_out
 
     def _make_sftp(self):
