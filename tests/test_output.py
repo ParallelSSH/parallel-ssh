@@ -58,8 +58,7 @@ class TestHostOutput(unittest.TestCase):
     def test_none_output_client(self):
         host_out = HostOutput(
             'host', None, None, client=None)
-        exit_code = host_out.exit_code
-        self.assertEqual(exit_code, None)
+        self.assertIsNone(host_out.exit_code)
         self.assertIsNone(host_out.stdout)
         self.assertIsNone(host_out.stderr)
         self.assertIsNone(host_out.cmd)
