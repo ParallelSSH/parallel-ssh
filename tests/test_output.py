@@ -37,6 +37,7 @@ class TestHostOutput(unittest.TestCase):
 
     def test_print(self):
         self.assertTrue(str(self.output))
+        self.assertTrue("cmd=" in str(self.output))
 
     def test_bad_exit_status(self):
         self.assertIsNone(self.output.exit_code)

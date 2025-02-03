@@ -139,10 +139,12 @@ class HostOutput(object):
             "\tchannel={channel}{linesep}" \
             "\texception={exception}{linesep}" \
             "\tencoding={encoding}{linesep}" \
-            "\tread_timeout={read_timeout}".format(
+            "\tread_timeout={read_timeout}{linesep}" \
+            "\tcmd={cmd}".format(
                 host=self.host, alias=self.alias, channel=self.channel,
                 exception=self.exception, linesep=linesep,
                 exit_code=self.exit_code, encoding=self.encoding, read_timeout=self.read_timeout,
+                cmd=self.cmd,
             )
 
     def __str__(self):
