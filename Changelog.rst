@@ -1,6 +1,15 @@
 Change Log
 ==========
 
+2.14.1
+++++++
+
+Fixes
+------
+
+* Forwarder thread would be joined at interpreter shutdown even if it was not ever started.
+
+
 2.14.0
 ++++++
 
@@ -25,7 +34,7 @@ Fixes
 
 * Forwarder threads used for proxies would not exit gracefully at interpreter shutdown, sometimes causing segfaults.
 * Client, both parallel and single, going out of scope would cause reading output from existing output objects
-  to break.
+  to break - #274.
 * Explicitly calling ``SSHClient.disconnect`` would sometimes cause segfaults at interpreter shutdown.
 * Keepalives being configured on native client would keep client in scope forever.
 
