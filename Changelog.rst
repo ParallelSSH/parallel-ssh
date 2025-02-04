@@ -1,8 +1,15 @@
 Change Log
 ==========
 
-2.14.1
+2.15.0
 ++++++
+
+Changes
+-------
+
+* Added ``HostOutput.cmd`` which has the fully qualified command executed on the host if a command was run
+  via ``run_command``.
+
 
 Fixes
 ------
