@@ -23,7 +23,7 @@ import gevent.pool
 from gevent import joinall, spawn, Timeout as GTimeout
 from gevent.hub import Hub
 
-from ..common import _validate_pkey_path, _validate_pkey
+from ..common import _validate_pkey_path, _validate_pkey, _validate_api
 from ...config import HostConfig
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import HostArgumentError, Timeout, ShellError, HostConfigError
@@ -56,6 +56,7 @@ class BaseParallelSSHClient(object):
                  gssapi_delegate_credentials=False,
                  forward_ssh_agent=False,
                  compress=False,
+                 keyboard_interactive=False,
                  _auth_thread_pool=True,
                  ):
         self.allow_agent = allow_agent
@@ -88,6 +89,8 @@ class BaseParallelSSHClient(object):
         self.gssapi_client_identity = gssapi_client_identity
         self.gssapi_delegate_credentials = gssapi_delegate_credentials
         self.compress = compress
+        self.keyboard_interactive = keyboard_interactive
+        _validate_api(self.keyboard_interactive, self.password)
         self._auth_thread_pool = _auth_thread_pool
         self._check_host_config()
 

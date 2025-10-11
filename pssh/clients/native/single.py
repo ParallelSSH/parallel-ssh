@@ -111,6 +111,7 @@ class SSHClient(BaseSSHClient):
                  identity_auth=True,
                  ipv6_only=False,
                  compress=False,
+                 keyboard_interactive=False,
                  ):
         """
         :param host: Host name or IP to connect to.
@@ -161,6 +162,10 @@ class SSHClient(BaseSSHClient):
         :type ipv6_only: bool
         :param compress: Enable/Disable compression on the client. Defaults to off.
         :type compress: bool
+        :param keyboard_interactive: Enable/Disable keyboard interactive authentication with provided username and
+          password. An error is raised when keyboard_interactive is enabled without a provided password.
+          Defaults to off.
+        :type keyboard_interactive: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
@@ -186,6 +191,7 @@ class SSHClient(BaseSSHClient):
                 keepalive_seconds=keepalive_seconds,
                 identity_auth=identity_auth,
                 compress=compress,
+                keyboard_interactive=keyboard_interactive,
             )
             proxy_host = '127.0.0.1'
         self._chan_stdout_lock = RLock()
@@ -199,6 +205,7 @@ class SSHClient(BaseSSHClient):
             identity_auth=identity_auth,
             ipv6_only=ipv6_only,
             compress=compress,
+            keyboard_interactive=keyboard_interactive,
         )
 
     def _shell(self, channel):
@@ -213,6 +220,7 @@ class SSHClient(BaseSSHClient):
                        keepalive_seconds=60,
                        identity_auth=True,
                        compress=False,
+                       keyboard_interactive=False,
                        ):
         assert isinstance(self.port, int)
         try:
@@ -224,6 +232,7 @@ class SSHClient(BaseSSHClient):
                 identity_auth=identity_auth,
                 keepalive_seconds=keepalive_seconds,
                 compress=compress,
+                keyboard_interactive=keyboard_interactive,
                 _auth_thread_pool=False)
         except Exception as ex:
             msg = "Proxy authentication failed. " \
@@ -320,7 +329,10 @@ class SSHClient(BaseSSHClient):
         )
 
     def _password_auth(self):
-        self.session.userauth_password(self.user, self.password)
+        if self.keyboard_interactive:
+            self.session.userauth_keyboardinteractive(self.user, self.password)
+        else:
+            self.session.userauth_password(self.user, self.password)
 
     def _open_session(self):
         chan = self.eagain(self.session.open_session)
