@@ -18,7 +18,6 @@
 
 import unittest
 from unittest.mock import patch
-from gevent import joinall
 
 from pssh.clients import ParallelSSHClient, SSHClient
 from pssh.exceptions import InvalidAPIUseError, UnknownHostError
@@ -30,12 +29,12 @@ class APIUseTest(unittest.TestCase):
     @patch('pssh.clients.native.single.Session')
     def test_kbd_interactive_enabled_single_clients(self, mock_sess, mock_sock):
         self.assertRaises(UnknownHostError, SSHClient,
-            'fakehost', password='fake_pass', keyboard_interactive=True, num_retries=0,
-            timeout=.1,
-            retry_delay=.1,
-            _auth_thread_pool=False,
-            allow_agent=False,
-        )
+                          'fakehost', password='fake_pass', keyboard_interactive=True, num_retries=0,
+                          timeout=.1,
+                          retry_delay=.1,
+                          _auth_thread_pool=False,
+                          allow_agent=False,
+                          )
         self.assertRaises(InvalidAPIUseError, SSHClient, 'fakehost', keyboard_interactive=True)
 
     @patch('gevent.socket')
