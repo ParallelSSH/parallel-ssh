@@ -29,7 +29,7 @@ class HostConfig(object):
                  'proxy_host', 'proxy_port', 'proxy_user', 'proxy_password', 'proxy_pkey',
                  'keepalive_seconds', 'ipv6_only', 'cert_file', 'auth_thread_pool', 'gssapi_auth',
                  'gssapi_server_identity', 'gssapi_client_identity', 'gssapi_delegate_credentials',
-                 'forward_ssh_agent',
+                 'forward_ssh_agent', 'compress',
                  )
 
     def __init__(self, user=None, port=None, password=None, private_key=None,
@@ -46,6 +46,7 @@ class HostConfig(object):
                  gssapi_client_identity=None,
                  gssapi_delegate_credentials=False,
                  forward_ssh_agent=False,
+                 compress=False,
                  ):
         """
         :param user: Username to login as.
@@ -99,6 +100,8 @@ class HostConfig(object):
         :param gssapi_delegate_credentials: Enable/disable server credentials
           delegation. (pssh.clients.ssh only)
         :type gssapi_delegate_credentials: bool
+        :param compress: Enable/Disable compression on the client. Defaults to off.
+        :type compress: bool
         """
         self.user = user
         self.port = port
@@ -124,6 +127,7 @@ class HostConfig(object):
         self.gssapi_server_identity = gssapi_server_identity
         self.gssapi_client_identity = gssapi_client_identity
         self.gssapi_delegate_credentials = gssapi_delegate_credentials
+        self.compress = compress
         self._sanity_checks()
 
     def _sanity_checks(self):
@@ -181,3 +185,5 @@ class HostConfig(object):
             raise ValueError("GSSAPI client identity %s is not a string", self.gssapi_client_identity)
         if self.gssapi_delegate_credentials is not None and not isinstance(self.gssapi_delegate_credentials, bool):
             raise ValueError("GSSAPI delegate credentials %s is not a bool", self.gssapi_delegate_credentials)
+        if self.compress is not None and not isinstance(self.compress, bool):
+            raise ValueError("Compress %s is not a bool", self.compress)

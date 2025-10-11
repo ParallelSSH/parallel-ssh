@@ -40,6 +40,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                  gssapi_delegate_credentials=False,
                  identity_auth=True,
                  ipv6_only=False,
+                 compress=False,
                  ):
         """
         :param hosts: Hosts to connect to
@@ -114,6 +115,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
           for the host or raise NoIPv6AddressFoundError otherwise. Note this will
           disable connecting to an IPv4 address if an IP address is provided instead.
         :type ipv6_only: bool
+        :param compress: Enable/Disable compression on the client. Defaults to off.
+        :type compress: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
@@ -125,6 +128,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             host_config=host_config, retry_delay=retry_delay,
             identity_auth=identity_auth,
             ipv6_only=ipv6_only,
+            compress=compress,
         )
         self.pkey = _validate_pkey(pkey)
         self.cert_file = _validate_pkey_path(cert_file)
@@ -228,5 +232,6 @@ class ParallelSSHClient(BaseParallelSSHClient):
             gssapi_client_identity=self.gssapi_client_identity,
             gssapi_delegate_credentials=self.gssapi_delegate_credentials,
             cert_file=cfg.cert_file,
+            compress=cfg.compress or self.compress,
         )
         return _client

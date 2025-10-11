@@ -1,6 +1,17 @@
 Change Log
 ==========
 
+2.15.0
+++++++
+
+Changes
+-------
+
+* Added compression support for all clients via `SSHClient(compress=True)`, `ParallelSSHClient(compress=True)` and
+  `HostConfig(compress=True)` - defaults to off. #252
+* Updated minimum `ssh-python` and `ssh2-python` requirements.
+
+
 2.14.0
 ++++++
 

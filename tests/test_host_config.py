@@ -43,6 +43,7 @@ class TestHostConfig(unittest.TestCase):
         gssapi_server_identity = 'some_id'
         gssapi_client_identity = 'some_id'
         gssapi_delegate_credentials = True
+        compress = True
         cfg = HostConfig(
             user=user, port=port, password=password, alias=alias, private_key=private_key,
             allow_agent=allow_agent, num_retries=num_retries, retry_delay=retry_delay,
@@ -56,6 +57,7 @@ class TestHostConfig(unittest.TestCase):
             gssapi_server_identity=gssapi_server_identity,
             gssapi_client_identity=gssapi_client_identity,
             gssapi_delegate_credentials=gssapi_delegate_credentials,
+            compress=compress,
         )
         self.assertEqual(cfg.user, user)
         self.assertEqual(cfg.port, port)
@@ -76,6 +78,7 @@ class TestHostConfig(unittest.TestCase):
         self.assertEqual(cfg.gssapi_server_identity, gssapi_server_identity)
         self.assertEqual(cfg.gssapi_client_identity, gssapi_client_identity)
         self.assertEqual(cfg.gssapi_delegate_credentials, gssapi_delegate_credentials)
+        self.assertEqual(cfg.compress, compress)
 
     def test_host_config_bad_entries(self):
         self.assertRaises(ValueError, HostConfig, user=22)
@@ -102,3 +105,4 @@ class TestHostConfig(unittest.TestCase):
         self.assertRaises(ValueError, HostConfig, gssapi_server_identity=1)
         self.assertRaises(ValueError, HostConfig, gssapi_client_identity=1)
         self.assertRaises(ValueError, HostConfig, gssapi_delegate_credentials='')
+        self.assertRaises(ValueError, HostConfig, compress='')

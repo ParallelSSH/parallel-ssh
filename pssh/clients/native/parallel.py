@@ -37,6 +37,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                  forward_ssh_agent=False,
                  keepalive_seconds=60, identity_auth=True,
                  ipv6_only=False,
+                 compress=False,
                  ):
         """
         :param hosts: Hosts to connect to
@@ -115,6 +116,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
           for the host(s) or raise NoIPv6AddressFoundError otherwise. Note this will
           disable connecting to an IPv4 address if an IP address is provided instead.
         :type ipv6_only: bool
+        :param compress: Enable/Disable compression on the client. Defaults to off.
+        :type compress: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
@@ -126,6 +129,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             host_config=host_config, retry_delay=retry_delay,
             identity_auth=identity_auth,
             ipv6_only=ipv6_only,
+            compress=compress,
         )
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
@@ -232,6 +236,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             keepalive_seconds=cfg.keepalive_seconds or self.keepalive_seconds,
             identity_auth=cfg.identity_auth or self.identity_auth,
             ipv6_only=cfg.ipv6_only or self.ipv6_only,
+            compress=cfg.compress or self.compress,
         )
         return _client
 

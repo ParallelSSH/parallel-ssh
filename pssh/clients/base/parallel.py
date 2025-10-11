@@ -55,6 +55,7 @@ class BaseParallelSSHClient(object):
                  gssapi_client_identity=None,
                  gssapi_delegate_credentials=False,
                  forward_ssh_agent=False,
+                 compress=False,
                  _auth_thread_pool=True,
                  ):
         self.allow_agent = allow_agent
@@ -86,6 +87,7 @@ class BaseParallelSSHClient(object):
         self.gssapi_server_identity = gssapi_server_identity
         self.gssapi_client_identity = gssapi_client_identity
         self.gssapi_delegate_credentials = gssapi_delegate_credentials
+        self.compress = compress
         self._auth_thread_pool = _auth_thread_pool
         self._check_host_config()
 
