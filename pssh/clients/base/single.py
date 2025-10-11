@@ -226,6 +226,7 @@ class BaseSSHClient(PollMixIn):
                  _auth_thread_pool=True,
                  identity_auth=True,
                  ipv6_only=False,
+                 compress=False,
                  ):
         super(PollMixIn, self).__init__()
         self._auth_thread_pool = _auth_thread_pool
@@ -245,6 +246,7 @@ class BaseSSHClient(PollMixIn):
         self.identity_auth = identity_auth
         self._keepalive_greenlet = None
         self.ipv6_only = ipv6_only
+        self.compress = compress
         self._pool = Pool()
         self._init()
 

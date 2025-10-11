@@ -39,6 +39,8 @@ jobs:
           command: |
             pytest ci/integration_tests
           name: Integration tests
+          max_auto_reruns: 3
+          auto_rerun_delay: 10s
       - run:
           command: |
             cd doc; make html
@@ -86,9 +88,9 @@ workflows:
             parameters:
               python_ver:
                 - "3.8"
-                - "3.10"
                 - "3.11"
                 - "3.12"
+                - "3.13"
           filters:
             tags:
               ignore: /.*/

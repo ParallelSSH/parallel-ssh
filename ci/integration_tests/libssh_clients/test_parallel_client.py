@@ -515,6 +515,18 @@ class LibSSHParallelTest(unittest.TestCase):
             self.assertEqual(hosts[0], host_out.host)
             self.assertIsInstance(host_out.exception, TypeError)
 
+    def test_compression_enabled(self):
+        client = ParallelSSHClient([self.host], port=self.port, pkey=self.user_key, num_retries=1, compress=True)
+        output = client.run_command(self.cmd, stop_on_errors=False)
+        client.join(output)
+        self.assertTrue(client._host_clients[0, self.host].compress)
+        expected_exit_code = 0
+        expected_stdout = [self.resp]
+        stdout = list(output[0].stdout)
+        exit_code = output[0].exit_code
+        self.assertEqual(expected_exit_code, exit_code)
+        self.assertEqual(expected_stdout, stdout)
+
     # def test_multiple_run_command_timeout(self):
     #     client = ParallelSSHClient([self.host], port=self.port,
     #                                pkey=self.user_key)
