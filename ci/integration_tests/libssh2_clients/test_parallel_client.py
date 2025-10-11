@@ -1946,6 +1946,5 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertEqual(expected_exit_code, exit_code)
         self.assertEqual(expected_stdout, stdout)
 
-
     # TODO:
     # * password auth
