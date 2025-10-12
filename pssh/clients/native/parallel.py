@@ -120,12 +120,14 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :param compress: Enable/Disable compression on the client. Defaults to off.
         :type compress: bool
         :param keyboard_interactive: Enable/Disable keyboard interactive authentication with provided username and
-          password. An error is raised when keyboard_interactive is enabled without a provided password.
+          password. An `InvalidAPIUse` error is raised when keyboard_interactive is enabled without a provided password.
           Defaults to off.
         :type keyboard_interactive: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
+        :raises: :py:class:`pssh.exceptions.InvalidAPIUseError` when `keyboard_interactive=True` with no password
+          provided.
         """
         BaseParallelSSHClient.__init__(
             self, hosts, user=user, password=password, port=port, pkey=pkey,
