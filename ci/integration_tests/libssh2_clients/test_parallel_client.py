@@ -1070,6 +1070,35 @@ class ParallelSSHClientTest(unittest.TestCase):
         self.assertRaises(HostArgumentException, client.run_command,
                           cmd, host_args=[host_args[0]])
 
+    def test_per_host_args_fully_qualified_command_in_outputself(self):
+        host2, host3 = '127.0.0.2', '127.0.0.3'
+        server2 = OpenSSHServer(host2, port=self.port)
+        server3 = OpenSSHServer(host3, port=self.port)
+        servers = [server2, server3]
+        hosts = [self.host, host2, host3]
+        client = ParallelSSHClient(hosts, port=self.port,
+                                   pkey=self.user_key,
+                                   num_retries=2,
+                                   retry_delay=.2,
+                                   )
+        host_args = (('arg1', 'arg2'), ('arg3', 'arg4'), ('arg5', 'arg6'),)
+        cmd = 'echo %s %s'
+        my_encoding = 'utf-8'
+        for server in servers:
+            server.start_server()
+        try:
+            output = client.run_command(cmd, host_args=host_args, encoding=my_encoding)
+            client.join()
+            for i, host_output in enumerate(output):
+                qualified_cmd = cmd % host_args[i]
+                self.assertEqual(host_output.fully_qualified_command, qualified_cmd.encode(my_encoding))
+                self.assertEqual(host_output.fully_qualified_command.decode(host_output.encoding), qualified_cmd)
+                output_str = str(host_output)
+                self.assertTrue(len(output_str) > 0)
+        finally:
+            for server in servers:
+                server.stop()
+
     def test_per_host_dict_args_invalid(self):
         cmd = 'echo %(host_arg1)s %(host_arg2)s'
         # Invalid number of host args
