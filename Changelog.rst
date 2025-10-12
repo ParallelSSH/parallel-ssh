@@ -13,7 +13,7 @@ Changes
   authentication via SSH's keyboard interactive authentication mechanism and does not actually require a human at the
   keyboard. Used in cases where the server does not allow any other authentication mechanism.
   Note that server configuration may disallow remote command execution via `run_command` when keyboard interactive
-  authentication is required - use interactive shells to run commands with in such cases - see
+  authentication is required - use interactive shells to run commands with in such cases. See
   `Interactive Shells <https://parallel-ssh.readthedocs.io/en/latest/advanced.html#running-commands-on-shells>`_
   documentation. Also supported via `HostConfig` entries. Currently native clients only.
 * Added `pssh.exceptions.InvalidAPIUseError` for errors raised on client initialisation when an invalid API use is
