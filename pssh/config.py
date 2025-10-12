@@ -109,6 +109,9 @@ class HostConfig(object):
           password. An `InvalidAPIUse` error is raised when keyboard_interactive is enabled without a provided password.
           Defaults to off.
         :type keyboard_interactive: bool
+
+        :raises: :py:class:`pssh.exceptions.InvalidAPIUseError` when `keyboard_interactive=True` with no password
+          provided.
         """
         self.user = user
         self.port = port
