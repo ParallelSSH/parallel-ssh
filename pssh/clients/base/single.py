@@ -23,14 +23,14 @@ from warnings import warn
 
 from gevent import sleep, socket, Timeout as GTimeout
 from gevent.hub import Hub
+from gevent.pool import Pool
 from gevent.select import poll, POLLIN, POLLOUT
 from gevent.socket import SHUT_RDWR
-from gevent.pool import Pool
 from ssh2.exceptions import AgentConnectionError, AgentListIdentitiesError, \
     AgentAuthenticationError, AgentGetIdentityError
 from ssh2.utils import find_eol
 
-from ..common import _validate_pkey
+from ..common import _validate_pkey, _validate_api
 from ..reader import ConcurrentRWBuffer
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import UnknownHostError, AuthenticationError, \
@@ -227,6 +227,7 @@ class BaseSSHClient(PollMixIn):
                  identity_auth=True,
                  ipv6_only=False,
                  compress=False,
+                 keyboard_interactive=False,
                  ):
         super(PollMixIn, self).__init__()
         self._auth_thread_pool = _auth_thread_pool
@@ -234,6 +235,7 @@ class BaseSSHClient(PollMixIn):
         self.alias = alias
         self.user = user if user else getuser()
         self.password = password
+        self.keyboard_interactive = keyboard_interactive
         self.port = port if port else 22
         self.num_retries = num_retries
         self.timeout = timeout if timeout else None
@@ -247,6 +249,8 @@ class BaseSSHClient(PollMixIn):
         self._keepalive_greenlet = None
         self.ipv6_only = ipv6_only
         self.compress = compress
+        self.keyboard_interactive = keyboard_interactive
+        _validate_api(self.keyboard_interactive, self.password)
         self._pool = Pool()
         self._init()
 
@@ -439,7 +443,7 @@ class BaseSSHClient(PollMixIn):
             msg = "No remaining authentication methods"
             logger.error(msg)
             raise AuthenticationError(msg)
-        logger.debug("Private key auth failed, trying password")
+        logger.debug("Private key auth failed or not enabled, trying password")
         self._password_auth()
 
     def _agent_auth(self):

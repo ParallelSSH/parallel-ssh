@@ -38,6 +38,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
                  keepalive_seconds=60, identity_auth=True,
                  ipv6_only=False,
                  compress=False,
+                 keyboard_interactive=False,
                  ):
         """
         :param hosts: Hosts to connect to
@@ -118,9 +119,15 @@ class ParallelSSHClient(BaseParallelSSHClient):
         :type ipv6_only: bool
         :param compress: Enable/Disable compression on the client. Defaults to off.
         :type compress: bool
+        :param keyboard_interactive: Enable/Disable keyboard interactive authentication with provided username and
+          password. An `InvalidAPIUse` error is raised when keyboard_interactive is enabled without a provided password.
+          Defaults to off.
+        :type keyboard_interactive: bool
 
         :raises: :py:class:`pssh.exceptions.PKeyFileError` on errors finding
           provided private key.
+        :raises: :py:class:`pssh.exceptions.InvalidAPIUseError` when `keyboard_interactive=True` with no password
+          provided.
         """
         BaseParallelSSHClient.__init__(
             self, hosts, user=user, password=password, port=port, pkey=pkey,
@@ -130,6 +137,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             identity_auth=identity_auth,
             ipv6_only=ipv6_only,
             compress=compress,
+            keyboard_interactive=keyboard_interactive,
         )
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port

@@ -18,6 +18,8 @@
 
 """Host specific configuration."""
 
+from .exceptions import InvalidAPIUseError
+
 
 class HostConfig(object):
     """Host configuration for ParallelSSHClient.
@@ -29,7 +31,7 @@ class HostConfig(object):
                  'proxy_host', 'proxy_port', 'proxy_user', 'proxy_password', 'proxy_pkey',
                  'keepalive_seconds', 'ipv6_only', 'cert_file', 'auth_thread_pool', 'gssapi_auth',
                  'gssapi_server_identity', 'gssapi_client_identity', 'gssapi_delegate_credentials',
-                 'forward_ssh_agent', 'compress',
+                 'forward_ssh_agent', 'compress', 'keyboard_interactive',
                  )
 
     def __init__(self, user=None, port=None, password=None, private_key=None,
@@ -47,6 +49,7 @@ class HostConfig(object):
                  gssapi_delegate_credentials=False,
                  forward_ssh_agent=False,
                  compress=False,
+                 keyboard_interactive=False,
                  ):
         """
         :param user: Username to login as.
@@ -102,6 +105,13 @@ class HostConfig(object):
         :type gssapi_delegate_credentials: bool
         :param compress: Enable/Disable compression on the client. Defaults to off.
         :type compress: bool
+        :param keyboard_interactive: Enable/Disable keyboard interactive authentication with provided username and
+          password. An `InvalidAPIUse` error is raised when keyboard_interactive is enabled without a provided password.
+          Defaults to off.
+        :type keyboard_interactive: bool
+
+        :raises: :py:class:`pssh.exceptions.InvalidAPIUseError` when `keyboard_interactive=True` with no password
+          provided.
         """
         self.user = user
         self.port = port
@@ -128,6 +138,9 @@ class HostConfig(object):
         self.gssapi_client_identity = gssapi_client_identity
         self.gssapi_delegate_credentials = gssapi_delegate_credentials
         self.compress = compress
+        self.keyboard_interactive = keyboard_interactive
+        if self.keyboard_interactive and not self.password:
+            raise InvalidAPIUseError("Keyboard interactive authentication is enabled but no password is provided")
         self._sanity_checks()
 
     def _sanity_checks(self):
@@ -187,3 +200,5 @@ class HostConfig(object):
             raise ValueError("GSSAPI delegate credentials %s is not a bool", self.gssapi_delegate_credentials)
         if self.compress is not None and not isinstance(self.compress, bool):
             raise ValueError("Compress %s is not a bool", self.compress)
+        if self.keyboard_interactive is not None and not isinstance(self.keyboard_interactive, bool):
+            raise ValueError("keyboard_interactive %s is not a bool", self.keyboard_interactive)

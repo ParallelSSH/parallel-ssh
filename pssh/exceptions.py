@@ -100,3 +100,7 @@ class ShellError(Exception):
 
 class HostConfigError(Exception):
     """Raised on invalid host configuration"""
+
+
+class InvalidAPIUseError(Exception):
+    """Raised on invalid use of library API"""
