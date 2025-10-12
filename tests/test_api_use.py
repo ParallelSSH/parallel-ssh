@@ -17,7 +17,7 @@
 
 
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from pssh.clients import ParallelSSHClient, SSHClient
 from pssh.exceptions import InvalidAPIUseError, UnknownHostError
@@ -48,3 +48,25 @@ class APIUseTest(unittest.TestCase):
         )
         self.assertRaises(UnknownHostError, client.run_command, 'echo me')
         self.assertRaises(InvalidAPIUseError, ParallelSSHClient, ['fakehost'], keyboard_interactive=True)
+
+    @patch('gevent.socket.socket')
+    @patch('pssh.clients.native.single.Session')
+    def test_kbd_interactive_enabled_and_used(self, mock_sess, mock_sock):
+        sess = MagicMock()
+        mock_sess.return_value = sess
+        user_auth = MagicMock()
+        sess.userauth_keyboardinteractive = user_auth
+        my_user = "my_user"
+        my_pass = "fake_pass"
+
+        client = SSHClient(
+            '127.0.0.1', port=1234, user=my_user, password=my_pass, keyboard_interactive=True, num_retries=0,
+            timeout=.1,
+            retry_delay=.1,
+            _auth_thread_pool=False,
+            allow_agent=False,
+            identity_auth=False,
+        )
+        sess.userauth_keyboardinteractive.assert_called_once_with(my_user, my_pass)
+        self.assertEqual(client.user, my_user)
+        self.assertEqual(client.password, my_pass)
