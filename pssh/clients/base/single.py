@@ -158,7 +158,9 @@ class InteractiveShell(object):
         self._client._shell(self._chan)
         self._encoding = encoding
         self.output = self._client._make_host_output(
-            self._chan, encoding=encoding, read_timeout=read_timeout)
+            self._chan, encoding=encoding, read_timeout=read_timeout,
+            fully_qualified_command=None,
+        )
 
     @property
     def stdout(self):
@@ -471,7 +473,7 @@ class BaseSSHClient(PollMixIn):
     def open_session(self):
         raise NotImplementedError
 
-    def _make_host_output(self, channel, encoding, read_timeout):
+    def _make_host_output(self, channel, encoding, read_timeout, fully_qualified_command=None):
         _stdout_buffer = ConcurrentRWBuffer()
         _stderr_buffer = ConcurrentRWBuffer()
         _stdout_reader, _stderr_reader = self._make_output_readers(
@@ -484,7 +486,7 @@ class BaseSSHClient(PollMixIn):
         host_out = HostOutput(
             host=self.host, alias=self.alias, channel=channel, stdin=Stdin(channel, self),
             client=self, encoding=encoding, read_timeout=read_timeout,
-            buffers=_buffers,
+            buffers=_buffers, fully_qualified_command=fully_qualified_command,
         )
         return host_out
 
@@ -635,7 +637,7 @@ class BaseSSHClient(PollMixIn):
         with GTimeout(seconds=self.timeout):
             channel = self._execute(_command, use_pty=use_pty)
         _timeout = read_timeout if read_timeout else timeout
-        host_out = self._make_host_output(channel, encoding, _timeout)
+        host_out = self._make_host_output(channel, encoding, _timeout, fully_qualified_command=_command)
         return host_out
 
     def _make_sftp(self):

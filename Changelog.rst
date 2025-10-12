@@ -1,6 +1,17 @@
 Change Log
 ==========
 
+2.16.0
++++++++
+
+Changes
+-------
+
+* Added ``HostOutput.fully_qualified_command`` for a bytes-string of the fully qualified command executed on that host
+  after any and all host argument subtitutions, user switching, sudo, shell switching, encoding via specified encoding
+  et al. Populated on calls to ``run_command`` only.
+
+
 2.15.0
 ++++++
 
