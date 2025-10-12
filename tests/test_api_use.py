@@ -54,8 +54,10 @@ class APIUseTest(unittest.TestCase):
     def test_kbd_interactive_enabled_and_used(self, mock_sess, mock_sock):
         sess = MagicMock()
         mock_sess.return_value = sess
-        user_auth = MagicMock()
-        sess.userauth_keyboardinteractive = user_auth
+        kbd_auth = MagicMock()
+        password_auth = MagicMock()
+        sess.userauth_keyboardinteractive = kbd_auth
+        sess.userauth_password = password_auth
         my_user = "my_user"
         my_pass = "fake_pass"
 
@@ -68,5 +70,6 @@ class APIUseTest(unittest.TestCase):
             identity_auth=False,
         )
         sess.userauth_keyboardinteractive.assert_called_once_with(my_user, my_pass)
+        sess.userauth_password.assert_not_called()
         self.assertEqual(client.user, my_user)
         self.assertEqual(client.password, my_pass)

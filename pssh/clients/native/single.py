@@ -332,9 +332,8 @@ class SSHClient(BaseSSHClient):
 
     def _password_auth(self):
         if self.keyboard_interactive:
-            self.session.userauth_keyboardinteractive(self.user, self.password)
-        else:
-            self.session.userauth_password(self.user, self.password)
+            return self.session.userauth_keyboardinteractive(self.user, self.password)
+        return self.session.userauth_password(self.user, self.password)
 
     def _open_session(self):
         chan = self.eagain(self.session.open_session)
