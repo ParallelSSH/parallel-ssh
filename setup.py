@@ -37,7 +37,7 @@ setup(name='parallel-ssh',
                         '*.tests', '*.tests.*')
       ),
       install_requires=[
-          'gevent', 'ssh2-python', 'ssh-python'],
+          'gevent>=1.3.0', 'ssh2-python>=1.2.0', 'ssh-python>=1.2.0'],
       classifiers=[
           'Development Status :: 5 - Production/Stable',
           'Intended Audience :: Developers',
