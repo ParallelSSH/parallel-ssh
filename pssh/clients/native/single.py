@@ -318,11 +318,6 @@ class SSHClient(BaseSSHClient):
     def _agent_auth(self):
         self.session.agent_auth(self.user)
 
-    def _pkey_file_auth(self, pkey_file, password=None):
-        with FileObjectThread(pkey_file, 'rb', threadpool=THREAD_POOL) as fh:
-            pkey_data = fh.read()
-        self._pkey_from_memory(pkey_data)
-
     def _pkey_from_memory(self, pkey_data):
         self.session.userauth_publickey_frommemory(
             self.user,

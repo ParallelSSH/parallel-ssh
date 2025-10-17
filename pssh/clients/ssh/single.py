@@ -18,7 +18,6 @@
 import logging
 
 from gevent import sleep, spawn, Timeout as GTimeout, joinall
-from gevent.fileobject import FileObjectThread
 from gevent.socket import SHUT_RDWR
 from ssh import options
 from ssh.error_codes import SSH_AGAIN
@@ -195,11 +194,6 @@ class SSHClient(BaseSSHClient):
 
     def _password_auth(self):
         self.session.userauth_password(self.user, self.password)
-
-    def _pkey_file_auth(self, pkey_file, password=None):
-        with FileObjectThread(pkey_file, 'rb') as fh:
-            pkey_data = fh.read()
-        return self._pkey_from_memory(pkey_data)
 
     def _pkey_obj_auth(self, pkey):
         if self.cert_file is not None:

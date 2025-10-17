@@ -401,7 +401,7 @@ class BaseSSHClient(PollMixIn):
                 "Trying to authenticate with identity file %s",
                 identity_file)
             try:
-                self._pkey_file_auth(identity_file, password=self.password)
+                self._pkey_file_auth(identity_file)
             except Exception as ex:
                 logger.debug(
                     "Authentication with identity file %s failed with %s, "
@@ -465,8 +465,10 @@ class BaseSSHClient(PollMixIn):
             logger.debug("Private key is provided in bytes, using as private key data")
         return self._pkey_from_memory(_pkey)
 
-    def _pkey_file_auth(self, pkey_file, password=None):
-        raise NotImplementedError
+    def _pkey_file_auth(self, pkey_file):
+        with FileObjectThread(pkey_file, 'rb', threadpool=THREAD_POOL) as fh:
+            pkey_data = fh.read()
+        self._pkey_from_memory(pkey_data)
 
     def _open_session(self):
         raise NotImplementedError
