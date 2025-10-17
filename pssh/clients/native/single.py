@@ -15,16 +15,16 @@
 #  License along with this library; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from collections import deque
-
 import logging
 import os
+from collections import deque
+
 from gevent import sleep, get_hub
+from gevent.fileobject import FileObjectThread
 from gevent.lock import RLock
 from gevent.pool import Pool
 from gevent.socket import SHUT_RDWR
 from gevent.timeout import Timeout as GTimeout
-from gevent.fileobject import FileObjectThread
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
     Timeout as SSH2Timeout
@@ -319,10 +319,9 @@ class SSHClient(BaseSSHClient):
         self.session.agent_auth(self.user)
 
     def _pkey_file_auth(self, pkey_file, password=None):
-        self.session.userauth_publickey_fromfile(
-            self.user,
-            pkey_file,
-            passphrase=password if password is not None else b'')
+        with FileObjectThread(pkey_file, 'rb', threadpool=THREAD_POOL) as fh:
+            pkey_data = fh.read()
+        self._pkey_from_memory(pkey_data)
 
     def _pkey_from_memory(self, pkey_data):
         self.session.userauth_publickey_frommemory(

@@ -22,11 +22,11 @@ from socket import gaierror as sock_gaierror, error as sock_error
 from warnings import warn
 
 from gevent import sleep, socket, Timeout as GTimeout, get_hub
+from gevent.fileobject import FileObjectThread
 from gevent.hub import Hub
 from gevent.pool import Pool
 from gevent.select import poll, POLLIN, POLLOUT
 from gevent.socket import SHUT_RDWR
-from gevent.fileobject import FileObjectThread
 from ssh2.exceptions import AgentConnectionError, AgentListIdentitiesError, \
     AgentAuthenticationError, AgentGetIdentityError
 from ssh2.utils import find_eol
@@ -408,10 +408,9 @@ class BaseSSHClient(PollMixIn):
                     "continuing with other identities",
                     identity_file, ex)
                 continue
-            else:
-                logger.info("Authentication succeeded with identity file %s",
-                            identity_file)
-                return
+            logger.info("Authentication succeeded with identity file %s",
+                        identity_file)
+            return
         raise AuthenticationError("No authentication methods succeeded")
 
     def _init_session(self, retries=1):
