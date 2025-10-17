@@ -21,11 +21,12 @@ from getpass import getuser
 from socket import gaierror as sock_gaierror, error as sock_error
 from warnings import warn
 
-from gevent import sleep, socket, Timeout as GTimeout
+from gevent import sleep, socket, Timeout as GTimeout, get_hub
 from gevent.hub import Hub
 from gevent.pool import Pool
 from gevent.select import poll, POLLIN, POLLOUT
 from gevent.socket import SHUT_RDWR
+from gevent.fileobject import FileObjectThread
 from ssh2.exceptions import AgentConnectionError, AgentListIdentitiesError, \
     AgentAuthenticationError, AgentGetIdentityError
 from ssh2.utils import find_eol
@@ -40,6 +41,7 @@ from ...output import HostOutput, HostOutputBuffers, BufferData
 Hub.NOT_ERROR = (Exception,)
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
+THREAD_POOL = get_hub().threadpool
 
 
 class PollMixIn(object):
@@ -458,7 +460,7 @@ class BaseSSHClient(PollMixIn):
         _pkey = pkey
         if isinstance(pkey, str):
             logger.debug("Private key is provided as str, loading from private key file path")
-            with open(pkey, 'rb') as fh:
+            with FileObjectThread(pkey, 'rb') as fh:
                 _pkey = fh.read()
         elif isinstance(pkey, bytes):
             logger.debug("Private key is provided in bytes, using as private key data")

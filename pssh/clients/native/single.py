@@ -24,6 +24,7 @@ from gevent.lock import RLock
 from gevent.pool import Pool
 from gevent.socket import SHUT_RDWR
 from gevent.timeout import Timeout as GTimeout
+from gevent.fileobject import FileObjectThread
 from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
 from ssh2.exceptions import SFTPHandleError, SFTPProtocolError, \
     Timeout as SSH2Timeout
@@ -508,7 +509,7 @@ class SSHClient(BaseSSHClient):
                     local_file, self.host, remote_file)
 
     def _sftp_put(self, remote_fh, local_file):
-        with open(local_file, 'rb', self._BUF_SIZE) as local_fh:
+        with FileObjectThread(local_file, 'rb', self._BUF_SIZE, threadpool=THREAD_POOL) as local_fh:
             data = local_fh.read(self._BUF_SIZE)
             while data:
                 self.eagain_write(remote_fh.write, data)
@@ -689,7 +690,7 @@ class SSHClient(BaseSSHClient):
             msg = "Error copying file %s from host %s - %s"
             logger.error(msg, remote_file, self.host, ex)
             raise SCPError(msg, remote_file, self.host, ex)
-        local_fh = open(local_file, 'wb')
+        local_fh = FileObjectThread(local_file, 'wb', threadpool=THREAD_POOL)
         try:
             total = 0
             while total < fileinfo.st_size:
@@ -764,7 +765,7 @@ class SSHClient(BaseSSHClient):
             logger.error(msg, remote_file, self.host, ex)
             raise SCPError(msg, remote_file, self.host, ex)
         try:
-            with open(local_file, 'rb', 2097152) as local_fh:
+            with FileObjectThread(local_file, 'rb', 2097152, threadpool=THREAD_POOL) as local_fh:
                 data = local_fh.read(self._BUF_SIZE)
                 while data:
                     self.eagain_write(chan.write, data)
@@ -787,7 +788,7 @@ class SSHClient(BaseSSHClient):
         return fh
 
     def _sftp_get(self, remote_fh, local_file):
-        with open(local_file, 'wb') as local_fh:
+        with FileObjectThread(local_file, 'wb', threadpool=THREAD_POOL) as local_fh:
             for size, data in remote_fh:
                 if size == LIBSSH2_ERROR_EAGAIN:
                     self.poll()
