@@ -1,6 +1,17 @@
 Change Log
 ==========
 
+2.17.0 (unreleased)
+++++++++++++++++++++
+
+Changes
+--------
+
+* All local file operations now use a thread pool to improve local file I/O performance. This includes loading private
+  key files from a local file path, identity authentication using local files as well as SFTP read/write operations on
+  local files.
+
+
 2.16.0
 +++++++
 
