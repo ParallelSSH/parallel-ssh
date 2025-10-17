@@ -22,6 +22,7 @@ import logging
 import gevent.pool
 from gevent import joinall, spawn, Timeout as GTimeout
 from gevent.hub import Hub
+from gevent.fileobject import FileObjectThread
 
 from ..common import _validate_pkey_path, _validate_pkey, _validate_api
 from ...config import HostConfig
@@ -568,7 +569,7 @@ class BaseParallelSSHClient(object):
         if not isinstance(_pkey, str):
             return _pkey
         _pkey = _validate_pkey_path(_pkey)
-        with open(_pkey, 'rb') as fh:
+        with FileObjectThread(_pkey, 'rb') as fh:
             _pkey_data = fh.read()
         return _pkey_data
 

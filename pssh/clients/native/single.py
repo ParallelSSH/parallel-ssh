@@ -15,11 +15,12 @@
 #  License along with this library; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from collections import deque
-
 import logging
 import os
+from collections import deque
+
 from gevent import sleep, get_hub
+from gevent.fileobject import FileObjectThread
 from gevent.lock import RLock
 from gevent.pool import Pool
 from gevent.socket import SHUT_RDWR
@@ -317,12 +318,6 @@ class SSHClient(BaseSSHClient):
     def _agent_auth(self):
         self.session.agent_auth(self.user)
 
-    def _pkey_file_auth(self, pkey_file, password=None):
-        self.session.userauth_publickey_fromfile(
-            self.user,
-            pkey_file,
-            passphrase=password if password is not None else b'')
-
     def _pkey_from_memory(self, pkey_data):
         self.session.userauth_publickey_frommemory(
             self.user,
@@ -508,7 +503,7 @@ class SSHClient(BaseSSHClient):
                     local_file, self.host, remote_file)
 
     def _sftp_put(self, remote_fh, local_file):
-        with open(local_file, 'rb', self._BUF_SIZE) as local_fh:
+        with FileObjectThread(local_file, 'rb', self._BUF_SIZE, threadpool=THREAD_POOL) as local_fh:
             data = local_fh.read(self._BUF_SIZE)
             while data:
                 self.eagain_write(remote_fh.write, data)
@@ -689,7 +684,7 @@ class SSHClient(BaseSSHClient):
             msg = "Error copying file %s from host %s - %s"
             logger.error(msg, remote_file, self.host, ex)
             raise SCPError(msg, remote_file, self.host, ex)
-        local_fh = open(local_file, 'wb')
+        local_fh = FileObjectThread(local_file, 'wb', threadpool=THREAD_POOL)
         try:
             total = 0
             while total < fileinfo.st_size:
@@ -764,7 +759,7 @@ class SSHClient(BaseSSHClient):
             logger.error(msg, remote_file, self.host, ex)
             raise SCPError(msg, remote_file, self.host, ex)
         try:
-            with open(local_file, 'rb', 2097152) as local_fh:
+            with FileObjectThread(local_file, 'rb', 2097152, threadpool=THREAD_POOL) as local_fh:
                 data = local_fh.read(self._BUF_SIZE)
                 while data:
                     self.eagain_write(chan.write, data)
@@ -787,7 +782,7 @@ class SSHClient(BaseSSHClient):
         return fh
 
     def _sftp_get(self, remote_fh, local_file):
-        with open(local_file, 'wb') as local_fh:
+        with FileObjectThread(local_file, 'wb', threadpool=THREAD_POOL) as local_fh:
             for size, data in remote_fh:
                 if size == LIBSSH2_ERROR_EAGAIN:
                     self.poll()

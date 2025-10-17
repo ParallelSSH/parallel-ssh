@@ -16,12 +16,13 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import logging
+
 from gevent import sleep, spawn, Timeout as GTimeout, joinall
 from gevent.socket import SHUT_RDWR
 from ssh import options
 from ssh.error_codes import SSH_AGAIN
 from ssh.exceptions import EOF
-from ssh.key import import_privkey_file, import_cert_file, copy_cert_to_privkey, \
+from ssh.key import import_cert_file, copy_cert_to_privkey, \
     import_privkey_base64
 from ssh.session import Session, SSH_READ_PENDING, SSH_WRITE_PENDING
 
@@ -193,10 +194,6 @@ class SSHClient(BaseSSHClient):
 
     def _password_auth(self):
         self.session.userauth_password(self.user, self.password)
-
-    def _pkey_file_auth(self, pkey_file, password=None):
-        pkey = import_privkey_file(pkey_file, passphrase=password if password is not None else '')
-        return self._pkey_obj_auth(pkey)
 
     def _pkey_obj_auth(self, pkey):
         if self.cert_file is not None:

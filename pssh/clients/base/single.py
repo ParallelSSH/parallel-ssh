@@ -21,7 +21,8 @@ from getpass import getuser
 from socket import gaierror as sock_gaierror, error as sock_error
 from warnings import warn
 
-from gevent import sleep, socket, Timeout as GTimeout
+from gevent import sleep, socket, Timeout as GTimeout, get_hub
+from gevent.fileobject import FileObjectThread
 from gevent.hub import Hub
 from gevent.pool import Pool
 from gevent.select import poll, POLLIN, POLLOUT
@@ -40,6 +41,7 @@ from ...output import HostOutput, HostOutputBuffers, BufferData
 Hub.NOT_ERROR = (Exception,)
 host_logger = logging.getLogger('pssh.host_logger')
 logger = logging.getLogger(__name__)
+THREAD_POOL = get_hub().threadpool
 
 
 class PollMixIn(object):
@@ -399,17 +401,16 @@ class BaseSSHClient(PollMixIn):
                 "Trying to authenticate with identity file %s",
                 identity_file)
             try:
-                self._pkey_file_auth(identity_file, password=self.password)
+                self._pkey_file_auth(identity_file)
             except Exception as ex:
                 logger.debug(
                     "Authentication with identity file %s failed with %s, "
                     "continuing with other identities",
                     identity_file, ex)
                 continue
-            else:
-                logger.info("Authentication succeeded with identity file %s",
-                            identity_file)
-                return
+            logger.info("Authentication succeeded with identity file %s",
+                        identity_file)
+            return
         raise AuthenticationError("No authentication methods succeeded")
 
     def _init_session(self, retries=1):
@@ -458,14 +459,16 @@ class BaseSSHClient(PollMixIn):
         _pkey = pkey
         if isinstance(pkey, str):
             logger.debug("Private key is provided as str, loading from private key file path")
-            with open(pkey, 'rb') as fh:
+            with FileObjectThread(pkey, 'rb', threadpool=THREAD_POOL) as fh:
                 _pkey = fh.read()
         elif isinstance(pkey, bytes):
             logger.debug("Private key is provided in bytes, using as private key data")
         return self._pkey_from_memory(_pkey)
 
-    def _pkey_file_auth(self, pkey_file, password=None):
-        raise NotImplementedError
+    def _pkey_file_auth(self, pkey_file):
+        with FileObjectThread(pkey_file, 'rb', threadpool=THREAD_POOL) as fh:
+            pkey_data = fh.read()
+        self._pkey_from_memory(pkey_data)
 
     def _open_session(self):
         raise NotImplementedError
