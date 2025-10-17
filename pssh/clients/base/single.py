@@ -459,7 +459,7 @@ class BaseSSHClient(PollMixIn):
         _pkey = pkey
         if isinstance(pkey, str):
             logger.debug("Private key is provided as str, loading from private key file path")
-            with FileObjectThread(pkey, 'rb') as fh:
+            with FileObjectThread(pkey, 'rb', threadpool=THREAD_POOL) as fh:
                 _pkey = fh.read()
         elif isinstance(pkey, bytes):
             logger.debug("Private key is provided in bytes, using as private key data")
