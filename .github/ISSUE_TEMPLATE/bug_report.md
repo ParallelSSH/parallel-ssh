@@ -5,7 +5,7 @@ title: ''
 labels: ''
 ---
 
-_For general questions please use GitHub Discussions [mail group](https://github.com/orgs/ParallelSSH/discussions)._
+_For general questions please use [GitHub Discussions](https://github.com/orgs/ParallelSSH/discussions).
 
 **Describe the bug**
 A clear and concise description of what the bug is.

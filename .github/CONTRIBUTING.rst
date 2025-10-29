@@ -10,7 +10,7 @@ Following these guidelines helps to communicate that you respect the time of the
 
 There are many ways to contribute, from writing tutorials or blog posts, improving the documentation, contributing docker images for a particular task, submitting bug reports or feature requests or writing code to be incorporated into the project.
 
-Please do not use the issue tracker for support questions. Use the `mail group`_ for that or other question/answer channels like Stack Overflow.
+Please do not use the issue tracker for support questions. Use the `GitHub Discussions`_ for that or other question/answer channels like Stack Overflow.
 
 .. contents::
     :local:
@@ -46,8 +46,7 @@ and participate in the discussion.
 
 2) **Determine if your bug is really a bug**.
 
-You shouldn't file a bug if you're requesting support. For that you can use
-the `mail group`_.
+You shouldn't file a bug if you're requesting support. For that you can use `GitHub Discussions`_.
 
 3) **Make sure your bug hasn't already been reported**.
 
@@ -69,14 +68,13 @@ spelling or other errors on the documentation or code.
 
     A) If the error is from a Python traceback, include it in the bug report.
 
-    B) We also need to know what platform you're running (Windows, macOS, Linux,
-       etc.), the version of your Python interpreter, and the version of parallel-ssh,
-       and related packages that you were running when the bug occurred.
+    B) We also need to know what platform you're running (Windows, Mac OS X, Linux,
+       etc.), the version of your Python interpreter, the version of parallel-ssh,
+       and related packages that were used when the bug occurred.
 
 There is also an issue template to help with creating issues.
 
 6) **Submit the bug**.
-
 
 By default `GitHub`_ will email you to let you know when new comments have
 been made on your bug. In the event you've turned this feature off, you
@@ -112,8 +110,7 @@ Working on Features & Patches
     so none of these steps should be considered mandatory.
 
     You can even send in patches by email if that's your preferred
-    work method. Any contribution you make
-    is always appreciated!
+    work method. Any contribution you make is always appreciated!
 
     However following these steps may make maintainers life easier,
     and may mean that your changes will be accepted sooner.
@@ -129,7 +126,7 @@ to a directory on your machine:
 
 ::
 
-    $ git clone git@github.com:username/parallel-ssh.git
+    $ git clone https://github.com/ParallelSSH/parallel-ssh.git
 
 When the repository is cloned enter the directory to set up easy access
 to upstream changes:
@@ -137,20 +134,14 @@ to upstream changes:
 ::
 
     $ cd parallel-ssh
-    $ git remote add upstream git://github.com/ParallelSSH/parallel-ssh.git
+    $ git remote add upstream https://github.com/ParallelSSH/parallel-ssh.git
     $ git fetch upstream
 
-If you need to pull in new changes from upstream you should
-always use the ``--rebase`` option to ``git pull``:
+To update from upstream master branch use ``git pull``:
 
 ::
 
-    git pull --rebase upstream master
-
-With this option you don't clutter the history with merging
-commit notes. See `Rebasing merge commits in git`_.
-If you want to learn more about rebasing see the `Rebase`_
-section in the GitHub guides.
+    git pull upstream master
 
 If you need to work on a different branch than the one git calls ``master``, you can
 fetch and checkout a remote branch like this::
@@ -158,9 +149,6 @@ fetch and checkout a remote branch like this::
     git checkout --track -b 3.0-devel origin/3.0-devel
 
 .. _`Fork a Repo`: https://help.github.com/fork-a-repo/
-.. _`Rebasing merge commits in git`:
-    https://notes.envato.com/developers/rebasing-merge-commits-in-git/
-.. _`Rebase`: https://help.github.com/rebase/
 
 Virtual environments
 ---------------------
@@ -183,7 +171,7 @@ If you are developing, then you need to install development requirements first:
 
 ::
 
-    $ nosetests
+    $ pytest
 
 .. _contributing-pull-requests:
 
@@ -216,25 +204,19 @@ See `Closing issues using keywords`_ for more details.
 Calculating test coverage
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Add the ``--with-coverage`` flag to nose.
+Pytest configuration always generates coverage reports.
 
 .. code-block:: shell
 
-   nosetests --with-coverage
-   coverage report -m
+   pytest
 
-Total coverage is output even without the report command.
-
-``coverage report -m`` will in addition show which lines are missing coverage.
+``coverage report -m`` will show the coverage report for any already run tests.
 
 Running the tests on all supported Python versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-All supported Python versions are tested by Travis-CI via test targets. For 
-Travis-CI to run tests on a forked repository, Travis-CI integration will need
-to be enabled on that repository.
-
-Please see `Travis-CI documentation for enabling your repository <https://docs.travis-ci.com/user/getting-started/#To-get-started-with-Travis-CI>`_.
+All supported Python versions are tested by the project's CI via test targets. Pull requests will trigger CI tests
+automatically. For running tests on your own forked repository follow `CI documentation <https://circleci.com/docs/>`_.
 
 Building the documentation
 --------------------------
@@ -244,7 +226,7 @@ build the docs by running:
 
 .. code-block:: shell
 
-   (cd docs; rm -rf _build; make html)
+   (cd docs; make clean; make html)
 
 Make sure there are no errors or warnings in the build output.
 After building succeeds the documentation is available at ``_build/html``.
@@ -262,7 +244,7 @@ repository's root directory:
 
 .. code-block:: shell
 
-   nosetests
+   pytest
 
 To ensure the code is PEP-8 compliant:
 
@@ -270,17 +252,16 @@ To ensure the code is PEP-8 compliant:
 
    flake8 pssh
 
-To ensure documentation builds correctly:
+To ensure documentation builds correctly, if any changes have been made to documentation:
 
 .. code-block:: shell
 
-   pip install sphinx
    (cd doc; make html)
 
 Generated documentation will be found in ``doc/_build/html`` in the repository's
 root directory.
 
-See also `Travis-CI configuration <https://github.com/ParallelSSH/parallel-ssh/blob/master/.travis.yml>`_ for which tests are subject to CI.
+All required checks are run automatically by the CI and on all pull requests.
 
 .. _coding-style:
 
@@ -351,10 +332,9 @@ following conventions.
 Release Procedure
 =================
 
-* Create new tag
-* Add release notes for tag via GitHub releases
-
-Creating a new tag can be done via the Github Releases page automatically if one does not already exist.
+* Create a new release via Github releases for a new tag
+* Select <create new tag on publish>
+* Add release notes for tag via GitHub releases page
 
 Auto-versioning from Git tags and revision
 -------------------------------------------
@@ -366,26 +346,22 @@ preference:
 * Latest git tag plus git revision short hand since tag
 * Auto-generated version file for non-git installations
 
-In order to publish a new version, just create and push a new tag.
+Making a new release and creating a new tag for it will automatically create a new package version for that tag.
 
-::
+Releasing a new package
+------------------------
 
-    $ git tag X.Y.Z
-    $ git push --tags
-
-Releasing
----------
-
-New git tags are automatically published to PyPi via Travis-CI deploy
+New git tags are automatically published to PyPi via CI deploy
 functionality, subject to all tests and checks passing.
 
 This includes documentation generating correctly for publishing to 
 ReadTheDocs, style checks via ``flake8`` et al.
 
-In addition to source code releases, binary wheels for Linux, OSX and Windows, all Python versions, are also built automatically for released tags only. Further more, system packages for the most popular Linux distributions are also built automatically and uploaded to Github Releases page for released tags only.
+In addition to source code releases, binary wheel is also generated and published automatically and documentation is
+updated automatically on ReadTheDocs.
 
-Publishing to PyPi and ReadTheDocs is only possible with Travis-CI build 
+Publishing to PyPi and ReadTheDocs is only possible with CI build
 jobs initiated by the official GitHub project - forks 
 cannot deploy to PyPi or publish documentation to ReadTheDocs.
 
-.. _`mail group`: https://groups.google.com/forum/#!forum/parallelssh
+.. _`GitHub Discussions`: https://github.com/orgs/ParallelSSH/discussions
