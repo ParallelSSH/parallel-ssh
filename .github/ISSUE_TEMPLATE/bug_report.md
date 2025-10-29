@@ -5,7 +5,7 @@ title: ''
 labels: ''
 ---
 
-_For general questions please use the [mail group](https://groups.google.com/forum/#!forum/parallel-ssh)._
+_For general questions please use GitHub Discussions [mail group](https://github.com/orgs/ParallelSSH/discussions)._
 
 **Describe the bug**
 A clear and concise description of what the bug is.
@@ -13,8 +13,8 @@ A clear and concise description of what the bug is.
 **To Reproduce**
 
 Steps to reproduce the behavior:
-1. Example code that produces error.
-2. Stack trace or error messages.
+1. [Minimal reproducible example code](https://stackoverflow.com/help/minimal-reproducible-example).
+2. Stack trace or error messages - use `pssh.utils.enable_debug_logger()`
 
 **Expected behavior**
 A clear and concise description of what you expected to happen.
