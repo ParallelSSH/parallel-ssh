@@ -10,7 +10,7 @@ Following these guidelines helps to communicate that you respect the time of the
 
 There are many ways to contribute, from writing tutorials or blog posts, improving the documentation, contributing docker images for a particular task, submitting bug reports or feature requests or writing code to be incorporated into the project.
 
-Please do not use the issue tracker for support questions. Use the `GitHub Discussions`_ for that or other question/answer channels like Stack Overflow.
+Please do not use the issue tracker for support questions. Use `GitHub Discussions`_ for that or other question/answer channels like Stack Overflow.
 
 .. contents::
     :local:
@@ -23,7 +23,7 @@ when making contributions.
 
 Responsibilities
 
-* Write PEP-8 compliant code of no more than 80 columns per line
+* Write PEP-8 compliant code of no more than 100 columns per line - there is an automated test to check code for PEP-8.
 * If adding new features, write an appropriate test - see existing tests for reference
 * Contributions are expected to be in line with the project's stated `design and goals <http://parallel-ssh.readthedocs.io/en/latest/introduction.html#design-and-goals>`_
 * Be welcoming to newcomers and encourage diverse new contributors from all backgrounds. See the `Python Community Code of Conduct <https://www.python.org/psf/codeofconduct/>`_.
