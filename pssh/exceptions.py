@@ -19,7 +19,19 @@
 """Exceptions raised by parallel-ssh classes."""
 
 
-class NoIPv6AddressFoundError(Exception):
+class _PSSHError(Exception):
+    """Base class for exceptions with printf-style message arguments."""
+
+    def __str__(self):
+        if len(self.args) < 2 or not isinstance(self.args[0], str):
+            return super().__str__()
+        try:
+            return self.args[0] % self.args[1:]
+        except (KeyError, TypeError, ValueError):
+            return super().__str__()
+
+
+class NoIPv6AddressFoundError(_PSSHError):
     """Raised when an IPV6 only address was requested but none are
      available for a host.
 
@@ -29,7 +41,7 @@ class NoIPv6AddressFoundError(Exception):
      """
 
 
-class UnknownHostError(Exception):
+class UnknownHostError(_PSSHError):
     """Raised when a host is unknown (dns failure)"""
     pass
 
@@ -39,7 +51,7 @@ ConnectionError = ConnectionError
 ConnectionErrorException = ConnectionError
 
 
-class AuthenticationError(Exception):
+class AuthenticationError(_PSSHError):
     """Raised on authentication error (user/password/ssh key error)"""
     pass
 
@@ -47,7 +59,7 @@ class AuthenticationError(Exception):
 AuthenticationException = AuthenticationError
 
 
-class SSHError(Exception):
+class SSHError(_PSSHError):
     """Raised on error authenticating with SSH server"""
     pass
 
@@ -55,7 +67,7 @@ class SSHError(Exception):
 SSHException = SSHError
 
 
-class HostArgumentError(Exception):
+class HostArgumentError(_PSSHError):
     """Raised on errors with per-host arguments to parallel functions"""
     pass
 
@@ -63,12 +75,12 @@ class HostArgumentError(Exception):
 HostArgumentException = HostArgumentError
 
 
-class SessionError(Exception):
+class SessionError(_PSSHError):
     """Raised on errors establishing SSH session"""
     pass
 
 
-class SFTPError(Exception):
+class SFTPError(_PSSHError):
     """Raised on SFTP errors"""
     pass
 
@@ -78,29 +90,29 @@ class SFTPIOError(SFTPError):
     pass
 
 
-class ProxyError(Exception):
+class ProxyError(_PSSHError):
     """Raised on proxy errors"""
 
 
-class Timeout(Exception):
+class Timeout(_PSSHError):
     """Raised on timeout requested and reached"""
 
 
-class SCPError(Exception):
+class SCPError(_PSSHError):
     """Raised on errors copying file via SCP"""
 
 
-class PKeyFileError(Exception):
+class PKeyFileError(_PSSHError):
     """Raised on errors finding private key file"""
 
 
-class ShellError(Exception):
+class ShellError(_PSSHError):
     """Raised on errors running command on interactive shell"""
 
 
-class HostConfigError(Exception):
+class HostConfigError(_PSSHError):
     """Raised on invalid host configuration"""
 
 
-class InvalidAPIUseError(Exception):
+class InvalidAPIUseError(_PSSHError):
     """Raised on invalid use of library API"""

@@ -20,6 +20,7 @@ import unittest
 from pssh.exceptions import AuthenticationError, AuthenticationException, UnknownHostError, \
     UnknownHostException, ConnectionError, ConnectionErrorException, SSHError, SSHException, \
     HostArgumentError, HostArgumentException
+from pssh.exceptions import SCPError, Timeout
 
 
 class ParallelSSHUtilsTest(unittest.TestCase):
@@ -67,3 +68,25 @@ class ParallelSSHUtilsTest(unittest.TestCase):
             raise HostArgumentError
         except HostArgumentException:
             pass
+
+    def test_formatted_error_string(self):
+        message = "Authentication error while connecting to %s:%s - %s - retries %s/%s"
+        cause = AuthenticationError("No authentication methods succeeded")
+        error = AuthenticationError(
+            message, "host.example.com", 22, cause, 3, 3)
+
+        self.assertEqual(
+            str(error),
+            "Authentication error while connecting to host.example.com:22 - "
+            "No authentication methods succeeded - retries 3/3")
+        self.assertEqual(
+            error.args,
+            (message, "host.example.com", 22, cause, 3, 3))
+
+    def test_invalid_formatted_error_falls_back_to_default(self):
+        error = Timeout("Timeout after %s seconds: %s", 10)
+
+        self.assertEqual(str(error), str(Exception(*error.args)))
+
+    def test_single_argument_error_string_is_unchanged(self):
+        self.assertEqual(str(SCPError("copy failed")), "copy failed")
