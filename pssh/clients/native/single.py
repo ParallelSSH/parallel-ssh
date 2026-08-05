@@ -418,6 +418,8 @@ class SSHClient(BaseSSHClient):
             self.eagain(channel.wait_eof)
             # Close channel to indicate no more commands will be sent over it
             self.close_channel(channel)
+            # libssh2 exposes an exit status only after the remote close handshake.
+            self.eagain(channel.wait_closed)
 
     def close_channel(self, channel):
         """Close given channel, handling EAGAIN."""
