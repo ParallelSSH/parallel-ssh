@@ -7,6 +7,9 @@ Change Log
 Changes
 --------
 
+* Added a native ``SFTPClient`` via ``SSHClient.open_sftp`` with public remote
+  directory, metadata, mutation and transfer operations, plus remote current
+  working directory support.
 * All local file operations now use a thread pool to improve local file I/O performance. This includes loading private
   key files from a local file path, identity authentication using local files as well as SFTP read/write operations on
   local files.

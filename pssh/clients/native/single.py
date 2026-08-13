@@ -35,6 +35,7 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_SFTP_S_IXGRP, LIBSSH2_SFTP_S_IXOTH
 
 from .tunnel import FORWARDER
+from .sftp import SFTPClient
 from ..base.single import BaseSSHClient, PollMixIn
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import SessionError, SFTPError, \
@@ -446,6 +447,10 @@ class SSHClient(BaseSSHClient):
         except Exception as ex:
             raise SFTPError(ex)
         return sftp
+
+    def open_sftp(self):
+        """Open a user-facing SFTP client bound to this SSH session."""
+        return SFTPClient(self)
 
     def _mkdir(self, sftp, directory):
         """Make directory via SFTP channel.
