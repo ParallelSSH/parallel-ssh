@@ -17,7 +17,10 @@
 
 import logging
 
+from gevent import Timeout as GTimeout
+
 from .single import SSHClient
+from .sftp import SFTPClient
 from ..base.parallel import BaseParallelSSHClient
 from ..common import _validate_pkey
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
@@ -513,3 +516,135 @@ class ParallelSSHClient(BaseParallelSSHClient):
             raise HostArgumentError(
                 "Number of per-host copy arguments provided does not match "
                 "number of hosts")
+
+
+class ParallelSFTPClient(ParallelSSHClient):
+    """Run native SFTP operations on a collection of SSH hosts."""
+
+    @property
+    def hosts(self):
+        return self._hosts
+
+    @hosts.setter
+    def hosts(self, hosts):
+        BaseParallelSSHClient.hosts.fset(self, hosts)
+        if hasattr(self, '_sftp_clients'):
+            self._sftp_clients.clear()
+
+    def _make_sftp_client(self, host_i, host):
+        ssh_client = self._get_ssh_client(host_i, host)
+        return SFTPClient(ssh_client)
+
+    def _get_sftp_client(self, host_i, host):
+        try:
+            clients = self._sftp_clients
+        except AttributeError:
+            clients = self._sftp_clients = {}
+        key = (host_i, host)
+        client = clients.get(key)
+        if client is None:
+            client = self._make_sftp_client(host_i, host)
+            clients[key] = client
+        return client
+
+    @staticmethod
+    def _collect(tasks, stop_on_errors):
+        results = []
+        for task in tasks:
+            try:
+                results.append(task.get())
+            except (GTimeout, Exception) as exc:
+                if stop_on_errors:
+                    raise
+                results.append(exc)
+        return results
+
+    def _run_sftp_operation(self, host_i, host, operation, args, kwargs):
+        client = self._get_sftp_client(host_i, host)
+        result = getattr(client, operation)(*args, **kwargs)
+        if operation == 'listdir':
+            return list(result)
+        return result
+
+    def _run_parallel(self, operation, args=(), kwargs=None,
+                      stop_on_errors=True):
+        kwargs = {} if kwargs is None else kwargs
+        tasks = [self.pool.spawn(
+            self._run_sftp_operation, host_i, host, operation, args, kwargs)
+            for host_i, host in enumerate(self.hosts)]
+        return self._collect(tasks, stop_on_errors)
+
+    def connect(self, stop_on_errors=True):
+        """Create and return one :class:`SFTPClient` per configured host.
+
+        Connections are initialized concurrently using this client's pool and
+        cached for subsequent parallel operations. Results always follow
+        configured host order. When ``stop_on_errors`` is false, an exception
+        is returned in place of the failed host's client instead of being
+        raised.
+
+        :param stop_on_errors: Raise SFTP initialization errors when true.
+        :type stop_on_errors: bool
+        :rtype: list(:class:`SFTPClient` or Exception)
+        """
+        tasks = [self.pool.spawn(self._get_sftp_client, host_i, host)
+                 for host_i, host in enumerate(self.hosts)]
+        return self._collect(tasks, stop_on_errors)
+
+    def getcwd(self, stop_on_errors=True):
+        """Return the current remote directory for every host."""
+        return self._run_parallel('getcwd', stop_on_errors=stop_on_errors)
+
+    def chdir(self, path, stop_on_errors=True):
+        """Change the current remote directory on every host."""
+        return self._run_parallel(
+            'chdir', (path,), stop_on_errors=stop_on_errors)
+
+    def listdir(self, path='.', encoding='utf-8', stop_on_errors=True):
+        """Return directory entry lists from every host."""
+        return self._run_parallel(
+            'listdir', (path, encoding), stop_on_errors=stop_on_errors)
+
+    def stat(self, path, stop_on_errors=True):
+        """Return attributes for a remote path on every host."""
+        return self._run_parallel(
+            'stat', (path,), stop_on_errors=stop_on_errors)
+
+    def lstat(self, path, stop_on_errors=True):
+        """Return attributes without following links on every host."""
+        return self._run_parallel(
+            'lstat', (path,), stop_on_errors=stop_on_errors)
+
+    def mkdir(self, path, stop_on_errors=True):
+        """Create a remote directory on every host."""
+        return self._run_parallel(
+            'mkdir', (path,), stop_on_errors=stop_on_errors)
+
+    def rmdir(self, path, stop_on_errors=True):
+        """Remove an empty remote directory on every host."""
+        return self._run_parallel(
+            'rmdir', (path,), stop_on_errors=stop_on_errors)
+
+    def rename(self, source, destination, stop_on_errors=True):
+        """Rename a remote path on every host."""
+        return self._run_parallel(
+            'rename', (source, destination), stop_on_errors=stop_on_errors)
+
+    def remove(self, path, stop_on_errors=True):
+        """Remove a remote file on every host."""
+        return self._run_parallel(
+            'remove', (path,), stop_on_errors=stop_on_errors)
+
+    unlink = remove
+
+    def get(self, remote_file, local_file, stop_on_errors=True):
+        """Copy a remote file from every host to a local path."""
+        return self._run_parallel(
+            'get', (remote_file, local_file),
+            stop_on_errors=stop_on_errors)
+
+    def put(self, local_file, remote_file, stop_on_errors=True):
+        """Copy a local file to every host."""
+        return self._run_parallel(
+            'put', (local_file, remote_file),
+            stop_on_errors=stop_on_errors)
