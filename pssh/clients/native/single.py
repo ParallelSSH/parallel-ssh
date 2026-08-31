@@ -703,10 +703,16 @@ class SSHClient(BaseSSHClient):
         try:
             total = 0
             while total < fileinfo.st_size:
-                size, data = file_chan.read(size=fileinfo.st_size - total)
+                size = min(self._BUF_SIZE, fileinfo.st_size - total)
+                size, data = file_chan.read(size=size)
                 if size == LIBSSH2_ERROR_EAGAIN:
                     self.poll()
                     continue
+                if size == 0:
+                    raise SCPError(
+                        "Unexpected EOF while receiving %s (%s of %s bytes)" % (
+                            remote_file, total, fileinfo.st_size),
+                        remote_file, self.host)
                 total += size
                 local_fh.write(data)
         finally:
