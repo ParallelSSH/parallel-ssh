@@ -16,7 +16,7 @@ class SFTPClient(object):
 
     def __init__(self, client, sftp=None):
         self._client = client
-        self._sftp = client._make_sftp() if sftp is None else sftp
+        self._sftp = client.make_sftp_client() if sftp is None else sftp
         self._cwd = self._canonical_path('.')
 
     def _canonical_path(self, path):
@@ -47,9 +47,10 @@ class SFTPClient(object):
         """List names in a remote directory."""
         with self._client._sftp_openfh(
                 self._sftp.opendir, self._remote_path(path)) as dir_h:
-            entries = self._client._sftp_readdir(dir_h)
-            names = [entry.decode(encoding) for entry in entries]
-        return [name for name in names if name not in ('.', '..')]
+            for entry in self._client._sftp_readdir(dir_h):
+                name = entry.decode(encoding)
+                if name not in ('.', '..'):
+                    yield name
 
     def stat(self, path):
         """Return attributes for a remote path, following symbolic links."""

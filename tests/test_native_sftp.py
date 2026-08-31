@@ -7,6 +7,7 @@
 #  License as published by the Free Software Foundation, version 2.1.
 
 import unittest
+from types import GeneratorType
 
 from pssh.clients.native.sftp import SFTPClient
 
@@ -67,7 +68,7 @@ class SSHClient(object):
     def __init__(self, sftp):
         self.sftp = sftp
 
-    def _make_sftp(self):
+    def make_sftp_client(self):
         return self.sftp
 
     def eagain(self, func, *args):
@@ -135,9 +136,16 @@ class NativeSFTPClientTest(unittest.TestCase):
 
         self.assertEqual(self.sftp.opendir_calls, [])
 
-    def test_listdir_filters_navigation_entries(self):
-        self.assertEqual(self.client.listdir('data'), ['file.txt', 'data'])
+    def test_listdir_filters_names_and_holds_handle_during_iteration(self):
+        names = self.client.listdir('data')
+
+        self.assertIsInstance(names, GeneratorType)
+        self.assertEqual(self.sftp.opendir_calls, [])
+        self.assertEqual(next(names), 'file.txt')
         self.assertEqual(self.sftp.opendir_calls, ['/home/tester/data'])
+        self.assertFalse(self.sftp.handles[0].closed)
+        self.assertEqual(list(names), ['data'])
+        self.assertTrue(self.sftp.handles[0].closed)
 
     def test_metadata_and_mutations_resolve_remote_paths(self):
         self.assertEqual(self.client.stat('file'), 'stat-result')

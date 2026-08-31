@@ -7,10 +7,9 @@ Change Log
 Changes
 --------
 
-* Added native ``SFTPClient`` and ``ParallelSFTPClient`` APIs with public remote
-  directory, metadata, mutation and transfer operations, plus remote current
-  working directory support. ``ParallelSFTPClient`` runs operations on all
-  configured hosts concurrently and preserves configured host order.
+* Added a native ``SFTPClient`` API with public remote directory, metadata,
+  mutation and transfer operations, plus remote current working directory
+  support.
 * All local file operations now use a thread pool to improve local file I/O performance. This includes loading private
   key files from a local file path, identity authentication using local files as well as SFTP read/write operations on
   local files.
