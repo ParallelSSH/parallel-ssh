@@ -95,6 +95,8 @@ class SSHClient(BaseSSHClient):
     """ssh2-python (libssh2) based non-blocking SSH client."""
     # 2MB buffer
     _BUF_SIZE = 2048 * 1024
+    # Keep SCP receives in bounded chunks instead of requesting the whole file.
+    _SCP_RECV_BUF_SIZE = 64 * 1024
 
     def __init__(self, host,
                  user=None, password=None, port=None,
@@ -703,7 +705,7 @@ class SSHClient(BaseSSHClient):
         try:
             total = 0
             while total < fileinfo.st_size:
-                size = min(self._BUF_SIZE, fileinfo.st_size - total)
+                size = min(self._SCP_RECV_BUF_SIZE, fileinfo.st_size - total)
                 size, data = file_chan.read(size=size)
                 if size == LIBSSH2_ERROR_EAGAIN:
                     self.poll()

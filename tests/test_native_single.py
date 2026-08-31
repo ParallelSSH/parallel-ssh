@@ -145,7 +145,7 @@ class NativeSingleClientTest(unittest.TestCase):
     @patch('pssh.clients.native.single.FileObjectThread')
     def test_scp_recv_limits_read_size_to_buffer(self, file_object):
         client = object.__new__(SSHClient)
-        client._BUF_SIZE = 3
+        client._SCP_RECV_BUF_SIZE = 3
         client.session = Mock()
         client.poll = Mock()
         channel = Mock()
