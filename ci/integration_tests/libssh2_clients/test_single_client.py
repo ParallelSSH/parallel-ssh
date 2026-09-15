@@ -1077,8 +1077,8 @@ class SSH2ClientTest(SSH2TestCase):
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
                            num_retries=1)
-        client._make_sftp_eagain = _make_sftp
-        self.assertRaises(SFTPError, client._make_sftp)
+        client._make_sftp = _make_sftp
+        self.assertRaises(SFTPError, client.make_sftp_client)
 
     @patch('pssh.clients.native.single.Session')
     def test_disconnect_exc(self, mock_sess):
