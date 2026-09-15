@@ -163,7 +163,7 @@ class NativeSingleClientTest(unittest.TestCase):
     def test_make_sftp_client_returns_channel_and_wraps_errors(self):
         client = object.__new__(SSHClient)
         sftp = object()
-        client._make_sftp_eagain = lambda: sftp
+        client._make_sftp = lambda: sftp
 
         self.assertIs(client.make_sftp_client(), sftp)
 
@@ -172,7 +172,7 @@ class NativeSingleClientTest(unittest.TestCase):
         def raise_error():
             raise error
 
-        client._make_sftp_eagain = raise_error
+        client._make_sftp = raise_error
 
         with self.assertRaises(SFTPError) as raised:
             client.make_sftp_client()

@@ -440,17 +440,15 @@ class SSHClient(BaseSSHClient):
         """Handle EAGAIN and call given function with any args, polling for as long as there is data to receive."""
         return self._eagain_errcode(func, LIBSSH2_ERROR_EAGAIN, *args, **kwargs)
 
-    def _make_sftp_eagain(self):
+    def _make_sftp(self):
         return self.eagain(self.session.sftp_init)
 
     def make_sftp_client(self):
         try:
-            sftp = self._make_sftp_eagain()
+            sftp = self._make_sftp()
         except Exception as ex:
             raise SFTPError(ex)
         return sftp
-
-    _make_sftp = make_sftp_client
 
     def open_sftp(self):
         """Open a user-facing SFTP client bound to this SSH session."""
