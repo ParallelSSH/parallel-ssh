@@ -160,22 +160,33 @@ class NativeSingleClientTest(unittest.TestCase):
         client.poll.assert_not_called()
         file_object.return_value.write.assert_has_calls([call(b'one'), call(b'!')])
 
-    def test_make_sftp_client_returns_channel_and_wraps_errors(self):
+    def test_public_factory_returns_sftp_wrapper(self):
+        from pssh.clients.native.sftp import SFTPClient
+        client = object.__new__(SSHClient)
+        raw = Mock()
+        raw.realpath.return_value = '/home/test'
+        client.eagain = lambda func, *args: func(*args)
+        client._make_sftp = lambda: raw
+        result = client.make_sftp_client()
+        self.assertIsInstance(result, SFTPClient)
+        self.assertIs(result._sftp, raw)
+
+    def test_private_factory_returns_channel_and_wraps_errors(self):
         client = object.__new__(SSHClient)
         sftp = object()
-        client._make_sftp = lambda: sftp
+        client._make_sftp_eagain = lambda: sftp
 
-        self.assertIs(client.make_sftp_client(), sftp)
+        self.assertIs(client._make_sftp(), sftp)
 
         error = RuntimeError('sftp init failed')
 
         def raise_error():
             raise error
 
-        client._make_sftp = raise_error
+        client._make_sftp_eagain = raise_error
 
         with self.assertRaises(SFTPError) as raised:
-            client.make_sftp_client()
+            client._make_sftp()
 
         self.assertIs(raised.exception.args[0], error)
 
@@ -183,7 +194,7 @@ class NativeSingleClientTest(unittest.TestCase):
         client = Mock(spec=SSHClient)
         client.host = 'host'
         sftp = Mock()
-        client.make_sftp_client.return_value = sftp
+        client._make_sftp.return_value = sftp
         client._remote_paths_split.return_value = None
         client._sftp_openfh.side_effect = SFTPError
         client._scp_recv_recursive.return_value = 'received'
@@ -206,7 +217,7 @@ class NativeSingleClientTest(unittest.TestCase):
             SSHClient.scp_send(
                 client, 'local', 'remote/file', recurse=True)
 
-        self.assertEqual(client.make_sftp_client.call_count, 5)
+        self.assertEqual(client._make_sftp.call_count, 5)
 
     def test_wait_finished_waits_for_close_before_exit_status(self):
         client = object.__new__(SSHClient)

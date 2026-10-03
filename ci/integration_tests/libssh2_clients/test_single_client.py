@@ -1072,13 +1072,13 @@ class SSH2ClientTest(SSH2TestCase):
         self.assertEqual(shell.exit_code, 1)
 
     def test_sftp_init_exc(self):
-        def _make_sftp():
+        def _make_sftp_eagain():
             raise Exception
         client = SSHClient(self.host, port=self.port,
                            pkey=self.user_key,
                            num_retries=1)
-        client._make_sftp = _make_sftp
-        self.assertRaises(SFTPError, client.make_sftp_client)
+        client._make_sftp_eagain = _make_sftp_eagain
+        self.assertRaises(SFTPError, client._make_sftp)
 
     @patch('pssh.clients.native.single.Session')
     def test_disconnect_exc(self, mock_sess):

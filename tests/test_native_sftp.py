@@ -68,7 +68,7 @@ class SSHClient(object):
     def __init__(self, sftp):
         self.sftp = sftp
 
-    def make_sftp_client(self):
+    def _make_sftp(self):
         return self.sftp
 
     def eagain(self, func, *args):

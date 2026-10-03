@@ -440,17 +440,17 @@ class SSHClient(BaseSSHClient):
         """Handle EAGAIN and call given function with any args, polling for as long as there is data to receive."""
         return self._eagain_errcode(func, LIBSSH2_ERROR_EAGAIN, *args, **kwargs)
 
-    def _make_sftp(self):
+    def _make_sftp_eagain(self):
         return self.eagain(self.session.sftp_init)
 
-    def make_sftp_client(self):
+    def _make_sftp(self):
         try:
-            sftp = self._make_sftp()
+            sftp = self._make_sftp_eagain()
         except Exception as ex:
             raise SFTPError(ex)
         return sftp
 
-    def open_sftp(self):
+    def make_sftp_client(self):
         """Open a user-facing SFTP client bound to this SSH session."""
         return SFTPClient(self)
 
@@ -501,7 +501,7 @@ class SSHClient(BaseSSHClient):
         :raises: :py:class:`IOError` on local file IO errors
         :raises: :py:class:`OSError` on local OS errors like permission denied
         """
-        sftp = self.make_sftp_client() if sftp is None else sftp
+        sftp = self._make_sftp() if sftp is None else sftp
         if os.path.isdir(local_file) and recurse:
             return self._copy_dir(local_file, remote_file, sftp)
         elif os.path.isdir(local_file) and not recurse:
@@ -603,7 +603,7 @@ class SSHClient(BaseSSHClient):
         :raises: :py:class:`IOError` on local file IO errors
         :raises: :py:class:`OSError` on local OS errors like permission denied
         """
-        sftp = self.make_sftp_client() if sftp is None else sftp
+        sftp = self._make_sftp() if sftp is None else sftp
         try:
             self.eagain(sftp.stat, remote_file)
         except (SFTPHandleError, SFTPProtocolError):
@@ -678,7 +678,7 @@ class SSHClient(BaseSSHClient):
         :raises: :py:class:`OSError` on local OS errors like permission denied.
         """
         if recurse:
-            sftp = self.make_sftp_client() if sftp is None else sftp
+            sftp = self._make_sftp() if sftp is None else sftp
             return self._scp_recv_recursive(remote_file, local_file, sftp, encoding=encoding)
         elif local_file.endswith('/'):
             remote_filename = remote_file.rsplit('/')[-1]
@@ -748,7 +748,7 @@ class SSHClient(BaseSSHClient):
         :raises: :py:class:`OSError` on local OS errors like permission denied
         """
         if os.path.isdir(local_file) and recurse:
-            sftp = self.make_sftp_client() if sftp is None else sftp
+            sftp = self._make_sftp() if sftp is None else sftp
             return self._scp_send_dir(local_file, remote_file, sftp)
         elif os.path.isdir(local_file) and not recurse:
             raise ValueError("Recurse must be True if local_file is a "
@@ -756,7 +756,7 @@ class SSHClient(BaseSSHClient):
         if recurse:
             destination = self._remote_paths_split(remote_file)
             if destination is not None:
-                sftp = self.make_sftp_client() if sftp is None else sftp
+                sftp = self._make_sftp() if sftp is None else sftp
                 try:
                     self.eagain(sftp.stat, destination)
                 except (SFTPHandleError, SFTPProtocolError):

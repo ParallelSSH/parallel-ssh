@@ -9,7 +9,7 @@ SFTP channel and tracks a remote current working directory.
     from pssh.clients import SSHClient
 
     client = SSHClient('localhost')
-    sftp = client.open_sftp()
+    sftp = client.make_sftp_client()
     sftp.chdir('/srv/uploads')
     sftp.mkdir('incoming')
     sftp.put('local.txt', 'incoming/remote.txt')

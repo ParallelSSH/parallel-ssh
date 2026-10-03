@@ -23,7 +23,7 @@ class SFTPClientTest(SSH2TestCase):
         try:
             with open(local_source, 'w') as handle:
                 handle.write('parallel-ssh')
-            sftp = self.client.open_sftp()
+            sftp = self.client.make_sftp_client()
             self.assertTrue(sftp.getcwd().startswith('/'))
             sftp.chdir(remote_root)
             self.assertEqual(sftp.getcwd(), os.path.realpath(remote_root))

@@ -16,7 +16,7 @@ class SFTPClient(object):
 
     def __init__(self, client, sftp=None):
         self._client = client
-        self._sftp = client.make_sftp_client() if sftp is None else sftp
+        self._sftp = client._make_sftp() if sftp is None else sftp
         self._cwd = self._canonical_path('.')
 
     def _canonical_path(self, path):
