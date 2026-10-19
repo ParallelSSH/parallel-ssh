@@ -234,6 +234,28 @@ Timeout exceptions from ``join`` contain attributes for which commands have fini
 The client will raise a ``Timeout`` exception if *all* remote commands have not finished within five seconds in the above examples.
 
 
+Command Completion Callbacks
+*****************************
+
+The optional ``callback`` argument to ``run_command`` can be used to process a
+command's output when it completes. The callback receives the completed
+``HostOutput`` as its first argument. ``callback_extra_args`` may be used to
+pass additional positional arguments to the callback.
+
+For parallel clients, the callback is invoked once for each host in its own
+greenlet. The call to ``run_command`` still returns the output objects without
+waiting for remote commands to finish.
+
+.. code-block:: python
+
+   def print_output(host_out, prefix):
+       for line in host_out.stdout:
+           print(prefix, line)
+
+   output = client.run_command(
+       'uname', callback=print_output, callback_extra_args=('remote:',))
+
+
 .. code-block:: python
 
    output = client.run_command(.., read_timeout=5)

@@ -21,7 +21,7 @@ from getpass import getuser
 from socket import gaierror as sock_gaierror, error as sock_error
 from warnings import warn
 
-from gevent import sleep, socket, Timeout as GTimeout, get_hub
+from gevent import sleep, socket, Timeout as GTimeout, get_hub, spawn
 from gevent.fileobject import FileObjectThread
 from gevent.hub import Hub
 from gevent.pool import Pool
@@ -493,6 +493,10 @@ class BaseSSHClient(PollMixIn):
         )
         return host_out
 
+    def _run_command_callback(self, host_output, callback, callback_extra_args):
+        self.wait_finished(host_output)
+        callback(host_output, *(callback_extra_args or ()))
+
     def _make_output_readers(self, channel, stdout_buffer, stderr_buffer):
         raise NotImplementedError
 
@@ -601,7 +605,8 @@ class BaseSSHClient(PollMixIn):
 
     def run_command(self, command, sudo=False, user=None,
                     use_pty=False, shell=None,
-                    encoding='utf-8', timeout=None, read_timeout=None):
+                    encoding='utf-8', timeout=None, read_timeout=None,
+                    callback=None, callback_extra_args=None):
         """Run remote command.
 
         :param command: Command to run.
@@ -622,6 +627,10 @@ class BaseSSHClient(PollMixIn):
         :param read_timeout: (Optional) Timeout in seconds for reading output.
         :type read_timeout: float
         :param timeout: Deprecated - use read_timeout.
+        :param callback: Function to call when the command has finished.
+        :type callback: function
+        :param callback_extra_args: Additional positional arguments for callback.
+        :type callback_extra_args: tuple
 
         :rtype: :py:class:`pssh.output.HostOutput`
         """
@@ -641,6 +650,8 @@ class BaseSSHClient(PollMixIn):
             channel = self._execute(_command, use_pty=use_pty)
         _timeout = read_timeout if read_timeout else timeout
         host_out = self._make_host_output(channel, encoding, _timeout, fully_qualified_command=_command)
+        if callback is not None:
+            spawn(self._run_command_callback, host_out, callback, callback_extra_args)
         return host_out
 
     def _make_sftp(self):
