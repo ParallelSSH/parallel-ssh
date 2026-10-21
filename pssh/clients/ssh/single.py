@@ -20,7 +20,8 @@ import logging
 from gevent import sleep, spawn, Timeout as GTimeout, joinall
 from gevent.socket import SHUT_RDWR
 from ssh import options
-from ssh.error_codes import SSH_AGAIN
+from ssh.error_codes import SSH_AGAIN, SSH_ERROR
+from ssh.event import Event
 from ssh.exceptions import EOF
 from ssh.key import import_cert_file, copy_cert_to_privkey, \
     import_privkey_base64
@@ -271,7 +272,7 @@ class SSHClient(BaseSSHClient):
             _buffer.eof.set()
 
     def wait_finished(self, host_output, timeout=None):
-        """Wait for EOF from channel and close channel.
+        """Wait for output EOF and exit status, then close the channel.
 
         Used to wait for remote command completion and be able to gather
         exit code.
@@ -283,19 +284,49 @@ class SSHClient(BaseSSHClient):
 
         :raises: :py:class:`pssh.exceptions.Timeout` after <timeout> seconds if
           timeout set.
+        :raises: :py:class:`pssh.exceptions.SessionError` if the session
+          disconnects before completion can be established.
+
+        If no numeric status is available, wait for remote channel closure.
+        This also applies to signal-only exits and status ``0xffffffff``,
+        which libssh's numeric status API represents as ``-1``. Without a
+        timeout, these cases require the server to close the channel.
         """
         if not isinstance(host_output, HostOutput):
             raise ValueError("%s is not a HostOutput object" % (host_output,))
         channel = host_output.channel
         if channel is None:
             return
-        logger.debug("Sending EOF on channel %s", channel)
-        self.eagain(channel.send_eof)
-        logger.debug("Waiting for readers, timeout %s", timeout)
         with GTimeout(seconds=timeout, exception=Timeout):
+            logger.debug("Sending EOF on channel %s", channel)
+            self.eagain(channel.send_eof)
+            logger.debug("Waiting for readers, timeout %s", timeout)
             joinall((host_output.buffers.stdout.reader, host_output.buffers.stderr.reader))
-        logger.debug("Readers finished, closing channel")
-        self.close_channel(channel)
+            self._wait_exit_status(channel)
+            logger.debug("Readers and exit status finished, closing channel")
+            self.close_channel(channel)
+
+    def _wait_exit_status(self, channel):
+        # Output EOF can precede exit status. A signal-only or status-less
+        # command instead completes when the remote channel closes.
+        event = Event()
+        while True:
+            if not self.session.is_connected():
+                raise SessionError("Session disconnected before command completion")
+            status = channel.get_exit_status()
+            if not self.session.is_connected():
+                raise SessionError("Session disconnected before command completion")
+            if status != -1 or channel.is_closed():
+                return
+            event.add_session(self.session)
+            try:
+                if event.dopoll(0) == SSH_ERROR:
+                    raise SessionError("Error waiting for command exit status")
+            finally:
+                # Restore the session's poll context before another greenlet
+                # uses this connection.
+                event.remove_session(self.session)
+            sleep(.001)
 
     def finished(self, channel):
         """Checks if remote command has finished - has server sent client
