@@ -85,3 +85,22 @@ class SSHSingleClientTest(unittest.TestCase):
 
         event.return_value.remove_session.assert_called_once_with(client.session)
         channel.close.assert_not_called()
+
+    @patch('pssh.clients.ssh.single.Event')
+    def test_disconnect_before_or_during_status_read_is_not_completion(self, event):
+        for connection_states in ([False], [True, False]):
+            with self.subTest(connection_states=connection_states):
+                channel = MagicMock()
+                channel.get_exit_status.return_value = 23
+                client = object.__new__(SSHClient)
+                client.sock = None
+                client.session = MagicMock()
+                client.session.is_connected.side_effect = connection_states
+
+                with self.assertRaises(SessionError):
+                    client._wait_exit_status(channel)
+
+                self.assertEqual(channel.get_exit_status.call_count,
+                                 len(connection_states) - 1)
+                channel.close.assert_not_called()
+                event.return_value.add_session.assert_not_called()
