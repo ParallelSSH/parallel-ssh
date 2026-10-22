@@ -703,6 +703,9 @@ class SSHClient(BaseSSHClient):
                     self.poll()
                     continue
                 if size == 0:
+                    if not file_chan.eof():
+                        self.poll()
+                        continue
                     raise SCPError(
                         "Unexpected EOF while receiving %s (%s of %s bytes)" % (
                             remote_file, total, fileinfo.st_size),

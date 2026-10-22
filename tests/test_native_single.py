@@ -51,6 +51,7 @@ class NativeSingleClientTest(unittest.TestCase):
         client.poll = Mock()
         channel = Mock()
         channel.read.return_value = (0, b'')
+        channel.eof.return_value = True
         fileinfo = Mock(st_size=4)
         client.session.scp_recv2.return_value = (channel, fileinfo)
 
@@ -62,6 +63,25 @@ class NativeSingleClientTest(unittest.TestCase):
         file_object.return_value.write.assert_not_called()
         file_object.return_value.flush.assert_called_once_with()
         file_object.return_value.close.assert_called_once_with()
+        channel.close.assert_called_once_with()
+
+    @patch('pssh.clients.native.single.FileObjectThread')
+    def test_scp_recv_waits_on_empty_read_before_eof(self, file_object):
+        client = object.__new__(SSHClient)
+        client.host = '127.0.0.1'
+        client.session = Mock()
+        client.poll = Mock()
+        channel = Mock()
+        channel.read.side_effect = [(0, b''), (4, b'data')]
+        channel.eof.return_value = False
+        fileinfo = Mock(st_size=4)
+        client.session.scp_recv2.return_value = (channel, fileinfo)
+
+        client._scp_recv('remote', 'local')
+
+        self.assertEqual(channel.read.call_count, 2)
+        client.poll.assert_called_once_with()
+        file_object.return_value.write.assert_called_once_with(b'data')
         channel.close.assert_called_once_with()
 
     @patch('pssh.clients.native.single.FileObjectThread')
