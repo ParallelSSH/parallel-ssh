@@ -8,6 +8,8 @@
 
 import posixpath
 
+from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
+
 
 class SFTPClient(object):
     """User-facing SFTP operations bound to one native SSH client."""
@@ -27,9 +29,9 @@ class SFTPClient(object):
             raise TypeError("Remote path must be a string.")
         if not path:
             return self._cwd
-        if posixpath.isabs(path):
-            return posixpath.normpath(path)
-        return posixpath.normpath(posixpath.join(self._cwd, path))
+        # ``.`` and ``..`` are left for the server to resolve, as a
+        # client-side normalisation would ignore symbolic links.
+        return posixpath.join(self._cwd, path)
 
     def getcwd(self):
         """Get the current remote working directory."""
@@ -44,10 +46,18 @@ class SFTPClient(object):
         return self._cwd
 
     def listdir(self, path='.', encoding='utf-8'):
-        """List names in a remote directory."""
+        """List names in a remote directory.
+
+        Returns a generator. The remote directory handle stays open until
+        the generator is exhausted or closed.
+        """
         with self._client._sftp_openfh(
                 self._sftp.opendir, self._remote_path(path)) as dir_h:
-            for entry in self._client._sftp_readdir(dir_h):
+            # One readdir entry is one file name, which may contain newlines.
+            for size, entry, _attrs in dir_h.readdir():
+                if size == LIBSSH2_ERROR_EAGAIN:
+                    self._client.poll()
+                    continue
                 name = entry.decode(encoding)
                 if name not in ('.', '..'):
                     yield name

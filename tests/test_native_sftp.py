@@ -9,13 +9,23 @@
 import unittest
 from types import GeneratorType
 
+from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
+
 from pssh.clients.native.sftp import SFTPClient
 
 
 class DirectoryHandle(object):
 
-    def __init__(self):
+    def __init__(self, entries=()):
         self.closed = False
+        self.entries = entries
+
+    def readdir(self):
+        for entry in self.entries:
+            if entry == LIBSSH2_ERROR_EAGAIN:
+                yield LIBSSH2_ERROR_EAGAIN, b'', None
+            else:
+                yield len(entry), entry, None
 
     def __enter__(self):
         return self
@@ -31,6 +41,7 @@ class SFTP(object):
         self.opendir_calls = []
         self.handles = []
         self.calls = []
+        self.entries = (b'.', b'..', b'file.txt', b'data')
 
     def realpath(self, path):
         self.realpath_calls.append(path)
@@ -38,7 +49,7 @@ class SFTP(object):
 
     def opendir(self, path):
         self.opendir_calls.append(path)
-        handle = DirectoryHandle()
+        handle = DirectoryHandle(self.entries)
         self.handles.append(handle)
         return handle
 
@@ -67,6 +78,10 @@ class SSHClient(object):
 
     def __init__(self, sftp):
         self.sftp = sftp
+        self.polls = 0
+
+    def poll(self):
+        self.polls += 1
 
     def _make_sftp(self):
         return self.sftp
@@ -76,9 +91,6 @@ class SSHClient(object):
 
     def _sftp_openfh(self, func, *args):
         return func(*args)
-
-    def _sftp_readdir(self, _handle):
-        return iter((b'.', b'..', b'file.txt', b'data'))
 
     def mkdir(self, sftp, path):
         self.calls = getattr(self, 'calls', [])
@@ -116,11 +128,15 @@ class NativeSFTPClientTest(unittest.TestCase):
         self.assertEqual(self.client.getcwd(), '/home/tester')
         self.assertEqual(self.sftp.realpath_calls, ['.'])
 
-    def test_remote_path_uses_posix_semantics(self):
+    def test_remote_path_leaves_dot_components_to_server(self):
+        # A client-side normpath would turn link/.. into the cwd even when
+        # link points elsewhere on the server.
         self.assertEqual(
-            self.client._remote_path('../shared/./file'), '/home/shared/file')
+            self.client._remote_path('link/../file'),
+            '/home/tester/link/../file')
         self.assertEqual(
-            self.client._remote_path('/var//data/../log'), '/var/log')
+            self.client._remote_path('/var/data/../log'), '/var/data/../log')
+        self.assertEqual(self.client._remote_path(''), '/home/tester')
 
     def test_chdir_canonicalizes_and_verifies_directory(self):
         cwd = self.client.chdir('data')
@@ -147,6 +163,26 @@ class NativeSFTPClientTest(unittest.TestCase):
         self.assertEqual(list(names), ['data'])
         self.assertTrue(self.sftp.handles[0].closed)
 
+    def test_listdir_keeps_newline_in_single_entry(self):
+        self.sftp.entries = (b'one\ntwo.txt', b'other')
+
+        self.assertEqual(
+            list(self.client.listdir()), ['one\ntwo.txt', 'other'])
+
+    def test_listdir_polls_on_eagain_instead_of_yielding_empty_name(self):
+        self.sftp.entries = (
+            LIBSSH2_ERROR_EAGAIN, b'file', LIBSSH2_ERROR_EAGAIN, b'other')
+
+        self.assertEqual(list(self.client.listdir()), ['file', 'other'])
+        self.assertEqual(self.ssh_client.polls, 2)
+
+    def test_listdir_close_releases_partially_read_handle(self):
+        names = self.client.listdir('data')
+
+        self.assertEqual(next(names), 'file.txt')
+        names.close()
+        self.assertTrue(self.sftp.handles[0].closed)
+
     def test_metadata_and_mutations_resolve_remote_paths(self):
         self.assertEqual(self.client.stat('file'), 'stat-result')
         self.assertEqual(self.client.lstat('../link'), 'lstat-result')
@@ -158,9 +194,9 @@ class NativeSFTPClientTest(unittest.TestCase):
             self.sftp.calls,
             [
                 ('stat', '/home/tester/file'),
-                ('lstat', '/home/link'),
+                ('lstat', '/home/tester/../link'),
                 ('rmdir', '/home/tester/empty'),
-                ('rename', '/home/tester/old', '/home/new'),
+                ('rename', '/home/tester/old', '/home/tester/../new'),
                 ('unlink', '/home/tester/obsolete'),
             ],
         )
@@ -178,7 +214,7 @@ class NativeSFTPClientTest(unittest.TestCase):
             [
                 ('mkdir', self.sftp, '/home/tester/new/child'),
                 ('get', self.sftp, '/home/tester/remote.txt', 'local.txt'),
-                ('put', self.sftp, 'local.bin', '/home/remote.bin'),
+                ('put', self.sftp, 'local.bin', '/home/tester/../remote.bin'),
                 ('copy_file', self.sftp, 'tree',
                  '/home/tester/remote-tree', True),
                 ('copy_remote_file', self.sftp,

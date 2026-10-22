@@ -13,11 +13,12 @@ SFTP channel and tracks a remote current working directory.
     sftp.chdir('/srv/uploads')
     sftp.mkdir('incoming')
     sftp.put('local.txt', 'incoming/remote.txt')
-    print(sftp.listdir('incoming'))
+    print(list(sftp.listdir('incoming')))
     sftp.get('incoming/remote.txt', 'downloaded.txt')
 
-Relative remote paths are resolved against ``sftp.getcwd()`` using POSIX path
-semantics. The SFTP client is bound to its parent ``SSHClient`` connection.
+Relative remote paths are joined to ``sftp.getcwd()``; ``.`` and ``..``
+components are resolved by the server. ``listdir`` returns a generator that
+keeps the remote directory handle open until it is exhausted or closed. The SFTP client is bound to its parent ``SSHClient`` connection.
 This API is available for the native ``ssh2-python`` client only; the
 ``pssh.clients.ssh`` backend does not currently support SFTP.
 
