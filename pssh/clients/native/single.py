@@ -413,6 +413,7 @@ class SSHClient(BaseSSHClient):
             raise ValueError("%s is not a HostOutput object" % (host_output,))
         channel = host_output.channel
         if channel is None:
+            host_output.run_callback()
             return
         with GTimeout(seconds=timeout, exception=Timeout):
             self.eagain(channel.wait_eof)
@@ -420,6 +421,7 @@ class SSHClient(BaseSSHClient):
             self.close_channel(channel)
             # libssh2 exposes an exit status only after the remote close handshake.
             self.eagain(channel.wait_closed)
+        host_output.run_callback()
 
     def close_channel(self, channel):
         """Close given channel, handling EAGAIN."""

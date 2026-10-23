@@ -11,6 +11,7 @@
 
 
 import unittest
+from unittest.mock import MagicMock
 
 from pssh.clients.native.single import SSHClient
 from pssh.output import HostOutput
@@ -46,9 +47,14 @@ class NativeSingleClientTest(unittest.TestCase):
         client.eagain = lambda func: func()
         client.close_channel = lambda channel: client.eagain(channel.close)
         channel = Channel()
-        output = HostOutput('host', channel, None, client=client)
+        callback = MagicMock()
+        output = HostOutput(
+            'host', channel, None, client=client,
+            callback=callback, callback_extra_args=('extra',),
+        )
 
         client.wait_finished(output)
 
         self.assertEqual(channel.calls, ['wait_eof', 'close', 'wait_closed'])
         self.assertEqual(output.exit_code, 0)
+        callback.assert_called_once_with(output, 'extra')

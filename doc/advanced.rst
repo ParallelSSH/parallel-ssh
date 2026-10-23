@@ -242,9 +242,12 @@ command's output when it completes. The callback receives the completed
 ``HostOutput`` as its first argument. ``callback_extra_args`` may be used to
 pass additional positional arguments to the callback.
 
-For parallel clients, the callback is invoked once for each host in its own
-greenlet. The call to ``run_command`` still returns the output objects without
-waiting for remote commands to finish.
+For parallel clients, the callback is invoked once for each host when
+``client.join`` waits for the command to finish. The callback runs directly in
+the client waiting for that host; the call to ``run_command`` still returns the
+output objects without waiting for remote commands to finish. For a single
+client, call ``client.wait_finished`` to wait for the command and invoke its
+callback.
 
 .. code-block:: python
 
@@ -254,6 +257,7 @@ waiting for remote commands to finish.
 
    output = client.run_command(
        'uname', callback=print_output, callback_extra_args=('remote:',))
+   client.join(output)
 
 
 .. code-block:: python

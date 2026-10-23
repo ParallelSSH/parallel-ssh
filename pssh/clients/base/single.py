@@ -21,7 +21,7 @@ from getpass import getuser
 from socket import gaierror as sock_gaierror, error as sock_error
 from warnings import warn
 
-from gevent import sleep, socket, Timeout as GTimeout, get_hub, spawn
+from gevent import sleep, socket, Timeout as GTimeout, get_hub
 from gevent.fileobject import FileObjectThread
 from gevent.hub import Hub
 from gevent.pool import Pool
@@ -493,10 +493,6 @@ class BaseSSHClient(PollMixIn):
         )
         return host_out
 
-    def _run_command_callback(self, host_output, callback, callback_extra_args):
-        self.wait_finished(host_output)
-        callback(host_output, *(callback_extra_args or ()))
-
     def _make_output_readers(self, channel, stdout_buffer, stderr_buffer):
         raise NotImplementedError
 
@@ -650,8 +646,8 @@ class BaseSSHClient(PollMixIn):
             channel = self._execute(_command, use_pty=use_pty)
         _timeout = read_timeout if read_timeout else timeout
         host_out = self._make_host_output(channel, encoding, _timeout, fully_qualified_command=_command)
-        if callback is not None:
-            spawn(self._run_command_callback, host_out, callback, callback_extra_args)
+        host_out.callback = callback
+        host_out.callback_extra_args = callback_extra_args
         return host_out
 
     def _make_sftp(self):

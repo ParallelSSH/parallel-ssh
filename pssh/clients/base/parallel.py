@@ -217,6 +217,7 @@ class BaseParallelSSHClient(object):
                     command % host_args[host_i],
                     user=user, encoding=encoding,
                     use_pty=use_pty, shell=shell,
+                    callback=callback, callback_extra_args=callback_extra_args,
                     *args, **kwargs)
                         for host_i, host in enumerate(self.hosts)]
             except IndexError:
@@ -227,6 +228,7 @@ class BaseParallelSSHClient(object):
             cmds = [self.pool.spawn(
                 self._run_command, host_i, host, command,
                 user=user, encoding=encoding, use_pty=use_pty, shell=shell,
+                callback=callback, callback_extra_args=callback_extra_args,
                 *args, **kwargs)
                     for host_i, host in enumerate(self.hosts)]
         self.cmds = cmds
@@ -263,15 +265,11 @@ class BaseParallelSSHClient(object):
                 ex = Timeout()
             if raise_error:
                 raise ex
-            host_out = HostOutput(host, None, None, None, exception=ex, alias=alias)
-        if callback is not None:
-            spawn(self._run_command_callback, host_out, callback, callback_extra_args)
+            host_out = HostOutput(
+                host, None, None, None, exception=ex, alias=alias,
+                callback=callback, callback_extra_args=callback_extra_args,
+            )
         return host_out
-
-    def _run_command_callback(self, host_output, callback, callback_extra_args):
-        if host_output is not None and host_output.client is not None:
-            host_output.client.wait_finished(host_output)
-        callback(host_output, *(callback_extra_args or ()))
 
     def get_last_output(self, cmds=None):
         """Get output for last commands executed by ``run_command``.
@@ -310,13 +308,15 @@ class BaseParallelSSHClient(object):
 
     def _run_command(self, host_i, host, command, sudo=False, user=None,
                      shell=None, use_pty=False,
-                     encoding='utf-8', read_timeout=None):
+                     encoding='utf-8', read_timeout=None,
+                     callback=None, callback_extra_args=None):
         """Make SSHClient if needed, run command on host"""
         try:
             _client = self._get_ssh_client(host_i, host)
             host_out = _client.run_command(
                 command, sudo=sudo, user=user, shell=shell,
-                use_pty=use_pty, encoding=encoding, read_timeout=read_timeout)
+                use_pty=use_pty, encoding=encoding, read_timeout=read_timeout,
+                callback=callback, callback_extra_args=callback_extra_args)
             return host_out
         except (GTimeout, Exception) as ex:
             logger.error("Failed to run on host %s - %s", host, ex)
@@ -398,7 +398,8 @@ class BaseParallelSSHClient(object):
             return
         client = host_out.client
         if client is None:
-            return
+            host_out.run_callback()
+            return host_out
         client.wait_finished(host_out, timeout=timeout)
         if consume_output:
             self._consume_output(host_out.stdout, host_out.stderr)
