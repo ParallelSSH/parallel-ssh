@@ -18,6 +18,7 @@
 import logging
 import os
 from collections import deque
+from time import monotonic
 
 from gevent import sleep, get_hub
 from gevent.fileobject import FileObjectThread
@@ -97,6 +98,10 @@ class SSHClient(BaseSSHClient):
     _BUF_SIZE = 2048 * 1024
     # Keep SCP receives in bounded chunks instead of requesting the whole file.
     _SCP_RECV_BUF_SIZE = 64 * 1024
+    # Seconds an SCP receive may go without data, EOF or EAGAIN before it
+    # fails. libssh2 also returns 0 bytes when the remote closes the channel
+    # without sending EOF, which would otherwise be retried forever.
+    _SCP_RECV_STALL_TIMEOUT = 30
 
     def __init__(self, host,
                  user=None, password=None, port=None,
@@ -696,20 +701,34 @@ class SSHClient(BaseSSHClient):
         local_fh = FileObjectThread(local_file, 'wb', threadpool=THREAD_POOL)
         try:
             total = 0
+            stalled_since = None
             while total < fileinfo.st_size:
                 size = min(self._SCP_RECV_BUF_SIZE, fileinfo.st_size - total)
                 size, data = file_chan.read(size=size)
                 if size == LIBSSH2_ERROR_EAGAIN:
+                    stalled_since = None
                     self.poll()
                     continue
                 if size == 0:
-                    if not file_chan.eof():
-                        self.poll()
-                        continue
-                    raise SCPError(
-                        "Unexpected EOF while receiving %s (%s of %s bytes)" % (
-                            remote_file, total, fileinfo.st_size),
-                        remote_file, self.host)
+                    if file_chan.eof():
+                        raise SCPError(
+                            "Unexpected EOF while receiving %s (%s of %s bytes)" % (
+                                remote_file, total, fileinfo.st_size),
+                            remote_file, self.host)
+                    now = monotonic()
+                    if stalled_since is None:
+                        stalled_since = now
+                    elif now - stalled_since > self._SCP_RECV_STALL_TIMEOUT:
+                        raise SCPError(
+                            "No data received for %s seconds while receiving %s "
+                            "(%s of %s bytes)" % (
+                                self._SCP_RECV_STALL_TIMEOUT, remote_file,
+                                total, fileinfo.st_size),
+                            remote_file, self.host)
+                    self.poll()
+                    sleep(.1)
+                    continue
+                stalled_since = None
                 total += size
                 local_fh.write(data)
         finally:

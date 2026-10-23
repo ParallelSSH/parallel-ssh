@@ -13,6 +13,8 @@
 import unittest
 from unittest.mock import Mock, call, patch
 
+from ssh2.error_codes import LIBSSH2_ERROR_EAGAIN
+
 from pssh.clients.native.single import SSHClient
 from pssh.exceptions import SCPError, SFTPError
 from pssh.output import HostOutput
@@ -65,8 +67,9 @@ class NativeSingleClientTest(unittest.TestCase):
         file_object.return_value.close.assert_called_once_with()
         channel.close.assert_called_once_with()
 
+    @patch('pssh.clients.native.single.sleep')
     @patch('pssh.clients.native.single.FileObjectThread')
-    def test_scp_recv_waits_on_empty_read_before_eof(self, file_object):
+    def test_scp_recv_waits_on_empty_read_before_eof(self, file_object, sleep):
         client = object.__new__(SSHClient)
         client.host = '127.0.0.1'
         client.session = Mock()
@@ -81,7 +84,63 @@ class NativeSingleClientTest(unittest.TestCase):
 
         self.assertEqual(channel.read.call_count, 2)
         client.poll.assert_called_once_with()
+        sleep.assert_called_once_with(.1)
         file_object.return_value.write.assert_called_once_with(b'data')
+        channel.close.assert_called_once_with()
+
+    @patch('pssh.clients.native.single.sleep')
+    @patch('pssh.clients.native.single.monotonic')
+    @patch('pssh.clients.native.single.FileObjectThread')
+    def test_scp_recv_fails_when_empty_reads_stall_without_eof(
+            self, file_object, monotonic, sleep):
+        # libssh2 returns 0 bytes without EOF when the remote closes the
+        # channel without sending EOF.
+        client = object.__new__(SSHClient)
+        client.host = '127.0.0.1'
+        client.session = Mock()
+        client.poll = Mock()
+        channel = Mock()
+        channel.read.return_value = (0, b'')
+        channel.eof.return_value = False
+        fileinfo = Mock(st_size=4)
+        client.session.scp_recv2.return_value = (channel, fileinfo)
+        monotonic.side_effect = [0, 10, client._SCP_RECV_STALL_TIMEOUT + 1]
+
+        with self.assertRaises(SCPError):
+            client._scp_recv('remote', 'local')
+
+        self.assertEqual(channel.read.call_count, 3)
+        self.assertEqual(sleep.call_args_list, [call(.1), call(.1)])
+        file_object.return_value.write.assert_not_called()
+        file_object.return_value.close.assert_called_once_with()
+        channel.close.assert_called_once_with()
+
+    @patch('pssh.clients.native.single.sleep')
+    @patch('pssh.clients.native.single.monotonic')
+    @patch('pssh.clients.native.single.FileObjectThread')
+    def test_scp_recv_progress_resets_stall_timer(
+            self, file_object, monotonic, sleep):
+        client = object.__new__(SSHClient)
+        client.host = '127.0.0.1'
+        client.session = Mock()
+        client.poll = Mock()
+        channel = Mock()
+        channel.read.side_effect = [
+            (0, b''), (2, b'da'), (0, b''), (LIBSSH2_ERROR_EAGAIN, b''),
+            (0, b''), (2, b'ta')]
+        channel.eof.return_value = False
+        fileinfo = Mock(st_size=4)
+        client.session.scp_recv2.return_value = (channel, fileinfo)
+        stall = client._SCP_RECV_STALL_TIMEOUT
+        # Each empty read would exceed the limit if the stall timer were
+        # carried over across received data or EAGAIN.
+        monotonic.side_effect = [0, stall + 1, 2 * stall + 2]
+
+        client._scp_recv('remote', 'local')
+
+        self.assertEqual(channel.read.call_count, 6)
+        file_object.return_value.write.assert_has_calls(
+            [call(b'da'), call(b'ta')])
         channel.close.assert_called_once_with()
 
     @patch('pssh.clients.native.single.FileObjectThread')
