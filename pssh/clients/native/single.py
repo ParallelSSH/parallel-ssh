@@ -420,6 +420,18 @@ class SSHClient(BaseSSHClient):
             self.close_channel(channel)
             # libssh2 exposes an exit status only after the remote close handshake.
             self.eagain(channel.wait_closed)
+            # libssh2 reports no EOF, and so no exit status, while output is
+            # still queued on the channel. The readers drain it and exit once
+            # the channel is closed.
+            self._join_output_readers(host_output)
+
+    def _join_output_readers(self, host_output):
+        buffers = host_output.buffers
+        if buffers is None:
+            return
+        for buffer_data in (buffers.stdout, buffers.stderr):
+            if buffer_data is not None and buffer_data.reader is not None:
+                buffer_data.reader.join()
 
     def close_channel(self, channel):
         """Close given channel, handling EAGAIN."""

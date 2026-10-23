@@ -22,7 +22,6 @@ import string
 from getpass import getuser
 from subprocess import Popen, TimeoutExpired
 
-from gevent import Timeout
 from jinja2 import Template
 
 logger = logging.getLogger('pssh.test.openssh_server')
@@ -89,18 +88,15 @@ class OpenSSHServer(object):
         logger.debug("Starting server with %s" % (" ".join(cmd),))
         self.server_proc = Popen(cmd)
         try:
-            with Timeout(seconds=5, exception=TimeoutError):
-                while True:
-                    try:
-                        self.server_proc.wait(.1)
-                    except TimeoutExpired:
-                        break
-        except TimeoutError:
-            if self.server_proc.stdout is not None:
-                logger.error(self.server_proc.stdout.read())
-            if self.server_proc.stderr is not None:
-                logger.error(self.server_proc.stderr.read())
-            raise OpenSSHServerError("Server could not start")
+            self.server_proc.wait(.1)
+        except TimeoutExpired:
+            # sshd -D is still running.
+            return
+        # sshd exited, for example because the address is already in use.
+        # Waiting on the exited process again would return at once forever.
+        raise OpenSSHServerError(
+            "Server could not start - sshd exited with code %s" % (
+                self.server_proc.returncode,))
 
     def stop(self):
         if self.server_proc is not None and self.server_proc.returncode is None:
