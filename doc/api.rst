@@ -6,6 +6,7 @@ API Documentation
 
    native_parallel
    native_single
+   native_sftp
    ssh_parallel
    ssh_single
    base_parallel
