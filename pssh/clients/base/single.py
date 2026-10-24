@@ -601,7 +601,8 @@ class BaseSSHClient(PollMixIn):
 
     def run_command(self, command, sudo=False, user=None,
                     use_pty=False, shell=None,
-                    encoding='utf-8', timeout=None, read_timeout=None):
+                    encoding='utf-8', timeout=None, read_timeout=None,
+                    callback=None, callback_extra_args=None):
         """Run remote command.
 
         :param command: Command to run.
@@ -622,6 +623,10 @@ class BaseSSHClient(PollMixIn):
         :param read_timeout: (Optional) Timeout in seconds for reading output.
         :type read_timeout: float
         :param timeout: Deprecated - use read_timeout.
+        :param callback: Function to call when the command has finished.
+        :type callback: function
+        :param callback_extra_args: Additional positional arguments for callback.
+        :type callback_extra_args: tuple
 
         :rtype: :py:class:`pssh.output.HostOutput`
         """
@@ -641,6 +646,8 @@ class BaseSSHClient(PollMixIn):
             channel = self._execute(_command, use_pty=use_pty)
         _timeout = read_timeout if read_timeout else timeout
         host_out = self._make_host_output(channel, encoding, _timeout, fully_qualified_command=_command)
+        host_out.callback = callback
+        host_out.callback_extra_args = callback_extra_args
         return host_out
 
     def _make_sftp(self):

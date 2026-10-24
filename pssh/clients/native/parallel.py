@@ -150,6 +150,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
     def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
                     use_pty=False, host_args=None, shell=None,
                     encoding='utf-8', read_timeout=None,
+                    callback=None, callback_extra_args=None,
                     ):
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output.
@@ -199,6 +200,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
           raise :py:class:`pssh.exceptions.Timeout`
           after ``timeout`` seconds when set if remote output is not ready.
         :type read_timeout: float
+        :param callback: Function to call when each command has finished.
+        :type callback: function
+        :param callback_extra_args: Additional positional arguments for callback.
+        :type callback_extra_args: tuple
         :rtype: list(:py:class:`pssh.output.HostOutput`)
 
         :raises: :py:class:`pssh.exceptions.AuthenticationError` on
@@ -225,6 +230,7 @@ class ParallelSSHClient(BaseParallelSSHClient):
             user=user, shell=shell, sudo=sudo,
             encoding=encoding, use_pty=use_pty,
             read_timeout=read_timeout,
+            callback=callback, callback_extra_args=callback_extra_args,
         )
 
     def _make_ssh_client(self, host, cfg, _pkey_data):

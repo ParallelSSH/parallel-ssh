@@ -10,6 +10,8 @@ Changes
 * All local file operations now use a thread pool to improve local file I/O performance. This includes loading private
   key files from a local file path, identity authentication using local files as well as SFTP read/write operations on
   local files.
+* Added optional completion callbacks to ``run_command`` for single and parallel clients. Parallel clients invoke the
+  callback once per host and pass the ``HostOutput`` object as the first argument.
 
 
 2.16.0
