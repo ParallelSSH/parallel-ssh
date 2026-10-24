@@ -399,7 +399,7 @@ class BaseParallelSSHClient(object):
         client = host_out.client
         if client is None:
             host_out.run_callback()
-            return host_out
+            return
         client.wait_finished(host_out, timeout=timeout)
         if consume_output:
             self._consume_output(host_out.stdout, host_out.stderr)
