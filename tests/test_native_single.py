@@ -10,7 +10,10 @@
 """Regression tests for the native/libssh2 single-client lifecycle."""
 
 
+import os
 import unittest
+
+from gevent import socket
 
 from pssh.clients.native.single import SSHClient
 from pssh.output import HostOutput
@@ -40,6 +43,41 @@ class Channel:
 
 
 class NativeSingleClientTest(unittest.TestCase):
+
+    def assert_disconnect_closes_descriptor(self, sock):
+        client = object.__new__(SSHClient)
+        client.sock = sock
+        client.session = None
+        client._proxy_client = None
+        descriptor = sock.fileno()
+        try:
+            client._disconnect()
+            self.assertIsNone(client.sock)
+            self.assertTrue(sock.closed)
+            self.assertRaises(OSError, os.fstat, descriptor)
+            client._disconnect()
+        finally:
+            client.sock = None
+            if not sock.closed:
+                sock.close()
+            else:
+                # Reclaim an fd detached by a failing implementation.
+                try:
+                    os.fstat(descriptor)
+                except OSError:
+                    pass
+                else:
+                    os.close(descriptor)
+
+    def test_disconnect_closes_socket_descriptor(self):
+        sock, peer = socket.socketpair()
+        try:
+            self.assert_disconnect_closes_descriptor(sock)
+        finally:
+            peer.close()
+
+    def test_disconnect_closes_socket_when_shutdown_fails(self):
+        self.assert_disconnect_closes_descriptor(socket.socket())
 
     def test_wait_finished_waits_for_close_before_exit_status(self):
         client = object.__new__(SSHClient)

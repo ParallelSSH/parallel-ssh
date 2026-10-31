@@ -263,12 +263,13 @@ class SSHClient(BaseSSHClient):
             except Exception:
                 pass
         self.session = None
-        # To allow for file descriptor reuse, which is part of gevent, shutdown but do not close socket here.
-        # Done by gevent when file descriptor is closed.
         if self.sock is not None and not self.sock.closed:
             try:
                 self.sock.shutdown(SHUT_RDWR)
-                self.sock.detach()
+            except Exception:
+                pass
+            try:
+                self.sock.close()
             except Exception:
                 pass
         self.sock = None
