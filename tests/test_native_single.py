@@ -80,6 +80,14 @@ class NativeSingleClientTest(unittest.TestCase):
     def test_disconnect_closes_socket_when_shutdown_fails(self):
         self.assert_disconnect_closes_descriptor(socket.socket())
 
+    def test_disconnect_completes_cleanup_when_close_reports_an_error(self):
+        class SocketWithCloseError(socket.socket):
+            def close(self):
+                super().close()
+                raise OSError('close reported an error after releasing the descriptor')
+
+        self.assert_disconnect_closes_descriptor(SocketWithCloseError())
+
     def test_disconnect_preserves_session_socket_until_session_is_released(self):
         class Session:
             def __init__(self, sock):
