@@ -10,6 +10,7 @@
 """Regression tests for the native/libssh2 single-client lifecycle."""
 
 
+import gc
 import os
 import unittest
 
@@ -78,6 +79,37 @@ class NativeSingleClientTest(unittest.TestCase):
 
     def test_disconnect_closes_socket_when_shutdown_fails(self):
         self.assert_disconnect_closes_descriptor(socket.socket())
+
+    def test_disconnect_preserves_session_socket_until_session_is_released(self):
+        class Session:
+            def __init__(self, sock):
+                self.sock = sock
+
+            def disconnect(self):
+                pass
+
+        sock, peer = socket.socketpair()
+        session = Session(sock)
+        client = object.__new__(SSHClient)
+        client.sock = sock
+        client.session = session
+        client._proxy_client = None
+        client.eagain = lambda func: func()
+        descriptor = sock.fileno()
+        try:
+            client._disconnect()
+            self.assertIsNone(client.sock)
+            self.assertIsNone(client.session)
+            self.assertFalse(sock.closed)
+            self.assertEqual(peer.recv(1), b'')
+            del sock
+            gc.collect()
+            os.fstat(descriptor)
+            del session
+            gc.collect()
+            self.assertRaises(OSError, os.fstat, descriptor)
+        finally:
+            peer.close()
 
     def test_wait_finished_waits_for_close_before_exit_status(self):
         client = object.__new__(SSHClient)

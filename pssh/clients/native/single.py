@@ -262,16 +262,21 @@ class SSHClient(BaseSSHClient):
                 self._disconnect_eagain()
             except Exception:
                 pass
+        session = self.session
         self.session = None
         if self.sock is not None and not self.sock.closed:
             try:
                 self.sock.shutdown(SHUT_RDWR)
             except Exception:
                 pass
-            try:
-                self.sock.close()
-            except Exception:
-                pass
+            # Session retains its socket until libssh2 and any surviving channels
+            # have been freed. Closing it sooner lets their cleanup write through
+            # a descriptor that a new connection may already have reused.
+            if session is None or session.sock is not self.sock:
+                try:
+                    self.sock.close()
+                except Exception:
+                    pass
         self.sock = None
         # Notify forwarder that proxy tunnel server can be shutdown
         if isinstance(self._proxy_client, SSHClient):
