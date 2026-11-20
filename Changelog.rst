@@ -7,6 +7,9 @@ Change Log
 Changes
 --------
 
+* The ssh2-python client's ``wait_finished``, and so ``join``, now also waits for output to be read into the output
+  buffers. Previously ``exit_code`` could be ``None`` after ``join`` while output was still queued on the channel.
+
 * All local file operations now use a thread pool to improve local file I/O performance. This includes loading private
   key files from a local file path, identity authentication using local files as well as SFTP read/write operations on
   local files.
