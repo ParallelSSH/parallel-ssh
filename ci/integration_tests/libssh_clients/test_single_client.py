@@ -19,7 +19,7 @@ import logging
 from datetime import datetime
 from unittest.mock import patch, MagicMock
 
-from gevent import sleep, Timeout as GTimeout, spawn
+from gevent import sleep, Timeout as GTimeout, spawn, joinall
 from ssh.exceptions import AuthenticationDenied
 
 from pssh.clients.ssh.single import SSHClient, logger as ssh_logger
@@ -74,6 +74,25 @@ class SSHClientTest(SSHTestCase):
     def test_finished_error(self):
         self.assertRaises(ValueError, self.client.wait_finished, None)
         self.assertIsNone(self.client.finished(None))
+
+    def test_finished_eof_before_exit_status(self):
+        host_out = self.client.run_command(
+            'printf "before\\n"; exec 1>&- 2>&-; sleep 1; exit 23')
+        self.client.wait_finished(host_out)
+        self.assertEqual(host_out.exit_code, 23)
+        self.assertEqual(list(host_out.stdout), ['before'])
+        self.assertEqual(list(host_out.stderr), [])
+
+    def test_finished_timeout_after_eof_then_retry(self):
+        host_out = self.client.run_command(
+            'exec 1>&- 2>&-; sleep 1; exit 23')
+        readers = (host_out.buffers.stdout.reader, host_out.buffers.stderr.reader)
+        joinall(readers, timeout=2, raise_error=True)
+        self.assertTrue(all(reader.ready() for reader in readers))
+        with self.assertRaises(Timeout):
+            self.client.wait_finished(host_out, timeout=.05)
+        self.client.wait_finished(host_out, timeout=2)
+        self.assertEqual(host_out.exit_code, 23)
 
     def test_stderr(self):
         host_out = self.client.run_command('echo "me" >&2')

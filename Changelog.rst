@@ -7,6 +7,12 @@ Change Log
 Changes
 --------
 
+* The ssh-python client now waits for exit status after output EOF before closing the channel.
+  ``wait_finished`` no longer returns early when a command closes its output before exiting.
+  Without a numeric status (including signal-only exits and status ``0xffffffff``), it waits for the
+  server to close the channel; specify a timeout to bound this wait. Session disconnects before completion
+  raise ``SessionError``. The wait timeout also covers sending EOF and closing the channel.
+
 * All local file operations now use a thread pool to improve local file I/O performance. This includes loading private
   key files from a local file path, identity authentication using local files as well as SFTP read/write operations on
   local files.
