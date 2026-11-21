@@ -58,12 +58,14 @@ class HostOutput(object):
                  'client', 'alias', 'exception',
                  'encoding', 'read_timeout', 'buffers',
                  'fully_qualified_command',
+                 'callback', 'callback_extra_args',
                  )
 
     def __init__(self, host, channel, stdin,
                  client, alias=None, exception=None, encoding='utf-8', read_timeout=None,
                  buffers=None,
                  fully_qualified_command=None,
+                 callback=None, callback_extra_args=None,
                  ):
         """
         :param host: Host name output is for
@@ -91,6 +93,10 @@ class HostOutput(object):
           output object.
           Always `None` on `HostOutput` from interactive shells.
         :type fully_qualified_command: bytes
+        :param callback: Function to call when the command has finished.
+        :type callback: function
+        :param callback_extra_args: Additional positional arguments for callback.
+        :type callback_extra_args: tuple
         """
         self.host = host
         self.channel = channel
@@ -102,6 +108,18 @@ class HostOutput(object):
         self.read_timeout = read_timeout
         self.buffers = buffers
         self.fully_qualified_command = fully_qualified_command
+        self.callback = callback
+        self.callback_extra_args = callback_extra_args
+
+    def run_callback(self):
+        """Run the completion callback once, if one is configured."""
+        callback = self.callback
+        if callback is None:
+            return
+        callback_extra_args = self.callback_extra_args
+        self.callback = None
+        self.callback_extra_args = None
+        callback(self, *(callback_extra_args or ()))
 
     @property
     def stdout(self):

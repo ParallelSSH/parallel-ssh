@@ -288,6 +288,7 @@ class SSHClient(BaseSSHClient):
             raise ValueError("%s is not a HostOutput object" % (host_output,))
         channel = host_output.channel
         if channel is None:
+            host_output.run_callback()
             return
         logger.debug("Sending EOF on channel %s", channel)
         self.eagain(channel.send_eof)
@@ -296,6 +297,7 @@ class SSHClient(BaseSSHClient):
             joinall((host_output.buffers.stdout.reader, host_output.buffers.stderr.reader))
         logger.debug("Readers finished, closing channel")
         self.close_channel(channel)
+        host_output.run_callback()
 
     def finished(self, channel):
         """Checks if remote command has finished - has server sent client

@@ -209,7 +209,7 @@ class BaseParallelSSHClient(object):
     def run_command(self, command, user=None, stop_on_errors=True,
                     host_args=None, use_pty=False, shell=None,
                     encoding='utf-8',
-                    *args, **kwargs):
+                    *args, callback=None, callback_extra_args=None, **kwargs):
         if host_args:
             try:
                 cmds = [self.pool.spawn(
@@ -217,6 +217,7 @@ class BaseParallelSSHClient(object):
                     command % host_args[host_i],
                     user=user, encoding=encoding,
                     use_pty=use_pty, shell=shell,
+                    callback=callback, callback_extra_args=callback_extra_args,
                     *args, **kwargs)
                         for host_i, host in enumerate(self.hosts)]
             except IndexError:
@@ -227,30 +228,48 @@ class BaseParallelSSHClient(object):
             cmds = [self.pool.spawn(
                 self._run_command, host_i, host, command,
                 user=user, encoding=encoding, use_pty=use_pty, shell=shell,
+                callback=callback, callback_extra_args=callback_extra_args,
                 *args, **kwargs)
                     for host_i, host in enumerate(self.hosts)]
         self.cmds = cmds
         joinall(cmds, timeout=self.timeout)
-        return self._get_output_from_cmds(cmds, raise_error=stop_on_errors)
+        return self._get_output_from_cmds(
+            cmds,
+            raise_error=stop_on_errors,
+            callback=callback,
+            callback_extra_args=callback_extra_args,
+        )
 
-    def _get_output_from_cmds(self, cmds, raise_error=False):
-        _cmds = [spawn(self._get_output_from_greenlet, cmd_i, cmd, raise_error=raise_error)
+    def _get_output_from_cmds(self, cmds, raise_error=False,
+                              callback=None, callback_extra_args=None):
+        _cmds = [spawn(
+            self._get_output_from_greenlet,
+            cmd_i,
+            cmd,
+            raise_error=raise_error,
+            callback=callback,
+            callback_extra_args=callback_extra_args,
+        )
                  for cmd_i, cmd in enumerate(cmds)]
         finished = joinall(_cmds, raise_error=True)
         return [f.get() for f in finished]
 
-    def _get_output_from_greenlet(self, cmd_i, cmd, raise_error=False):
+    def _get_output_from_greenlet(self, cmd_i, cmd, raise_error=False,
+                                  callback=None, callback_extra_args=None):
         host = self.hosts[cmd_i]
         alias = self._get_host_config(cmd_i).alias
         try:
             host_out = cmd.get()
-            return host_out
         except (GTimeout, Exception) as ex:
             if isinstance(ex, GTimeout):
                 ex = Timeout()
             if raise_error:
                 raise ex
-            return HostOutput(host, None, None, None, exception=ex, alias=alias)
+            host_out = HostOutput(
+                host, None, None, None, exception=ex, alias=alias,
+                callback=callback, callback_extra_args=callback_extra_args,
+            )
+        return host_out
 
     def get_last_output(self, cmds=None):
         """Get output for last commands executed by ``run_command``.
@@ -289,13 +308,15 @@ class BaseParallelSSHClient(object):
 
     def _run_command(self, host_i, host, command, sudo=False, user=None,
                      shell=None, use_pty=False,
-                     encoding='utf-8', read_timeout=None):
+                     encoding='utf-8', read_timeout=None,
+                     callback=None, callback_extra_args=None):
         """Make SSHClient if needed, run command on host"""
         try:
             _client = self._get_ssh_client(host_i, host)
             host_out = _client.run_command(
                 command, sudo=sudo, user=user, shell=shell,
-                use_pty=use_pty, encoding=encoding, read_timeout=read_timeout)
+                use_pty=use_pty, encoding=encoding, read_timeout=read_timeout,
+                callback=callback, callback_extra_args=callback_extra_args)
             return host_out
         except (GTimeout, Exception) as ex:
             logger.error("Failed to run on host %s - %s", host, ex)
@@ -377,6 +398,7 @@ class BaseParallelSSHClient(object):
             return
         client = host_out.client
         if client is None:
+            host_out.run_callback()
             return
         client.wait_finished(host_out, timeout=timeout)
         if consume_output:
