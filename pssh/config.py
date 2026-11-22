@@ -18,6 +18,10 @@
 
 """Host specific configuration."""
 
+from __future__ import annotations
+
+from typing import Optional, Union
+
 from .exceptions import InvalidAPIUseError
 
 
@@ -34,23 +38,28 @@ class HostConfig(object):
                  'forward_ssh_agent', 'compress', 'keyboard_interactive',
                  )
 
-    def __init__(self, user=None, port=None, password=None, private_key=None,
-                 allow_agent=None, alias=None, num_retries=None, retry_delay=None, timeout=None,
-                 identity_auth=None,
-                 proxy_host=None, proxy_port=None, proxy_user=None, proxy_password=None,
-                 proxy_pkey=None,
-                 keepalive_seconds=None,
-                 ipv6_only=None,
-                 cert_file=None,
-                 auth_thread_pool=True,
-                 gssapi_auth=False,
-                 gssapi_server_identity=None,
-                 gssapi_client_identity=None,
-                 gssapi_delegate_credentials=False,
-                 forward_ssh_agent=False,
-                 compress=False,
-                 keyboard_interactive=False,
-                 ):
+    def __init__(self, user: Optional[str] = None, port: Optional[int] = None,
+                 password: Optional[str] = None,
+                 private_key: Optional[Union[str, bytes]] = None,
+                 allow_agent: Optional[bool] = None, alias: Optional[str] = None,
+                 num_retries: Optional[int] = None,
+                 retry_delay: Optional[float] = None, timeout: Optional[float] = None,
+                 identity_auth: Optional[bool] = None,
+                 proxy_host: Optional[str] = None, proxy_port: Optional[int] = None,
+                 proxy_user: Optional[str] = None, proxy_password: Optional[str] = None,
+                 proxy_pkey: Optional[Union[str, bytes]] = None,
+                 keepalive_seconds: Optional[int] = None,
+                 ipv6_only: Optional[bool] = None,
+                 cert_file: Optional[str] = None,
+                 auth_thread_pool: bool = True,
+                 gssapi_auth: bool = False,
+                 gssapi_server_identity: Optional[str] = None,
+                 gssapi_client_identity: Optional[str] = None,
+                 gssapi_delegate_credentials: bool = False,
+                 forward_ssh_agent: bool = False,
+                 compress: bool = False,
+                 keyboard_interactive: bool = False,
+                 ) -> None:
         """
         :param user: Username to login as.
         :type user: str
@@ -143,7 +152,7 @@ class HostConfig(object):
             raise InvalidAPIUseError("Keyboard interactive authentication is enabled but no password is provided")
         self._sanity_checks()
 
-    def _sanity_checks(self):
+    def _sanity_checks(self) -> None:
         if self.user is not None and not isinstance(self.user, str):
             raise ValueError("Username %s is not a string" % (self.user,))
         if self.port is not None and not isinstance(self.port, int):

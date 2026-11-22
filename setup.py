@@ -36,6 +36,7 @@ setup(name='parallel-ssh',
                         'tests', 'tests.*',
                         '*.tests', '*.tests.*')
       ),
+      package_data={'pssh': ['py.typed']},
       install_requires=[
           'gevent>=1.3.0', 'ssh2-python>=1.2.0', 'ssh-python>=1.2.0'],
       classifiers=[

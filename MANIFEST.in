@@ -1,5 +1,6 @@
 include versioneer.py
 include pssh/_version.py
+include pssh/py.typed
 include LICENSE
 include COPYING
 include COPYING.LESSER
