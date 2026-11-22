@@ -10,6 +10,8 @@ Changes
 * All local file operations now use a thread pool to improve local file I/O performance. This includes loading private
   key files from a local file path, identity authentication using local files as well as SFTP read/write operations on
   local files.
+* ``SSHClient.mkdir``, ``SSHClient.sftp_put`` and ``SSHClient.sftp_get`` of the native client now accept ``None`` for
+  the ``sftp`` argument and create a new SFTP channel when it is ``None``, like ``copy_file`` does - #394.
 
 
 2.16.0
