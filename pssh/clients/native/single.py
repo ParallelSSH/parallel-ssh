@@ -520,8 +520,9 @@ class SSHClient(BaseSSHClient):
     def sftp_put(self, sftp, local_file, remote_file):
         """Perform an SFTP put - copy local file path to remote via SFTP.
 
-        :param sftp: SFTP client object.
-        :type sftp: :py:class:`ssh2.sftp.SFTP`
+        :param sftp: SFTP client object. A new SFTP channel is created if
+          ``None``.
+        :type sftp: :py:class:`ssh2.sftp.SFTP` or ``None``
         :param local_file: Local filepath to copy to remote host.
         :type local_file: str
         :param remote_file: Remote filepath on remote host to copy file to.
@@ -535,6 +536,7 @@ class SSHClient(BaseSSHClient):
             LIBSSH2_SFTP_S_IRGRP | \
             LIBSSH2_SFTP_S_IROTH
         f_flags = LIBSSH2_FXF_CREAT | LIBSSH2_FXF_WRITE | LIBSSH2_FXF_TRUNC
+        sftp = self._make_sftp() if sftp is None else sftp
         with self._sftp_openfh(
                 sftp.open, remote_file, f_flags, mode) as remote_fh:
             try:
@@ -549,13 +551,15 @@ class SSHClient(BaseSSHClient):
 
         Parent paths in the directory are created if they do not exist.
 
-        :param sftp: SFTP client object
-        :type sftp: :py:class:`ssh2.sftp.SFTP`
+        :param sftp: SFTP client object. A new SFTP channel is created if
+          ``None``.
+        :type sftp: :py:class:`ssh2.sftp.SFTP` or ``None``
         :param directory: Remote directory to create
         :type directory: str
 
         Catches and logs at error level remote IOErrors on creating directory.
         """
+        sftp = self._make_sftp() if sftp is None else sftp
         _paths_to_create = deque()
         for d in directory.split('/'):
             if not d:
@@ -798,6 +802,20 @@ class SSHClient(BaseSSHClient):
                 local_fh.write(data)
 
     def sftp_get(self, sftp, remote_file, local_file):
+        """Perform an SFTP get - copy remote file path to local via SFTP.
+
+        :param sftp: SFTP client object. A new SFTP channel is created if
+          ``None``.
+        :type sftp: :py:class:`ssh2.sftp.SFTP` or ``None``
+        :param remote_file: Remote filepath to copy from.
+        :type remote_file: str
+        :param local_file: Local filepath to copy remote file to.
+        :type local_file: str
+
+        :raises: :py:class:`pssh.exceptions.SFTPIOError` on I/O errors reading
+          via SFTP.
+        """
+        sftp = self._make_sftp() if sftp is None else sftp
         with self._sftp_openfh(
                 sftp.open, remote_file,
                 LIBSSH2_FXF_READ, LIBSSH2_SFTP_S_IRUSR) as remote_fh:

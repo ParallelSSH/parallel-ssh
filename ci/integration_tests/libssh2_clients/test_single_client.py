@@ -721,6 +721,34 @@ class SSH2ClientTest(SSH2TestCase):
                 except Exception:
                     pass
 
+    def test_sftp_mkdir_no_sftp(self):
+        remote_dir = '/tmp/dir_to_create_no_sftp/dir1/dir2'
+        try:
+            self.client.mkdir(None, remote_dir)
+            self.assertTrue(os.path.isdir(remote_dir))
+        finally:
+            shutil.rmtree('/tmp/dir_to_create_no_sftp', ignore_errors=True)
+
+    def test_sftp_put_get_no_sftp(self):
+        local_file = os.path.join(tempfile.mkdtemp(), 'file_to_put')
+        remote_file = os.path.expanduser('~/file_put_no_sftp')
+        local_copy = local_file + '_copied'
+        with open(local_file, 'wb') as fh:
+            fh.write(b'test data')
+        try:
+            self.client.sftp_put(None, local_file, remote_file)
+            with open(remote_file, 'rb') as fh:
+                self.assertEqual(fh.read(), b'test data')
+            self.client.sftp_get(None, remote_file, local_copy)
+            with open(local_copy, 'rb') as fh:
+                self.assertEqual(fh.read(), b'test data')
+        finally:
+            shutil.rmtree(os.path.dirname(local_file), ignore_errors=True)
+            try:
+                os.unlink(remote_file)
+            except OSError:
+                pass
+
     def test_scp_recv_large_file(self):
         cur_dir = os.path.dirname(__file__)
         file_name = 'file1'
