@@ -17,7 +17,10 @@
 
 """Abstract parallel SSH client package"""
 
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence, Union
 
 import gevent.pool
 from gevent import joinall, spawn, Timeout as GTimeout
@@ -30,6 +33,10 @@ from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import HostArgumentError, Timeout, ShellError, HostConfigError
 from ...output import HostOutput
 
+if TYPE_CHECKING:
+    from gevent import Greenlet
+    from .single import InteractiveShell
+
 Hub.NOT_ERROR = (Exception,)
 logger = logging.getLogger(__name__)
 
@@ -37,29 +44,32 @@ logger = logging.getLogger(__name__)
 class BaseParallelSSHClient(object):
     """Parallel client base class."""
 
-    def __init__(self, hosts, user=None, password=None, port=None, pkey=None,
-                 allow_agent=True,
-                 num_retries=DEFAULT_RETRIES,
-                 timeout=120, pool_size=100,
-                 host_config=None, retry_delay=RETRY_DELAY,
-                 identity_auth=True,
-                 ipv6_only=False,
-                 proxy_host=None,
-                 proxy_port=None,
-                 proxy_user=None,
-                 proxy_password=None,
-                 proxy_pkey=None,
-                 keepalive_seconds=None,
-                 cert_file=None,
-                 gssapi_auth=False,
-                 gssapi_server_identity=None,
-                 gssapi_client_identity=None,
-                 gssapi_delegate_credentials=False,
-                 forward_ssh_agent=False,
-                 compress=False,
-                 keyboard_interactive=False,
-                 _auth_thread_pool=True,
-                 ):
+    def __init__(self, hosts: Iterable[str], user: Optional[str] = None,
+                 password: Optional[str] = None, port: Optional[int] = None,
+                 pkey: Optional[Union[str, bytes]] = None,
+                 allow_agent: bool = True,
+                 num_retries: int = DEFAULT_RETRIES,
+                 timeout: Optional[float] = 120, pool_size: int = 100,
+                 host_config: Optional[Sequence[HostConfig]] = None,
+                 retry_delay: float = RETRY_DELAY,
+                 identity_auth: bool = True,
+                 ipv6_only: bool = False,
+                 proxy_host: Optional[str] = None,
+                 proxy_port: Optional[int] = None,
+                 proxy_user: Optional[str] = None,
+                 proxy_password: Optional[str] = None,
+                 proxy_pkey: Optional[Union[str, bytes]] = None,
+                 keepalive_seconds: Optional[int] = None,
+                 cert_file: Optional[str] = None,
+                 gssapi_auth: bool = False,
+                 gssapi_server_identity: Optional[str] = None,
+                 gssapi_client_identity: Optional[str] = None,
+                 gssapi_delegate_credentials: bool = False,
+                 forward_ssh_agent: bool = False,
+                 compress: bool = False,
+                 keyboard_interactive: bool = False,
+                 _auth_thread_pool: bool = True,
+                 ) -> None:
         self.allow_agent = allow_agent
         self.pool_size = pool_size
         self.pool = gevent.pool.Pool(size=self.pool_size)
@@ -71,10 +81,10 @@ class BaseParallelSSHClient(object):
         self.__pkey_data = self._load_pkey_data(pkey) if pkey is not None else None
         self.num_retries = num_retries
         self.timeout = timeout
-        self._host_clients = {}
+        self._host_clients: Dict[Any, Any] = {}
         self.host_config = host_config
         self.retry_delay = retry_delay
-        self.cmds = None
+        self.cmds: Optional[List[Greenlet]] = None
         self.identity_auth = identity_auth
         self.ipv6_only = ipv6_only
         self.proxy_host = proxy_host
@@ -107,11 +117,11 @@ class BaseParallelSSHClient(object):
         return _hosts
 
     @property
-    def hosts(self):
+    def hosts(self) -> List[str]:
         return self._hosts
 
     @hosts.setter
-    def hosts(self, _hosts):
+    def hosts(self, _hosts: Iterable[str]) -> None:
         _hosts = self._validate_hosts(_hosts)
         cur_vals = set(enumerate(self._hosts))
         new_vals = set(enumerate(_hosts))
@@ -144,7 +154,8 @@ class BaseParallelSSHClient(object):
             logger.error("Failed to run on host %s - %s", host, ex)
             raise ex
 
-    def open_shell(self, encoding='utf-8', read_timeout=None):
+    def open_shell(self, encoding: str = 'utf-8',
+                   read_timeout: Optional[float] = None) -> List[InteractiveShell]:
         """Open interactive shells on all hosts.
 
         :param encoding: Encoding to use for command string and shell output.
@@ -162,7 +173,8 @@ class BaseParallelSSHClient(object):
         finished = joinall(cmds, raise_error=True)
         return [cmd.get() for cmd in finished]
 
-    def run_shell_commands(self, shells, commands):
+    def run_shell_commands(self, shells: Sequence[InteractiveShell],
+                           commands: Union[str, List[str]]) -> List[Greenlet]:
         """Run command(s) on shells.
 
         :param shells: Shells to run on.
@@ -181,7 +193,8 @@ class BaseParallelSSHClient(object):
             raise ShellError(ex)
         return finished
 
-    def join_shells(self, shells, timeout=None):
+    def join_shells(self, shells: Sequence[InteractiveShell],
+                    timeout: Optional[float] = None) -> None:
         """Wait for running commands to complete and close shells.
 
         :param shells: Shells to join on.
@@ -252,7 +265,7 @@ class BaseParallelSSHClient(object):
                 raise ex
             return HostOutput(host, None, None, None, exception=ex, alias=alias)
 
-    def get_last_output(self, cmds=None):
+    def get_last_output(self, cmds: Optional[Sequence[Greenlet]] = None) -> Optional[List[HostOutput]]:
         """Get output for last commands executed by ``run_command``.
 
         :param cmds: Commands to get output for. Defaults to ``client.cmds``
@@ -262,7 +275,7 @@ class BaseParallelSSHClient(object):
         """
         cmds = self.cmds if cmds is None else cmds
         if cmds is None:
-            return
+            return None
         return self._get_output_from_cmds(
             cmds, raise_error=False)
 
@@ -301,7 +314,7 @@ class BaseParallelSSHClient(object):
             logger.error("Failed to run on host %s - %s", host, ex)
             raise ex
 
-    def connect_auth(self):
+    def connect_auth(self) -> List[Greenlet]:
         """Connect to and authenticate with all hosts in parallel.
 
         This function can be used to perform connection and authentication outside of
@@ -325,7 +338,8 @@ class BaseParallelSSHClient(object):
         for _ in stderr:
             pass
 
-    def join(self, output=None, consume_output=False, timeout=None):
+    def join(self, output: Optional[Sequence[HostOutput]] = None, consume_output: bool = False,
+             timeout: Optional[float] = None) -> None:
         """Wait until all remote commands in output have finished.
         Does *not* block other commands from running in parallel.
 
@@ -365,7 +379,7 @@ class BaseParallelSSHClient(object):
             return
         unfinished_cmds = set.difference(set(cmds), set(finished_cmds))
         if unfinished_cmds:
-            finished_output = self.get_last_output(cmds=finished_cmds)
+            finished_output = self.get_last_output(cmds=finished_cmds) or []
             unfinished_output = list(set.difference(set(output), set(finished_output)))
             raise Timeout(
                 "Timeout of %s sec(s) reached with commands still running",
@@ -383,7 +397,7 @@ class BaseParallelSSHClient(object):
             self._consume_output(host_out.stdout, host_out.stderr)
         return host_out
 
-    def finished(self, output=None):
+    def finished(self, output: Optional[Sequence[HostOutput]] = None) -> bool:
         """Check if commands have finished without blocking.
 
         :param output: (Optional) Output to check if finished. Defaults to
@@ -402,7 +416,8 @@ class BaseParallelSSHClient(object):
                 return False
         return True
 
-    def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
+    def copy_file(self, local_file: str, remote_file: str, recurse: bool = False,
+                  copy_args: Optional[Sequence[Dict[str, Any]]] = None) -> List[Greenlet]:
         """Copy local file to remote file in parallel
 
         This function returns a list of greenlets which can be

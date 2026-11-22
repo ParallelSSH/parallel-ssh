@@ -15,7 +15,10 @@
 #  License along with this library; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence, Union
 
 from .single import SSHClient
 from ..base.parallel import BaseParallelSSHClient
@@ -23,23 +26,33 @@ from ..common import _validate_pkey
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
 from ...exceptions import HostArgumentError
 
+if TYPE_CHECKING:
+    from gevent import Greenlet
+    from ...config import HostConfig
+    from ...output import HostOutput
+
 logger = logging.getLogger(__name__)
 
 
 class ParallelSSHClient(BaseParallelSSHClient):
     """ssh2-python based parallel client."""
 
-    def __init__(self, hosts, user=None, password=None, port=22, pkey=None,
-                 num_retries=DEFAULT_RETRIES, timeout=None, pool_size=100,
-                 allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
-                 proxy_host=None, proxy_port=None,
-                 proxy_user=None, proxy_password=None, proxy_pkey=None,
-                 forward_ssh_agent=False,
-                 keepalive_seconds=60, identity_auth=True,
-                 ipv6_only=False,
-                 compress=False,
-                 keyboard_interactive=False,
-                 ):
+    def __init__(self, hosts: Iterable[str], user: Optional[str] = None,
+                 password: Optional[str] = None, port: int = 22,
+                 pkey: Optional[Union[str, bytes]] = None,
+                 num_retries: int = DEFAULT_RETRIES, timeout: Optional[float] = None,
+                 pool_size: int = 100,
+                 allow_agent: bool = True, host_config: Optional[Sequence[HostConfig]] = None,
+                 retry_delay: float = RETRY_DELAY,
+                 proxy_host: Optional[str] = None, proxy_port: Optional[int] = None,
+                 proxy_user: Optional[str] = None, proxy_password: Optional[str] = None,
+                 proxy_pkey: Optional[Union[str, bytes]] = None,
+                 forward_ssh_agent: bool = False,
+                 keepalive_seconds: int = 60, identity_auth: bool = True,
+                 ipv6_only: bool = False,
+                 compress: bool = False,
+                 keyboard_interactive: bool = False,
+                 ) -> None:
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -147,10 +160,12 @@ class ParallelSSHClient(BaseParallelSSHClient):
         self.forward_ssh_agent = forward_ssh_agent
         self.keepalive_seconds = keepalive_seconds
 
-    def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
-                    use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8', read_timeout=None,
-                    ):
+    def run_command(self, command: str, sudo: bool = False, user: Optional[str] = None,  # type: ignore[override]
+                    stop_on_errors: bool = True,
+                    use_pty: bool = False, host_args: Optional[Sequence[Any]] = None,
+                    shell: Optional[str] = None,
+                    encoding: str = 'utf-8', read_timeout: Optional[float] = None,
+                    ) -> List[HostOutput]:
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output.
 
@@ -248,7 +263,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
         )
         return _client
 
-    def copy_file(self, local_file, remote_file, recurse=False, copy_args=None):
+    def copy_file(self, local_file: str, remote_file: str, recurse: bool = False,
+                  copy_args: Optional[Sequence[Dict[str, Any]]] = None) -> List[Greenlet]:
         """Copy local file to remote file in parallel via SFTP.
 
         This function returns a list of greenlets which can be
@@ -299,9 +315,10 @@ class ParallelSSHClient(BaseParallelSSHClient):
         return BaseParallelSSHClient.copy_file(
             self, local_file, remote_file, recurse=recurse, copy_args=copy_args)
 
-    def copy_remote_file(self, remote_file, local_file, recurse=False,
-                         suffix_separator='_', copy_args=None,
-                         encoding='utf-8'):
+    def copy_remote_file(self, remote_file: str, local_file: str, recurse: bool = False,  # type: ignore[override]
+                         suffix_separator: str = '_',
+                         copy_args: Optional[Sequence[Dict[str, Any]]] = None,
+                         encoding: str = 'utf-8') -> List[Greenlet]:
         """Copy remote file(s) in parallel via SFTP as
         <local_file><suffix_separator><host>
 
@@ -379,7 +396,8 @@ class ParallelSSHClient(BaseParallelSSHClient):
         _client = self._get_ssh_client(host_i, host)
         return _client.scp_recv(remote_file, local_file, recurse=recurse)
 
-    def scp_send(self, local_file, remote_file, recurse=False, copy_args=None):
+    def scp_send(self, local_file: str, remote_file: str, recurse: bool = False,
+                 copy_args: Optional[Sequence[Dict[str, Any]]] = None) -> List[Greenlet]:
         """Copy local file to remote file in parallel via SCP.
 
         This function returns a list of greenlets which can be
@@ -433,8 +451,9 @@ class ParallelSSHClient(BaseParallelSSHClient):
                 "Number of per-host copy arguments provided does not match "
                 "number of hosts")
 
-    def scp_recv(self, remote_file, local_file, recurse=False, copy_args=None,
-                 suffix_separator='_'):
+    def scp_recv(self, remote_file: str, local_file: str, recurse: bool = False,
+                 copy_args: Optional[Sequence[Dict[str, Any]]] = None,
+                 suffix_separator: str = '_') -> List[Greenlet]:
         """Copy remote file(s) in parallel via SCP as
         <local_file><suffix_separator><host> or as per ``copy_args`` argument.
 

@@ -15,12 +15,19 @@
 #  License along with this library; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Sequence, Union
 
 from .single import SSHClient
 from ..common import _validate_pkey_path, _validate_pkey
 from ..base.parallel import BaseParallelSSHClient
 from ...constants import DEFAULT_RETRIES, RETRY_DELAY
+
+if TYPE_CHECKING:
+    from ...config import HostConfig
+    from ...output import HostOutput
 
 
 logger = logging.getLogger(__name__)
@@ -29,19 +36,23 @@ logger = logging.getLogger(__name__)
 class ParallelSSHClient(BaseParallelSSHClient):
     """ssh-python based parallel client."""
 
-    def __init__(self, hosts, user=None, password=None, port=22, pkey=None,
-                 cert_file=None,
-                 num_retries=DEFAULT_RETRIES, timeout=None, pool_size=100,
-                 allow_agent=True, host_config=None, retry_delay=RETRY_DELAY,
-                 forward_ssh_agent=False,
-                 gssapi_auth=False,
-                 gssapi_server_identity=None,
-                 gssapi_client_identity=None,
-                 gssapi_delegate_credentials=False,
-                 identity_auth=True,
-                 ipv6_only=False,
-                 compress=False,
-                 ):
+    def __init__(self, hosts: Iterable[str], user: Optional[str] = None,
+                 password: Optional[str] = None, port: int = 22,
+                 pkey: Optional[Union[str, bytes]] = None,
+                 cert_file: Optional[str] = None,
+                 num_retries: int = DEFAULT_RETRIES, timeout: Optional[float] = None,
+                 pool_size: int = 100,
+                 allow_agent: bool = True, host_config: Optional[Sequence[HostConfig]] = None,
+                 retry_delay: float = RETRY_DELAY,
+                 forward_ssh_agent: bool = False,
+                 gssapi_auth: bool = False,
+                 gssapi_server_identity: Optional[str] = None,
+                 gssapi_client_identity: Optional[str] = None,
+                 gssapi_delegate_credentials: bool = False,
+                 identity_auth: bool = True,
+                 ipv6_only: bool = False,
+                 compress: bool = False,
+                 ) -> None:
         """
         :param hosts: Hosts to connect to
         :type hosts: list(str)
@@ -138,10 +149,12 @@ class ParallelSSHClient(BaseParallelSSHClient):
         self.gssapi_client_identity = gssapi_client_identity
         self.gssapi_delegate_credentials = gssapi_delegate_credentials
 
-    def run_command(self, command, sudo=False, user=None, stop_on_errors=True,
-                    use_pty=False, host_args=None, shell=None,
-                    encoding='utf-8', read_timeout=None,
-                    ):
+    def run_command(self, command: str, sudo: bool = False, user: Optional[str] = None,  # type: ignore[override]
+                    stop_on_errors: bool = True,
+                    use_pty: bool = False, host_args: Optional[Sequence[Any]] = None,
+                    shell: Optional[str] = None,
+                    encoding: str = 'utf-8', read_timeout: Optional[float] = None,
+                    ) -> List[HostOutput]:
         """Run command on all hosts in parallel, honoring self.pool_size,
         and return output.
 

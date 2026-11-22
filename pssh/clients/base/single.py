@@ -574,6 +574,9 @@ class BaseSSHClient(PollMixIn):
     def get_exit_status(self, channel):
         raise NotImplementedError
 
+    def finished(self, channel):
+        raise NotImplementedError
+
     def read_output_buffer(self, output_buffer, prefix=None,
                            callback=None,
                            callback_args=None,

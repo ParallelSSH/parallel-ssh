@@ -18,15 +18,23 @@
 
 """Output module of ParallelSSH"""
 
+from __future__ import annotations
+
 from os import linesep
+from typing import TYPE_CHECKING, Any, Iterator, Optional
 
 from . import logger
+
+if TYPE_CHECKING:
+    from gevent import Greenlet
+    from .clients.base.single import BaseSSHClient
+    from .clients.reader import ConcurrentRWBuffer
 
 
 class HostOutputBuffers(object):
     __slots__ = ('stdout', 'stderr')
 
-    def __init__(self, stdout, stderr):
+    def __init__(self, stdout: BufferData, stderr: BufferData) -> None:
         """
         :param stdout: Stdout data
         :type stdout: :py:class:`BufferData`
@@ -40,7 +48,7 @@ class HostOutputBuffers(object):
 class BufferData(object):
     __slots__ = ('reader', 'rw_buffer')
 
-    def __init__(self, reader, rw_buffer):
+    def __init__(self, reader: Greenlet, rw_buffer: ConcurrentRWBuffer) -> None:
         """
         :param reader: Greenlet reading data from channel and writing to rw_buffer
         :type reader: :py:class:`gevent.Greenlet`
@@ -60,11 +68,13 @@ class HostOutput(object):
                  'fully_qualified_command',
                  )
 
-    def __init__(self, host, channel, stdin,
-                 client, alias=None, exception=None, encoding='utf-8', read_timeout=None,
-                 buffers=None,
-                 fully_qualified_command=None,
-                 ):
+    def __init__(self, host: str, channel: Any, stdin: Any,
+                 client: Optional[BaseSSHClient], alias: Optional[str] = None,
+                 exception: Optional[BaseException] = None, encoding: str = 'utf-8',
+                 read_timeout: Optional[float] = None,
+                 buffers: Optional[HostOutputBuffers] = None,
+                 fully_qualified_command: Optional[bytes] = None,
+                 ) -> None:
         """
         :param host: Host name output is for
         :type host: str
@@ -104,18 +114,18 @@ class HostOutput(object):
         self.fully_qualified_command = fully_qualified_command
 
     @property
-    def stdout(self):
-        if not self.client:
-            return
+    def stdout(self) -> Optional[Iterator[str]]:
+        if not self.client or self.buffers is None:
+            return None
         _stdout = self.client.read_output_buffer(
             self.client.read_output(self.buffers.stdout.rw_buffer, timeout=self.read_timeout),
             encoding=self.encoding)
         return _stdout
 
     @property
-    def stderr(self):
-        if not self.client:
-            return
+    def stderr(self) -> Optional[Iterator[str]]:
+        if not self.client or self.buffers is None:
+            return None
         _stderr = self.client.read_output_buffer(
             self.client.read_stderr(self.buffers.stderr.rw_buffer, timeout=self.read_timeout),
             encoding=self.encoding,
@@ -123,15 +133,16 @@ class HostOutput(object):
         return _stderr
 
     @property
-    def exit_code(self):
+    def exit_code(self) -> Optional[int]:
         if not self.client:
-            return
+            return None
         try:
             return self.client.get_exit_status(self.channel)
         except Exception as ex:
             logger.error("Error getting exit status - %s", ex)
+        return None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "\thost={host}{linesep}" \
             "\talias={alias}{linesep}" \
             "\texit_code={exit_code}{linesep}" \
@@ -139,12 +150,12 @@ class HostOutput(object):
             "\texception={exception}{linesep}" \
             "\tencoding={encoding}{linesep}" \
             "\tread_timeout={read_timeout}{linesep}" \
-            "\tfully_qualified_command={fully_qualified_command}".format(
+            "\tfully_qualified_command={fully_qualified_command!r}".format(
                 host=self.host, alias=self.alias, channel=self.channel,
                 exception=self.exception, linesep=linesep,
                 exit_code=self.exit_code, encoding=self.encoding, read_timeout=self.read_timeout,
                 fully_qualified_command=self.fully_qualified_command,
             )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.__repr__()
