@@ -144,8 +144,41 @@ class SSHClient(BaseSSHClient):
                 pass
         self.sock = None
 
+    # libssh's SSH_AUTH_METHOD_* bit flags, as returned by ``ssh_userauth_list``.
+    _AUTH_METHOD_FLAGS = (
+        ('password', 0x0002),
+        ('publickey', 0x0004),
+        ('hostbased', 0x0008),
+        ('keyboard-interactive', 0x0010),
+        ('gssapi-with-mic', 0x0020),
+    )
+
     def _agent_auth(self):
         self.session.userauth_agent(self.user)
+
+    def _auth_methods(self):
+        # libssh only knows the server's list after an authentication attempt,
+        # so request ``none`` auth once first.
+        if not getattr(self, '_auth_none_attempted', False):
+            self._auth_none_attempted = True
+            try:
+                self.session.userauth_none()
+            except Exception:
+                pass
+            else:
+                self._none_auth_succeeded = True
+                return None
+        try:
+            flags = self.session.userauth_list()
+        except Exception as ex:
+            logger.debug("Could not retrieve authentication methods from server - %s", ex)
+            return None
+        if not isinstance(flags, int) or not flags:
+            return None
+        return {name for name, flag in self._AUTH_METHOD_FLAGS if flags & flag}
+
+    def _authenticated(self):
+        return getattr(self, '_none_auth_succeeded', False)
 
     def _keepalive(self):
         pass

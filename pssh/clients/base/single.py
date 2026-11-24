@@ -419,12 +419,48 @@ class BaseSSHClient(PollMixIn):
     def _keepalive(self):
         raise NotImplementedError
 
+    def _auth_methods(self):
+        """Authentication methods the server allows to continue with.
+
+        :returns: Set of method names, eg ``{'publickey', 'password'}``, or ``None`` when
+          the server's list could not be retrieved - every enabled method is then attempted.
+        :rtype: set or None
+        """
+        return None
+
+    def _authenticated(self):
+        """Whether the server has already accepted the session, eg via ``none`` auth."""
+        return False
+
+    def _password_auth_methods(self):
+        """Server method names that :py:func:`_password_auth` authenticates with."""
+        return ('password',)
+
+    @staticmethod
+    def _method_allowed(methods, *names):
+        return methods is None or any(name in methods for name in names)
+
+    def _methods_unsupported(self, methods, requested):
+        msg = "Server does not allow %s authentication - server allows %s"
+        allowed = ", ".join(sorted(methods)) if methods else "no methods"
+        logger.error(msg, requested, allowed)
+        return AuthenticationError(msg, requested, allowed)
+
     def auth(self):
+        # Only a session that becomes authenticated while the server's list is retrieved
+        # was accepted via ``none`` auth - a stale flag from an earlier session is not.
+        authenticated_before = self._authenticated()
+        methods = self._auth_methods()
+        if not authenticated_before and self._authenticated():
+            logger.debug("Server accepted the session without further authentication")
+            return
         if self.pkey is not None:
+            if not self._method_allowed(methods, 'publickey'):
+                raise self._methods_unsupported(methods, 'publickey')
             logger.debug(
                 "Proceeding with private key authentication")
             return self._pkey_auth(self.pkey)
-        if self.allow_agent:
+        if self.allow_agent and self._method_allowed(methods, 'publickey'):
             try:
                 self._agent_auth()
             except (AgentAuthenticationError, AgentConnectionError, AgentGetIdentityError,
@@ -436,16 +472,24 @@ class BaseSSHClient(PollMixIn):
             else:
                 logger.debug("Authentication with SSH Agent succeeded")
                 return
-        if self.identity_auth:
+            # The server may allow different methods after a failed attempt.
+            methods = self._auth_methods()
+        if self.identity_auth and self._method_allowed(methods, 'publickey'):
             try:
                 return self._identity_auth()
             except AuthenticationError:
                 if self.password is None:
                     raise
+            methods = self._auth_methods()
         if self.password is None:
+            if methods is not None and not self._method_allowed(methods, 'publickey'):
+                raise self._methods_unsupported(methods, 'publickey')
             msg = "No remaining authentication methods"
             logger.error(msg)
             raise AuthenticationError(msg)
+        password_methods = self._password_auth_methods()
+        if not self._method_allowed(methods, *password_methods):
+            raise self._methods_unsupported(methods, " or ".join(password_methods))
         logger.debug("Private key auth failed or not enabled, trying password")
         self._password_auth()
 
