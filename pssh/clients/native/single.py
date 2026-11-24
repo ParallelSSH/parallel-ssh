@@ -324,6 +324,28 @@ class SSHClient(BaseSSHClient):
     def _agent_auth(self):
         self.session.agent_auth(self.user)
 
+    def _auth_methods(self):
+        try:
+            methods = self.session.userauth_list(self.user)
+        except Exception as ex:
+            logger.debug("Could not retrieve authentication methods from server - %s", ex)
+            return None
+        if not isinstance(methods, (list, tuple)):
+            return None
+        methods = {str(method).strip() for method in methods if str(method).strip()}
+        return methods or None
+
+    def _authenticated(self):
+        try:
+            return self.session.userauth_authenticated() is True
+        except Exception:
+            return False
+
+    def _password_auth_methods(self):
+        if self.keyboard_interactive:
+            return ('keyboard-interactive',)
+        return ('password',)
+
     def _pkey_from_memory(self, pkey_data):
         self.session.userauth_publickey_frommemory(
             self.user,
