@@ -12,6 +12,7 @@
 
 import unittest
 
+from pssh.clients.base.single import BaseSSHClient
 from pssh.clients.native.single import SSHClient as NativeSSHClient
 from pssh.clients.ssh.single import SSHClient as LibSSHClient
 from pssh.exceptions import AuthenticationError
@@ -201,3 +202,73 @@ class LibSSHAuthMethodsTest(unittest.TestCase):
         session = LibSSHSession(0)
         make_client(LibSSHClient, session).auth()
         self.assertEqual(session.calls, ['none', 'list', 'agent', 'list', 'password'])
+
+
+class BrokenListNativeSession(NativeSession):
+
+    def userauth_list(self, user):
+        self.calls.append('list')
+        raise Exception("list failed")
+
+    def userauth_authenticated(self):
+        raise Exception("authenticated failed")
+
+
+class BrokenListLibSSHSession(LibSSHSession):
+
+    def userauth_list(self):
+        self.calls.append('list')
+        raise Exception("list failed")
+
+
+def _identity_auth_fails():
+    raise AuthenticationError("No authentication methods succeeded")
+
+
+class AuthMethodsFallbackTest(unittest.TestCase):
+
+    def test_base_client_defaults_to_unknown_methods(self):
+        client = object.__new__(BaseSSHClient)
+        self.assertIsNone(client._auth_methods())
+        self.assertFalse(client._authenticated())
+        self.assertEqual(client._password_auth_methods(), ('password',))
+
+    def test_native_list_errors_fall_back_to_previous_behaviour(self):
+        session = BrokenListNativeSession(None)
+        client = make_client(NativeSSHClient, session)
+        self.assertIsNone(client._auth_methods())
+        self.assertFalse(client._authenticated())
+        session.calls = []
+        client.auth()
+        self.assertEqual(session.calls, ['list', 'agent', 'list', 'password'])
+
+    def test_libssh_list_errors_fall_back_to_previous_behaviour(self):
+        session = BrokenListLibSSHSession(0)
+        client = make_client(LibSSHClient, session)
+        client.auth()
+        self.assertEqual(session.calls, ['none', 'list', 'agent', 'list', 'password'])
+
+    def test_methods_are_retrieved_again_after_failed_identity_auth(self):
+        session = NativeSession([['publickey', 'password'], ['password']])
+        client = make_client(NativeSSHClient, session, allow_agent=False)
+        client.identity_auth = True
+        client._identity_auth = _identity_auth_fails
+        client.auth()
+        self.assertEqual(session.calls, ['list', 'list', 'password'])
+
+    def test_failed_identity_auth_without_password_raises(self):
+        session = NativeSession(['publickey'])
+        client = make_client(NativeSSHClient, session, password=None, allow_agent=False)
+        client.identity_auth = True
+        client._identity_auth = _identity_auth_fails
+        self.assertRaises(AuthenticationError, client.auth)
+        self.assertEqual(session.calls, ['list'])
+
+    def test_no_password_and_no_public_key_on_server_names_allowed_methods(self):
+        session = NativeSession(['password'])
+        client = make_client(NativeSSHClient, session, password=None)
+        with self.assertRaises(AuthenticationError) as cm:
+            client.auth()
+        self.assertIn('publickey', cm.exception.args)
+        self.assertIn('password', cm.exception.args)
+        self.assertEqual(session.calls, ['list'])
